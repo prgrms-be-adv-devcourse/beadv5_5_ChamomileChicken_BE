@@ -3,6 +3,7 @@ package jabastore.auth.jwt;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 
+import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.util.Date;
 import java.util.UUID;
@@ -10,10 +11,10 @@ import java.util.UUID;
 public class JwtProvider {
 
     private final Key key;
-    private final long accessTokenValidity; // ms
+    private final long accessTokenValidity;
 
     public JwtProvider(String secret, long accessTokenValidity) {
-        this.key = Keys.hmacShaKeyFor(secret.getBytes());
+        this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
         this.accessTokenValidity = accessTokenValidity;
     }
 
@@ -30,23 +31,14 @@ public class JwtProvider {
     }
 
     public UUID getUserId(String token) {
-        Claims claims = parseClaims(token).getBody();
-        return UUID.fromString(claims.get("userId", String.class));
+        return UUID.fromString(parseClaims(token).get("userId", String.class));
     }
 
-    public boolean validateToken(String token) {
-        try {
-            parseClaims(token);
-            return true;
-        } catch (JwtException | IllegalArgumentException e) {
-            return false;
-        }
-    }
-
-    private Jws<Claims> parseClaims(String token) {
+    public Claims parseClaims(String token) {
         return Jwts.parserBuilder()
                 .setSigningKey(key)
                 .build()
-                .parseClaimsJws(token);
+                .parseClaimsJws(token)
+                .getBody();
     }
 }
