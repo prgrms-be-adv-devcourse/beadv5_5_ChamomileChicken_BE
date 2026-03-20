@@ -2,19 +2,25 @@ name: CI Test
 
 on:
   pull_request:
+    # main 또는 dev 브랜치를 대상으로 하는 PR에서만 CI 실행
     branches: ["main", "dev"]
 
 permissions:
+  # 저장소 코드 조회 권한만 사용
   contents: read
 
 concurrency:
+  # 같은 PR에서 새 커밋이 올라오면 이전 실행은 취소하고 최신 실행만 유지
   group: ci-test-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
   detect-changes:
+    # 변경된 파일 경로를 분석해서 어떤 범위의 테스트를 돌릴지 결정하는 잡
     runs-on: ubuntu-latest
+
     outputs:
+      # paths-filter 결과를 다음 test 잡에서 사용할 수 있도록 output으로 전달
       common: ${{ steps.filter.outputs.common }}
       user: ${{ steps.filter.outputs.user }}
       order: ${{ steps.filter.outputs.order }}
@@ -23,12 +29,13 @@ jobs:
       settlement: ${{ steps.filter.outputs.settlement }}
       file: ${{ steps.filter.outputs.file }}
       global: ${{ steps.filter.outputs.global }}
-      docs_only: ${{ steps.filter.outputs.docs_only }}
+      docs_changed: ${{ steps.filter.outputs.docs_changed }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          # PR 변경 파일 비교를 정확히 하기 위해 전체 히스토리 fetch
           fetch-depth: 0
 
       - name: Detect changed paths
@@ -36,9 +43,11 @@ jobs:
         uses: dorny/paths-filter@v4
         with:
           filters: |
+            # common 모듈 변경
             common:
               - 'common/**'
 
+            # 각 서비스 모듈 변경
             user:
               - 'service/user/**'
 
@@ -57,6 +66,8 @@ jobs:
             file:
               - 'service/file/**'
 
+            # 전체 빌드/설정에 영향을 줄 수 있는 경로
+            # 이런 파일이 바뀌면 특정 모듈만이 아니라 전체 테스트가 필요할 수 있음
             global:
               - 'settings.gradle'
               - 'settings.gradle.kts'
@@ -67,14 +78,24 @@ jobs:
               - 'config/**'
               - '.github/workflows/**'
 
-            docs_only:
+            # 문서 변경 포함 여부
+            # 주의:
+            # 이 값은 "문서만 변경"이 아니라 "문서 변경이 포함되었는지"를 의미함
+            docs_changed:
               - '**/*.md'
               - 'docs/**'
 
   test:
     needs: detect-changes
     runs-on: ubuntu-latest
-    if: ${{ needs.detect-changes.outputs.docs_only != 'true' || (
+
+    # 문서만 바뀐 PR은 테스트를 생략하고,
+    # 코드/설정(common, service, global) 변경이 하나라도 있으면 테스트 실행
+    #
+    # 아래 조건식은:
+    # 1) 문서 변경이 없으면 실행
+    # 2) 문서 변경이 있더라도 코드/설정 변경이 함께 있으면 실행
+    if: ${{ needs.detect-changes.outputs.docs_changed != 'true' || (
       needs.detect-changes.outputs.common == 'true' ||
       needs.detect-changes.outputs.user == 'true' ||
       needs.detect-changes.outputs.order == 'true' ||
@@ -94,6 +115,7 @@ jobs:
         with:
           distribution: "temurin"
           java-version: "21"
+          # Gradle 캐시 사용으로 의존성 다운로드 시간 절약
           cache: "gradle"
 
       - name: Grant execute permission for gradlew
@@ -103,12 +125,15 @@ jobs:
         id: scope
         shell: bash
         run: |
+          # common 또는 global 변경 시 전체 테스트 실행
+          # common은 여러 모듈이 의존할 가능성이 높고,
+          # global은 빌드/설정 전반에 영향을 줄 수 있기 때문
           if [[ "${{ needs.detect-changes.outputs.common }}" == "true" || "${{ needs.detect-changes.outputs.global }}" == "true" ]]; then
-            echo "run_all=true" >> $GITHUB_OUTPUT
             echo "tasks=clean test" >> $GITHUB_OUTPUT
             exit 0
           fi
 
+          # 그 외에는 변경된 서비스 모듈 테스트만 선택적으로 실행
           TASKS=""
 
           if [[ "${{ needs.detect-changes.outputs.user }}" == "true" ]]; then
@@ -135,8 +160,10 @@ jobs:
             TASKS="$TASKS :service:file:test"
           fi
 
+          # 공백 정리
           TASKS=$(echo "$TASKS" | xargs)
 
+          # 선택된 태스크를 output으로 저장
           if [[ -z "$TASKS" ]]; then
             echo "tasks=" >> $GITHUB_OUTPUT
           else
@@ -144,19 +171,23 @@ jobs:
           fi
 
       - name: Show selected tasks
+        # 실제 어떤 테스트가 선택됐는지 로그로 출력
         run: echo "Selected tasks => ${{ steps.scope.outputs.tasks }}"
 
       - name: Run tests
+        # 실행할 테스트 태스크가 있을 때만 Gradle 테스트 수행
         if: ${{ steps.scope.outputs.tasks != '' }}
         env:
           SPRING_PROFILES_ACTIVE: test
         run: ./gradlew ${{ steps.scope.outputs.tasks }} --no-daemon
 
       - name: Skip test message
+        # 실행 대상이 없으면 테스트 생략 메시지만 출력
         if: ${{ steps.scope.outputs.tasks == '' }}
         run: echo "No testable module changes detected. Skipping tests."
 
       - name: Upload test reports
+        # 테스트 성공/실패와 상관없이 항상 리포트 업로드
         if: always()
         uses: actions/upload-artifact@v6
         with:
