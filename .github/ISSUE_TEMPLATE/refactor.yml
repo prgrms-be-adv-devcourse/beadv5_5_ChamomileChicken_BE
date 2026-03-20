@@ -1,0 +1,46 @@
+name: "Refactor"
+description: "리팩토링 작업"
+title: "refactor: "
+labels: ["refactor"]
+body:
+  - type: input
+    id: package_name
+    attributes:
+      label: "Package name"
+      description: "리팩토링 대상 모듈/패키지명"
+      placeholder: "notification"
+    validations:
+      required: true
+
+  - type: input
+    id: branch_keyword
+    attributes:
+      label: "Branch keyword"
+      description: "브랜치 기능 키워드"
+      placeholder: "service-split"
+    validations:
+      required: true
+
+  - type: textarea
+    id: target
+    attributes:
+      label: "리팩토링 대상"
+      description: "어떤 코드/모듈/기능을 리팩토링하는지"
+      placeholder: |
+        예)
+        - NotificationService 로직 분리
+        - Repository 쿼리 정리
+    validations:
+      required: true
+
+  - type: textarea
+    id: goal
+    attributes:
+      label: "목표"
+      description: "왜 하는지 / 기대 효과"
+      placeholder: |
+        예)
+        - 테스트 용이성 개선
+        - 중복 제거 및 가독성 향상
+    validations:
+      required: false

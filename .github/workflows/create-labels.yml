@@ -1,0 +1,45 @@
+name: Create Labels
+
+on:
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+jobs:
+  create-labels:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create labels
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const labels = [
+              { name: 'feature',  color: '0e8a16', description: '새로운 기능' },
+              { name: 'hotfix',   color: 'b60205', description: '긴급 수정' },
+              { name: 'fix',      color: 'd73a4a', description: '수정' },
+              { name: 'refactor', color: 'fbca04', description: '리팩토링' },
+              { name: 'deploy',   color: '0052cc', description: '배포' },
+              { name: 'chore',    color: 'fef2c0', description: '기타 작업' },
+              { name: 'test',     color: '1d76db', description: '테스트' },
+            ];
+
+            for (const label of labels) {
+              try {
+                await github.rest.issues.createLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  name: label.name,
+                  color: label.color,
+                  description: label.description,
+                });
+                console.log(`✅ Created: ${label.name}`);
+              } catch (error) {
+                if (error.status === 422) {
+                  console.log(`ℹ️ Already exists: ${label.name}`);
+                } else {
+                  console.error(`❌ Error creating ${label.name}:`, error);
+                  throw error;
+                }
+              }
+            }
