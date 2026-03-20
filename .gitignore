@@ -37,3 +37,16 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### macOS ###
+.DS_Store
+
+### Gradle Cache###
+caches/
+daemon/
+wrapper/dists/
+
+### Gradle & Build ###
+.gradle/
+build/
+out/
