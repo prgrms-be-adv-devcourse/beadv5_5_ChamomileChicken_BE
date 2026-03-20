@@ -1,10 +1,10 @@
-package jabastore.common;
+package jabastore.payment;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class CommonApplicationTests {
+class PaymentApplicationTests {
 
     @Test
     void contextLoads() {

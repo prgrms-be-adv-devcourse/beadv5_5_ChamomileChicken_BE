@@ -1,1 +1,11 @@
 rootProject.name = 'jaba'
+
+include 'common'
+
+include 'service'
+include 'service:file'
+include 'service:order'
+include 'service:payment'
+include 'service:product'
+include 'service:settlement'
+include 'service:user'

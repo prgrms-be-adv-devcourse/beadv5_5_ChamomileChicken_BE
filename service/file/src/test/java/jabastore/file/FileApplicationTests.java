@@ -1,10 +1,10 @@
-package jabastore.common;
+package jabastore.file;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class CommonApplicationTests {
+class FileApplicationTests {
 
     @Test
     void contextLoads() {
