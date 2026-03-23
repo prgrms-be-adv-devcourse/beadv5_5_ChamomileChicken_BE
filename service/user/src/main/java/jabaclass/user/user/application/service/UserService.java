@@ -23,7 +23,7 @@ public class UserService implements UserUseCase {
 	@Override
 	public UserResponseDto findMyInfo(UUID userId) {
 		User user = userRepository.findById(userId)
-			.orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND)); //Todo 커스텀 예외 추가
+			.orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
 
 		return UserResponseDto.from(user);
 	}
