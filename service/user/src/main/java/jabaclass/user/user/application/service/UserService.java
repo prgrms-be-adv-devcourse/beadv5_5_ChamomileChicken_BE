@@ -21,7 +21,7 @@ public class UserService implements UserUseCase {
 	private final UserRepository userRepository;
 
 	@Override
-	public UserResponseDto getMyInfo(UUID userId) {
+	public UserResponseDto findMyInfo(UUID userId) {
 		User user = userRepository.findById(userId)
 			.orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND)); //Todo 커스텀 예외 추가
 

@@ -6,5 +6,5 @@ import jabaclass.user.user.presentation.dto.response.UserResponseDto;
 
 public interface UserUseCase {
 
-	UserResponseDto getMyInfo(UUID userId);
+	UserResponseDto findMyInfo(UUID userId);
 }

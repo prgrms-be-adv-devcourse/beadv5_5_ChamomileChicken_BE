@@ -19,11 +19,11 @@ public class UserController {
 	private final UserUseCase userUseCase;
 
 	@GetMapping("/me")
-	public ResponseEntity<UserResponseDto> getMyInfo(
+	public ResponseEntity<UserResponseDto> findMyInfo(
 	) {
 		UUID requesterId = UUID.randomUUID(); // Todo 추후 인증 객체에서 id 추출
 
-		UserResponseDto response = userUseCase.getMyInfo(requesterId);
+		UserResponseDto response = userUseCase.findMyInfo(requesterId);
 		return ResponseEntity.ok(response);
 	}
 }
