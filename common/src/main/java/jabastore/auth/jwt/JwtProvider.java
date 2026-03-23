@@ -15,9 +15,9 @@ public class JwtProvider {
     private final Key key;
     private final long accessTokenValidity;
 
-    public JwtProvider(String secret, long accessTokenValidity) {
-        this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
-        this.accessTokenValidity = accessTokenValidity;
+    public JwtProvider(JwtProperties properties) {
+        this.key = Keys.hmacShaKeyFor(properties.getSecret().getBytes(StandardCharsets.UTF_8));
+        this.accessTokenValidity = properties.getAccessTokenValidity();
     }
 
     public String generateToken(UUID userId) {
