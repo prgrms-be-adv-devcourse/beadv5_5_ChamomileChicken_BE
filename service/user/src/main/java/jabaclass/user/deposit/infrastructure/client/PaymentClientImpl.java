@@ -25,13 +25,13 @@ public class PaymentClientImpl implements PaymentClient {
 
 	@Override
 	public UUID createPayment(UUID userId, BigDecimal amount, String paymentMethod) {
-		UUID prepareId = preparePayment(userId, amount, paymentMethod);
-		return confirmPayment(prepareId);
+		UUID prepareId = prepareDepositPayment(userId, amount, paymentMethod);
+		return confirmDepositPayment(prepareId);
 	}
 
 	@Override
-	public UUID preparePayment(UUID userId, BigDecimal amount, String paymentMethod) {
-		String url = paymentServiceUrl + "/api/v1/payments/prepare";
+	public UUID prepareDepositPayment(UUID userId, BigDecimal amount, String paymentMethod) {
+		String url = paymentServiceUrl + "/api/v1/payments/deposit/prepare";
 
 		PrepareRequestDto request = new PrepareRequestDto(userId, amount, paymentMethod);
 
@@ -45,8 +45,8 @@ public class PaymentClientImpl implements PaymentClient {
 	}
 
 	@Override
-	public UUID confirmPayment(UUID prepareId) {
-		String url = paymentServiceUrl + "/api/v1/payments/confirm";
+	public UUID confirmDepositPayment(UUID prepareId) {
+		String url = paymentServiceUrl + "/api/v1/payments/deposit/comfirm";
 
 		ConfirmRequestDto request = new ConfirmRequestDto(prepareId);
 

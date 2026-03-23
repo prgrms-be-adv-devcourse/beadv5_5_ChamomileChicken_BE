@@ -7,7 +7,7 @@ public interface PaymentClient {
 
 	UUID createPayment(UUID userId, BigDecimal amount, String paymentMethod);
 
-	UUID preparePayment(UUID userId, BigDecimal amount, String paymentMethod);
+	UUID prepareDepositPayment(UUID userId, BigDecimal amount, String paymentMethod);
 
-	UUID confirmPayment(UUID prepareId);
+	UUID confirmDepositPayment(UUID prepareId);
 }

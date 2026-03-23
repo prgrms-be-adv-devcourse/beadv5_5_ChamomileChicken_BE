@@ -26,16 +26,18 @@ public class DepositChargeUseCase {
 	private final DepositHistoryRepository depositHistoryRepository;
 	private final PaymentClient paymentClient;
 
-	// todo : userRepository 필요 -> 옵셔널로 넘어오는지에 따라 수정
 	// POST /deposits
 	@Transactional
 	public DepositChargeResponseDto charge(UUID userId, DepositChargeRequestDto request) {
 		User user = userRepository.findById(userId)
 			.orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
 
+		// prepareId -> paymentId 받아옴
 		UUID paymentId = paymentClient.createPayment(userId, request.chargeAmount(), request.paymentMethod());
+		// 결제 승인에 대한 예치금 증가 로직
 		user.chargeDeposit(request.chargeAmount());
 
+		// 예치금 히스토리 저장
 		DepositHistory history = DepositHistory.of(user, paymentId, request.chargeAmount(), DepositType.CHARGE);
 		depositHistoryRepository.save(history);
 

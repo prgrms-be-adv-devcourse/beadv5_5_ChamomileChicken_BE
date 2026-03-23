@@ -1,7 +1,5 @@
 package jabaclass.user.common.config;
 
-import java.time.Duration;
-
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
@@ -13,8 +11,8 @@ public class RestTemplateConfig {
 	@Bean
 	public RestTemplate restTemplate() {
 		SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-		factory.setConnectTimeout((int)Duration.ofSeconds(3).toMillis());
-		factory.setReadTimeout((int)Duration.ofSeconds(5).toMillis());
+		factory.setConnectTimeout(5000);
+		factory.setReadTimeout(5000);
 		return new RestTemplate(factory);
 	}
 }
