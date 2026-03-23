@@ -11,8 +11,6 @@ import jabaclass.product.application.exception.BusinessException;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-	// TODO 공통 예외처리에 대한 테스트, Service 예외 처리를 실무적으로 실행
-
 	// Validation 에러 처리
 	// request 값의 문제이므로 HttpStatus.BAD_REQUEST로 고정했습니다.
 	@ExceptionHandler(MethodArgumentNotValidException.class)
