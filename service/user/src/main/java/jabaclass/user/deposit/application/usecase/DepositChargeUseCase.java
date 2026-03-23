@@ -7,9 +7,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import jabaclass.user.deposit.domain.DepositHistory;
 import jabaclass.user.deposit.domain.DepositType;
-import jabaclass.user.deposit.infrastructure.DepositHistoryRepository;
+import jabaclass.user.deposit.domain.repository.DepositHistoryRepository;
+import jabaclass.user.deposit.infrastructure.client.PaymentClient;
 import jabaclass.user.deposit.presentation.dto.request.DepositChargeRequestDto;
 import jabaclass.user.deposit.presentation.dto.response.DepositChargeResponseDto;
+import jabaclass.user.user.domain.model.User;
+import jabaclass.user.user.domain.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -38,6 +41,6 @@ public class DepositChargeUseCase {
 
 		log.info("예치금 충전 완료 userId={}, amount={}", userId, request.chargeAmount());
 
-		return new DepositChargeResponseDto(paymentId, request.chargeAmount(), user.getDeposit());
+		return new DepositChargeResponseDto(paymentId, request.chargeAmount(), user.getDeposit(), true);
 	}
 }

@@ -1,4 +1,4 @@
-package jabaclass.user.deposit.presentation.dto.controller;
+package jabaclass.user.deposit.presentation.controller;
 
 import java.util.UUID;
 

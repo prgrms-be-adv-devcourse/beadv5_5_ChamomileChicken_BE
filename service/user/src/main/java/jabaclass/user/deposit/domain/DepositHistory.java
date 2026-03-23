@@ -1,12 +1,10 @@
 package jabaclass.user.deposit.domain;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.UUID;
 
-import org.hibernate.annotations.CreationTimestamp;
-
 import jabaclass.user.common.model.BaseEntity;
+import jabaclass.user.user.domain.model.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -15,12 +13,13 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import lombok.Getter;
 
+@Getter
 @Entity
 @Table(name = "deposit_histories")
 public class DepositHistory extends BaseEntity {
 
-	//todo
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "user_id", nullable = false)
 	private User user;
@@ -34,10 +33,6 @@ public class DepositHistory extends BaseEntity {
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false, length = 10)
 	private DepositType type;
-
-	@CreationTimestamp
-	@Column(nullable = false, updatable = false)
-	private LocalDateTime createdAt;
 
 	protected DepositHistory() {
 	}

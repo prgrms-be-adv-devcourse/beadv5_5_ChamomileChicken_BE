@@ -6,7 +6,7 @@ import java.util.UUID;
 import jabaclass.user.deposit.domain.DepositType;
 
 public record DepositHistoryItemDto(
-	UUID depositHistoryItemDto,
+	UUID depositHistoryId,    // depositHistoryItemDto → depositHistoryId
 	UUID userId,
 	UUID paymentId,
 	DepositType type,

@@ -7,6 +7,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import jabaclass.user.deposit.domain.DepositHistory;
 
-public interface DepositHistoryRepository extends JpaRepository<DepositHistory, UUID> {
+public interface DepositHistoryJpaRepository extends JpaRepository<DepositHistory, UUID> {
 	List<DepositHistory> findAllByUserId(UUID userId);
 }

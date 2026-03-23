@@ -7,11 +7,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import jabaclass.user.deposit.domain.DepositHistory;
-import jabaclass.user.deposit.infrastructure.DepositHistoryRepository;
+import jabaclass.user.deposit.domain.repository.DepositHistoryRepository;
 import jabaclass.user.deposit.presentation.dto.response.DepositDetailResponseDto;
 import jabaclass.user.deposit.presentation.dto.response.DepositHistoryItemDto;
 import jabaclass.user.deposit.presentation.dto.response.DepositHistoryResponseDto;
 import jabaclass.user.deposit.presentation.dto.response.DepositMeResponseDto;
+import jabaclass.user.user.domain.model.User;
+import jabaclass.user.user.domain.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -41,6 +43,7 @@ public class DepositQueryUseCase {
 			.map(history -> new DepositHistoryItemDto(
 				history.getId(),
 				history.getUser().getId(),
+				history.getPaymentId(),    // 누락된 paymentId 추가
 				history.getType(),
 				history.getAmount()
 			))
