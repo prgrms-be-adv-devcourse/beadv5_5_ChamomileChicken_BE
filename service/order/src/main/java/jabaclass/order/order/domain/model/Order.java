@@ -1,4 +1,4 @@
-package jabaclass.order.domain.model;
+package jabaclass.order.order.domain.model;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -55,6 +55,18 @@ public class Order {
 		validatePrice(price);
 
 		return new Order(UUID.randomUUID(), productScheduleId, userId, quantity, price, OrderStatus.PENDING);
+	}
+
+	public boolean isOwnedBy(UUID userId) {
+		return this.userId.equals(userId);
+	}
+
+	public boolean canCancel() {
+		return status == OrderStatus.PENDING || status == OrderStatus.PAID;
+	}
+
+	public void cancel() {
+		this.status = OrderStatus.CANCELED;
 	}
 
 	private static void validateQuantity(Integer quantity) {

@@ -1,7 +1,7 @@
-package jabaclass.order.presentation.dto.response;
+package jabaclass.order.order.presentation.dto.response;
 
-import jabaclass.order.domain.model.Order;
-import jabaclass.order.domain.model.OrderStatus;
+import jabaclass.order.order.domain.model.Order;
+import jabaclass.order.order.domain.model.OrderStatus;
 
 import java.math.BigDecimal;
 import java.util.UUID;

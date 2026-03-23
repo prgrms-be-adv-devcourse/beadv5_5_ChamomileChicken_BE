@@ -1,4 +1,4 @@
-package jabaclass.order.presentation.dto.request;
+package jabaclass.order.order.presentation.dto.request;
 
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;

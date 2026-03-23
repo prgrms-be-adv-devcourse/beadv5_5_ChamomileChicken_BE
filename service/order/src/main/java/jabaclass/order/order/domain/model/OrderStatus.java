@@ -1,4 +1,4 @@
-package jabaclass.order.domain.model;
+package jabaclass.order.order.domain.model;
 
 public enum OrderStatus {
     PENDING,
