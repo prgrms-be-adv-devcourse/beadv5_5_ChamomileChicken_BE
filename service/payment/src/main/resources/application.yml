@@ -1,3 +1,25 @@
-server.port: 9001
+server:
+  port: 9001
+
 spring:
-  application: name:payment
+  application:
+    name: payment
+
+  datasource:
+    url: jdbc:h2:tcp://localhost/~/test
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
