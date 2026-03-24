@@ -74,12 +74,4 @@ public class SwaggerConfig {
 			return operation;
 		};
 	}
-
-	@Bean
-	public OperationCustomizer apiErrorSpecCustomizer() {
-		return (operation, handlerMethod) -> {
-			ApiErrorExplainParser.parse(operation, handlerMethod);
-			return operation;
-		};
-	}
 }
