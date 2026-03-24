@@ -1,12 +1,16 @@
 plugins {
-    id 'java'
-    id 'org.springframework.boot' version '4.0.4'
+    id 'java-library'
     id 'io.spring.dependency-management' version '1.1.7'
+}
+
+project.plugins.withId('org.springframework.boot') {
+    bootJar.enabled = false
+    jar.enabled = true
 }
 
 group = 'jabastore'
 version = '0.0.1-SNAPSHOT'
-description = 'common'
+description = 'common-auth'
 
 java {
     toolchain {
@@ -18,22 +22,29 @@ repositories {
     mavenCentral()
 }
 
-dependencies {
-    implementation 'org.springframework.boot:spring-boot-starter'
+dependencyManagement {
+    imports {
+        mavenBom "org.springframework.boot:spring-boot-dependencies:4.0.4"
+    }
+}
 
-    // JWT
+dependencies {
+    compileOnly 'jakarta.servlet:jakarta.servlet-api'
+
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+
     implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
     runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.11.5'
     runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.11.5'
 
-    // servlet (필터)
-    compileOnly 'jakarta.servlet:jakarta.servlet-api'
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
 
-    // security (필터 + context)
-    compileOnly 'org.springframework.security:spring-security-core'
-    compileOnly 'org.springframework.security:spring-security-web'
+    annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
 tasks.named('test') {
