@@ -25,6 +25,12 @@ repositories {
 }
 
 dependencies {
+
+    // mail
+    implementation 'org.springframework.boot:spring-boot-starter-mail'
+
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+
     // JPA
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 
