@@ -10,8 +10,6 @@ public enum CommonErrorCode implements ErrorCode {
 	INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버 에러입니다. 서버 팀에 연락주세요!"),
 	//404 NOT_FOUND 잘못된 리소스 접근
 	PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 상품 ID 입니다."),
-	//409 CONFLICT 중복된 리소스
-	DUPLICATE_PRODUCT(HttpStatus.CONFLICT, "이미 저장한 상품 입니다."),
 	// 404 판매자 없음
 	SELLER_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 판매자입니다."),
 	// 403 판매자 권한이 없음
