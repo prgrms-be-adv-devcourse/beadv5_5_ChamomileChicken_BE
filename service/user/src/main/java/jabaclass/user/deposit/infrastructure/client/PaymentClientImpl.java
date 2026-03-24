@@ -8,10 +8,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
-import jabaclass.user.deposit.infrastructure.client.dto.ConfirmRequestDto;
-import jabaclass.user.deposit.infrastructure.client.dto.ConfirmResponseDto;
-import jabaclass.user.deposit.infrastructure.client.dto.PrepareRequestDto;
-import jabaclass.user.deposit.infrastructure.client.dto.PrepareResponseDto;
+import jabaclass.user.deposit.infrastructure.client.dto.DepositConfirmRequestDto;
+import jabaclass.user.deposit.infrastructure.client.dto.DepositConfirmResponseDto;
+import jabaclass.user.deposit.infrastructure.client.dto.DepositPrepareRequestDto;
+import jabaclass.user.deposit.infrastructure.client.dto.DepositPrepareResponseDto;
 import lombok.RequiredArgsConstructor;
 
 @Component
@@ -25,37 +25,44 @@ public class PaymentClientImpl implements PaymentClient {
 
 	@Override
 	public UUID createPayment(UUID userId, BigDecimal amount, String paymentMethod) {
-		UUID prepareId = prepareDepositPayment(userId, amount, paymentMethod);
-		return confirmDepositPayment(prepareId);
+		UUID depositPaymentsId = prepareDepositPayment(userId, amount, paymentMethod);
+		boolean isPaid = confirmDepositPayment(depositPaymentsId);
+
+		if (!isPaid) {
+			throw new IllegalStateException("결제 승인에 실패했습니다");
+		}
+
+		return depositPaymentsId;
 	}
 
 	@Override
 	public UUID prepareDepositPayment(UUID userId, BigDecimal amount, String paymentMethod) {
-		String url = paymentServiceUrl + "/api/v1/payments/deposit/prepare";
+		String url = paymentServiceUrl + "/api/v1/payments/deposits/prepare";
 
-		PrepareRequestDto request = new PrepareRequestDto(userId, amount, paymentMethod);
+		DepositPrepareRequestDto request = new DepositPrepareRequestDto(userId, amount, paymentMethod);
 
-		ResponseEntity<PrepareResponseDto> response = restTemplate.postForEntity(
+		ResponseEntity<DepositPrepareResponseDto> response = restTemplate.postForEntity(
 			url,
 			request,
-			PrepareResponseDto.class
+			DepositPrepareResponseDto.class
 		);
 
-		return response.getBody().prepareId();
+		return response.getBody().depositPaymentsId();
 	}
 
+	// todo
 	@Override
-	public UUID confirmDepositPayment(UUID prepareId) {
-		String url = paymentServiceUrl + "/api/v1/payments/deposit/comfirm";
+	public boolean confirmDepositPayment(UUID prepareId) {
+		String url = paymentServiceUrl + "/api/v1/payments/deposits/confirm";
 
-		ConfirmRequestDto request = new ConfirmRequestDto(prepareId);
+		DepositConfirmRequestDto request = new DepositConfirmRequestDto(prepareId);
 
-		ResponseEntity<ConfirmResponseDto> response = restTemplate.postForEntity(
+		ResponseEntity<DepositConfirmResponseDto> response = restTemplate.postForEntity(
 			url,
 			request,
-			ConfirmResponseDto.class
+			DepositConfirmResponseDto.class
 		);
 
-		return response.getBody().paymentId();
+		return response.getBody().isPaid();
 	}
 }
