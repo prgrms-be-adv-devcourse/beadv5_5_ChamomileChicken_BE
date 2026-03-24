@@ -54,4 +54,16 @@ public class User extends BaseEntity {
 		this.name = name;
 		this.phone = phone;
 	}
+
+	public void chargeDeposit(BigDecimal amount) {
+		this.deposit = this.deposit.add(amount);
+	}
+
+	public void deductDeposit(BigDecimal amount) {
+		if (this.deposit.compareTo(amount) < 0) {
+			throw new IllegalArgumentException("예치금이 부족합니다.");
+		}
+
+		this.deposit = this.deposit.subtract(amount);
+	}
 }
