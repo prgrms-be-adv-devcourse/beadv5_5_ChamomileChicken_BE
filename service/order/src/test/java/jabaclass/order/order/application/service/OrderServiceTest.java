@@ -191,14 +191,13 @@ class OrderServiceTest {
         );
         CancelOrderRequestDto requestDto = new CancelOrderRequestDto(userId);
         given(orderRepository.findById(order.getId())).willReturn(Optional.of(order));
-        given(orderRepository.save(order)).willReturn(order);
 
         // when
         OrderResponseDto actual = orderService.cancel(order.getId(), requestDto);
 
         // then
         assertThat(actual.status()).isEqualTo(OrderStatus.CANCELED);
-        then(orderRepository).should().save(order);
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.CANCELED);
     }
 
     @Test
