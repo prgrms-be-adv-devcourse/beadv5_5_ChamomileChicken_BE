@@ -5,6 +5,6 @@ import jabaclass.payment.presentation.dto.response.PaymentResponseDto;
 
 public interface PaymentUseCase {
 
-    PaymentResponseDto create(PreparePaymentRequestDto requestDto);
+	PaymentResponseDto create(PreparePaymentRequestDto requestDto);
 
 }
