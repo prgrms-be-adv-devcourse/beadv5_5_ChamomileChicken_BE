@@ -5,7 +5,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
-import jabaclass.product.infrastructure.event.dto.ProductEventResposeDto;
+import jabaclass.product.infrastructure.event.dto.ProductEventResponseDto;
 import lombok.extern.slf4j.Slf4j;
 
 @Component
@@ -16,7 +16,7 @@ public class ProductEventListener {
 	// DB 커밋 후 발
 	@Async
 	@TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-	public void handle(ProductEventResposeDto product) {
+	public void handle(ProductEventResponseDto product) {
 		log.info("상품 저장 완료: {}", product.productId());
 		// 캐시 갱신
 		// 알림 발송

@@ -12,11 +12,8 @@ public enum ProductStatus {
 		this.statusName = statusName;
 	}
 
-	public String getStatusName(ProductStatus status) {
-		return switch (status) {
-			case ENABLE -> "공개";
-			case DISABLE -> "비공개";
-		};
+	public String getStatusName() {
+		return this.statusName;
 	}
 
 }

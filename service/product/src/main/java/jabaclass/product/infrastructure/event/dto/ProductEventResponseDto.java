@@ -2,7 +2,7 @@ package jabaclass.product.infrastructure.event.dto;
 
 import java.util.UUID;
 
-public record ProductEventResposeDto(
+public record ProductEventResponseDto(
 	UUID productId
 ) {
 }

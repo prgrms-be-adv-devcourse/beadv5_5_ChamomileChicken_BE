@@ -7,8 +7,10 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import jabaclass.product.application.exception.BusinessException;
+import lombok.extern.slf4j.Slf4j;
 
 @RestControllerAdvice
+@Slf4j
 public class GlobalExceptionHandler {
 
 	// Validation 에러 처리
@@ -16,9 +18,9 @@ public class GlobalExceptionHandler {
 	@ExceptionHandler(MethodArgumentNotValidException.class)
 	public ResponseEntity<ApiResponseDto<Void>> handleValidationException(MethodArgumentNotValidException ex) {
 		// 모든 필드 에러 메시지 중 첫 번째 가져오기
-		String message = ex.getBindingResult()
-			.getFieldError()  // 첫 번째 에러
-			.getDefaultMessage(); // DTO에 설정한 메시지
+		String message = ex.getBindingResult().getFieldErrors().stream()
+			.map(fieldError -> fieldError.getDefaultMessage())
+			.collect(java.util.stream.Collectors.joining(", "));
 
 		return ResponseEntity
 			.status(HttpStatus.BAD_REQUEST)
@@ -38,6 +40,7 @@ public class GlobalExceptionHandler {
 	// 500 에러에 대한 처리로, 500 고정 해두었습니다
 	@ExceptionHandler(Exception.class)
 	public ResponseEntity<ApiResponseDto<Void>> handleServerError(Exception ex) {
+		log.error("Internal Server Error", ex); // 예외 스택 트레이스 로깅 추가
 		return ResponseEntity
 			.status(HttpStatus.INTERNAL_SERVER_ERROR)
 			.body(ApiResponseDto.fail(CommonErrorCode.INTERNAL_SERVER_ERROR.getStatus()

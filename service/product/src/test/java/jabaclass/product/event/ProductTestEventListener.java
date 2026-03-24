@@ -5,7 +5,7 @@ import java.util.UUID;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
-import jabaclass.product.infrastructure.event.dto.ProductEventResposeDto;
+import jabaclass.product.infrastructure.event.dto.ProductEventResponseDto;
 
 @Component
 public class ProductTestEventListener {
@@ -13,7 +13,7 @@ public class ProductTestEventListener {
 	private UUID lastProductId;
 
 	@EventListener
-	public void handle(ProductEventResposeDto event) {
+	public void handle(ProductEventResponseDto event) {
 		lastProductId = event.productId();
 		// 테스트용: 단순 기록
 		lastProductId = event.productId();

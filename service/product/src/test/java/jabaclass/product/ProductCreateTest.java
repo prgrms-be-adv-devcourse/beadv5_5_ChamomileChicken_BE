@@ -17,13 +17,14 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
+import jabaclass.product.application.exception.BusinessException;
 import jabaclass.product.application.service.ProductService;
 import jabaclass.product.domain.model.Product;
 import jabaclass.product.domain.model.ProductStatus;
 import jabaclass.product.domain.repository.ProductRepository;
 import jabaclass.product.infrastructure.acl.client.SellerClient;
-import jabaclass.product.infrastructure.acl.dto.SellerResposeDto;
-import jabaclass.product.infrastructure.event.dto.ProductEventResposeDto;
+import jabaclass.product.infrastructure.acl.dto.SellerResponseDto;
+import jabaclass.product.infrastructure.event.dto.ProductEventResponseDto;
 import jabaclass.product.presentation.dto.request.CreateProductRequestDto;
 import jabaclass.product.presentation.dto.respose.CreateProductResponseDto;
 import jakarta.validation.ConstraintViolation;
@@ -71,7 +72,7 @@ public class ProductCreateTest {
 
 		// Stub: seller 조회
 		given(sellerClient.findSeller(any(UUID.class)))
-			.willReturn(Optional.of(new SellerResposeDto(SELLER_ID, "테스트 판매자", "SELLER")));
+			.willReturn(Optional.of(new SellerResponseDto(SELLER_ID, "테스트 판매자", "SELLER")));
 
 		// Stub: repository.save -> 입력 객체 그대로 반환 + 단위 테스트용 ID 설정
 		given(productRepository.save(any(Product.class)))
@@ -91,7 +92,7 @@ public class ProductCreateTest {
 		verify(productRepository, times(1)).save(any(Product.class));
 
 		// then: 이벤트 발행 검증
-		verify(publisher, times(1)).publishEvent(any(ProductEventResposeDto.class));
+		verify(publisher, times(1)).publishEvent(any(ProductEventResponseDto.class));
 
 	}
 
@@ -186,5 +187,47 @@ public class ProductCreateTest {
 
 		then(productRepository).should(never()).save(any());
 		then(publisher).should(never()).publishEvent(any());
+	}
+
+	@Test
+	void 판매자가_존재하지_않으면_예외가_발생() {
+		CreateProductRequestDto product = new CreateProductRequestDto(
+			SELLER_ID,
+			"테스트상품",
+			5,
+			"테스트 상품 입니다.",
+			UUID.randomUUID().toString(),
+			PRICE,
+			ProductStatus.ENABLE
+		);
+		// given
+		// ... product DTO 생성
+		given(sellerClient.findSeller(any(UUID.class))).willReturn(Optional.empty());
+
+		// when & then
+		assertThatThrownBy(() -> productService.create(product))
+			.isInstanceOf(BusinessException.class)
+			.hasMessage("존재하지 않는 판매자입니다.");
+	}
+
+	@Test
+	void 판매자_권한이_없으면_예외가_발생() {
+		CreateProductRequestDto product = new CreateProductRequestDto(
+			SELLER_ID,
+			"테스트상품",
+			5,
+			"테스트 상품 입니다.",
+			UUID.randomUUID().toString(),
+			PRICE,
+			ProductStatus.ENABLE
+		);
+		// ... product DTO 생성
+		given(sellerClient.findSeller(any(UUID.class)))
+			.willReturn(Optional.of(new SellerResponseDto(SELLER_ID, "일반 사용자", "USER")));
+
+		// when & then
+		assertThatThrownBy(() -> productService.create(product))
+			.isInstanceOf(BusinessException.class)
+			.hasMessage("판매자가 아닙니다.");
 	}
 }

@@ -69,7 +69,7 @@ public class Product {
 	}
 
 	@PreUpdate
-	public void chageProduct() {
+	public void changeProduct() {
 		this.modifyDt = LocalDateTime.now();
 		this.modifyId = sellerId;
 	}

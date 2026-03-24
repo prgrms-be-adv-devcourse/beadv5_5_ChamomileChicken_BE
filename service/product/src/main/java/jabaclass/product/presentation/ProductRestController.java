@@ -28,12 +28,10 @@ public class ProductRestController implements ProductOpenApi {
 	@PostMapping
 	public ResponseEntity<ApiResponseDto<CreateProductResponseDto>> create(
 		@RequestBody @Valid CreateProductRequestDto request) {
-		CreateProductResponseDto respose = useCase.create(request);
-		/*return ResponseEntity.ok(
+		CreateProductResponseDto response = useCase.create(request);
 
-		);*/
 		return ResponseEntity.status(HttpStatus.CREATED)
-			.body(ApiResponseDto.success(HttpStatus.CREATED, "성공적으로 등록되었습니다.", respose));
+			.body(ApiResponseDto.success(HttpStatus.CREATED, "성공적으로 등록되었습니다.", response));
 	}
 
 }

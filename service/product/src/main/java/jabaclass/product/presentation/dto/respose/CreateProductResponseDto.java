@@ -12,7 +12,7 @@ public record CreateProductResponseDto(
 	@Schema(description = "상품 ID", example = "550e8400-e29b-41d4-a716-446655440000")
 	UUID id,
 
-	@Schema(description = "판매자 ID", example = "11111111-1111-1111-1111-111111111111")
+	@Schema(description = "판매자 이름", example = "신짱구")
 	String sellerName,
 
 	@Schema(description = "상품명", example = "향수 공방")
@@ -55,7 +55,7 @@ public record CreateProductResponseDto(
 			product.getDescription(),
 			product.getDescriptionImage(),
 			product.getPrice(),
-			product.getStatus().getStatusName(product.getStatus()),
+			product.getStatus().getStatusName(),
 			product.getRegId(),
 			product.getRegDt(),
 			product.getModifyId(),

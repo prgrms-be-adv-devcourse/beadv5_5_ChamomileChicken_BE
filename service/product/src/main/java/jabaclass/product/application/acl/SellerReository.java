@@ -1,10 +1,10 @@
 package jabaclass.product.application.acl;
 
+import java.util.Optional;
 import java.util.UUID;
 
-import jabaclass.product.infrastructure.acl.dto.SellerResposeDto;
+import jabaclass.product.infrastructure.acl.dto.SellerResponseDto;
 
 public interface SellerReository {
-
-	SellerResposeDto loadSellerId(UUID sellerId);
+	Optional<SellerResponseDto> findSeller(UUID sellerId);
 }
