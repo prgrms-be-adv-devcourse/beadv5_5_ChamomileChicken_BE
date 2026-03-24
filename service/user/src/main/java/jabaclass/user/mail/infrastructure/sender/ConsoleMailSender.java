@@ -15,7 +15,5 @@ public class ConsoleMailSender implements MailSender {
 	@Override
 	public void send(MailMessage mailMessage) {
 		log.info("[MAIL SEND] to={}, subject={}", mailMessage.to(), mailMessage.subject());
-		log.debug("html={}", mailMessage.html());
-		log.debug("body={}", mailMessage.body());
 	}
 }
