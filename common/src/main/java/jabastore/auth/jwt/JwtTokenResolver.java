@@ -1,9 +1,9 @@
-package auth.resolver;
+package jabastore.auth.jwt;
 
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.util.StringUtils;
 
-public class TokenResolver {
+public class JwtTokenResolver {
 
     private static final String AUTHORIZATION_HEADER = "Authorization";
     private static final String BEARER_PREFIX = "Bearer ";
