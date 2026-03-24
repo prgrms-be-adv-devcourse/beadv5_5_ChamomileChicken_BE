@@ -62,7 +62,7 @@ public class Order {
 	}
 
 	public boolean canCancel() {
-		return status == OrderStatus.PENDING || status == OrderStatus.PAID;
+		return (status == OrderStatus.PENDING) || (status == OrderStatus.PAID);
 	}
 
 	public void cancel() {

@@ -11,6 +11,13 @@ import jabaclass.order.common.dto.ApiResponseDto;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+	@ExceptionHandler(BusinessException.class)
+	public ResponseEntity<ApiResponseDto<Void>> handleBusinessException(BusinessException ex) {
+		return ResponseEntity
+			.status(ex.getStatus())
+			.body(ApiResponseDto.fail(ex.getStatus(), ex.getMessage()));
+	}
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponseDto<Void>> handleValidationException(MethodArgumentNotValidException ex) {
         String message = ex.getBindingResult()
@@ -20,13 +27,6 @@ public class GlobalExceptionHandler {
         return ResponseEntity
             .status(HttpStatus.BAD_REQUEST)
             .body(ApiResponseDto.fail(HttpStatus.BAD_REQUEST, message));
-    }
-
-    @ExceptionHandler(BusinessException.class)
-    public ResponseEntity<ApiResponseDto<Void>> handleBusinessException(BusinessException ex) {
-        return ResponseEntity
-            .status(ex.getStatus())
-            .body(ApiResponseDto.fail(ex.getStatus(), ex.getMessage()));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

@@ -63,8 +63,7 @@ public class OrderService implements OrderUseCase {
         validateOrderOwner(order, requestDto.userId());
         validateCancelable(order);
         order.cancel();
-
-        return OrderResponseDto.from(orderRepository.save(order));
+		return OrderResponseDto.from(order);
     }
 
     private List<Order> getOrdersByCondition(UUID userId, OrderStatus status) {

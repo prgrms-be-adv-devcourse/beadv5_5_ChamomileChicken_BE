@@ -52,7 +52,7 @@ public class OrderController {
         return ResponseEntity.ok(responseDto);
     }
 
-    @PatchMapping("/{orderId}/cancel")
+    @PatchMapping("/{orderId}")
     public ResponseEntity<OrderResponseDto> cancel(
         @PathVariable UUID orderId,
         @Valid @RequestBody CancelOrderRequestDto requestDto
