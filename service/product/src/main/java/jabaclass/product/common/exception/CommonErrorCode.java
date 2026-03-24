@@ -2,7 +2,6 @@ package jabaclass.product.common.exception;
 
 import org.springframework.http.HttpStatus;
 
-// TODO 예외처리를 위한 에러를 enum으로 정리 후, 해당 부분 바라보며 예외처리 작업
 public enum CommonErrorCode implements ErrorCode {
 	//400 BAD_REQUEST 잘못된 요청
 	INVALID_PARAMETER(HttpStatus.BAD_REQUEST, "파라미터 값을 확인해주세요."),

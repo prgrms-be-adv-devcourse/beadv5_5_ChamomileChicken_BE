@@ -13,8 +13,7 @@ import lombok.RequiredArgsConstructor;
 public class SellerAdapter implements SellerReository {
 
 	private final SellerClient sellerClient;
-
-	// TODO 해당 부분이 API를 불러오는 곳
+	
 	@Override
 	public SellerResposeDto loadSellerId(UUID sellerId) {
 		return sellerClient.findSeller(sellerId)
