@@ -24,7 +24,7 @@ public class DepositHistory extends BaseEntity {
 	@JoinColumn(name = "user_id", nullable = false)
 	private User user;
 
-	@Column(nullable = false)
+	@Column(nullable = true)
 	private UUID paymentId;
 
 	@Column(nullable = false, precision = 19, scale = 2)
@@ -34,18 +34,32 @@ public class DepositHistory extends BaseEntity {
 	@Column(nullable = false, length = 10)
 	private DepositType type;
 
+	@Enumerated(EnumType.STRING)
+	@Column(nullable = false, length = 10)
+	private DepositStatus status;
+
 	protected DepositHistory() {
+
 	}
 
-	private DepositHistory(User user, UUID paymentId, BigDecimal amount, DepositType type) {
+	private DepositHistory(User user, UUID paymentId, BigDecimal amount, DepositType type, DepositStatus status) {
 		this.user = user;
 		this.paymentId = paymentId;
 		this.amount = amount;
 		this.type = type;
+		this.status = status;
+	}
+
+	public void updateStatus(DepositStatus status) {
+		this.status = status;
+	}
+
+	public void updatePaymentId(UUID paymentId) {
+		this.paymentId = paymentId;
 	}
 
 	public static DepositHistory of(User user, UUID paymentId, BigDecimal amount, DepositType type) {
-		return new DepositHistory(user, paymentId, amount, type);
+		return new DepositHistory(user, paymentId, amount, type, DepositStatus.PENDING);
 	}
 }
 

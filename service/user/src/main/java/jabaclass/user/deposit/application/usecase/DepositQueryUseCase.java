@@ -6,7 +6,9 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import jabaclass.user.common.error.BusinessException;
 import jabaclass.user.deposit.domain.DepositHistory;
+import jabaclass.user.deposit.domain.error.DepositErrorCode;
 import jabaclass.user.deposit.domain.repository.DepositHistoryRepository;
 import jabaclass.user.deposit.presentation.dto.response.DepositDetailResponseDto;
 import jabaclass.user.deposit.presentation.dto.response.DepositHistoryItemDto;
@@ -30,13 +32,13 @@ public class DepositQueryUseCase {
 	// GET /deposits/me
 	public DepositMeResponseDto findMyDeposit(UUID userId) {
 		User user = userRepository.findById(userId)
-			.orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
+			.orElseThrow(() -> new BusinessException(DepositErrorCode.NOT_FOUND_USER));
 
 		return new DepositMeResponseDto(user.getId(), user.getDeposit());
 	}
 
 	// 예치금 이력 조회
-	// GET /deposists
+	// GET /deposits
 	public DepositHistoryResponseDto findAllDepositHistories(UUID userId) {
 		List<DepositHistoryItemDto> items = depositHistoryRepository.findAllByUserId(userId)
 			.stream()
@@ -56,7 +58,7 @@ public class DepositQueryUseCase {
 	// GET /deposits/{예치금Id}
 	public DepositDetailResponseDto findDepositHistory(UUID depositHistoryId) {
 		DepositHistory history = depositHistoryRepository.findById(depositHistoryId)
-			.orElseThrow(() -> new IllegalArgumentException("존재하지 않는 예치금 이력입니다."));
+			.orElseThrow(() -> new BusinessException(DepositErrorCode.NOT_FOUND_DEPOSIT_HISTORY));
 
 		return new DepositDetailResponseDto(
 			history.getId(),
