@@ -52,6 +52,10 @@ public class JwtProvider {
         return UUID.fromString(parseClaims(token).get(CLAIM_USER_ID, String.class));
     }
 
+    public UUID getUserId(Claims claims) {
+        return UUID.fromString(claims.get(CLAIM_USER_ID, String.class));
+    }
+
     public Date getIssuedAt(String token) {
         return parseClaims(token).getIssuedAt();
     }
@@ -60,6 +64,10 @@ public class JwtProvider {
         return TokenType.ACCESS.name().equals(
                 parseClaims(token).get(CLAIM_TYPE, String.class)
         );
+    }
+
+    public boolean isAccessToken(Claims claims) {
+        return TokenType.ACCESS.name().equals(claims.get(CLAIM_TYPE, String.class));
     }
 
     public boolean isRefreshToken(String token) {
