@@ -1,26 +1,17 @@
 package jabaclass.product.infrastructure.acl.dto;
 
+import jabaclass.product.application.exception.BusinessException;
+import jabaclass.product.common.exception.CommonErrorCode;
+
 public enum SellerRole {
-	USER("USER", "일반 사용자"),
-	SELLER("SELLER", "판매자");
+	SELLER,
+	USER;
 
-	private final String roleName;
-	private final String description;
-
-	SellerRole(String roleName, String description) {
-		this.roleName = roleName;
-		this.description = description;
-	}
-
-	public String getRoleName() {
-		return roleName;
-	}
-
-	public String getDescription() {
-		return description;
-	}
-
-	public static String fromRoleName() {
-		return SELLER.getRoleName();
+	public static SellerRole from(String role) {
+		try {
+			return SellerRole.valueOf(role);
+		} catch (Exception e) {
+			throw new BusinessException(CommonErrorCode.INVALID_ROLE);
+		}
 	}
 }

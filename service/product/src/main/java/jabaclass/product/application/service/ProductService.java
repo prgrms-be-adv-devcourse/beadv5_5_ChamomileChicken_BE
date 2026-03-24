@@ -35,7 +35,9 @@ public class ProductService implements ProductUseCase {
 		SellerResponseDto seller = sellerRepository.findSeller(requestDto.sellerId())
 			.orElseThrow(() -> new BusinessException(CommonErrorCode.SELLER_NOT_FOUND));
 
-		if (!SellerRole.fromRoleName().equals(seller.role())) {
+		SellerRole role = SellerRole.from(seller.role());
+
+		if (role != SellerRole.SELLER) {
 			throw new BusinessException(CommonErrorCode.NOT_SELLER);
 		}
 

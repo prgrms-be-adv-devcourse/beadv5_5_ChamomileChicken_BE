@@ -15,7 +15,9 @@ public enum CommonErrorCode {
 	// 404 판매자 없음
 	SELLER_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 판매자입니다."),
 	// 403 판매자 권한이 없음
-	NOT_SELLER(HttpStatus.FORBIDDEN, "판매자가 아닙니다.");
+	NOT_SELLER(HttpStatus.FORBIDDEN, "판매자가 아닙니다."),
+	// 404 룰 이름이 바뀐 경우
+	INVALID_ROLE(HttpStatus.NOT_FOUND, "룰 확인이 필요합니다. 관리자에게 문의 주세요.");
 
 	private final HttpStatus status;
 	private final String message;

@@ -82,22 +82,5 @@ public class Product {
 			this.status = ProductStatus.ENABLE;
 		}
 	}
-
-	private Product(UUID id,
-		UUID sellerId,
-		String title,
-		int maxCapacity,
-		String description,
-		String descriptionImage,
-		BigDecimal price,
-		ProductStatus status) {
-		this.id = id;
-		this.sellerId = sellerId;
-		this.title = title;
-		this.maxCapacity = maxCapacity;
-		this.description = description;
-		this.descriptionImage = descriptionImage;
-		this.price = price;
-		this.status = status;
-	}
+	
 }
