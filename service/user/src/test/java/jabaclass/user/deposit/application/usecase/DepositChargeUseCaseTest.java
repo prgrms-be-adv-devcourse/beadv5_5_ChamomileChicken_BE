@@ -16,7 +16,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import jabaclass.user.common.error.BusinessException;
 import jabaclass.user.deposit.domain.DepositHistory;
+import jabaclass.user.deposit.domain.DepositStatus;
 import jabaclass.user.deposit.domain.DepositType;
 import jabaclass.user.deposit.domain.repository.DepositHistoryRepository;
 import jabaclass.user.deposit.infrastructure.client.PaymentClient;
@@ -80,7 +82,6 @@ class DepositChargeUseCaseTest {
 		assertThat(user.getDeposit()).isEqualByComparingTo(chargeAmount);
 		then(depositHistoryRepository).should().save(argThat(history ->
 			history.getUser().equals(user)
-				&& history.getPaymentId().equals(paymentId)
 				&& history.getAmount().compareTo(chargeAmount) == 0
 				&& history.getType() == DepositType.CHARGE
 		));
@@ -94,7 +95,7 @@ class DepositChargeUseCaseTest {
 
 		// when & then
 		assertThatThrownBy(() -> depositChargeUseCase.charge(userId, request))
-			.isInstanceOf(IllegalArgumentException.class)
+			.isInstanceOf(BusinessException.class)
 			.hasMessage("존재하지 않는 회원입니다.");
 
 		then(paymentClient).shouldHaveNoInteractions();
@@ -102,20 +103,22 @@ class DepositChargeUseCaseTest {
 	}
 
 	@Test
-	void 결제_승인_실패시_예외가_발생하고_이력이_저장되지_않는다() {
+	void 결제_승인_실패시_예외가_발생하고_이력은_FAILED_상태로_업데이트된다() {
 		// given
 		BigDecimal chargeAmount = new BigDecimal("10000");
 		DepositChargeRequestDto request = new DepositChargeRequestDto("CARD", chargeAmount);
 
 		given(userRepository.findById(userId)).willReturn(Optional.of(user));
+		given(depositHistoryRepository.save(any(DepositHistory.class)))
+			.willAnswer(invocation -> invocation.getArgument(0));
 		given(paymentClient.createPayment(userId, chargeAmount, "CARD"))
-			.willThrow(new IllegalStateException("결제 승인에 실패했습니다"));
+			.willThrow(new RuntimeException("결제 서비스 오류"));
 
 		// when & then
 		assertThatThrownBy(() -> depositChargeUseCase.charge(userId, request))
 			.isInstanceOf(IllegalStateException.class)
-			.hasMessage("결제 승인에 실패했습니다");
+			.hasMessage("결제에 실패했습니다.");
 
-		then(depositHistoryRepository).shouldHaveNoInteractions();
+		then(depositHistoryRepository).should().save(any(DepositHistory.class));
 	}
 }

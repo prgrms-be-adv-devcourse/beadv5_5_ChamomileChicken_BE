@@ -16,6 +16,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import jabaclass.user.common.error.BusinessException;
 import jabaclass.user.deposit.domain.DepositHistory;
 import jabaclass.user.deposit.domain.DepositType;
 import jabaclass.user.deposit.domain.repository.DepositHistoryRepository;
@@ -79,7 +80,7 @@ class DepositQueryUseCaseTest {
 
 		// when & then
 		assertThatThrownBy(() -> depositQueryUseCase.findMyDeposit(userId))
-			.isInstanceOf(IllegalArgumentException.class)
+			.isInstanceOf(BusinessException.class)
 			.hasMessage("존재하지 않는 회원입니다.");
 	}
 
@@ -156,7 +157,7 @@ class DepositQueryUseCaseTest {
 
 		// when & then
 		assertThatThrownBy(() -> depositQueryUseCase.findDepositHistory(depositHistoryId))
-			.isInstanceOf(IllegalArgumentException.class)
+			.isInstanceOf(BusinessException.class)
 			.hasMessage("존재하지 않는 예치금 이력입니다.");
 	}
 }
