@@ -1,18 +1,18 @@
 package jabastore.auth.filter;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -25,16 +25,13 @@ import jabastore.auth.jwt.JwtTokenResolver;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtProvider jwtProvider;
-    private final UserDetailsService userDetailsService;
     private final JwtTokenResolver tokenResolver;
     private final ObjectMapper objectMapper;
 
     public JwtAuthenticationFilter(JwtProvider jwtProvider,
-                                   UserDetailsService userDetailsService,
                                    JwtTokenResolver tokenResolver,
                                    ObjectMapper objectMapper) {
         this.jwtProvider = jwtProvider;
-        this.userDetailsService = userDetailsService;
         this.tokenResolver = tokenResolver;
         this.objectMapper = objectMapper;
     }
@@ -54,21 +51,21 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         try {
-            if (!jwtProvider.isAccessToken(token)) {
+            Claims claims = jwtProvider.parseClaims(token);
+
+            if (!jwtProvider.isAccessToken(claims)) {
                 writeErrorResponse(response, JwtErrorCode.INVALID_TOKEN);
                 return;
             }
 
-            UUID userId = jwtProvider.getUserId(token);
+            UUID userId = jwtProvider.getUserId(claims);
 
-            UserDetails userDetails =
-                    userDetailsService.loadUserByUsername(userId.toString());
-
+            // ROLE은 Redis 도입 후 처리 예정
             UsernamePasswordAuthenticationToken authentication =
                     new UsernamePasswordAuthenticationToken(
-                            userDetails,
+                            userId,
                             null,
-                            userDetails.getAuthorities()
+                            Collections.emptyList()
                     );
 
             SecurityContextHolder.getContext().setAuthentication(authentication);
