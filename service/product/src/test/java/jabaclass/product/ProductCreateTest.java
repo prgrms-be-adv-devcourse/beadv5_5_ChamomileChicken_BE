@@ -16,6 +16,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import jabaclass.product.application.acl.SellerRepository;
 import jabaclass.product.application.exception.BusinessException;
@@ -79,6 +80,7 @@ public class ProductCreateTest {
 		given(productRepository.save(any(Product.class)))
 			.willAnswer(invocation -> {
 				Product p = invocation.getArgument(0);
+				ReflectionTestUtils.setField(p, "id", UUID.randomUUID());
 				return p;
 			});
 

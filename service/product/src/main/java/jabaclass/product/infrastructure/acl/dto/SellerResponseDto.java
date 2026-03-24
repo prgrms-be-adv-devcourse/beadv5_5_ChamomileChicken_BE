@@ -7,5 +7,5 @@ public record SellerResponseDto(
 	String sellerName,
 	String role
 ) {
-
+	
 }

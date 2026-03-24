@@ -14,7 +14,6 @@ public class ProductTestEventListener {
 
 	@EventListener
 	public void handle(ProductEventResponseDto event) {
-		lastProductId = event.productId();
 		// 테스트용: 단순 기록
 		lastProductId = event.productId();
 		System.out.println("테스트용 이벤트 리스너 호출: " + lastProductId);

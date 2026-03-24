@@ -6,8 +6,10 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
+@NoArgsConstructor
 @Getter
 public class ApiResponseDto<T> {
 
@@ -22,9 +24,6 @@ public class ApiResponseDto<T> {
 		this.status = status;
 		this.message = message;
 		this.data = data;
-	}
-
-	public ApiResponseDto() {
 	}
 
 	public static <T> ApiResponseDto<T> success(HttpStatus status, String message, T data) {

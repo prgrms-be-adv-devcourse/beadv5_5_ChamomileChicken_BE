@@ -1,8 +1,8 @@
 package jabaclass.product.infrastructure.acl.dto;
 
 public enum SellerRole {
-	SELLER_FALSE("USER", "일반 사용자"),
-	SELLER_TRUE("SELLER", "판매자");
+	USER("USER", "일반 사용자"),
+	SELLER("SELLER", "판매자");
 
 	private final String roleName;
 	private final String description;
@@ -13,6 +13,14 @@ public enum SellerRole {
 	}
 
 	public String getRoleName() {
-		return this.roleName;
+		return roleName;
+	}
+
+	public String getDescription() {
+		return description;
+	}
+
+	public static String fromRoleName() {
+		return SELLER.getRoleName();
 	}
 }

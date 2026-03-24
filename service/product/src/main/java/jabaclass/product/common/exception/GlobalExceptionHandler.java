@@ -17,7 +17,7 @@ public class GlobalExceptionHandler {
 	// request 값의 문제이므로 HttpStatus.BAD_REQUEST로 고정했습니다.
 	@ExceptionHandler(MethodArgumentNotValidException.class)
 	public ResponseEntity<ApiResponseDto<Void>> handleValidationException(MethodArgumentNotValidException ex) {
-		// 모든 필드 에러 메시지 중 첫 번째 가져오기
+		
 		String message = ex.getBindingResult().getFieldErrors().stream()
 			.map(fieldError -> fieldError.getDefaultMessage())
 			.collect(java.util.stream.Collectors.joining(", "));

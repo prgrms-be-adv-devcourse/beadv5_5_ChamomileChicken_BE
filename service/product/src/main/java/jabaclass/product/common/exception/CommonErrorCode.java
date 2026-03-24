@@ -2,7 +2,10 @@ package jabaclass.product.common.exception;
 
 import org.springframework.http.HttpStatus;
 
-public enum CommonErrorCode implements ErrorCode {
+import lombok.Getter;
+
+@Getter
+public enum CommonErrorCode {
 	//400 BAD_REQUEST 잘못된 요청
 	INVALID_PARAMETER(HttpStatus.BAD_REQUEST, "파라미터 값을 확인해주세요."),
 	//500 INTERNAL SERVER ERROR
@@ -22,13 +25,4 @@ public enum CommonErrorCode implements ErrorCode {
 		this.message = message;
 	}
 
-	@Override
-	public HttpStatus getStatus() {
-		return status;
-	}
-
-	@Override
-	public String getMessage() {
-		return message;
-	}
 }

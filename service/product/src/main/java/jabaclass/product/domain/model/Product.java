@@ -14,6 +14,8 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
@@ -53,6 +55,7 @@ public class Product {
 	@Column(nullable = false, precision = 15, scale = 2)
 	private BigDecimal price;
 
+	@Enumerated(EnumType.STRING)
 	@Column(nullable = false, length = 20)
 	private ProductStatus status;
 
@@ -97,26 +100,4 @@ public class Product {
 		this.price = price;
 		this.status = status;
 	}
-
-	public static Product create(
-		UUID sellerId,
-		String title,
-		int maxCapacity,
-		String description,
-		String descriptionImage,
-		BigDecimal price,
-		ProductStatus status
-	) {
-		return new Product(
-			null,
-			sellerId,
-			title,
-			maxCapacity,
-			description,
-			descriptionImage,
-			price,
-			status
-		);
-	}
-
 }

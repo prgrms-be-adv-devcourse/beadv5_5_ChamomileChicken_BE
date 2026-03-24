@@ -30,12 +30,12 @@ public class ProductService implements ProductUseCase {
 	@Override
 	@Transactional
 	public CreateProductResponseDto create(CreateProductRequestDto requestDto) {
-		log.info(requestDto.sellerId().toString());
+
 		// sellerId를 확인
 		SellerResponseDto seller = sellerRepository.findSeller(requestDto.sellerId())
 			.orElseThrow(() -> new BusinessException(CommonErrorCode.SELLER_NOT_FOUND));
 
-		if (!SellerRole.SELLER_TRUE.getRoleName().equals(seller.role())) {
+		if (!SellerRole.fromRoleName().equals(seller.role())) {
 			throw new BusinessException(CommonErrorCode.NOT_SELLER);
 		}
 
