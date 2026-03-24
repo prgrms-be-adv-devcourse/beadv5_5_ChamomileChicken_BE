@@ -28,7 +28,6 @@ public class PaymentService implements PaymentUseCase {
 
 		Payment payment = Payment.create(
 			userId,
-			request.sellerId(),
 			request.productId(),
 			request.orderId(),
 			request.paymentMethod(),

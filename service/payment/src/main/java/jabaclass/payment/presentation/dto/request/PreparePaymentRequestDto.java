@@ -7,7 +7,6 @@ import java.util.UUID;
 
 public record PreparePaymentRequestDto(
 	UUID userId,
-	UUID sellerId,
 	UUID productId,
 	UUID orderId,
 	PaymentMethod paymentMethod,

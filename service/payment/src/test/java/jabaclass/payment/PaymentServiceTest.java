@@ -21,7 +21,6 @@ class PaymentServiceTest {
 	void 결제를_생성한다() {
 		// given
 		UUID userId = UUID.randomUUID();
-		UUID sellerId = UUID.randomUUID();
 		UUID productId = UUID.randomUUID();
 		UUID orderId = UUID.randomUUID();
 
@@ -31,7 +30,6 @@ class PaymentServiceTest {
 		// when
 		Payment payment = Payment.create(
 			userId,
-			sellerId,
 			productId,
 			orderId,
 			PaymentMethod.TOSS,
@@ -50,14 +48,12 @@ class PaymentServiceTest {
 	void paymentAmount가_null이면_예외가_발생한다() {
 		// given
 		UUID userId = UUID.randomUUID();
-		UUID sellerId = UUID.randomUUID();
 		UUID productId = UUID.randomUUID();
 		UUID orderId = UUID.randomUUID();
 
 		// when & then
 		assertThatThrownBy(() -> Payment.create(
 			userId,
-			sellerId,
 			productId,
 			orderId,
 			PaymentMethod.TOSS,
@@ -72,14 +68,12 @@ class PaymentServiceTest {
 	void depositAmount가_null이면_예외가_발생한다() {
 		// given
 		UUID userId = UUID.randomUUID();
-		UUID sellerId = UUID.randomUUID();
 		UUID productId = UUID.randomUUID();
 		UUID orderId = UUID.randomUUID();
 
 		// when & then
 		assertThatThrownBy(() -> Payment.create(
 			userId,
-			sellerId,
 			productId,
 			orderId,
 			PaymentMethod.TOSS,
@@ -94,14 +88,12 @@ class PaymentServiceTest {
 	void paymentAmount가_0보다_작으면_예외가_발생한다() {
 		// given
 		UUID userId = UUID.randomUUID();
-		UUID sellerId = UUID.randomUUID();
 		UUID productId = UUID.randomUUID();
 		UUID orderId = UUID.randomUUID();
 
 		// when & then
 		assertThatThrownBy(() -> Payment.create(
 			userId,
-			sellerId,
 			productId,
 			orderId,
 			PaymentMethod.TOSS,
@@ -116,14 +108,12 @@ class PaymentServiceTest {
 	void depositAmount가_0보다_작으면_예외가_발생한다() {
 		// given
 		UUID userId = UUID.randomUUID();
-		UUID sellerId = UUID.randomUUID();
 		UUID productId = UUID.randomUUID();
 		UUID orderId = UUID.randomUUID();
 
 		// when & then
 		assertThatThrownBy(() -> Payment.create(
 			userId,
-			sellerId,
 			productId,
 			orderId,
 			PaymentMethod.TOSS,

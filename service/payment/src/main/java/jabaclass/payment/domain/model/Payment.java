@@ -23,9 +23,6 @@ public class Payment {
 	@Column(name = "user_id", nullable = false)
 	private UUID userId;
 
-	@Column(name = "seller_id", nullable = false)
-	private UUID sellerId;
-
 	@Column(name = "product_id", nullable = false)
 	private UUID productId;
 
@@ -56,7 +53,6 @@ public class Payment {
 	private Payment(
 		UUID id,
 		UUID userId,
-		UUID sellerId,
 		UUID productId,
 		UUID orderId,
 		PaymentMethod paymentMethod,
@@ -67,7 +63,6 @@ public class Payment {
 	) {
 		this.id = id;
 		this.userId = userId;
-		this.sellerId = sellerId;
 		this.productId = productId;
 		this.orderId = orderId;
 		this.paymentMethod = paymentMethod;
@@ -79,7 +74,6 @@ public class Payment {
 
 	public static Payment create(
 		UUID userId,
-		UUID sellerId,
 		UUID productId,
 		UUID orderId,
 		PaymentMethod paymentMethod,
@@ -93,7 +87,6 @@ public class Payment {
 		return new Payment(
 			UUID.randomUUID(),
 			userId,
-			sellerId,
 			productId,
 			orderId,
 			paymentMethod,
