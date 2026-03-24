@@ -37,7 +37,7 @@ public class JwtProvider {
     // 예외처리는 exception 만들면서 수정할 계획
     public String reissueAccessToken(String refreshToken) {
         Claims claims = parseClaims(refreshToken);
-        if (!TokenType.REFRESH.name().equals(claims.get(CLAIM_TYPE))) {
+        if (!TokenType.REFRESH.name().equals(claims.get(CLAIM_TYPE, String.class))) {
             throw new IllegalArgumentException("refresh token이 아닙니다.");
         }
         UUID userId = UUID.fromString(claims.get(CLAIM_USER_ID, String.class));
@@ -53,11 +53,15 @@ public class JwtProvider {
     }
 
     public boolean isAccessToken(String token) {
-        return TokenType.ACCESS.name().equals(parseClaims(token).get(CLAIM_TYPE));
+        return TokenType.ACCESS.name().equals(
+                parseClaims(token).get(CLAIM_TYPE, String.class)
+        );
     }
 
     public boolean isRefreshToken(String token) {
-        return TokenType.REFRESH.name().equals(parseClaims(token).get(CLAIM_TYPE));
+        return TokenType.REFRESH.name().equals(
+                parseClaims(token).get(CLAIM_TYPE, String.class)
+        );
     }
 
     // 예외처리는 exception 만들면서 수정할 계획
