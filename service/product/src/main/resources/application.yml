@@ -8,6 +8,7 @@ spring:
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
+      # 운영 환경에서는 validate 또는 none
       ddl-auto: update
   springdoc:
     swagger-ui:

@@ -6,9 +6,11 @@ import java.util.UUID;
 import org.springframework.stereotype.Component;
 
 import jabaclass.product.infrastructure.acl.dto.SellerResponseDto;
+import lombok.extern.slf4j.Slf4j;
 
 // 실질적으로 API 통신 하는 곳.
 @Component
+@Slf4j
 public class SellerApiClient implements SellerClient {
 
 	// TODO UserAPI를 통해 seller 정보를 받아오는 작업 필요
@@ -16,7 +18,8 @@ public class SellerApiClient implements SellerClient {
 	public Optional<SellerResponseDto> findSeller(UUID sellerId) {
 
 		String id = sellerId.toString();
-
+		log.info(id);
+		
 		// 판매자
 		if (id.startsWith("1")) {
 			return Optional.of(new SellerResponseDto(sellerId, "신짱구", "SELLER"));

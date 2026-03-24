@@ -4,22 +4,33 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+import org.hibernate.annotations.UuidGenerator;
+import org.springframework.data.annotation.CreatedBy;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedBy;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EntityListeners;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
-import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 @Entity
 @Getter
 @NoArgsConstructor
+@SuperBuilder
+@EntityListeners(AuditingEntityListener.class)
 @Table(name = "\"product\"", schema = "public")
 public class Product {
 
 	@Id
+	@UuidGenerator
 	@Column(name = "id", updatable = false, nullable = false)
 	private UUID id;
 
@@ -46,32 +57,27 @@ public class Product {
 	private ProductStatus status;
 
 	// AuditorAware 통해 세팅 가능-> 추후 확인
+	@CreatedBy
 	@Column(name = "reg_id", nullable = false, updatable = false)
 	private UUID regId;
 
+	@CreatedDate
 	@Column(name = "reg_dt", nullable = false, updatable = false)
 	private LocalDateTime regDt;
 
+	@LastModifiedBy
 	@Column(name = "modify_id")
 	private UUID modifyId;
 
+	@LastModifiedDate
 	@Column(name = "modify_dt")
 	private LocalDateTime modifyDt;
 
 	@PrePersist
 	public void prePersist() {
-		this.id = UUID.randomUUID();
 		if (this.status == null) {
 			this.status = ProductStatus.ENABLE;
 		}
-		this.regDt = LocalDateTime.now();
-		this.regId = sellerId;
-	}
-
-	@PreUpdate
-	public void changeProduct() {
-		this.modifyDt = LocalDateTime.now();
-		this.modifyId = sellerId;
 	}
 
 	private Product(UUID id,
@@ -102,7 +108,7 @@ public class Product {
 		ProductStatus status
 	) {
 		return new Product(
-			UUID.randomUUID(),
+			null,
 			sellerId,
 			title,
 			maxCapacity,

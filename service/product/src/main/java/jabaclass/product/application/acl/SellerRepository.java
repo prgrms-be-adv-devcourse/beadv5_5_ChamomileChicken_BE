@@ -5,6 +5,6 @@ import java.util.UUID;
 
 import jabaclass.product.infrastructure.acl.dto.SellerResponseDto;
 
-public interface SellerReository {
+public interface SellerRepository {
 	Optional<SellerResponseDto> findSeller(UUID sellerId);
 }

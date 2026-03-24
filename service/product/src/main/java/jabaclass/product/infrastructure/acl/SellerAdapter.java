@@ -3,13 +3,16 @@ package jabaclass.product.infrastructure.acl;
 import java.util.Optional;
 import java.util.UUID;
 
-import jabaclass.product.application.acl.SellerReository;
+import org.springframework.stereotype.Component;
+
+import jabaclass.product.application.acl.SellerRepository;
 import jabaclass.product.infrastructure.acl.client.SellerClient;
 import jabaclass.product.infrastructure.acl.dto.SellerResponseDto;
 import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
-public class SellerAdapter implements SellerReository {
+@Component
+public class SellerAdapter implements SellerRepository {
 
 	private final SellerClient sellerClient;
 

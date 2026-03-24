@@ -17,12 +17,12 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
+import jabaclass.product.application.acl.SellerRepository;
 import jabaclass.product.application.exception.BusinessException;
 import jabaclass.product.application.service.ProductService;
 import jabaclass.product.domain.model.Product;
 import jabaclass.product.domain.model.ProductStatus;
 import jabaclass.product.domain.repository.ProductRepository;
-import jabaclass.product.infrastructure.acl.client.SellerClient;
 import jabaclass.product.infrastructure.acl.dto.SellerResponseDto;
 import jabaclass.product.infrastructure.event.dto.ProductEventResponseDto;
 import jabaclass.product.presentation.dto.request.CreateProductRequestDto;
@@ -31,6 +31,7 @@ import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 
+//@DataJpaTest
 @ExtendWith(MockitoExtension.class)
 //@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 public class ProductCreateTest {
@@ -43,7 +44,7 @@ public class ProductCreateTest {
 	private ProductRepository productRepository;
 
 	@Mock
-	private SellerClient sellerClient;
+	private SellerRepository sellerRepository;
 
 	@Mock
 	private ApplicationEventPublisher publisher;
@@ -71,7 +72,7 @@ public class ProductCreateTest {
 		);
 
 		// Stub: seller 조회
-		given(sellerClient.findSeller(any(UUID.class)))
+		given(sellerRepository.findSeller(eq(SELLER_ID)))
 			.willReturn(Optional.of(new SellerResponseDto(SELLER_ID, "테스트 판매자", "SELLER")));
 
 		// Stub: repository.save -> 입력 객체 그대로 반환 + 단위 테스트용 ID 설정
@@ -202,7 +203,7 @@ public class ProductCreateTest {
 		);
 		// given
 		// ... product DTO 생성
-		given(sellerClient.findSeller(any(UUID.class))).willReturn(Optional.empty());
+		given(sellerRepository.findSeller(any(UUID.class))).willReturn(Optional.empty());
 
 		// when & then
 		assertThatThrownBy(() -> productService.create(product))
@@ -222,7 +223,7 @@ public class ProductCreateTest {
 			ProductStatus.ENABLE
 		);
 		// ... product DTO 생성
-		given(sellerClient.findSeller(any(UUID.class)))
+		given(sellerRepository.findSeller(any(UUID.class)))
 			.willReturn(Optional.of(new SellerResponseDto(SELLER_ID, "일반 사용자", "USER")));
 
 		// when & then
