@@ -2,7 +2,7 @@ package jabaclass.user.deposit.infrastructure.client.dto;
 
 import java.util.UUID;
 
-public record ConfirmRequestDto(
-	UUID prepareId
+public record DepositConfirmRequestDto(
+	UUID depositPaymentsId
 ) {
 }
