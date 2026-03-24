@@ -1,14 +1,19 @@
 package jabastore.auth.jwt;
 
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
-import io.jsonwebtoken.security.Keys;
-
 import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.util.Date;
 import java.util.UUID;
+
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.MalformedJwtException;
+import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.UnsupportedJwtException;
+import io.jsonwebtoken.security.Keys;
+import jabastore.auth.exception.JwtAuthException;
+import jabastore.auth.exception.JwtErrorCode;
 
 public class JwtProvider {
 
@@ -34,11 +39,10 @@ public class JwtProvider {
     }
 
     // DB 일치 여부 확인은 user-service AuthService 책임
-    // 예외처리는 exception 만들면서 수정할 계획
     public String reissueAccessToken(String refreshToken) {
         Claims claims = parseClaims(refreshToken);
         if (!TokenType.REFRESH.name().equals(claims.get(CLAIM_TYPE, String.class))) {
-            throw new IllegalArgumentException("refresh token이 아닙니다.");
+            throw new JwtAuthException(JwtErrorCode.INVALID_TOKEN);
         }
         UUID userId = UUID.fromString(claims.get(CLAIM_USER_ID, String.class));
         return generateAccessToken(userId);
@@ -64,13 +68,22 @@ public class JwtProvider {
         );
     }
 
-    // 예외처리는 exception 만들면서 수정할 계획
     public Claims parseClaims(String token) {
-        return Jwts.parserBuilder()
-                .setSigningKey(key)
-                .build()
-                .parseClaimsJws(token)
-                .getBody();
+        try {
+            return Jwts.parserBuilder()
+                    .setSigningKey(key)
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody();
+        } catch (ExpiredJwtException e) {
+            throw new JwtAuthException(JwtErrorCode.EXPIRED_TOKEN);
+        } catch (MalformedJwtException e) {
+            throw new JwtAuthException(JwtErrorCode.MALFORMED_TOKEN);
+        } catch (UnsupportedJwtException e) {
+            throw new JwtAuthException(JwtErrorCode.UNSUPPORTED_TOKEN);
+        } catch (io.jsonwebtoken.JwtException | IllegalArgumentException e) {
+            throw new JwtAuthException(JwtErrorCode.INVALID_TOKEN);
+        }
     }
 
     private String generate(UUID userId, long validity, TokenType tokenType) {
