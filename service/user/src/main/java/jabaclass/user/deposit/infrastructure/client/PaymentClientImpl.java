@@ -50,7 +50,6 @@ public class PaymentClientImpl implements PaymentClient {
 		return response.getBody().depositPaymentsId();
 	}
 
-	// todo
 	@Override
 	public boolean confirmDepositPayment(UUID prepareId) {
 		String url = paymentServiceUrl + "/api/v1/payments/deposits/confirm";
