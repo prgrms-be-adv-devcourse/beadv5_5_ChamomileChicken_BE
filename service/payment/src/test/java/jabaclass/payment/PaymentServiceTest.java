@@ -15,7 +15,7 @@ import static org.assertj.core.api.Assertions.*;
 
 @SuppressWarnings("NonAsciiCharacters")
 @DisplayNameGeneration(DisplayNameGenerator.ReplaceUnderscores.class)
-class PaymentTest {
+class PaymentServiceTest {
 
 	@Test
 	void 결제를_생성한다() {
