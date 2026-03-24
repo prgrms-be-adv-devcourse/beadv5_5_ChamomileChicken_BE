@@ -2,7 +2,7 @@ package jabastore.auth.exception;
 
 import org.springframework.http.HttpStatus;
 
-public enum JwtErrorCode implements ErrorCode{
+public enum JwtErrorCode implements ErrorCode {
 
     EXPIRED_TOKEN(HttpStatus.UNAUTHORIZED, "토큰이 만료되었습니다."),
     INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "유효하지 않은 토큰입니다."),
@@ -17,7 +17,6 @@ public enum JwtErrorCode implements ErrorCode{
         this.status = status;
         this.message = message;
     }
-
 
     @Override
     public HttpStatus getStatus() {

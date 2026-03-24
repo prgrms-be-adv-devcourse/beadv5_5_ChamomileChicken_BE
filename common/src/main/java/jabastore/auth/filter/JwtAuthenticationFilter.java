@@ -1,14 +1,9 @@
 package jabastore.auth.filter;
 
-import jabastore.auth.exception.JwtAuthException;
-import jabastore.auth.exception.JwtErrorCode;
-import jabastore.auth.jwt.JwtProvider;
-import jabastore.auth.jwt.JwtTokenResolver;
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
 import java.util.Map;
+import java.util.UUID;
+
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -16,9 +11,16 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-import java.io.IOException;
-import java.util.UUID;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jabastore.auth.exception.JwtAuthException;
+import jabastore.auth.exception.JwtErrorCode;
+import jabastore.auth.jwt.JwtProvider;
+import jabastore.auth.jwt.JwtTokenResolver;
 
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
@@ -27,8 +29,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtTokenResolver tokenResolver;
     private final ObjectMapper objectMapper;
 
-    public JwtAuthenticationFilter(JwtProvider jwtProvider, UserDetailsService userDetailsService,
-                                   JwtTokenResolver tokenResolver, ObjectMapper objectMapper) {
+    public JwtAuthenticationFilter(JwtProvider jwtProvider,
+                                   UserDetailsService userDetailsService,
+                                   JwtTokenResolver tokenResolver,
+                                   ObjectMapper objectMapper) {
         this.jwtProvider = jwtProvider;
         this.userDetailsService = userDetailsService;
         this.tokenResolver = tokenResolver;
@@ -43,6 +47,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String token = tokenResolver.resolveToken(request);
 
+        // 토큰 없으면 조용히 통과 (permitAll 요청 고려)
         if (token == null) {
             filterChain.doFilter(request, response);
             return;

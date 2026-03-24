@@ -1,5 +1,7 @@
 package jabastore.auth.exception;
 
+import org.springframework.http.HttpStatus;
+
 public class JwtAuthException extends RuntimeException {
 
     private final JwtErrorCode errorCode;
@@ -13,7 +15,7 @@ public class JwtAuthException extends RuntimeException {
         return errorCode;
     }
 
-    public org.springframework.http.HttpStatus getStatus() {
+    public HttpStatus getStatus() {
         return errorCode.getStatus();
     }
 }
