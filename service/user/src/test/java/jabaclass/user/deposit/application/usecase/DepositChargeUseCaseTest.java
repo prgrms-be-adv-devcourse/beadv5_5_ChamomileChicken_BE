@@ -17,8 +17,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import jabaclass.user.common.error.BusinessException;
+import jabaclass.user.deposit.application.DepositHistoryStatusUpdater;
 import jabaclass.user.deposit.domain.DepositHistory;
-import jabaclass.user.deposit.domain.DepositStatus;
 import jabaclass.user.deposit.domain.DepositType;
 import jabaclass.user.deposit.domain.repository.DepositHistoryRepository;
 import jabaclass.user.deposit.infrastructure.client.PaymentClient;
@@ -39,6 +39,9 @@ class DepositChargeUseCaseTest {
 
 	@Mock
 	private PaymentClient paymentClient;
+
+	@Mock
+	private DepositHistoryStatusUpdater depositHistoryStatusUpdater;
 
 	@InjectMocks
 	private DepositChargeUseCase depositChargeUseCase;
@@ -85,6 +88,7 @@ class DepositChargeUseCaseTest {
 				&& history.getAmount().compareTo(chargeAmount) == 0
 				&& history.getType() == DepositType.CHARGE
 		));
+		then(depositHistoryStatusUpdater).shouldHaveNoInteractions();
 	}
 
 	@Test
@@ -100,6 +104,7 @@ class DepositChargeUseCaseTest {
 
 		then(paymentClient).shouldHaveNoInteractions();
 		then(depositHistoryRepository).shouldHaveNoInteractions();
+		then(depositHistoryStatusUpdater).shouldHaveNoInteractions();
 	}
 
 	@Test
@@ -116,9 +121,9 @@ class DepositChargeUseCaseTest {
 
 		// when & then
 		assertThatThrownBy(() -> depositChargeUseCase.charge(userId, request))
-			.isInstanceOf(IllegalStateException.class)
+			.isInstanceOf(BusinessException.class)
 			.hasMessage("결제에 실패했습니다.");
 
-		then(depositHistoryRepository).should().save(any(DepositHistory.class));
+		then(depositHistoryStatusUpdater).should().updateFailed(any(DepositHistory.class));
 	}
 }

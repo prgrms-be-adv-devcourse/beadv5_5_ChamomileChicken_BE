@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import jabaclass.user.common.error.BusinessException;
+import jabaclass.user.deposit.application.DepositHistoryStatusUpdater;
 import jabaclass.user.deposit.domain.DepositHistory;
 import jabaclass.user.deposit.domain.DepositStatus;
 import jabaclass.user.deposit.domain.DepositType;
@@ -28,6 +29,7 @@ public class DepositChargeUseCase {
 	private final UserRepository userRepository;
 	private final DepositHistoryRepository depositHistoryRepository;
 	private final PaymentClient paymentClient;
+	private final DepositHistoryStatusUpdater depositHistoryStatusUpdater;
 
 	// POST /deposits
 	@Transactional
@@ -40,10 +42,7 @@ public class DepositChargeUseCase {
 		depositHistoryRepository.save(history);
 
 		try {
-			// 2. 결제 시도
 			UUID paymentId = paymentClient.createPayment(userId, request.chargeAmount(), request.paymentMethod());
-
-			// 3. 결제 성공 시 COMPLETED + 예치금 충전
 			history.updateStatus(DepositStatus.COMPLETED);
 			history.updatePaymentId(paymentId);
 			user.chargeDeposit(request.chargeAmount());
@@ -52,10 +51,9 @@ public class DepositChargeUseCase {
 			return new DepositChargeResponseDto(paymentId, request.chargeAmount(), user.getDeposit(), true);
 
 		} catch (Exception e) {
-			// 4. 결제 실패 시 FAILED
-			history.updateStatus(DepositStatus.FAILED);
+			depositHistoryStatusUpdater.updateFailed(history); // 별도 트랜잭션으로 FAILED 저장
 			log.error("예치금 충전 실패 userId={}, amount={}", userId, request.chargeAmount(), e);
-			throw new IllegalStateException("결제에 실패했습니다.");
+			throw new BusinessException(DepositErrorCode.PAYMENT_FAILED);
 		}
 	}
 }
