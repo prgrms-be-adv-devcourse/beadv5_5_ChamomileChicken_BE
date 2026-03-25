@@ -53,7 +53,7 @@ public class PaymentClientImpl implements PaymentClient {
 
 			DepositPrepareResponseDto body = response.getBody();
 			if (body == null) {
-				log.error("결제 준비 응답 바디 없음 userId={}", userId);  // ✅ userId 추가
+				log.error("결제 준비 응답 바디 없음 userId={}", userId);
 				throw new BusinessException(DepositErrorCode.PAYMENT_SERVICE_UNAVAILABLE);
 			}
 
@@ -82,7 +82,7 @@ public class PaymentClientImpl implements PaymentClient {
 				throw new BusinessException(DepositErrorCode.PAYMENT_SERVICE_UNAVAILABLE);
 			}
 
-			return body.isPaid();  // ✅ response.getBody() → body
+			return body.isPaid();
 
 		} catch (RestClientException e) {
 			log.error("결제 승인 실패 depositPaymentsId={}", depositPaymentsId, e);
