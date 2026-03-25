@@ -81,7 +81,8 @@ public class ProductSelectTest {
 		SearchProductRequestDto request = new SearchProductRequestDto(
 			"",
 			0,
-			10
+			10,
+			ProductStatus.ENABLE
 		);
 		Pageable pageable = PageRequest.of(request.thisPage(), request.pageSize());
 		Page<Product> page = new PageImpl<>(List.of(product1, product2));
