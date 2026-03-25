@@ -46,6 +46,9 @@ public class Payment {
 	@Column(name = "payment_status", nullable = false, length = 20)
 	private PaymentStatus status;
 
+	@Column(name = "payment_key")
+	private String paymentKey;
+
 	protected Payment() {
 
 	}
@@ -114,4 +117,12 @@ public class Payment {
 		}
 	}
 
+	public boolean isDone() {
+		return this.status == PaymentStatus.DONE;
+	}
+
+	public void markDone(String paymentKey) {
+		this.paymentKey = paymentKey;
+		this.status = PaymentStatus.DONE;
+	}
 }

@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <script src="https://js.tosspayments.com/v1"></script>
+</head>
+<body>
+<button onclick="requestPayment()">결제하기</button>
+
+<script>
+    const clientKey = "test_ck_yL0qZ4G1VOj211Mwom2v3oWb2MQY";
+    const tossPayments = TossPayments(clientKey);
+
+    function requestPayment() {
+        tossPayments.requestPayment("카드", {
+            amount: 30000,
+            orderId: "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+            orderName: "테스트 상품",
+            successUrl: "http://localhost:5500/success.html",
+            failUrl: "http://localhost:5500/fail.html"
+        });
+    }
+</script>
+</body>
+</html>

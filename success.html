@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+</head>
+<body>
+<h2>결제 성공</h2>
+
+<script>
+    const urlParams = new URLSearchParams(window.location.search);
+
+    const paymentKey = urlParams.get("paymentKey");
+    const amount = urlParams.get("amount");
+    const paymentId = "c40b1d73-9dac-41a5-b737-0a48f2a0352f"
+
+    console.log("paymentKey:", paymentKey);
+
+    // 여기서 confirm API 호출
+    fetch("http://localhost:9001/api/v1/payments/confirm", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            paymentId: paymentId,
+            paymentKey: paymentKey,
+            amount: Number(amount)
+        })
+    })
+        .then(res => res.json())
+        .then(data => {
+            console.log("결제 완료:", data);
+        });
+</script>
+</body>
+</html>
