@@ -111,7 +111,7 @@ public class ProductService implements ProductUseCase {
 		Product product = productRepository.findById(productId)
 			.orElseThrow(() -> new BusinessException(CommonErrorCode.PRODUCT_NOT_FOUND));
 
-		productRepository.deleteById(productId);
+		product.changeDelete();
 
 		return DeleteProductResposeDto.form(productId, ProductStatus.DISABLE);
 	}
@@ -125,9 +125,11 @@ public class ProductService implements ProductUseCase {
 
 		// 페이징 및 키워드를 조건으로 가져온 상품 리스트
 		if (requestDto.keyword() == null || requestDto.keyword().isBlank()) {
-			page = productRepository.findAll(pageable);
+			page = productRepository.findByStatusAndDeleteDtIsNull(ProductStatus.ENABLE, pageable);
 		} else {
-			page = productRepository.findByTitleContaining(requestDto.keyword(), pageable);
+			page = productRepository.findByStatusAndTitleContainingAndDeleteDtIsNull(ProductStatus.ENABLE,
+				requestDto.keyword(),
+				pageable);
 		}
 
 		// 검색해온 상품의 user uuid를 List에 담는 작업
@@ -172,5 +174,5 @@ public class ProductService implements ProductUseCase {
 
 		return ProductResponseDto.form(product, seller.sellerName());
 	}
-	
+
 }

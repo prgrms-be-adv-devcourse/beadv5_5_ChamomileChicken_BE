@@ -315,13 +315,14 @@ public class ProductCUDTest {
 			.willReturn(Optional.of(new SellerResponseDto(SELLER_ID, "테스트 판매자", "SELLER")));
 
 		given(productRepository.findById(productId)).willReturn(Optional.of(product));
-		willDoNothing().given(productRepository).deleteById(productId);
 
 		// when
 		productService.delete(productId);
 
 		// then
-		then(productRepository).should().deleteById(productId);
+		assertThat(product.getDeleteDt()).isNotNull(); // 핵심
+
+		then(productRepository).should(times(1)).findById(productId);
 	}
 
 	@Test
@@ -338,6 +339,6 @@ public class ProductCUDTest {
 			.isInstanceOf(BusinessException.class)
 			.hasMessage("존재하지 않는 상품 ID 입니다.");
 
-		then(productRepository).should(never()).deleteById(productId);
+		then(productRepository).should(times(1)).findById(productId);
 	}
 }

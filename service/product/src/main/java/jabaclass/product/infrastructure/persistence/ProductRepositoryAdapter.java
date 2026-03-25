@@ -8,6 +8,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
 import jabaclass.product.domain.model.Product;
+import jabaclass.product.domain.model.ProductStatus;
 import jabaclass.product.domain.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 
@@ -28,18 +29,20 @@ public class ProductRepositoryAdapter implements ProductRepository {
 	}
 
 	@Override
-	public void deleteById(UUID productId) {
-		productJpaRepository.deleteById(productId);
-	}
-
-	@Override
 	public Page<Product> findAll(Pageable pageRequest) {
 		return productJpaRepository.findAll(pageRequest);
 	}
 
 	@Override
-	public Page<Product> findByTitleContaining(String keyword, Pageable pageable) {
-		return productJpaRepository.findByTitleContaining(keyword, pageable);
+	public Page<Product> findByStatusAndTitleContainingAndDeleteDtIsNull(ProductStatus status, String keyword,
+		Pageable pageable) {
+		return productJpaRepository.findByStatusAndTitleContainingAndDeleteDtIsNull(ProductStatus.ENABLE, keyword,
+			pageable);
+	}
+
+	@Override
+	public Page<Product> findByStatusAndDeleteDtIsNull(ProductStatus status, Pageable pageable) {
+		return productJpaRepository.findByStatusAndDeleteDtIsNull(ProductStatus.ENABLE, pageable);
 	}
 
 }

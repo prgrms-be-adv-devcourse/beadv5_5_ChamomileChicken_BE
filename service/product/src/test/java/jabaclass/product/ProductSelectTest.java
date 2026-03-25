@@ -51,8 +51,8 @@ public class ProductSelectTest {
 	private static final UUID SELLER_ID = UUID.fromString("123e4567-e89b-12d3-a456-426614174000");
 
 	// test 상품
-	private Product product1 = new Product();
-	private Product product2 = new Product();
+	private Product product1;
+	private Product product2;
 
 	@BeforeEach
 	void setup() {
@@ -86,7 +86,8 @@ public class ProductSelectTest {
 		Pageable pageable = PageRequest.of(request.thisPage(), request.pageSize());
 		Page<Product> page = new PageImpl<>(List.of(product1, product2));
 		// given
-		given(productRepository.findAll(pageable)).willReturn(page);
+		given(productRepository.findByStatusAndDeleteDtIsNull(any(), any(Pageable.class)))
+			.willReturn(page);
 
 		// 존재하는 판매자
 		given(sellerRepository.findSellerList(anyList()))
@@ -100,7 +101,7 @@ public class ProductSelectTest {
 		// then
 		assertThat(result.content()).extracting(ProductResponseDto::title)
 			.containsExactly("상품A", "상품B");
-		then(productRepository).should(times(1)).findAll(pageable);
+		then(productRepository).should().findByStatusAndDeleteDtIsNull(any(), any());
 	}
 
 	@Test

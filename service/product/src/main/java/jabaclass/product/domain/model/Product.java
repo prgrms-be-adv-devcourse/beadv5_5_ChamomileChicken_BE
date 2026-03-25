@@ -1,14 +1,9 @@
 package jabaclass.product.domain.model;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.UUID;
 
 import org.hibernate.annotations.UuidGenerator;
-import org.springframework.data.annotation.CreatedBy;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedBy;
-import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import jabaclass.product.application.exception.BusinessException;
@@ -31,7 +26,7 @@ import lombok.experimental.SuperBuilder;
 @SuperBuilder
 @EntityListeners(AuditingEntityListener.class)
 @Table(name = "\"product\"", schema = "public")
-public class Product {
+public class Product extends ProductBase {
 
 	@Id
 	@UuidGenerator
@@ -60,23 +55,6 @@ public class Product {
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false, length = 20)
 	private ProductStatus status;
-
-	// AuditorAware 통해 세팅 가능-> 추후 확인
-	@CreatedBy
-	@Column(name = "reg_id", nullable = false, updatable = false)
-	private UUID regId;
-
-	@CreatedDate
-	@Column(name = "reg_dt", nullable = false, updatable = false)
-	private LocalDateTime regDt;
-
-	@LastModifiedBy
-	@Column(name = "modify_id")
-	private UUID modifyId;
-
-	@LastModifiedDate
-	@Column(name = "modify_dt")
-	private LocalDateTime modifyDt;
 
 	@PrePersist
 	public void prePersist() {
