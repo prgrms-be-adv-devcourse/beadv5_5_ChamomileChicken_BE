@@ -19,7 +19,8 @@ import lombok.RequiredArgsConstructor;
 public class EmailVerificationService implements EmailVerificationUseCase {
 
 	private static final long EXPIRE_MINUTES = 5L;
-	private static final int CODE_BOUND = 1_000_000;
+	private static final int VERIFICATION_CODE_BOUND = 1_000_000;
+	private static final SecureRandom RANDOM = new SecureRandom();
 
 	private final MailService mailService;
 	private final VerificationCodeRepository verificationCodeRepository;
@@ -69,8 +70,7 @@ public class EmailVerificationService implements EmailVerificationUseCase {
 	}
 
 	private String generateCode() {
-		SecureRandom random = new SecureRandom();
-		int number = random.nextInt(CODE_BOUND);
+		int number = RANDOM.nextInt(VERIFICATION_CODE_BOUND);
 		return String.format("%06d", number);
 	}
 
