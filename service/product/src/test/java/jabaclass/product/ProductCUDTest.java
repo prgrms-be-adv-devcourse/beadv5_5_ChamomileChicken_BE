@@ -27,15 +27,14 @@ import jabaclass.product.domain.repository.ProductRepository;
 import jabaclass.product.infrastructure.acl.dto.SellerResponseDto;
 import jabaclass.product.infrastructure.event.dto.ProductEventResponseDto;
 import jabaclass.product.presentation.dto.request.CreateProductRequestDto;
-import jabaclass.product.presentation.dto.respose.CreateProductResponseDto;
+import jabaclass.product.presentation.dto.request.UpdateProductRequestDto;
+import jabaclass.product.presentation.dto.respose.ProductResponseDto;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 
-//@DataJpaTest
 @ExtendWith(MockitoExtension.class)
-//@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
-public class ProductCreateTest {
+public class ProductCUDTest {
 	private Validator validator;
 
 	@InjectMocks
@@ -85,7 +84,7 @@ public class ProductCreateTest {
 			});
 
 		// when
-		CreateProductResponseDto saved = productService.create(product);
+		ProductResponseDto saved = productService.create(product);
 
 		// then: 값 검증
 		assertThat(saved.title()).isEqualTo("테스트상품");
@@ -210,7 +209,7 @@ public class ProductCreateTest {
 		// when & then
 		assertThatThrownBy(() -> productService.create(product))
 			.isInstanceOf(BusinessException.class)
-			.hasMessage("존재하지 않는 판매자입니다.");
+			.hasMessage("존재하지 않는 판매자 입니다.");
 	}
 
 	@Test
@@ -232,5 +231,113 @@ public class ProductCreateTest {
 		assertThatThrownBy(() -> productService.create(product))
 			.isInstanceOf(BusinessException.class)
 			.hasMessage("판매자가 아닙니다.");
+	}
+
+	@Test
+	void 상품_수정_성공() {
+		// given
+		UUID productId = UUID.randomUUID();
+		Product product = Product.builder()
+			.sellerId(SELLER_ID)
+			.title("상품A")
+			.maxCapacity(10)
+			.description("테스트1")
+			.descriptionImage(UUID.randomUUID().toString())
+			.price(PRICE)
+			.status(ProductStatus.ENABLE)
+			.build();
+
+		UpdateProductRequestDto updateDto = new UpdateProductRequestDto(
+			"수정상품",
+			10,
+			"수정 설명",
+			UUID.randomUUID().toString(),
+			new BigDecimal("1200.00"),
+			ProductStatus.ENABLE
+		);
+
+		// 존재하는 판매자
+		// Stub: seller 조회
+		given(sellerRepository.findSeller(eq(SELLER_ID)))
+			.willReturn(Optional.of(new SellerResponseDto(SELLER_ID, "테스트 판매자", "SELLER")));
+
+		given(productRepository.findById(productId)).willReturn(Optional.of(product));
+
+		// when
+		ProductResponseDto updated = productService.update(updateDto, productId);
+
+		// then
+		assertThat(updated.title()).isEqualTo("수정상품");
+		assertThat(updated.price()).isEqualByComparingTo(updateDto.price());
+	}
+
+	@Test
+	void 없는_상품_수정_시_예외발생() {
+		UUID productId = UUID.randomUUID();
+		UpdateProductRequestDto updateDto = new UpdateProductRequestDto(
+			"수정상품",
+			10,
+			"수정 설명",
+			UUID.randomUUID().toString(),
+			new BigDecimal("1200.00"),
+			ProductStatus.ENABLE
+		);
+
+		// 존재하는 판매자
+		// Stub: seller 조회
+		given(sellerRepository.findSeller(eq(SELLER_ID)))
+			.willReturn(Optional.of(new SellerResponseDto(SELLER_ID, "테스트 판매자", "SELLER")));
+
+		given(productRepository.findById(productId)).willReturn(Optional.empty());
+
+		assertThatThrownBy(() -> productService.update(updateDto, productId))
+			.isInstanceOf(BusinessException.class)
+			.hasMessage("존재하지 않는 상품 ID 입니다.");
+
+		then(productRepository).should(never()).save(any(Product.class));
+	}
+
+	@Test
+	void 상품_삭제_성공() {
+		UUID productId = UUID.randomUUID();
+		Product product = Product.builder()
+			.sellerId(SELLER_ID)
+			.title("상품A")
+			.maxCapacity(10)
+			.description("테스트1")
+			.descriptionImage(UUID.randomUUID().toString())
+			.price(PRICE)
+			.status(ProductStatus.ENABLE)
+			.build();
+		// 존재하는 판매자
+		// Stub: seller 조회
+		given(sellerRepository.findSeller(eq(SELLER_ID)))
+			.willReturn(Optional.of(new SellerResponseDto(SELLER_ID, "테스트 판매자", "SELLER")));
+
+		given(productRepository.findById(productId)).willReturn(Optional.of(product));
+		willDoNothing().given(productRepository).deleteById(productId);
+
+		// when
+		productService.delete(productId);
+
+		// then
+		then(productRepository).should().deleteById(productId);
+	}
+
+	@Test
+	void 없는_상품_삭제_시_예외발생() {
+		UUID productId = UUID.randomUUID();
+		given(productRepository.findById(productId)).willReturn(Optional.empty());
+
+		// 존재하는 판매자
+		// Stub: seller 조회
+		given(sellerRepository.findSeller(eq(SELLER_ID)))
+			.willReturn(Optional.of(new SellerResponseDto(SELLER_ID, "테스트 판매자", "SELLER")));
+
+		assertThatThrownBy(() -> productService.delete(productId))
+			.isInstanceOf(IllegalArgumentException.class)
+			.hasMessage("존재하지 않는 상품입니다.");
+
+		then(productRepository).should(never()).deleteById(productId);
 	}
 }

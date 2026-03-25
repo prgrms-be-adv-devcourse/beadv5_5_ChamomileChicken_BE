@@ -11,6 +11,8 @@ import org.springframework.data.annotation.LastModifiedBy;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+import jabaclass.product.application.exception.BusinessException;
+import jabaclass.product.common.exception.CommonErrorCode;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
@@ -42,7 +44,7 @@ public class Product {
 	@Column(nullable = false, length = 100)
 	private String title;
 
-	@Column(nullable = false)
+	@Column(name = "max_capacity", nullable = false)
 	private int maxCapacity;
 
 	// null이 가능하게 하고 백단이든, 프론트 단이든 둘 중 하나라도 있게 체크하는게 좋을듯
@@ -82,5 +84,38 @@ public class Product {
 			this.status = ProductStatus.ENABLE;
 		}
 	}
-	
+
+	public void changeTitle(String title) {
+		if (title.isBlank()) {
+			throw new BusinessException(CommonErrorCode.NOT_TITLE);
+		}
+		this.title = title;
+	}
+
+	public void changeMaxCapacity(int maxCapacity) {
+		if (maxCapacity <= 0) {
+			throw new BusinessException(CommonErrorCode.NOT_MAXCAPACITY);
+		}
+		this.maxCapacity = maxCapacity;
+	}
+
+	public void changePrice(BigDecimal price) {
+		if (price.compareTo(BigDecimal.ZERO) <= 0) {
+			throw new BusinessException(CommonErrorCode.NOT_PRICE);
+		}
+		this.price = price;
+	}
+
+	public void changeDescription(String description) {
+		this.description = description;
+	}
+
+	public void changeDescriptionImage(String descriptionImage) {
+		this.descriptionImage = descriptionImage;
+	}
+
+	public void changeStatus(ProductStatus status) {
+		this.status = status;
+	}
+
 }

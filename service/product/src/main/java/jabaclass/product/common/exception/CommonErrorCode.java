@@ -13,11 +13,23 @@ public enum CommonErrorCode {
 	//404 NOT_FOUND 잘못된 리소스 접근
 	PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 상품 ID 입니다."),
 	// 404 판매자 없음
-	SELLER_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 판매자입니다."),
+	SELLER_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 판매자 입니다."),
 	// 403 판매자 권한이 없음
 	NOT_SELLER(HttpStatus.FORBIDDEN, "판매자가 아닙니다."),
 	// 404 룰 이름이 바뀐 경우
-	INVALID_ROLE(HttpStatus.NOT_FOUND, "룰 확인이 필요합니다. 관리자에게 문의 주세요.");
+	INVALID_ROLE(HttpStatus.BAD_REQUEST, "룰 확인이 필요합니다. 관리자에게 문의 주세요."),
+	// 400 상품명 확인 필요
+	NOT_TITLE(HttpStatus.BAD_REQUEST, "상품명을 입력 해주세요."),
+	// 400 유저 아이디 확인 필요
+	NOT_USERID(HttpStatus.BAD_REQUEST, "판매자 Id를 입력 해주세요."),
+	// 400 가격 확인 필요
+	NOT_PRICE(HttpStatus.BAD_REQUEST, "가격은 1원 이상이어야 합니다."),
+	// 400 총인원수 확인 필요
+	NOT_MAXCAPACITY(HttpStatus.BAD_REQUEST, "예약 가능 인원수를 입력 해주세요."),
+	// 400 상품 ID 확인 필요
+	NOT_PRODUCTID(HttpStatus.BAD_REQUEST, "프로젝트 ID 입력 해주세요."),
+	//500 삭제 실패
+	FAIL_DELETE(HttpStatus.INTERNAL_SERVER_ERROR, "삭제 에러입니다. 서버 팀에 연락주세요!");
 
 	private final HttpStatus status;
 	private final String message;
@@ -25,6 +37,10 @@ public enum CommonErrorCode {
 	CommonErrorCode(HttpStatus status, String message) {
 		this.status = status;
 		this.message = message;
+	}
+
+	public static String from(CommonErrorCode code) {
+		return code.getMessage();
 	}
 
 }
