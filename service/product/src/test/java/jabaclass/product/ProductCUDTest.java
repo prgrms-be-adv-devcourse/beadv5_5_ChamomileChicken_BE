@@ -49,6 +49,25 @@ public class ProductCUDTest {
 	@Mock
 	private ApplicationEventPublisher publisher;
 
+	// test 상품
+	private Product product1;
+
+	UUID productId = UUID.randomUUID();
+
+	@BeforeEach
+	void setup() {
+		product1 = Product.builder()
+			.id(productId)
+			.sellerId(SELLER_ID)
+			.title("상품A")
+			.maxCapacity(10)
+			.description("테스트1")
+			.descriptionImage(UUID.randomUUID().toString())
+			.price(PRICE)
+			.status(ProductStatus.ENABLE)
+			.build();
+	}
+
 	@BeforeEach
 	void setUp() {
 		validator = Validation.buildDefaultValidatorFactory().getValidator();
@@ -236,17 +255,6 @@ public class ProductCUDTest {
 	@Test
 	void 상품_수정_성공() {
 		// given
-		UUID productId = UUID.randomUUID();
-		Product product = Product.builder()
-			.sellerId(SELLER_ID)
-			.title("상품A")
-			.maxCapacity(10)
-			.description("테스트1")
-			.descriptionImage(UUID.randomUUID().toString())
-			.price(PRICE)
-			.status(ProductStatus.ENABLE)
-			.build();
-
 		UpdateProductRequestDto updateDto = new UpdateProductRequestDto(
 			"수정상품",
 			10,
@@ -256,12 +264,19 @@ public class ProductCUDTest {
 			ProductStatus.ENABLE
 		);
 
-		// 존재하는 판매자
-		// Stub: seller 조회
+		/// Stub: seller 조회
 		given(sellerRepository.findSeller(eq(SELLER_ID)))
-			.willReturn(Optional.of(new SellerResponseDto(SELLER_ID, "테스트 판매자", "SELLER")));
+			.willReturn(Optional.of(new SellerResponseDto(
+				SELLER_ID, "테스트 판매자", "SELLER"
+			)));
 
-		given(productRepository.findById(productId)).willReturn(Optional.of(product));
+		// ⭐ 상품 조회 (1번)
+		given(productRepository.findById(productId))
+			.willReturn(Optional.of(product1));
+
+		// ⭐ 권한 체크 (2번)
+		given(productRepository.findByIdAndSellerId(productId, SELLER_ID))
+			.willReturn(Optional.of(product1));
 
 		// when
 		ProductResponseDto updated = productService.update(updateDto, productId);
@@ -299,30 +314,26 @@ public class ProductCUDTest {
 
 	@Test
 	void 상품_삭제_성공() {
-		UUID productId = UUID.randomUUID();
-		Product product = Product.builder()
-			.sellerId(SELLER_ID)
-			.title("상품A")
-			.maxCapacity(10)
-			.description("테스트1")
-			.descriptionImage(UUID.randomUUID().toString())
-			.price(PRICE)
-			.status(ProductStatus.ENABLE)
-			.build();
 		// 존재하는 판매자
 		// Stub: seller 조회
 		given(sellerRepository.findSeller(eq(SELLER_ID)))
-			.willReturn(Optional.of(new SellerResponseDto(SELLER_ID, "테스트 판매자", "SELLER")));
+			.willReturn(Optional.of(new SellerResponseDto(
+				SELLER_ID, "테스트 판매자", "SELLER"
+			)));
 
-		given(productRepository.findById(productId)).willReturn(Optional.of(product));
+		// ⭐ 상품 조회 (1번)
+		given(productRepository.findById(productId))
+			.willReturn(Optional.of(product1));
+
+		// ⭐ 권한 체크 (2번)
+		given(productRepository.findByIdAndSellerId(productId, SELLER_ID))
+			.willReturn(Optional.of(product1));
 
 		// when
 		productService.delete(productId);
 
 		// then
-		assertThat(product.getDeleteDt()).isNotNull(); // 핵심
-
-		then(productRepository).should(times(1)).findById(productId);
+		assertThat(product1.getDeleteDt()).isNotNull();
 	}
 
 	@Test
@@ -341,4 +352,30 @@ public class ProductCUDTest {
 
 		then(productRepository).should(times(1)).findById(productId);
 	}
+
+	@Test
+	void 다른_판매자가_수정하면_예외() {
+		UpdateProductRequestDto updateDto = new UpdateProductRequestDto(
+			"수정상품",
+			10,
+			"수정 설명",
+			UUID.randomUUID().toString(),
+			new BigDecimal("1200.00"),
+			ProductStatus.ENABLE
+		);
+		given(sellerRepository.findSeller(any(UUID.class)))
+			.willAnswer(invocation -> {
+				UUID id = invocation.getArgument(0);
+				return Optional.of(new SellerResponseDto(id, "판매자", "SELLER"));
+			});
+
+		// 같은 productId로 맞춰야 함
+		given(productRepository.findById(any(UUID.class)))
+			.willReturn(Optional.of(product1));
+
+		assertThatThrownBy(() -> productService.update(updateDto, SELLER_ID))
+			.isInstanceOf(BusinessException.class)
+			.hasMessage("해당 상품은 본인 상품이 아닙니다.");
+	}
+
 }

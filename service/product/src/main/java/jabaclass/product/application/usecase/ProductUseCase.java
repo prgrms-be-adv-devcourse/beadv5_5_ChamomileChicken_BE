@@ -7,7 +7,7 @@ import jabaclass.product.presentation.dto.request.SearchProductRequestDto;
 import jabaclass.product.presentation.dto.request.UpdateProductRequestDto;
 import jabaclass.product.presentation.dto.respose.DeleteProductResposeDto;
 import jabaclass.product.presentation.dto.respose.ProductResponseDto;
-import jabaclass.product.presentation.dto.respose.SearchProductReposeDto;
+import jabaclass.product.presentation.dto.respose.SearchProductResponseDto;
 
 public interface ProductUseCase {
 
@@ -21,7 +21,7 @@ public interface ProductUseCase {
 	DeleteProductResposeDto delete(UUID productId);
 
 	// 상품 전체 검색
-	SearchProductReposeDto searchAll(SearchProductRequestDto requestDto);
+	SearchProductResponseDto searchAll(SearchProductRequestDto requestDto);
 
 	// 특정 상품 검색
 	ProductResponseDto searchById(UUID productId);

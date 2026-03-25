@@ -10,7 +10,7 @@ import jakarta.validation.constraints.NotNull;
 public record DeleteProductResposeDto(
 	@NotNull(message = "상품 Id를 입력해주세요.")
 	@Schema(description = "상품 ID", example = "11111111-1111-1111-1111-111111111111")
-	UUID prdouctId,
+	UUID productId,
 
 	@Schema(description = "상태", example = "ENABLE")
 	ProductStatus status

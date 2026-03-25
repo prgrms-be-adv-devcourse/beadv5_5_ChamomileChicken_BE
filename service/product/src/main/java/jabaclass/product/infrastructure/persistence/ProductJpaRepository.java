@@ -1,5 +1,6 @@
 package jabaclass.product.infrastructure.persistence;
 
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.data.domain.Page;
@@ -14,4 +15,6 @@ public interface ProductJpaRepository extends JpaRepository<Product, UUID> {
 		Pageable pageable);
 
 	Page<Product> findByStatusAndDeleteDtIsNull(ProductStatus status, Pageable pageable);
+
+	Optional<Product> findByIdAndSellerId(UUID productId, UUID sellerId);
 }

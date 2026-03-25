@@ -21,7 +21,7 @@ import jabaclass.product.presentation.dto.request.SearchProductRequestDto;
 import jabaclass.product.presentation.dto.request.UpdateProductRequestDto;
 import jabaclass.product.presentation.dto.respose.DeleteProductResposeDto;
 import jabaclass.product.presentation.dto.respose.ProductResponseDto;
-import jabaclass.product.presentation.dto.respose.SearchProductReposeDto;
+import jabaclass.product.presentation.dto.respose.SearchProductResponseDto;
 import jabaclass.product.presentation.openapi.ProductOpenApi;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -73,9 +73,9 @@ public class ProductRestController implements ProductOpenApi {
 	// 상품 전체 검색
 	@Override
 	@GetMapping
-	public ResponseEntity<ApiResponseDto<SearchProductReposeDto>> searchAllProduct(
+	public ResponseEntity<ApiResponseDto<SearchProductResponseDto>> searchAllProduct(
 		@ModelAttribute SearchProductRequestDto request) {
-		SearchProductReposeDto response = useCase.searchAll(request);
+		SearchProductResponseDto response = useCase.searchAll(request);
 
 		return ResponseEntity.ok()
 			.body(ApiResponseDto.success(HttpStatus.OK, "성공적으로 전체 검색이 되었습니다.", response));

@@ -29,7 +29,9 @@ public enum CommonErrorCode {
 	// 400 상품 ID 확인 필요
 	NOT_PRODUCTID(HttpStatus.BAD_REQUEST, "프로젝트 ID 입력 해주세요."),
 	//500 삭제 실패
-	FAIL_DELETE(HttpStatus.INTERNAL_SERVER_ERROR, "삭제 에러입니다. 서버 팀에 연락주세요!");
+	FAIL_DELETE(HttpStatus.INTERNAL_SERVER_ERROR, "삭제 에러입니다. 서버 팀에 연락주세요!"),
+	//404 판매자와 상품의 매치 실패
+	MATCH_FAIL(HttpStatus.INTERNAL_SERVER_ERROR, "해당 상품은 본인 상품이 아닙니다.");
 
 	private final HttpStatus status;
 	private final String message;

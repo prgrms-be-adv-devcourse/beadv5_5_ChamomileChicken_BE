@@ -15,7 +15,7 @@ import jabaclass.product.presentation.dto.request.SearchProductRequestDto;
 import jabaclass.product.presentation.dto.request.UpdateProductRequestDto;
 import jabaclass.product.presentation.dto.respose.DeleteProductResposeDto;
 import jabaclass.product.presentation.dto.respose.ProductResponseDto;
-import jabaclass.product.presentation.dto.respose.SearchProductReposeDto;
+import jabaclass.product.presentation.dto.respose.SearchProductResponseDto;
 
 @Tag(name = "Product", description = "상품 API")
 public interface ProductOpenApi {
@@ -62,7 +62,7 @@ public interface ProductOpenApi {
 		)
 	)
 	@CommonErrorResponses
-	ResponseEntity<ApiResponseDto<SearchProductReposeDto>> searchAllProduct(SearchProductRequestDto request);
+	ResponseEntity<ApiResponseDto<SearchProductResponseDto>> searchAllProduct(SearchProductRequestDto request);
 
 	@Operation(summary = "특정 상품 검색", description = "특정 상품을 검색 합니다.")
 	@ApiResponse(

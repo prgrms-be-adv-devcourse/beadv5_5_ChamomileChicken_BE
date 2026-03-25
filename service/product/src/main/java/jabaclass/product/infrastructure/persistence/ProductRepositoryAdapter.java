@@ -29,20 +29,20 @@ public class ProductRepositoryAdapter implements ProductRepository {
 	}
 
 	@Override
-	public Page<Product> findAll(Pageable pageRequest) {
-		return productJpaRepository.findAll(pageRequest);
-	}
-
-	@Override
 	public Page<Product> findByStatusAndTitleContainingAndDeleteDtIsNull(ProductStatus status, String keyword,
 		Pageable pageable) {
-		return productJpaRepository.findByStatusAndTitleContainingAndDeleteDtIsNull(ProductStatus.ENABLE, keyword,
+		return productJpaRepository.findByStatusAndTitleContainingAndDeleteDtIsNull(status, keyword,
 			pageable);
 	}
 
 	@Override
 	public Page<Product> findByStatusAndDeleteDtIsNull(ProductStatus status, Pageable pageable) {
-		return productJpaRepository.findByStatusAndDeleteDtIsNull(ProductStatus.ENABLE, pageable);
+		return productJpaRepository.findByStatusAndDeleteDtIsNull(status, pageable);
+	}
+
+	@Override
+	public Optional<Product> findByIdAndSellerId(UUID productId, UUID sellerId) {
+		return productJpaRepository.findByIdAndSellerId(productId, sellerId);
 	}
 
 }

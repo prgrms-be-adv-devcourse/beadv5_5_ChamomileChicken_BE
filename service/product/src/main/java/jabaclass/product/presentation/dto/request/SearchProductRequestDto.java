@@ -1,6 +1,7 @@
 package jabaclass.product.presentation.dto.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jabaclass.product.domain.model.ProductStatus;
 
 @Schema(description = "상품 검색")
 public record SearchProductRequestDto(
@@ -11,7 +12,10 @@ public record SearchProductRequestDto(
 	int thisPage,
 
 	@Schema(description = "한 페이지 상품 갯수", example = "10")
-	int pageSize
+	int pageSize,
+
+	@Schema(description = "공개 상태", example = "ENABLE")
+	ProductStatus status
 ) {
 
 }

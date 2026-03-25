@@ -29,7 +29,7 @@ import jabaclass.product.domain.repository.ProductRepository;
 import jabaclass.product.infrastructure.acl.dto.SellerResponseDto;
 import jabaclass.product.presentation.dto.request.SearchProductRequestDto;
 import jabaclass.product.presentation.dto.respose.ProductResponseDto;
-import jabaclass.product.presentation.dto.respose.SearchProductReposeDto;
+import jabaclass.product.presentation.dto.respose.SearchProductResponseDto;
 
 @ExtendWith(MockitoExtension.class)
 public class ProductSelectTest {
@@ -96,7 +96,7 @@ public class ProductSelectTest {
 			)));
 
 		// when
-		SearchProductReposeDto result = productService.searchAll(request);
+		SearchProductResponseDto result = productService.searchAll(request);
 
 		// then
 		assertThat(result.content()).extracting(ProductResponseDto::title)

@@ -27,7 +27,7 @@ import jabaclass.product.presentation.dto.request.SearchProductRequestDto;
 import jabaclass.product.presentation.dto.request.UpdateProductRequestDto;
 import jabaclass.product.presentation.dto.respose.DeleteProductResposeDto;
 import jabaclass.product.presentation.dto.respose.ProductResponseDto;
-import jabaclass.product.presentation.dto.respose.SearchProductReposeDto;
+import jabaclass.product.presentation.dto.respose.SearchProductResponseDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -39,7 +39,6 @@ public class ProductService implements ProductUseCase {
 	private final ProductRepository productRepository;
 	private final SellerRepository sellerRepository;
 	private final ApplicationEventPublisher publisher;
-	private final AuditorAwareService auditorAwareService;
 
 	// 테스트용입니다.
 	private static final UUID SELLER_ID = UUID.fromString("123e4567-e89b-12d3-a456-426614174000");
@@ -47,15 +46,8 @@ public class ProductService implements ProductUseCase {
 	@Override
 	@Transactional
 	public ProductResponseDto create(CreateProductRequestDto requestDto) {
-		// sellerId를 확인
-		SellerResponseDto seller = sellerRepository.findSeller(requestDto.sellerId())
-			.orElseThrow(() -> new BusinessException(CommonErrorCode.SELLER_NOT_FOUND));
-
-		SellerRole role = SellerRole.from(seller.role());
-
-		if (role != SellerRole.SELLER) {
-			throw new BusinessException(CommonErrorCode.NOT_SELLER);
-		}
+		// seller 룰을 확인
+		SellerResponseDto seller = findBySellerIdOrThrow(requestDto.sellerId());
 
 		Product product = Product.builder()
 			.sellerId(requestDto.sellerId())
@@ -78,17 +70,11 @@ public class ProductService implements ProductUseCase {
 	public ProductResponseDto update(UpdateProductRequestDto requestDto, UUID productId) {
 		//	UUID sellerId = auditorAwareService.getCurrentAuditor().get();
 		// sellerId를 확인
-		SellerResponseDto seller = sellerRepository.findSeller(SELLER_ID)
-			.orElseThrow(() -> new BusinessException(CommonErrorCode.SELLER_NOT_FOUND));
-
-		SellerRole role = SellerRole.from(seller.role());
-
-		if (role != SellerRole.SELLER) {
-			throw new BusinessException(CommonErrorCode.NOT_SELLER);
-		}
-
-		Product product = productRepository.findById(productId)
-			.orElseThrow(() -> new BusinessException(CommonErrorCode.PRODUCT_NOT_FOUND));
+		SellerResponseDto seller = findBySellerIdOrThrow(SELLER_ID);
+		// 상품 존재하는지 확인
+		Product product = findByIdOrThrow(productId);
+		// 본인 상품인지 확인
+		matchProductAndSellerId(productId, seller.sellerId());
 
 		product.changeTitle(requestDto.title());
 		product.changeMaxCapacity(requestDto.maxCapacity());
@@ -105,11 +91,11 @@ public class ProductService implements ProductUseCase {
 	public DeleteProductResposeDto delete(UUID productId) {
 		//UUID sellerId = auditorAwareService.getCurrentAuditor().get();
 		// sellerId를 확인
-		SellerResponseDto seller = sellerRepository.findSeller(SELLER_ID)
-			.orElseThrow(() -> new BusinessException(CommonErrorCode.SELLER_NOT_FOUND));
-
-		Product product = productRepository.findById(productId)
-			.orElseThrow(() -> new BusinessException(CommonErrorCode.PRODUCT_NOT_FOUND));
+		SellerResponseDto seller = findBySellerIdOrThrow(SELLER_ID);
+		// 상품 존재하는지 확인
+		Product product = findByIdOrThrow(productId);
+		// 본인 상품인지 확인
+		matchProductAndSellerId(productId, seller.sellerId());
 
 		product.changeDelete();
 
@@ -117,7 +103,7 @@ public class ProductService implements ProductUseCase {
 	}
 
 	@Override
-	public SearchProductReposeDto searchAll(SearchProductRequestDto requestDto) {
+	public SearchProductResponseDto searchAll(SearchProductRequestDto requestDto) {
 		// 페이징 설정
 		Pageable pageable = PageRequest.of(requestDto.thisPage(), requestDto.pageSize());
 
@@ -125,9 +111,9 @@ public class ProductService implements ProductUseCase {
 
 		// 페이징 및 키워드를 조건으로 가져온 상품 리스트
 		if (requestDto.keyword() == null || requestDto.keyword().isBlank()) {
-			page = productRepository.findByStatusAndDeleteDtIsNull(ProductStatus.ENABLE, pageable);
+			page = productRepository.findByStatusAndDeleteDtIsNull(requestDto.status(), pageable);
 		} else {
-			page = productRepository.findByStatusAndTitleContainingAndDeleteDtIsNull(ProductStatus.ENABLE,
+			page = productRepository.findByStatusAndTitleContainingAndDeleteDtIsNull(requestDto.status(),
 				requestDto.keyword(),
 				pageable);
 		}
@@ -160,19 +146,43 @@ public class ProductService implements ProductUseCase {
 			))
 			.toList();
 
-		return SearchProductReposeDto.form(page, resultPro);
+		return SearchProductResponseDto.form(page, resultPro);
 	}
 
 	@Override
 	public ProductResponseDto searchById(UUID productId) {
-		Product product = productRepository.findById(productId)
-			.orElseThrow(() -> new BusinessException(CommonErrorCode.PRODUCT_NOT_FOUND));
+		Product product = findByIdOrThrow(productId);
 
 		// sellerId를 확인
-		SellerResponseDto seller = sellerRepository.findSeller(product.getSellerId())
-			.orElseThrow(() -> new BusinessException(CommonErrorCode.SELLER_NOT_FOUND));
+		SellerResponseDto seller = findBySellerIdOrThrow(product.getSellerId());
 
 		return ProductResponseDto.form(product, seller.sellerName());
+	}
+
+	// 상품 존재 여부/단일 상품 검색
+	private Product findByIdOrThrow(UUID sellerId) {
+		return productRepository.findById(sellerId)
+			.orElseThrow(() -> new BusinessException(CommonErrorCode.PRODUCT_NOT_FOUND));
+	}
+
+	// 로그인 계정 여부 및 판매자 룰 확인
+	private SellerResponseDto findBySellerIdOrThrow(UUID sellerId) {
+		SellerResponseDto sellerInfo = sellerRepository.findSeller(sellerId)
+			.orElseThrow(() -> new BusinessException(CommonErrorCode.SELLER_NOT_FOUND));
+
+		SellerRole role = SellerRole.from(sellerInfo.role());
+
+		if (role != SellerRole.SELLER) {
+			throw new BusinessException(CommonErrorCode.NOT_SELLER);
+		}
+
+		return sellerInfo;
+	}
+
+	// 해당 상품 보유자인지 확인
+	private Product matchProductAndSellerId(UUID productId, UUID sellerId) {
+		return productRepository.findByIdAndSellerId(productId, sellerId)
+			.orElseThrow(() -> new BusinessException(CommonErrorCode.MATCH_FAIL));
 	}
 
 }
