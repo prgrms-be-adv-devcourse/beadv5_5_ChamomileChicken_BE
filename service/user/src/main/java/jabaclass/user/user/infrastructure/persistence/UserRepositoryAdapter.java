@@ -24,4 +24,14 @@ public class UserRepositoryAdapter implements UserRepository {
 	public boolean existsByEmail(String email) {
 		return userJpaRepository.existsByEmail(email);
 	}
+
+	@Override
+	public User save(User user) {
+		return userJpaRepository.save(user);
+	}
+
+	@Override
+	public void delete(User user) {
+		userJpaRepository.delete(user);
+	}
 }
