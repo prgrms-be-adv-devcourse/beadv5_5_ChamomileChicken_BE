@@ -21,7 +21,7 @@ public class UseDepositUseCase {
 
 	@Transactional
 	public void use(UUID userId, BigDecimal amount) {
-		User user = userRepository.findById(userId)
+		User user = userRepository.findByIdWithLock(userId)
 			.orElseThrow(() -> new DepositException(DepositErrorCode.NOT_FOUND_USER));
 
 		user.deductDeposit(amount);
