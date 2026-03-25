@@ -51,7 +51,13 @@ public class PaymentClientImpl implements PaymentClient {
 				url, request, DepositPrepareResponseDto.class
 			);
 
-			return response.getBody().depositPaymentsId();
+			DepositPrepareResponseDto body = response.getBody();
+			if (body == null) {
+				log.error("결제 준비 응답 바디 없음 userId={}", userId);
+				throw new BusinessException(DepositErrorCode.PAYMENT_SERVICE_UNAVAILABLE);
+			}
+
+			return body.depositPaymentsId();
 
 		} catch (RestClientException e) {
 			log.error("결제 준비 실패 userId={}", userId, e);
@@ -60,20 +66,26 @@ public class PaymentClientImpl implements PaymentClient {
 	}
 
 	@Override
-	public boolean confirmDepositPayment(UUID prepareId) {
+	public boolean confirmDepositPayment(UUID depositPaymentsId) {
 		try {
 			String url = paymentServiceUrl + "/api/v1/payments/deposits/confirm";
 
-			DepositConfirmRequestDto request = new DepositConfirmRequestDto(prepareId);
+			DepositConfirmRequestDto request = new DepositConfirmRequestDto(depositPaymentsId);
 
 			ResponseEntity<DepositConfirmResponseDto> response = restTemplate.postForEntity(
 				url, request, DepositConfirmResponseDto.class
 			);
 
-			return response.getBody().isPaid();
+			DepositConfirmResponseDto body = response.getBody();
+			if (body == null) {
+				log.error("결제 승인 응답 바디 없음 depositPaymentsId={}", depositPaymentsId);
+				throw new BusinessException(DepositErrorCode.PAYMENT_SERVICE_UNAVAILABLE);
+			}
+
+			return body.isPaid();
 
 		} catch (RestClientException e) {
-			log.error("결제 승인 실패 prepareId={}", prepareId, e);
+			log.error("결제 승인 실패 depositPaymentsId={}", depositPaymentsId, e);
 			throw new BusinessException(DepositErrorCode.PAYMENT_SERVICE_UNAVAILABLE);
 		}
 	}
