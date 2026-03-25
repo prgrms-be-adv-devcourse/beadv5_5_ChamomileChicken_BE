@@ -38,7 +38,7 @@ public class DepositRestController {
 		@RequestBody UseDepositRequestDto request
 	) {
 
-		useDepositUseCase.use(userId, request.amount());
+		useDepositUseCase.use(userId, request.depositAmount());
 		return ResponseEntity.ok().build();
 	}
 }
