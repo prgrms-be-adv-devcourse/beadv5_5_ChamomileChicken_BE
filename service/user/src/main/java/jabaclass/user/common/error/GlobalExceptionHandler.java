@@ -43,4 +43,17 @@ public class GlobalExceptionHandler {
 			.body(ApiResponseDto.fail(CommonErrorCode.INTERNAL_SERVER_ERROR.getStatus()
 				, CommonErrorCode.INTERNAL_SERVER_ERROR.getMessage()));
 	}
+
+	// JwtAuthException
+	@ExceptionHandler(jabaclass.auth.exception.JwtAuthException.class)
+	public ResponseEntity<jabaclass.user.common.dto.ApiResponseDto<Void>> handleJwtAuthException(
+			jabaclass.auth.exception.JwtAuthException ex) {
+
+		return ResponseEntity
+				.status(ex.getErrorCode().getStatus())
+				.body(jabaclass.user.common.dto.ApiResponseDto.fail(
+						ex.getErrorCode().getStatus(),
+						ex.getErrorCode().getMessage()
+				));
+	}
 }
