@@ -16,9 +16,9 @@ public record DeleteProductResposeDto(
 	ProductStatus status
 ) {
 
-	public static DeleteProductResposeDto form(UUID prdouctId, ProductStatus status) {
+	public static DeleteProductResposeDto form(UUID productId, ProductStatus status) {
 		return new DeleteProductResposeDto(
-			prdouctId, ProductStatus.DISABLE
+			productId, ProductStatus.DISABLE
 		);
 	}
 

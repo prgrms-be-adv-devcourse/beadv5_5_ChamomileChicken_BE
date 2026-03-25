@@ -335,8 +335,8 @@ public class ProductCUDTest {
 			.willReturn(Optional.of(new SellerResponseDto(SELLER_ID, "테스트 판매자", "SELLER")));
 
 		assertThatThrownBy(() -> productService.delete(productId))
-			.isInstanceOf(IllegalArgumentException.class)
-			.hasMessage("존재하지 않는 상품입니다.");
+			.isInstanceOf(BusinessException.class)
+			.hasMessage("존재하지 않는 상품 ID 입니다.");
 
 		then(productRepository).should(never()).deleteById(productId);
 	}

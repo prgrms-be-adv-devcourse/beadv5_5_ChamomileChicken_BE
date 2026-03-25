@@ -21,6 +21,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
 import jabaclass.product.application.acl.SellerRepository;
+import jabaclass.product.application.exception.BusinessException;
 import jabaclass.product.application.service.ProductService;
 import jabaclass.product.domain.model.Product;
 import jabaclass.product.domain.model.ProductStatus;
@@ -129,8 +130,8 @@ public class ProductSelectTest {
 
 		// when & then
 		assertThatThrownBy(() -> productService.searchById(id))
-			.isInstanceOf(IllegalArgumentException.class)
-			.hasMessage("존재하지 않는 상품입니다.");
+			.isInstanceOf(BusinessException.class)
+			.hasMessage("존재하지 않는 상품 ID 입니다.");
 		then(productRepository).should(times(1)).findById(id);
 	}
 }

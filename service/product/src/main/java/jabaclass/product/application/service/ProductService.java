@@ -87,7 +87,9 @@ public class ProductService implements ProductUseCase {
 			throw new BusinessException(CommonErrorCode.NOT_SELLER);
 		}
 
-		Product product = findByIdOrThrow(productId);
+		Product product = productRepository.findById(productId)
+			.orElseThrow(() -> new BusinessException(CommonErrorCode.PRODUCT_NOT_FOUND));
+
 		product.changeTitle(requestDto.title());
 		product.changeMaxCapacity(requestDto.maxCapacity());
 		product.changeDescription(requestDto.description());
@@ -107,7 +109,7 @@ public class ProductService implements ProductUseCase {
 			.orElseThrow(() -> new BusinessException(CommonErrorCode.SELLER_NOT_FOUND));
 
 		Product product = productRepository.findById(productId)
-			.orElseThrow(() -> new IllegalArgumentException("존재하지 않는 상품입니다."));
+			.orElseThrow(() -> new BusinessException(CommonErrorCode.PRODUCT_NOT_FOUND));
 
 		productRepository.deleteById(productId);
 
@@ -162,7 +164,7 @@ public class ProductService implements ProductUseCase {
 	@Override
 	public ProductResponseDto searchById(UUID productId) {
 		Product product = productRepository.findById(productId)
-			.orElseThrow(() -> new IllegalArgumentException("존재하지 않는 상품입니다."));
+			.orElseThrow(() -> new BusinessException(CommonErrorCode.PRODUCT_NOT_FOUND));
 
 		// sellerId를 확인
 		SellerResponseDto seller = sellerRepository.findSeller(product.getSellerId())
@@ -170,10 +172,5 @@ public class ProductService implements ProductUseCase {
 
 		return ProductResponseDto.form(product, seller.sellerName());
 	}
-
-	// prodct 상품이 있는지 확인
-	private Product findByIdOrThrow(UUID productId) {
-		return productRepository.findById(productId)
-			.orElseThrow(() -> new BusinessException(CommonErrorCode.PRODUCT_NOT_FOUND));
-	}
+	
 }
