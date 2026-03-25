@@ -2,6 +2,7 @@ package jabaclass.user.common.apidocs;
 
 import org.springdoc.core.customizers.OperationCustomizer;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 import org.springframework.web.method.HandlerMethod;
 
 import io.swagger.v3.oas.models.Operation;
@@ -16,7 +17,7 @@ import jabaclass.user.common.error.ErrorCode;
 @Component
 public class ApiErrorSpecOperationCustomizer implements OperationCustomizer {
 
-	private static final String JSON = "application/json";
+	private static final String APPLICATION_JSON = "application/json";
 
 	@Override
 	public Operation customize(Operation operation, HandlerMethod handlerMethod) {
@@ -42,27 +43,28 @@ public class ApiErrorSpecOperationCustomizer implements OperationCustomizer {
 				content = new Content();
 			}
 
-			MediaType mediaType = content.getOrDefault(JSON, new MediaType());
+			MediaType mediaType = content.getOrDefault(APPLICATION_JSON, new MediaType());
 
 			Example example = new Example();
-			example.setSummary(spec.summary());
-			example.setDescription(
-				(spec.description() == null || spec.description().isBlank())
-					? errorCode.getMessage()
-					: spec.description()
-			);
 			example.setValue(ApiResponseDto.fail(errorCode.getStatus(), errorCode.getMessage()));
 
-			String exampleName = (spec.name() == null || spec.name().isBlank())
-				? spec.constant()
-				: spec.name();
+			if (StringUtils.hasText(spec.summary())) {
+				example.setSummary(spec.summary());
+			}
+			if (StringUtils.hasText(spec.description())) {
+				example.setDescription(spec.description());
+			}
+
+			String exampleName = StringUtils.hasText(spec.name())
+				? spec.name()
+				: spec.constant();
 
 			mediaType.addExamples(exampleName, example);
 
-			content.addMediaType(JSON, mediaType);
+			content.addMediaType(APPLICATION_JSON, mediaType);
 			apiResponse.setContent(content);
 
-			if (apiResponse.getDescription() == null || apiResponse.getDescription().isBlank()) {
+			if (!StringUtils.hasText(apiResponse.getDescription())) {
 				apiResponse.setDescription(errorCode.getMessage());
 			}
 		}
