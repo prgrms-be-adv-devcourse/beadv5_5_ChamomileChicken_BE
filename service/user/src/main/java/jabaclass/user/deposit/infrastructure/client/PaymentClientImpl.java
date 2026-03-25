@@ -10,7 +10,7 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import jabaclass.user.common.error.BusinessException;
-import jabaclass.user.deposit.domain.error.DepositErrorCode;
+import jabaclass.user.deposit.domain.exception.DepositErrorCode;
 import jabaclass.user.deposit.infrastructure.client.dto.DepositConfirmRequestDto;
 import jabaclass.user.deposit.infrastructure.client.dto.DepositConfirmResponseDto;
 import jabaclass.user.deposit.infrastructure.client.dto.DepositPrepareRequestDto;
