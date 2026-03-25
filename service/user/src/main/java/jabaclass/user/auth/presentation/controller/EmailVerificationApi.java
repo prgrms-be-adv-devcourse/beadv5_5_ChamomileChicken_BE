@@ -12,6 +12,7 @@ import jabaclass.user.auth.presentation.dto.request.VerifyEmailCodeRequestDto;
 import jabaclass.user.auth.presentation.dto.response.EmailCheckResponseDto;
 import jabaclass.user.common.apidocs.ApiErrorSpec;
 import jabaclass.user.common.apidocs.ApiErrorSpecs;
+import jakarta.validation.Valid;
 
 @Tag(name = "Email Verification", description = "이메일 인증 API")
 public interface EmailVerificationApi {
@@ -32,7 +33,7 @@ public interface EmailVerificationApi {
 		)
 	})
 	ResponseEntity<EmailCheckResponseDto> checkEmailDuplicate(
-		@RequestBody EmailCheckRequestDto request
+		@Valid  @RequestBody EmailCheckRequestDto request
 	);
 
 	@Operation(
@@ -50,7 +51,7 @@ public interface EmailVerificationApi {
 		)
 	})
 	ResponseEntity<Void> sendVerificationCode(
-		@RequestBody SendVerificationCodeRequestDto request
+		@Valid @RequestBody SendVerificationCodeRequestDto request
 	);
 
 	@Operation(
@@ -78,6 +79,6 @@ public interface EmailVerificationApi {
 		)
 	})
 	ResponseEntity<Void> verifyCode(
-		@RequestBody VerifyEmailCodeRequestDto request
+		@Valid @RequestBody VerifyEmailCodeRequestDto request
 	);
 }
