@@ -1,4 +1,4 @@
-package jabaclass.user.auth.presentation.dto.request;
+package jabaclass.user.mail.presentation.dto.request;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
