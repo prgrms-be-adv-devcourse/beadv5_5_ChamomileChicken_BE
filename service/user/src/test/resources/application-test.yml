@@ -1,0 +1,19 @@
+spring:
+  mail:
+    host: localhost
+    port: 1025
+    username:
+    password:
+    properties:
+      mail:
+        smtp:
+          auth: false
+          starttls:
+            enable: false
+
+app:
+  mail:
+    from: test@example.com
+
+jwt:
+  secret: "test-environment-secret-key-must-be-32-chars-long-!!!"

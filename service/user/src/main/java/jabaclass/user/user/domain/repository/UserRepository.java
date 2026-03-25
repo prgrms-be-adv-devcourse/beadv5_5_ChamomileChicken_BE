@@ -8,4 +8,6 @@ import jabaclass.user.user.domain.model.User;
 public interface UserRepository {
 
 	Optional<User> findById(UUID userId);
+
+	boolean existsByEmail(String email);
 }
