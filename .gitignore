@@ -51,4 +51,4 @@ wrapper/dists/
 build/
 out/
 CLAUDE.md
-
+.claude/
