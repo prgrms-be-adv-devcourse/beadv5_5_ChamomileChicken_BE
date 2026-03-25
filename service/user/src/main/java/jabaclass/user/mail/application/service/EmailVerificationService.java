@@ -11,7 +11,6 @@ import jabaclass.user.mail.application.usecase.EmailVerificationUseCase;
 import jabaclass.user.mail.domain.model.EmailVerification;
 import jabaclass.user.mail.domain.repository.EmailVerificationRepository;
 import jabaclass.user.common.error.BusinessException;
-import jabaclass.user.user.domain.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 
 @Service
