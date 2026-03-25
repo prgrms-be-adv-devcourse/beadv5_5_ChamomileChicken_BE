@@ -9,5 +9,5 @@ public interface PaymentClient {
 
 	UUID prepareDepositPayment(UUID userId, BigDecimal amount, String paymentMethod);
 
-	boolean confirmDepositPayment(UUID prepareId);
+	boolean confirmDepositPayment(UUID depositPaymentsId);
 }
