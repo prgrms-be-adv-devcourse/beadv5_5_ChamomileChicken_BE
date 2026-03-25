@@ -1,7 +1,7 @@
 package jabaclass.payment.application.service;
 
-import jabaclass.payment.application.port.out.OrderPort;
-import jabaclass.payment.application.port.out.PaymentGatewayPort;
+import jabaclass.payment.application.port.external.OrderPort;
+import jabaclass.payment.application.port.external.PaymentGatewayPort;
 import jabaclass.payment.application.usecase.PaymentUseCase;
 import jabaclass.payment.domain.model.Payment;
 import jabaclass.payment.domain.repository.PaymentRepository;

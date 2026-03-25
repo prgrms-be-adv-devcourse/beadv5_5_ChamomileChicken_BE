@@ -11,7 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
-import jabaclass.payment.application.port.out.OrderPort;
+import jabaclass.payment.application.port.external.OrderPort;
 import jabaclass.payment.infrastructure.external.order.dto.request.OrderStatusUpdateRequestDto;
 import jabaclass.payment.infrastructure.external.order.dto.request.OrderValidationRequestDto;
 import jabaclass.payment.infrastructure.external.order.dto.response.OrderValidationResponseDto;

@@ -9,7 +9,7 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
-import jabaclass.payment.application.port.out.PaymentGatewayPort;
+import jabaclass.payment.application.port.external.PaymentGatewayPort;
 import lombok.RequiredArgsConstructor;
 
 @Component
