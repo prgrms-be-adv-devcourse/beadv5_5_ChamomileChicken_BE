@@ -20,6 +20,8 @@ import io.swagger.v3.oas.models.security.SecurityScheme;
 @Configuration
 public class SwaggerConfig {
 
+	private static final String APPLICATION_JSON = "application/json";
+
 	@Bean
 	public OpenAPI openAPI() {
 		SecurityScheme bearerScheme = new SecurityScheme()
@@ -45,7 +47,7 @@ public class SwaggerConfig {
 	@Bean
 	public OperationCustomizer securityErrorCustomizer() {
 		return (operation, handlerMethod) -> {
-			Schema<?> errorSchema = new Schema<>()
+			Schema<?> unauthorizedSchema = new Schema<>()
 				.type("object")
 				.addProperty("status", new Schema<>().type("string").example("UNAUTHORIZED"))
 				.addProperty("message", new Schema<>().type("string").example("인증이 필요합니다."))
@@ -54,8 +56,8 @@ public class SwaggerConfig {
 			operation.getResponses().addApiResponse("401", new ApiResponse()
 				.description("Unauthorized")
 				.content(new Content().addMediaType(
-					"application/json",
-					new MediaType().schema(errorSchema)
+					APPLICATION_JSON,
+					new MediaType().schema(unauthorizedSchema)
 				)));
 
 			Schema<?> forbiddenSchema = new Schema<>()
@@ -67,7 +69,7 @@ public class SwaggerConfig {
 			operation.getResponses().addApiResponse("403", new ApiResponse()
 				.description("Forbidden")
 				.content(new Content().addMediaType(
-					"application/json",
+					APPLICATION_JSON,
 					new MediaType().schema(forbiddenSchema)
 				)));
 
