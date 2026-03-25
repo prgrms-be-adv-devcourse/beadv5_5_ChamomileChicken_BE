@@ -1,4 +1,4 @@
-package jabastore.auth.jwt;
+package jabaclass.auth.jwt;
 
 import java.nio.charset.StandardCharsets;
 import java.security.Key;
@@ -12,8 +12,8 @@ import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.UnsupportedJwtException;
 import io.jsonwebtoken.security.Keys;
-import jabastore.auth.exception.JwtAuthException;
-import jabastore.auth.exception.JwtErrorCode;
+import jabaclass.auth.exception.JwtAuthException;
+import jabaclass.auth.exception.JwtErrorCode;
 
 public class JwtProvider {
 
