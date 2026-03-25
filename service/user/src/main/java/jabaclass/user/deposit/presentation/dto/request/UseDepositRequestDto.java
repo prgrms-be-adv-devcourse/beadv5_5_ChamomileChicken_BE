@@ -3,6 +3,6 @@ package jabaclass.user.deposit.presentation.dto.request;
 import java.math.BigDecimal;
 
 public record UseDepositRequestDto(
-	BigDecimal amount
+	BigDecimal depositAmount
 ) {
 }
