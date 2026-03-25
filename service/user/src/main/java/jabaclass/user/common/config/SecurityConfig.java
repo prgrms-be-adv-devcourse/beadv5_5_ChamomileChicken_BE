@@ -49,24 +49,21 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                // 1. CSRF 및 세션 설정 (Stateless)
                 .csrf(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .sessionManagement(session
                         -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
-                // 2. 권한 설정 (이메일 인증, 로그인, 회원가입은 모두 허용)
+                // 권한 설정 (이메일 인증, 로그인, 회원가입은 모두 허용)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/v1/auth/**").permitAll() // 이메일 인증 관련
-                        .requestMatchers("/api/v1/users/signup").permitAll() // 회원가입
+                        .requestMatchers("/api/v1/auth/**").permitAll()
+                        .requestMatchers("/api/v1/users/signup").permitAll()
                         .requestMatchers("/api/v1/users/login").permitAll() // 로그인 (추후 AuthController로 옮길 경우 수정)
-                        .anyRequest().authenticated() // 그 외는 인증 필요
+                        .anyRequest().authenticated()
                 )
 
-                // 3. JWT 필터 배치
                 .addFilterBefore(
-                        // 위에서 만든 빈들을 메서드 호출 방식으로 주입
                         new JwtAuthenticationFilter(jwtProvider(), tokenResolver(), objectMapper()),
                         UsernamePasswordAuthenticationFilter.class
                 );
