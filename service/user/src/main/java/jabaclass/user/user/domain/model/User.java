@@ -55,6 +55,10 @@ public class User extends BaseEntity {
 		this.phone = phone;
 	}
 
+	public void changeEmail(String email) {
+		this.email = email;
+	}
+
 	public void chargeDeposit(BigDecimal amount) {
 		this.deposit = this.deposit.add(amount);
 	}
