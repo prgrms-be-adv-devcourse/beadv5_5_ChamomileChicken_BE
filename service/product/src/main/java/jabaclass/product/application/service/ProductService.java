@@ -39,15 +39,17 @@ public class ProductService implements ProductUseCase {
 	private final ProductRepository productRepository;
 	private final SellerRepository sellerRepository;
 	private final ApplicationEventPublisher publisher;
-
-	// 테스트용입니다.
-	private static final UUID SELLER_ID = UUID.fromString("123e4567-e89b-12d3-a456-426614174000");
+	private final AuditorAwareService auditorAwareService;
 
 	@Override
 	@Transactional
 	public ProductResponseDto create(CreateProductRequestDto requestDto) {
 		// seller 룰을 확인
 		SellerResponseDto seller = findBySellerIdOrThrow(requestDto.sellerId());
+		SellerRole role = SellerRole.from(seller.role());
+		if (role != SellerRole.SELLER) {
+			throw new BusinessException(CommonErrorCode.NOT_SELLER);
+		}
 
 		Product product = Product.builder()
 			.sellerId(requestDto.sellerId())
@@ -68,9 +70,15 @@ public class ProductService implements ProductUseCase {
 	@Override
 	@Transactional
 	public ProductResponseDto update(UpdateProductRequestDto requestDto, UUID productId) {
-		//	UUID sellerId = auditorAwareService.getCurrentAuditor().get();
+		UUID sellerId = auditorAwareService.getCurrentAuditor()
+			.orElseThrow(() -> new BusinessException(CommonErrorCode.EMPTY_USER));
+
 		// sellerId를 확인
-		SellerResponseDto seller = findBySellerIdOrThrow(SELLER_ID);
+		SellerResponseDto seller = findBySellerIdOrThrow(sellerId);
+		SellerRole role = SellerRole.from(seller.role());
+		if (role != SellerRole.SELLER) {
+			throw new BusinessException(CommonErrorCode.NOT_SELLER);
+		}
 		// 상품 존재하는지 확인
 		Product product = findByIdOrThrow(productId);
 		// 본인 상품인지 확인
@@ -89,9 +97,15 @@ public class ProductService implements ProductUseCase {
 	@Override
 	@Transactional
 	public DeleteProductResposeDto delete(UUID productId) {
-		//UUID sellerId = auditorAwareService.getCurrentAuditor().get();
+		UUID sellerId = auditorAwareService.getCurrentAuditor()
+			.orElseThrow(() -> new BusinessException(CommonErrorCode.EMPTY_USER));
+		
 		// sellerId를 확인
-		SellerResponseDto seller = findBySellerIdOrThrow(SELLER_ID);
+		SellerResponseDto seller = findBySellerIdOrThrow(sellerId);
+		SellerRole role = SellerRole.from(seller.role());
+		if (role != SellerRole.SELLER) {
+			throw new BusinessException(CommonErrorCode.NOT_SELLER);
+		}
 		// 상품 존재하는지 확인
 		Product product = findByIdOrThrow(productId);
 		// 본인 상품인지 확인
@@ -160,21 +174,15 @@ public class ProductService implements ProductUseCase {
 	}
 
 	// 상품 존재 여부/단일 상품 검색
-	private Product findByIdOrThrow(UUID sellerId) {
-		return productRepository.findById(sellerId)
+	private Product findByIdOrThrow(UUID productId) {
+		return productRepository.findById(productId)
 			.orElseThrow(() -> new BusinessException(CommonErrorCode.PRODUCT_NOT_FOUND));
 	}
 
-	// 로그인 계정 여부 및 판매자 룰 확인
+	// 로그인 계정 여부
 	private SellerResponseDto findBySellerIdOrThrow(UUID sellerId) {
 		SellerResponseDto sellerInfo = sellerRepository.findSeller(sellerId)
 			.orElseThrow(() -> new BusinessException(CommonErrorCode.SELLER_NOT_FOUND));
-
-		SellerRole role = SellerRole.from(sellerInfo.role());
-
-		if (role != SellerRole.SELLER) {
-			throw new BusinessException(CommonErrorCode.NOT_SELLER);
-		}
 
 		return sellerInfo;
 	}

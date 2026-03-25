@@ -67,11 +67,7 @@ public record ProductResponseDto(
 	public static ProductResponseDto listForm(Product product, Map<UUID, String> map) {
 		return new ProductResponseDto(
 			product.getId(),
-			map.entrySet().stream()
-				.filter(m -> product.getSellerId().equals(m.getKey()))
-				.map(Map.Entry::getValue)
-				.findFirst()
-				.orElse("사용자 이름이 지정되지 않았습니다."),
+			map.getOrDefault(product.getSellerId(), "사용자 이름이 지정되지 않았습니다."),
 			product.getTitle(),
 			product.getMaxCapacity(),
 			product.getDescription(),

@@ -31,7 +31,9 @@ public enum CommonErrorCode {
 	//500 삭제 실패
 	FAIL_DELETE(HttpStatus.INTERNAL_SERVER_ERROR, "삭제 에러입니다. 서버 팀에 연락주세요!"),
 	//404 판매자와 상품의 매치 실패
-	MATCH_FAIL(HttpStatus.INTERNAL_SERVER_ERROR, "해당 상품은 본인 상품이 아닙니다.");
+	MATCH_FAIL(HttpStatus.FORBIDDEN, "해당 상품은 본인 상품이 아닙니다."),
+	// 401 인증 되지 않은 유저->sellerId가 비어있을 경우
+	EMPTY_USER(HttpStatus.UNAUTHORIZED, "로그인 후 다시 이용해주세요.");
 
 	private final HttpStatus status;
 	private final String message;

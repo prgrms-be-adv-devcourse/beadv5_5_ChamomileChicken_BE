@@ -1,6 +1,5 @@
 package jabaclass.product.infrastructure.acl.client;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Random;
@@ -50,27 +49,10 @@ public class SellerApiClient implements SellerClient {
 
 		Random random = new Random();
 
-		List<SellerResponseDto> sellerResponseDtoList = new ArrayList<>();
-		sellerResponseDtoList
-			.stream()
-			.forEach(sellerResponseDto -> {
-				String result = random.ints(2, 0xAC00, 0xD7A3 + 1)
-					.mapToObj(i -> String.valueOf((char)i))
-					.collect(Collectors.joining());
-				sellerResponseDto.form(
-					UUID.randomUUID(),
-					result,
-					SellerRole.SELLER.toString()
-				);
-			});
-		sellerResponseDtoList.add(
-			SellerResponseDto.form(
-				UUID.fromString("123e4567-e89b-12d3-a456-426614174000"),
-				"신짱구",
-				SellerRole.SELLER.toString()
-			)
-		);
-		
+		List<SellerResponseDto> sellerResponseDtoList = sellerIds.stream()
+			.map(id -> new SellerResponseDto(id, "판매자_" + id.toString().substring(0, 4), SellerRole.SELLER.toString()))
+			.collect(Collectors.toList());
+
 		return Optional.of(sellerResponseDtoList);
 	}
 }

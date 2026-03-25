@@ -20,6 +20,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import jabaclass.product.application.acl.SellerRepository;
 import jabaclass.product.application.exception.BusinessException;
+import jabaclass.product.application.service.AuditorAwareService;
 import jabaclass.product.application.service.ProductService;
 import jabaclass.product.domain.model.Product;
 import jabaclass.product.domain.model.ProductStatus;
@@ -48,6 +49,9 @@ public class ProductCUDTest {
 
 	@Mock
 	private ApplicationEventPublisher publisher;
+
+	@Mock
+	private AuditorAwareService auditorAwareService;
 
 	// test 상품
 	private Product product1;
@@ -265,16 +269,19 @@ public class ProductCUDTest {
 		);
 
 		/// Stub: seller 조회
+		when(auditorAwareService.getCurrentAuditor())
+			.thenReturn(Optional.of(SELLER_ID));
+
 		given(sellerRepository.findSeller(eq(SELLER_ID)))
 			.willReturn(Optional.of(new SellerResponseDto(
 				SELLER_ID, "테스트 판매자", "SELLER"
 			)));
 
-		// ⭐ 상품 조회 (1번)
+		// 상품 조회 (1번)
 		given(productRepository.findById(productId))
 			.willReturn(Optional.of(product1));
 
-		// ⭐ 권한 체크 (2번)
+		// 권한 체크 (2번)
 		given(productRepository.findByIdAndSellerId(productId, SELLER_ID))
 			.willReturn(Optional.of(product1));
 
@@ -300,6 +307,9 @@ public class ProductCUDTest {
 
 		// 존재하는 판매자
 		// Stub: seller 조회
+		when(auditorAwareService.getCurrentAuditor())
+			.thenReturn(Optional.of(SELLER_ID));
+
 		given(sellerRepository.findSeller(eq(SELLER_ID)))
 			.willReturn(Optional.of(new SellerResponseDto(SELLER_ID, "테스트 판매자", "SELLER")));
 
@@ -315,17 +325,20 @@ public class ProductCUDTest {
 	@Test
 	void 상품_삭제_성공() {
 		// 존재하는 판매자
+		when(auditorAwareService.getCurrentAuditor())
+			.thenReturn(Optional.of(SELLER_ID));
+
 		// Stub: seller 조회
 		given(sellerRepository.findSeller(eq(SELLER_ID)))
 			.willReturn(Optional.of(new SellerResponseDto(
 				SELLER_ID, "테스트 판매자", "SELLER"
 			)));
 
-		// ⭐ 상품 조회 (1번)
+		//  상품 조회 (1번)
 		given(productRepository.findById(productId))
 			.willReturn(Optional.of(product1));
 
-		// ⭐ 권한 체크 (2번)
+		//  권한 체크 (2번)
 		given(productRepository.findByIdAndSellerId(productId, SELLER_ID))
 			.willReturn(Optional.of(product1));
 
@@ -343,6 +356,9 @@ public class ProductCUDTest {
 
 		// 존재하는 판매자
 		// Stub: seller 조회
+		when(auditorAwareService.getCurrentAuditor())
+			.thenReturn(Optional.of(SELLER_ID));
+
 		given(sellerRepository.findSeller(eq(SELLER_ID)))
 			.willReturn(Optional.of(new SellerResponseDto(SELLER_ID, "테스트 판매자", "SELLER")));
 
@@ -363,6 +379,9 @@ public class ProductCUDTest {
 			new BigDecimal("1200.00"),
 			ProductStatus.ENABLE
 		);
+		when(auditorAwareService.getCurrentAuditor())
+			.thenReturn(Optional.of(SELLER_ID));
+
 		given(sellerRepository.findSeller(any(UUID.class)))
 			.willAnswer(invocation -> {
 				UUID id = invocation.getArgument(0);
