@@ -47,7 +47,7 @@ public record ProductResponseDto(
 	LocalDateTime modifyDt
 ) {
 
-	public static ProductResponseDto form(Product product, String sellerName) {
+	public static ProductResponseDto from(Product product, String sellerName) {
 		return new ProductResponseDto(
 			product.getId(),
 			sellerName,
@@ -64,7 +64,7 @@ public record ProductResponseDto(
 		);
 	}
 
-	public static ProductResponseDto listForm(Product product, Map<UUID, String> map) {
+	public static ProductResponseDto listFrom(Product product, Map<UUID, String> map) {
 		return new ProductResponseDto(
 			product.getId(),
 			map.getOrDefault(product.getSellerId(), "사용자 이름이 지정되지 않았습니다."),

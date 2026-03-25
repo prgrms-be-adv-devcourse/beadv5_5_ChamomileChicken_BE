@@ -16,7 +16,7 @@ public record DeleteProductResposeDto(
 	ProductStatus status
 ) {
 
-	public static DeleteProductResposeDto form(UUID productId, ProductStatus status) {
+	public static DeleteProductResposeDto from(UUID productId, ProductStatus status) {
 		return new DeleteProductResposeDto(
 			productId, status
 		);

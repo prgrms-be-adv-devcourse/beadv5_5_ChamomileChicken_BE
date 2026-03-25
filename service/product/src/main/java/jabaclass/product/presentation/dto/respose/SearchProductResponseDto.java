@@ -21,7 +21,7 @@ public record SearchProductResponseDto(
 	@Schema(description = "검색된 상품")
 	List<ProductResponseDto> content
 ) {
-	public static SearchProductResponseDto form(Page<Product> product, List<ProductResponseDto> content) {
+	public static SearchProductResponseDto from(Page<Product> product, List<ProductResponseDto> content) {
 		return new SearchProductResponseDto(
 			product.getTotalElements(),
 			product.getTotalPages(),

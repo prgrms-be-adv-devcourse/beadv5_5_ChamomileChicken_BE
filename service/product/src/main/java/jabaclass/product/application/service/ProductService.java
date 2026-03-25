@@ -64,7 +64,7 @@ public class ProductService implements ProductUseCase {
 		Product saved = productRepository.save(product);
 
 		publisher.publishEvent(new ProductEventResponseDto(saved.getId()));
-		return ProductResponseDto.form(saved, seller.sellerName());
+		return ProductResponseDto.from(saved, seller.sellerName());
 	}
 
 	@Override
@@ -91,7 +91,7 @@ public class ProductService implements ProductUseCase {
 		product.changePrice(requestDto.price());
 		product.changeStatus(requestDto.status());
 
-		return ProductResponseDto.form(product, seller.sellerName());
+		return ProductResponseDto.from(product, seller.sellerName());
 	}
 
 	@Override
@@ -99,7 +99,7 @@ public class ProductService implements ProductUseCase {
 	public DeleteProductResposeDto delete(UUID productId) {
 		UUID sellerId = auditorAwareService.getCurrentAuditor()
 			.orElseThrow(() -> new BusinessException(CommonErrorCode.EMPTY_USER));
-		
+
 		// sellerId를 확인
 		SellerResponseDto seller = findBySellerIdOrThrow(sellerId);
 		SellerRole role = SellerRole.from(seller.role());
@@ -113,7 +113,7 @@ public class ProductService implements ProductUseCase {
 
 		product.changeDelete();
 
-		return DeleteProductResposeDto.form(productId, ProductStatus.DISABLE);
+		return DeleteProductResposeDto.from(productId, ProductStatus.DISABLE);
 	}
 
 	@Override
@@ -154,13 +154,13 @@ public class ProductService implements ProductUseCase {
 
 		// sellerId를 가져온 기준으로 sellerNmae set
 		List<ProductResponseDto> resultPro = page.getContent().stream()
-			.map(p -> ProductResponseDto.listForm(
+			.map(p -> ProductResponseDto.listFrom(
 				p,
 				sellerMap
 			))
 			.toList();
 
-		return SearchProductResponseDto.form(page, resultPro);
+		return SearchProductResponseDto.from(page, resultPro);
 	}
 
 	@Override
@@ -170,7 +170,7 @@ public class ProductService implements ProductUseCase {
 		// sellerId를 확인
 		SellerResponseDto seller = findBySellerIdOrThrow(product.getSellerId());
 
-		return ProductResponseDto.form(product, seller.sellerName());
+		return ProductResponseDto.from(product, seller.sellerName());
 	}
 
 	// 상품 존재 여부/단일 상품 검색
