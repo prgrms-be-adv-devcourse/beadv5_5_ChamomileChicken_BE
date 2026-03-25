@@ -1,4 +1,4 @@
-package jabastore.auth.jwt;
+package jabaclass.auth.jwt;
 
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.util.StringUtils;

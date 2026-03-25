@@ -1,4 +1,4 @@
-package jabastore.auth.exception;
+package jabaclass.auth.exception;
 
 import org.springframework.http.HttpStatus;
 
