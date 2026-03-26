@@ -3,6 +3,7 @@ package jabaclass.user.user.application.service;
 import java.math.BigDecimal;
 import java.util.UUID;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -86,5 +87,29 @@ public class UserService implements UserUseCase {
 	private User getUser(UUID userId) {
 		return userRepository.findById(userId)
 			.orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
+	}
+
+	private void saveUser(User user) {
+		try {
+			userRepository.saveAndFlush(user);
+		} catch (DataIntegrityViolationException e) {
+			if (isEmailUniqueViolation(e)) {
+				throw new BusinessException(UserErrorCode.EMAIL_ALREADY_EXISTS);
+			}
+			throw e;
+		}
+	}
+
+	// Todo 이 메서드 역할을 생각하여 별도 클래스로 분리 리펙터링 고려
+	private boolean isEmailUniqueViolation(DataIntegrityViolationException e) {
+		Throwable cause = e;
+		while (cause != null) {
+			String message = cause.getMessage();
+			if (message != null && message.contains("uk_users_email")) {
+				return true;
+			}
+			cause = cause.getCause();
+		}
+		return false;
 	}
 }
