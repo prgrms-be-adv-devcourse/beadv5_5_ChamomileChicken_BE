@@ -44,15 +44,7 @@ public class ScheduleService implements ScheduleUseCase {
 	@Override
 	@Transactional
 	public SchedulesResponseDto create(CreateScheduleRequestDto requestDto, UUID productId) {
-		UUID sellerId = auditorAwareService.getCurrentAuditor()
-			.orElseThrow(() -> new BusinessException(CommonErrorCode.EMPTY_USER));
-
-		// seller 룰을 확인
-		SellerResponseDto seller = findBySellerIdOrThrow(sellerId);
-		SellerRole role = SellerRole.from(seller.role());
-		if (role != SellerRole.SELLER) {
-			throw new BusinessException(CommonErrorCode.NOT_SELLER);
-		}
+		SellerResponseDto seller = validateAndGetSeller();
 
 		// 상품 존재하는지 확인
 		Product product = productUseCase.findByIdOrThrow(productId);
@@ -95,21 +87,18 @@ public class ScheduleService implements ScheduleUseCase {
 	@Override
 	@Transactional
 	public DeleteScheduleResposeDto delete(UUID productId, UUID scheduleId) {
-		UUID sellerId = auditorAwareService.getCurrentAuditor()
-			.orElseThrow(() -> new BusinessException(CommonErrorCode.EMPTY_USER));
+		SellerResponseDto seller = validateAndGetSeller();
 
-		// sellerId를 확인
-		SellerResponseDto seller = findBySellerIdOrThrow(sellerId);
-		SellerRole role = SellerRole.from(seller.role());
-		if (role != SellerRole.SELLER) {
-			throw new BusinessException(CommonErrorCode.NOT_SELLER);
-		}
 		// 상품 존재하는지 확인
 		Product product = productUseCase.findByIdOrThrow(productId);
 		// 상품 일자가 존재하는지
 		Schedule schedule = findByIdOrThrow(scheduleId);
 		// 본인 상품인지 확인
 		productUseCase.matchProductAndSellerId(product.getId(), seller.sellerId());
+
+		if (!schedule.getProductId().equals(product.getId())) {
+			throw new BusinessException(CommonErrorCode.MATCH_FAIL);
+		}
 
 		schedule.changeStatus(ReservedStatus.CLOSED);
 		schedule.changeDelete();
@@ -120,15 +109,7 @@ public class ScheduleService implements ScheduleUseCase {
 	@Override
 	@Transactional
 	public SchedulesResponseDto update(UpdateScheduleRequestDto requestDto, UUID productId, UUID scheduleId) {
-		UUID sellerId = auditorAwareService.getCurrentAuditor()
-			.orElseThrow(() -> new BusinessException(CommonErrorCode.EMPTY_USER));
-
-		// seller 룰을 확인
-		SellerResponseDto seller = findBySellerIdOrThrow(sellerId);
-		SellerRole role = SellerRole.from(seller.role());
-		if (role != SellerRole.SELLER) {
-			throw new BusinessException(CommonErrorCode.NOT_SELLER);
-		}
+		SellerResponseDto seller = validateAndGetSeller();
 
 		// 상품 존재하는지 확인
 		productUseCase.findByIdOrThrow(productId);
@@ -236,6 +217,17 @@ public class ScheduleService implements ScheduleUseCase {
 		if (!start.isBefore(end)) {
 			throw new BusinessException(CommonErrorCode.INVALID_TIME_RANGE);
 		}
+	}
+
+	private SellerResponseDto validateAndGetSeller() {
+		UUID sellerId = auditorAwareService.getCurrentAuditor()
+			.orElseThrow(() -> new BusinessException(CommonErrorCode.EMPTY_USER));
+		SellerResponseDto seller = findBySellerIdOrThrow(sellerId);
+		SellerRole role = SellerRole.from(seller.role());
+		if (role != SellerRole.SELLER) {
+			throw new BusinessException(CommonErrorCode.NOT_SELLER);
+		}
+		return seller;
 	}
 
 }

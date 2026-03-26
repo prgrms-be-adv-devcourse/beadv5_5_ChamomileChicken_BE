@@ -18,7 +18,7 @@ public interface ScheduleUseCase {
 	// 스케줄 삭제
 	DeleteScheduleResposeDto delete(UUID productId, UUID scheduleId);
 
-	// 스게줄 수정
+	// 스케줄 수정
 	SchedulesResponseDto update(UpdateScheduleRequestDto requestDto, UUID productId, UUID scheduleId);
 
 	// 스케줄 검색

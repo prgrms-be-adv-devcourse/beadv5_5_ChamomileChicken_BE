@@ -141,7 +141,8 @@ public interface ProductOpenApi {
 		responseCode = "200",
 		description = "스케줄 검색 성공",
 		content = @Content(
-			schema = @Schema(implementation = SchedulesResponseDto.class)
+			array = @io.swagger.v3.oas.annotations.media.ArraySchema(
+				schema = @Schema(implementation = SchedulesResponseDto.class))
 		)
 	)
 	@CommonErrorResponses
