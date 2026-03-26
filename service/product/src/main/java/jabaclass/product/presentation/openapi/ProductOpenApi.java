@@ -12,10 +12,12 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jabaclass.product.common.exception.ApiResponseDto;
 import jabaclass.product.presentation.dto.request.CreateProductRequestDto;
 import jabaclass.product.presentation.dto.request.CreateScheduleRequestDto;
+import jabaclass.product.presentation.dto.request.OrderRequestDto;
 import jabaclass.product.presentation.dto.request.SearchProductRequestDto;
 import jabaclass.product.presentation.dto.request.UpdateProductRequestDto;
 import jabaclass.product.presentation.dto.request.UpdateScheduleRequestDto;
 import jabaclass.product.presentation.dto.respose.DeleteProductResposeDto;
+import jabaclass.product.presentation.dto.respose.OrderResponseDto;
 import jabaclass.product.presentation.dto.respose.ProductResponseDto;
 import jabaclass.product.presentation.dto.respose.SchedulesResponseDto;
 import jabaclass.product.presentation.dto.respose.SearchProductResponseDto;
@@ -101,4 +103,15 @@ public interface ProductOpenApi {
 	@CommonErrorResponses
 	ResponseEntity<ApiResponseDto<SchedulesResponseDto>> schedulesUpdate(UpdateScheduleRequestDto requestDto,
 		UUID productId, UUID scheduleId);
+
+	@Operation(summary = "상품 일정 검증", description = "상품 일정을 검증 합니다.")
+	@ApiResponse(
+		responseCode = "200",
+		description = "스케줄 검증 성공",
+		content = @Content(
+			schema = @Schema(implementation = SchedulesResponseDto.class)
+		)
+	)
+	@CommonErrorResponses
+	ResponseEntity<OrderResponseDto> schedulesVerification(OrderRequestDto requestDto);
 }

@@ -20,7 +20,9 @@ import jabaclass.product.domain.repository.ScheduleRepository;
 import jabaclass.product.infrastructure.acl.dto.SellerResponseDto;
 import jabaclass.product.infrastructure.acl.dto.SellerRole;
 import jabaclass.product.presentation.dto.request.CreateScheduleRequestDto;
+import jabaclass.product.presentation.dto.request.OrderRequestDto;
 import jabaclass.product.presentation.dto.request.UpdateScheduleRequestDto;
+import jabaclass.product.presentation.dto.respose.OrderResponseDto;
 import jabaclass.product.presentation.dto.respose.SchedulesResponseDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -140,6 +142,22 @@ public class ScheduleService implements ScheduleUseCase {
 	@Override
 	public SchedulesResponseDto select(CreateScheduleRequestDto createScheduleRequestDto) {
 		return null;
+	}
+
+	// 상품 검증 -> 예약 가능 상태 return
+	@Override
+	public OrderResponseDto verification(OrderRequestDto requestDto) {
+		Schedule schedule = findByIdOrThrow(requestDto.productScheduleId());
+		// 스케줄에 예약 가능 인원과 받아온 인원에 대한 체크
+		boolean status = true;
+
+		// DB 값 < 받아온 값
+		if (schedule.getMaxCapacity() < requestDto.quantity())
+			status = false;
+
+		Product product = productUseCase.findByIdOrThrow(schedule.getProductId());
+
+		return OrderResponseDto.from(product, requestDto.quantity(), status);
 	}
 
 	// 상품 일자 존재 여부/단일 상품 일자 검색

@@ -19,10 +19,12 @@ import jabaclass.product.application.usecase.ScheduleUseCase;
 import jabaclass.product.common.exception.ApiResponseDto;
 import jabaclass.product.presentation.dto.request.CreateProductRequestDto;
 import jabaclass.product.presentation.dto.request.CreateScheduleRequestDto;
+import jabaclass.product.presentation.dto.request.OrderRequestDto;
 import jabaclass.product.presentation.dto.request.SearchProductRequestDto;
 import jabaclass.product.presentation.dto.request.UpdateProductRequestDto;
 import jabaclass.product.presentation.dto.request.UpdateScheduleRequestDto;
 import jabaclass.product.presentation.dto.respose.DeleteProductResposeDto;
+import jabaclass.product.presentation.dto.respose.OrderResponseDto;
 import jabaclass.product.presentation.dto.respose.ProductResponseDto;
 import jabaclass.product.presentation.dto.respose.SchedulesResponseDto;
 import jabaclass.product.presentation.dto.respose.SearchProductResponseDto;
@@ -121,6 +123,14 @@ public class ProductRestController implements ProductOpenApi {
 
 		return ResponseEntity.ok()
 			.body(ApiResponseDto.success(HttpStatus.OK, "성공적으로 수정 되었습니다.", response));
+	}
+
+	// 상품 스케줄 검증 -> 예약 가능한지
+	@Override
+	@GetMapping("/schedules/verification")
+	public ResponseEntity<OrderResponseDto> schedulesVerification(OrderRequestDto requestDto) {
+		OrderResponseDto response = scheduleUseCase.verification(requestDto);
+		return ResponseEntity.ok().body(response);
 	}
 
 }
