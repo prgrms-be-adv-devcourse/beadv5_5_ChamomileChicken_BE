@@ -24,4 +24,6 @@ public interface ScheduleUseCase {
 
 	OrderResponseDto verification(OrderRequestDto requestDto);
 
+	void restoringInventory(OrderRequestDto requestDto);
+
 }

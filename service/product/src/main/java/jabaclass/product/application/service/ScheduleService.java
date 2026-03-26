@@ -82,7 +82,7 @@ public class ScheduleService implements ScheduleUseCase {
 			.startTime(startTime)
 			.endTime(endTime)
 			.status(requestDto.status())
-			.maxCapacity(requestDto.maxCapacity())
+			.maxCapacity(product.getMaxCapacity())
 			.build();
 
 		Schedule saved = scheduleRepository.save(save);
@@ -146,18 +146,41 @@ public class ScheduleService implements ScheduleUseCase {
 
 	// 상품 검증 -> 예약 가능 상태 return
 	@Override
+	@Transactional
 	public OrderResponseDto verification(OrderRequestDto requestDto) {
 		Schedule schedule = findByIdOrThrow(requestDto.productScheduleId());
 		// 스케줄에 예약 가능 인원과 받아온 인원에 대한 체크
 		boolean status = true;
+		int maxCapacity = schedule.getMaxCapacity();
+		int quantity = requestDto.quantity();
 
 		// DB 값 < 받아온 값
-		if (schedule.getMaxCapacity() < requestDto.quantity())
+		if (maxCapacity < quantity) { // 예약이 안 되는 경우
 			status = false;
+		} else { // 예약이 되는 경우
+			int afterMaxCapacity = maxCapacity - quantity;
+			schedule.changeMaxCapacity(afterMaxCapacity);
+		}
 
 		Product product = productUseCase.findByIdOrThrow(schedule.getProductId());
 
 		return OrderResponseDto.from(product, requestDto.quantity(), status);
+	}
+
+	@Override
+	@Transactional
+	public void restoringInventory(OrderRequestDto requestDto) {
+		Schedule schedule = findByIdOrThrow(requestDto.productScheduleId());
+		Product product = productUseCase.findByIdOrThrow(schedule.getProductId());
+
+		int productMax = product.getMaxCapacity();
+		int maxCapacity = schedule.getMaxCapacity();
+		int quantity = requestDto.quantity();
+		int afterMaxCapacity = maxCapacity + quantity;
+		if (productMax < quantity)
+			afterMaxCapacity = productMax;
+
+		schedule.changeMaxCapacity(afterMaxCapacity);
 	}
 
 	// 상품 일자 존재 여부/단일 상품 일자 검색

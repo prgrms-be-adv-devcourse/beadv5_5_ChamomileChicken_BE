@@ -34,7 +34,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @RestController
-@RequestMapping("/api/products")
+@RequestMapping("/api/v1/products")
 @RequiredArgsConstructor
 @Slf4j
 public class ProductRestController implements ProductOpenApi {
@@ -127,10 +127,16 @@ public class ProductRestController implements ProductOpenApi {
 
 	// 상품 스케줄 검증 -> 예약 가능한지
 	@Override
-	@GetMapping("/schedules/verification")
-	public ResponseEntity<OrderResponseDto> schedulesVerification(OrderRequestDto requestDto) {
+	@PostMapping("/reservations")
+	public ResponseEntity<OrderResponseDto> schedulesReservations(OrderRequestDto requestDto) {
 		OrderResponseDto response = scheduleUseCase.verification(requestDto);
 		return ResponseEntity.ok().body(response);
+	}
+
+	@Override
+	@PostMapping("/reservations/release")
+	public void schedulesVerification(OrderRequestDto requestDto) {
+		scheduleUseCase.restoringInventory(requestDto);
 	}
 
 }
