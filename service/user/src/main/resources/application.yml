@@ -3,18 +3,24 @@ server:
 
 spring:
   application:
+    name: user
   profiles:
     active: dev
-    name: user
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: deposit-service
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    listener:
+      ack-mode: record
+
   datasource:
-    url: jdbc:h2:mem:userdb
-    driver-class-name: org.h2.Driver
-    username: sa
-    password:
-  h2:
-    console:
-      enabled: true
-      path: /h2-console
+    url: jdbc:postgresql://localhost:5432/userdb
+    driver-class-name: org.postgresql.Driver
+    username: ${POSTGRES_USER:postgres}
+    password: ${POSTGRES_PASSWORD:postgres}
   jpa:
     hibernate:
       ddl-auto: create-drop
@@ -22,7 +28,25 @@ spring:
       hibernate:
         format_sql: true
     show-sql: true
-    database-platform: org.hibernate.dialect.H2Dialect
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+
+  #  datasource:
+  #    url: jdbc:h2:mem:userdb
+  #    driver-class-name: org.h2.Driver
+  #    username: sa
+  #    password:
+  #  h2:
+  #    console:
+  #      enabled: true
+  #      path: /h2-console
+  #  jpa:
+  #    hibernate:
+  #      ddl-auto: create-drop
+  #    properties:
+  #      hibernate:
+  #        format_sql: true
+  #    show-sql: true
+  #    database-platform: org.hibernate.dialect.H2Dialect
 
   mail:
     host: ${MAIL_HOST:localhost}
@@ -48,3 +72,4 @@ jwt:
   secret: ${JWT_SECRET}
   access-token-validity: 3600000
   refresh-token-validity: 604800000
+

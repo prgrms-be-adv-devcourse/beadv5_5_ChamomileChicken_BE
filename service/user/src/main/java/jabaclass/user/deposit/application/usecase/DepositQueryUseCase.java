@@ -8,7 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import jabaclass.user.common.error.BusinessException;
 import jabaclass.user.deposit.domain.DepositHistory;
-import jabaclass.user.deposit.domain.error.DepositErrorCode;
+import jabaclass.user.deposit.domain.exception.DepositErrorCode;
 import jabaclass.user.deposit.domain.repository.DepositHistoryRepository;
 import jabaclass.user.deposit.presentation.dto.response.DepositDetailResponseDto;
 import jabaclass.user.deposit.presentation.dto.response.DepositHistoryItemDto;

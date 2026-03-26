@@ -10,7 +10,7 @@ import jabaclass.user.deposit.application.DepositHistoryStatusUpdater;
 import jabaclass.user.deposit.domain.DepositHistory;
 import jabaclass.user.deposit.domain.DepositStatus;
 import jabaclass.user.deposit.domain.DepositType;
-import jabaclass.user.deposit.domain.error.DepositErrorCode;
+import jabaclass.user.deposit.domain.exception.DepositErrorCode;
 import jabaclass.user.deposit.domain.repository.DepositHistoryRepository;
 import jabaclass.user.deposit.infrastructure.client.PaymentClient;
 import jabaclass.user.deposit.presentation.dto.request.DepositChargeRequestDto;

@@ -1,5 +1,6 @@
 package jabaclass.user.user.infrastructure.persistence;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -23,5 +24,30 @@ public class UserRepositoryAdapter implements UserRepository {
 	@Override
 	public boolean existsByEmail(String email) {
 		return userJpaRepository.existsByEmail(email);
+	}
+
+	@Override
+	public User save(User user) {
+		return userJpaRepository.save(user);
+	}
+
+	@Override
+	public User saveAndFlush(User user) {
+		return userJpaRepository.saveAndFlush(user);
+	}
+
+	@Override
+	public void delete(User user) {
+		userJpaRepository.delete(user);
+	}
+
+	@Override
+	public Optional<User> findByIdWithLock(UUID userId) {
+		return userJpaRepository.findByIdWithLock(userId);
+	}
+
+	@Override
+	public List<User> findAllByIds(List<UUID> userIds) {
+		return userJpaRepository.findAllById(userIds);
 	}
 }

@@ -3,6 +3,8 @@ package jabaclass.user.user.domain.model;
 import java.math.BigDecimal;
 
 import jabaclass.user.common.model.BaseEntity;
+import jabaclass.user.deposit.domain.exception.DepositErrorCode;
+import jabaclass.user.deposit.domain.exception.DepositException;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -55,13 +57,17 @@ public class User extends BaseEntity {
 		this.phone = phone;
 	}
 
+	public void changeEmail(String email) {
+		this.email = email;
+	}
+
 	public void chargeDeposit(BigDecimal amount) {
 		this.deposit = this.deposit.add(amount);
 	}
 
 	public void deductDeposit(BigDecimal amount) {
 		if (this.deposit.compareTo(amount) < 0) {
-			throw new IllegalArgumentException("예치금이 부족합니다.");
+			throw new DepositException(DepositErrorCode.INSUFFICIENT_DEPOSIT);
 		}
 
 		this.deposit = this.deposit.subtract(amount);
