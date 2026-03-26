@@ -26,6 +26,21 @@ public class UserRepositoryAdapter implements UserRepository {
 	}
 
 	@Override
+	public User save(User user) {
+		return userJpaRepository.save(user);
+	}
+
+	@Override
+	public User saveAndFlush(User user) {
+		return userJpaRepository.saveAndFlush(user);
+	}
+
+	@Override
+	public void delete(User user) {
+		userJpaRepository.delete(user);
+	}
+
+	@Override
 	public Optional<User> findByIdWithLock(UUID userId) {
 		return userJpaRepository.findByIdWithLock(userId);
 	}

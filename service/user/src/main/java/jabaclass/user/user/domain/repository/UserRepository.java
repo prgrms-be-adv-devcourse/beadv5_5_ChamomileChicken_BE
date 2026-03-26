@@ -11,5 +11,11 @@ public interface UserRepository {
 
 	boolean existsByEmail(String email);
 
+	User save(User user);
+
+	User saveAndFlush(User user);
+
+	void delete(User user);
+
 	Optional<User> findByIdWithLock(UUID userId);
 }

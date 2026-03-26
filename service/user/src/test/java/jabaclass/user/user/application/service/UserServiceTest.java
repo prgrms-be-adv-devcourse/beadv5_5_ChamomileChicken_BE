@@ -1,4 +1,4 @@
-package jabaclass.user.mail.application.service;
+package jabaclass.user.user.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -24,12 +24,10 @@ import org.springframework.test.util.ReflectionTestUtils;
 import jabaclass.user.common.error.BusinessException;
 import jabaclass.user.mail.application.usecase.EmailVerificationUseCase;
 import jabaclass.user.user.application.exception.UserErrorCode;
-import jabaclass.user.user.application.service.UserService;
 import jabaclass.user.user.domain.model.User;
 import jabaclass.user.user.domain.model.UserRole;
 import jabaclass.user.user.domain.repository.UserRepository;
 import jabaclass.user.user.presentation.dto.request.ChangeMyEmailRequestDto;
-import jabaclass.user.user.presentation.dto.request.RegisterUserRequestDto;
 import jabaclass.user.user.presentation.dto.request.UpdateUserRequestDto;
 import jabaclass.user.user.presentation.dto.response.UserResponseDto;
 
@@ -62,57 +60,6 @@ class UserServiceTest {
 			.build();
 
 		ReflectionTestUtils.setField(user, "id", userId);
-	}
-
-	@Test
-	void 회원가입을_성공한다() {
-		// given
-		RegisterUserRequestDto request = new RegisterUserRequestDto(
-			"용구",
-			"new@example.com",
-			"password123!",
-			"010-1234-5678",
-			"verified-token"
-		);
-
-		given(userRepository.existsByEmail(request.email()))
-			.willReturn(false);
-		given(userRepository.save(any(User.class)))
-			.willAnswer(invocation -> invocation.getArgument(0));
-
-		// when
-		userService.register(request);
-
-		// then
-		then(userRepository).should(times(1)).existsByEmail(request.email());
-		then(emailVerificationUseCase).should(times(1))
-			.validateVerifiedToken(request.email(), request.verifiedToken());
-		then(userRepository).should(times(1)).save(any(User.class));
-	}
-
-	@Test
-	void 회원가입시_이메일이_중복되면_예외가_발생한다() {
-		// given
-		RegisterUserRequestDto request = new RegisterUserRequestDto(
-			"용구",
-			"duplicate@example.com",
-			"password123!",
-			"010-1234-5678",
-			"verified-token"
-		);
-
-		given(userRepository.existsByEmail(request.email()))
-			.willReturn(true);
-
-		// when & then
-		assertThatThrownBy(() -> userService.register(request))
-			.isInstanceOf(BusinessException.class)
-			.hasMessage(UserErrorCode.EMAIL_ALREADY_EXISTS.getMessage());
-
-		then(userRepository).should(times(1)).existsByEmail(request.email());
-		then(emailVerificationUseCase).should(never())
-			.validateVerifiedToken(anyString(), anyString());
-		then(userRepository).should(never()).save(any(User.class));
 	}
 
 	@Test
