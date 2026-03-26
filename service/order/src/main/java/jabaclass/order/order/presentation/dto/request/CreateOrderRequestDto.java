@@ -9,12 +9,12 @@ import java.util.UUID;
 
 public record CreateOrderRequestDto(
     @NotNull
-	UUID productScheduleId,
+    UUID productId,
     @NotNull
-	UUID userId,
+	UUID productScheduleId,
     @NotNull @Positive
 	Integer quantity,
     @NotNull @DecimalMin(value = "0.0", inclusive = true)
-	BigDecimal price
+	BigDecimal depositAmount
 ) {
 }
