@@ -24,9 +24,6 @@ public record CreateScheduleRequestDto(
 	String endTime,
 
 	@Schema(description = "예약 상태", example = "AVAILABLE")
-	ReservedStatus status,
-
-	@Schema(description = "예약 가능 인원", example = "10")
-	int maxCapacity
+	ReservedStatus status
 ) {
 }

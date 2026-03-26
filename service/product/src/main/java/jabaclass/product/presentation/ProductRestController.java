@@ -19,10 +19,12 @@ import jabaclass.product.application.usecase.ScheduleUseCase;
 import jabaclass.product.common.exception.ApiResponseDto;
 import jabaclass.product.presentation.dto.request.CreateProductRequestDto;
 import jabaclass.product.presentation.dto.request.CreateScheduleRequestDto;
+import jabaclass.product.presentation.dto.request.OrderRequestDto;
 import jabaclass.product.presentation.dto.request.SearchProductRequestDto;
 import jabaclass.product.presentation.dto.request.UpdateProductRequestDto;
 import jabaclass.product.presentation.dto.request.UpdateScheduleRequestDto;
 import jabaclass.product.presentation.dto.respose.DeleteProductResposeDto;
+import jabaclass.product.presentation.dto.respose.OrderResponseDto;
 import jabaclass.product.presentation.dto.respose.ProductResponseDto;
 import jabaclass.product.presentation.dto.respose.SchedulesResponseDto;
 import jabaclass.product.presentation.dto.respose.SearchProductResponseDto;
@@ -32,7 +34,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @RestController
-@RequestMapping("/api/products")
+@RequestMapping("/api/v1/products")
 @RequiredArgsConstructor
 @Slf4j
 public class ProductRestController implements ProductOpenApi {
@@ -121,6 +123,20 @@ public class ProductRestController implements ProductOpenApi {
 
 		return ResponseEntity.ok()
 			.body(ApiResponseDto.success(HttpStatus.OK, "성공적으로 수정 되었습니다.", response));
+	}
+
+	// 상품 스케줄 검증 -> 예약 가능한지
+	@Override
+	@PostMapping("/reservations")
+	public ResponseEntity<OrderResponseDto> schedulesReservations(@RequestBody OrderRequestDto requestDto) {
+		OrderResponseDto response = scheduleUseCase.verification(requestDto);
+		return ResponseEntity.ok().body(response);
+	}
+
+	@Override
+	@PostMapping("/reservations/release")
+	public void schedulesVerification(@RequestBody OrderRequestDto requestDto) {
+		scheduleUseCase.restoringInventory(requestDto);
 	}
 
 }

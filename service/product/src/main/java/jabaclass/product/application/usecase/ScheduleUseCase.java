@@ -3,7 +3,9 @@ package jabaclass.product.application.usecase;
 import java.util.UUID;
 
 import jabaclass.product.presentation.dto.request.CreateScheduleRequestDto;
+import jabaclass.product.presentation.dto.request.OrderRequestDto;
 import jabaclass.product.presentation.dto.request.UpdateScheduleRequestDto;
+import jabaclass.product.presentation.dto.respose.OrderResponseDto;
 import jabaclass.product.presentation.dto.respose.SchedulesResponseDto;
 
 public interface ScheduleUseCase {
@@ -19,5 +21,9 @@ public interface ScheduleUseCase {
 
 	// 스케줄 검색
 	SchedulesResponseDto select(CreateScheduleRequestDto requestDto);
+
+	OrderResponseDto verification(OrderRequestDto requestDto);
+
+	void restoringInventory(OrderRequestDto requestDto);
 
 }
