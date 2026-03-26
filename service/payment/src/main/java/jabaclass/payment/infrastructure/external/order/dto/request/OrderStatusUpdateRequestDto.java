@@ -4,5 +4,6 @@ import java.util.UUID;
 
 public record OrderStatusUpdateRequestDto(
 	UUID paymentId,
+	int depositAmount,
 	String paymentStatus
 ) {}

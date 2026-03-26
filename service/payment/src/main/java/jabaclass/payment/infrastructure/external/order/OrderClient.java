@@ -3,18 +3,12 @@ package jabaclass.payment.infrastructure.external.order;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
 import jabaclass.payment.application.port.external.OrderPort;
 import jabaclass.payment.infrastructure.external.order.dto.request.OrderStatusUpdateRequestDto;
-import jabaclass.payment.infrastructure.external.order.dto.request.OrderValidationRequestDto;
-import jabaclass.payment.infrastructure.external.order.dto.response.OrderValidationResponseDto;
 import lombok.RequiredArgsConstructor;
 
 @Component
@@ -26,62 +20,65 @@ public class OrderClient implements OrderPort {
 	@Value("${order.service.url}")
 	private String baseUrl;
 
-	/*@Value("${internal.token}")
-	private String internalToken;*/
-
-	// 주문 금액 검증
 	@Override
 	public boolean validateOrder(UUID orderId, int amount) {
 
-		String url = baseUrl + "/api/v1/orders/" + orderId + "/payment-amount/validate";
+		String url = baseUrl + "/api/v1/orders/" + orderId
+			+ "/payment-amount/validate?amount=" + amount;
 
 		HttpHeaders headers = new HttpHeaders();
-		// headers.set("X-Internal-Token", internalToken);
 		headers.setContentType(MediaType.APPLICATION_JSON);
 
-		OrderValidationRequestDto body =
-			new OrderValidationRequestDto(amount);
+		HttpEntity<Void> request = new HttpEntity<>(headers);
 
-		HttpEntity<OrderValidationRequestDto> request =
-			new HttpEntity<>(body, headers);
-
-		ResponseEntity<OrderValidationResponseDto> response =
+		ResponseEntity<OrderValidationResponse> response =
 			restTemplate.exchange(
 				url,
-				HttpMethod.POST,
+				HttpMethod.GET,
 				request,
-				OrderValidationResponseDto.class
+				OrderValidationResponse.class
 			);
 
-		// TODO: 상태코드 체크
-		// TODO: null 체크
+		if (!response.getStatusCode().is2xxSuccessful()) {
+			throw new IllegalStateException("주문 금액이 일치하지 않습니다.");
+		}
 
-		return response.getBody().available();
+		OrderValidationResponse body = response.getBody();
+		if (body == null) {
+			throw new IllegalStateException("Order 검증 응답이 비어있습니다.");
+		}
+
+		return body.valid();
 	}
 
-	// 결제 결과 통지
 	@Override
-	public void updatePaymentStatus(UUID orderId, UUID paymentId, String status) {
+	public void updatePaymentStatus(UUID orderId, UUID paymentId, int depositAmount, String status) {
 
 		String url = baseUrl + "/api/v1/orders/" + orderId + "/payment-status";
 
 		HttpHeaders headers = new HttpHeaders();
-		// headers.set("X-Internal-Token", internalToken);
 		headers.setContentType(MediaType.APPLICATION_JSON);
 
 		OrderStatusUpdateRequestDto body =
-			new OrderStatusUpdateRequestDto(paymentId, status);
+			new OrderStatusUpdateRequestDto(paymentId, depositAmount, status);
 
 		HttpEntity<OrderStatusUpdateRequestDto> request =
 			new HttpEntity<>(body, headers);
 
-		restTemplate.exchange(
-			url,
-			HttpMethod.PATCH,
-			request,
-			Void.class
-		);
+		ResponseEntity<Void> response =
+			restTemplate.exchange(
+				url,
+				HttpMethod.PATCH,
+				request,
+				Void.class
+			);
 
-		// TODO: 실패 시 재시도 처리
+		if (!response.getStatusCode().is2xxSuccessful()) {
+			throw new IllegalStateException(
+				"Order 상태 업데이트 실패. status=" + response.getStatusCode()
+			);
+		}
 	}
+
+	private record OrderValidationResponse(boolean valid) {}
 }

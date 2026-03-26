@@ -118,11 +118,26 @@ public class Payment {
 	}
 
 	public boolean isDone() {
-		return this.status == PaymentStatus.DONE;
+		return this.status == PaymentStatus.PAID;
 	}
 
 	public void markDone(String paymentKey) {
 		this.paymentKey = paymentKey;
-		this.status = PaymentStatus.DONE;
+		this.status = PaymentStatus.PAID;
+	}
+
+	public void markFailed() {
+		if (this.status == PaymentStatus.PAID) {
+			throw new IllegalStateException("이미 완료된 결제는 실패 처리할 수 없습니다.");
+		}
+
+		this.status = PaymentStatus.FAILED;
+	}
+	public void markCancelled() {
+		if (this.status == PaymentStatus.PAID) {
+			throw new IllegalStateException("완료된 결제는 취소할 수 없습니다.");
+		}
+
+		this.status = PaymentStatus.CANCELLED;
 	}
 }

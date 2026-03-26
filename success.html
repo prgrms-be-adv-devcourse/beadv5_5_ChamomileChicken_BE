@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
 </head>
 <body>
+
 <h2>결제 성공</h2>
 
 <script>
@@ -11,26 +12,35 @@
 
     const paymentKey = urlParams.get("paymentKey");
     const amount = urlParams.get("amount");
-    const paymentId = "c40b1d73-9dac-41a5-b737-0a48f2a0352f"
+    const orderId = urlParams.get("orderId");
 
     console.log("paymentKey:", paymentKey);
+    console.log("orderId:", orderId);
 
-    // 여기서 confirm API 호출
     fetch("http://localhost:9001/api/v1/payments/confirm", {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
         },
         body: JSON.stringify({
-            paymentId: paymentId,
+            orderId: orderId,
             paymentKey: paymentKey,
             amount: Number(amount)
         })
     })
-        .then(res => res.json())
+        .then(res => {
+            if (!res.ok) {
+                throw new Error("결제 승인 실패");
+            }
+            return res.json();
+        })
         .then(data => {
             console.log("결제 완료:", data);
+        })
+        .catch(err => {
+            console.error(err);
         });
 </script>
+
 </body>
 </html>
