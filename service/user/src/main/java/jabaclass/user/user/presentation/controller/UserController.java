@@ -1,6 +1,7 @@
 package jabaclass.user.user.presentation.controller;
 
 
+import jabaclass.user.common.util.SecurityUtil;
 import java.util.List;
 import java.util.UUID;
 
@@ -50,37 +51,33 @@ public class UserController implements UserApi {
 
 	@GetMapping("/me")
 	public ResponseEntity<UserResponseDto> getMyInfo(
-		//@AuthenticationPrincipal CustomUserPrincipal principal //Todo
 	) {
-		UUID userId = UUID.randomUUID();
+		UUID userId = SecurityUtil.getCurrentUserId();
 		return ResponseEntity.ok(userUseCase.getMyInfo(userId));
 	}
 
 	@PutMapping("/me")
 	public ResponseEntity<Void> updateMyInfo(
-		//@AuthenticationPrincipal CustomUserPrincipal principal, //Todo
 		@Valid @RequestBody UpdateUserRequestDto request
 	) {
-		UUID userId = UUID.randomUUID();
+		UUID userId = SecurityUtil.getCurrentUserId();
 		userUseCase.updateMyInfo(userId, request);
 		return ResponseEntity.noContent().build();
 	}
 
 	@PutMapping("/me/email")
 	public ResponseEntity<Void> changeEmail(
-		//@AuthenticationPrincipal CustomUserPrincipal principal, //Todo
 		@Valid @RequestBody ChangeMyEmailRequestDto request
 	) {
-		UUID userId = UUID.randomUUID();
+		UUID userId = SecurityUtil.getCurrentUserId();
 		userUseCase.changeEmail(userId, request);
 		return ResponseEntity.noContent().build();
 	}
 
 	@DeleteMapping("/me")
 	public ResponseEntity<Void> withdraw(
-		//@AuthenticationPrincipal CustomUserPrincipal principal //Todo
 	) {
-		UUID userId = UUID.randomUUID();
+		UUID userId = SecurityUtil.getCurrentUserId();
 		userUseCase.withdraw(userId);
 		return ResponseEntity.noContent().build();
 	}
