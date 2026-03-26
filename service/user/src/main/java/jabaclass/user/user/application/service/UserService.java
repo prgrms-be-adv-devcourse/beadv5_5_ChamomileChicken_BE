@@ -1,7 +1,12 @@
 package jabaclass.user.user.application.service;
 
 import java.math.BigDecimal;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -51,7 +56,7 @@ public class UserService implements UserUseCase {
 			.deposit(BigDecimal.ZERO)
 			.build();
 
-		userRepository.save(user);
+		saveUser(user);
 	}
 
 	@Override
@@ -82,6 +87,26 @@ public class UserService implements UserUseCase {
 	public void withdraw(UUID userId) {
 		User user = getUser(userId);
 		userRepository.delete(user);
+	}
+
+	@Override
+	public List<UserResponseDto> getUsersByIds(List<UUID> userIds) {
+		if (userIds == null || userIds.isEmpty()) {
+			return List.of();
+		}
+
+		List<UUID> distinctUserIds = userIds.stream()
+			.distinct()
+			.toList();
+
+		Map<UUID, User> userMap = userRepository.findAllByIds(distinctUserIds).stream()
+			.collect(Collectors.toMap(User::getId, Function.identity()));
+
+		return distinctUserIds.stream()
+			.map(userMap::get)
+			.filter(Objects::nonNull)
+			.map(UserResponseDto::from)
+			.toList();
 	}
 
 	private User getUser(UUID userId) {

@@ -1,11 +1,11 @@
 package jabaclass.user.user.presentation.controller;
 
 
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -19,6 +19,7 @@ import jabaclass.user.user.presentation.dto.request.ChangeMyEmailRequestDto;
 import jabaclass.user.user.presentation.dto.request.EmailCheckRequestDto;
 import jabaclass.user.user.presentation.dto.request.RegisterUserRequestDto;
 import jabaclass.user.user.presentation.dto.request.UpdateUserRequestDto;
+import jabaclass.user.user.presentation.dto.request.UserBulkReadRequestDto;
 import jabaclass.user.user.presentation.dto.response.EmailCheckResponseDto;
 import jabaclass.user.user.presentation.dto.response.UserResponseDto;
 import jakarta.validation.Valid;
@@ -27,7 +28,7 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/api/v1/users")
 @RequiredArgsConstructor
-public class UserController {
+public class UserController implements UserApi {
 
 	private final UserUseCase userUseCase;
 
@@ -82,5 +83,13 @@ public class UserController {
 		UUID userId = UUID.randomUUID();
 		userUseCase.withdraw(userId);
 		return ResponseEntity.noContent().build();
+	}
+
+	@PostMapping("/bulk")
+	public ResponseEntity<List<UserResponseDto>> getUsersByIds(
+		@Valid @RequestBody UserBulkReadRequestDto request
+	) {
+		return ResponseEntity
+			.ok(userUseCase.getUsersByIds(request.userIds()));
 	}
 }

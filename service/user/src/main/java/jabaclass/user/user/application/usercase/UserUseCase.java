@@ -1,5 +1,6 @@
 package jabaclass.user.user.application.usercase;
 
+import java.util.List;
 import java.util.UUID;
 
 import jabaclass.user.user.presentation.dto.request.ChangeMyEmailRequestDto;
@@ -20,4 +21,6 @@ public interface UserUseCase {
 	void changeEmail(UUID userId, ChangeMyEmailRequestDto request);
 
 	void withdraw(UUID userId);
+
+	List<UserResponseDto> getUsersByIds(List<UUID> userIds);
 }
