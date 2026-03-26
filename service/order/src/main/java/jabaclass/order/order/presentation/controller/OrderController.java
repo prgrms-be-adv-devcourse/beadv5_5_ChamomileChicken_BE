@@ -8,6 +8,7 @@ import jabaclass.order.order.domain.model.OrderStatus;
 import jabaclass.order.order.presentation.dto.request.CreateOrderRequestDto;
 import jabaclass.order.order.presentation.dto.response.CreateOrderResponseDto;
 import jabaclass.order.order.presentation.dto.response.OrderResponseDto;
+import jabaclass.order.order.presentation.openapi.OrderOpenApi;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -25,10 +26,11 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/orders")
-public class OrderController {
+public class OrderController implements OrderOpenApi {
 
     private final OrderUseCase orderUseCase;
 
+    @Override
     @PostMapping
     public ResponseEntity<CreateOrderResponseDto> create(
         @AuthenticationPrincipal UUID userId,
@@ -39,6 +41,7 @@ public class OrderController {
         return ResponseEntity.status(HttpStatus.CREATED).body(responseDto);
     }
 
+    @Override
     @GetMapping("/{orderId}")
     public ResponseEntity<OrderResponseDto> getById(@PathVariable UUID orderId) {
         OrderResponseDto responseDto = orderUseCase.getById(orderId);
@@ -46,6 +49,7 @@ public class OrderController {
         return ResponseEntity.ok(responseDto);
     }
 
+    @Override
     @GetMapping
     public ResponseEntity<List<OrderResponseDto>> getOrders(
         @AuthenticationPrincipal UUID userId,
@@ -56,6 +60,7 @@ public class OrderController {
         return ResponseEntity.ok(responseDto);
     }
 
+    @Override
     @PatchMapping("/{orderId}")
     public ResponseEntity<OrderResponseDto> cancel(
         @PathVariable UUID orderId,

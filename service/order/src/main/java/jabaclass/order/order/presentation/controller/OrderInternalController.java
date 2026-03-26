@@ -6,6 +6,7 @@ import java.util.UUID;
 import jabaclass.order.order.application.usecase.OrderUseCase;
 import jabaclass.order.order.presentation.dto.request.UpdateOrderPaymentStatusRequestDto;
 import jabaclass.order.order.presentation.dto.response.ValidatePaymentAmountResponseDto;
+import jabaclass.order.order.presentation.openapi.OrderInternalOpenApi;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -20,10 +21,11 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/orders")
-public class OrderInternalController {
+public class OrderInternalController implements OrderInternalOpenApi {
 
     private final OrderUseCase orderUseCase;
 
+    @Override
     @GetMapping("/{orderId}/payment-amount/validate")
     public ResponseEntity<ValidatePaymentAmountResponseDto> validatePaymentAmount(
         @PathVariable UUID orderId,
@@ -34,6 +36,7 @@ public class OrderInternalController {
         return ResponseEntity.ok(new ValidatePaymentAmountResponseDto(valid));
     }
 
+    @Override
     @PatchMapping("/{orderId}/payment-status")
     public ResponseEntity<Void> updatePaymentStatus(
         @PathVariable UUID orderId,
