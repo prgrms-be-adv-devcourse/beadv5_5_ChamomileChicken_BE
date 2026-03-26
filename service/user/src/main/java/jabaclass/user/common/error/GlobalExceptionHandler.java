@@ -1,5 +1,6 @@
 package jabaclass.user.common.error;
 
+import jakarta.security.auth.message.AuthException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -57,5 +58,17 @@ public class GlobalExceptionHandler {
 						CommonErrorCode.INTERNAL_SERVER_ERROR.getStatus(),
 						CommonErrorCode.INTERNAL_SERVER_ERROR.getMessage()
 				));
+	}
+
+	/**
+	 *  Auth 에러 처리
+	 *  로그인 관련 예외를 처리합니다.
+	*/
+	@ExceptionHandler(AuthException.class)
+	public ResponseEntity<ApiResponseDto<Void>> handleAuthException(
+			jabaclass.user.auth.application.exception.AuthException ex) {
+		return ResponseEntity
+				.status(ex.getStatus())
+				.body(ApiResponseDto.fail(ex.getStatus(), ex.getMessage()));
 	}
 }

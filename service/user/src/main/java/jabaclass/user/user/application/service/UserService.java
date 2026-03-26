@@ -9,6 +9,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,6 +31,7 @@ import lombok.RequiredArgsConstructor;
 @Transactional(readOnly = true)
 public class UserService implements UserUseCase {
 
+	private final PasswordEncoder passwordEncoder;
 	private final UserRepository userRepository;
 	private final EmailVerificationUseCase emailVerificationUseCase;
 
@@ -50,7 +52,7 @@ public class UserService implements UserUseCase {
 		User user = User.builder()
 			.name(request.name())
 			.email(request.email())
-			.password(request.password()) //Todo password 인코딩 처리
+			.password(passwordEncoder.encode(request.password()))
 			.phone(request.phone())
 			.role(UserRole.USER)
 			.deposit(BigDecimal.ZERO)
