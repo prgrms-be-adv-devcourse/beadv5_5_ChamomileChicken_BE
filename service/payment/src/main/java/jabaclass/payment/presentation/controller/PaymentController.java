@@ -1,6 +1,7 @@
 package jabaclass.payment.presentation.controller;
 
-import jabaclass.payment.application.usercase.PaymentUseCase;
+import jabaclass.payment.application.usecase.PaymentUseCase;
+import jabaclass.payment.presentation.dto.request.ConfirmPaymentRequestDto;
 import jabaclass.payment.presentation.dto.request.PreparePaymentRequestDto;
 import jabaclass.payment.presentation.dto.response.PaymentResponseDto;
 import lombok.RequiredArgsConstructor;
@@ -26,4 +27,12 @@ public class PaymentController implements PaymentApi {
 
 		return ResponseEntity.status(HttpStatus.CREATED).body(response);
 	}
+
+	@PostMapping("/confirm")
+	public ResponseEntity<PaymentResponseDto> confirmPayment(@RequestBody ConfirmPaymentRequestDto request) {
+		PaymentResponseDto response = paymentUseCase.confirm(request);
+
+		return ResponseEntity.ok(response);
+	}
+
 }

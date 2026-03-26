@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <script src="https://js.tosspayments.com/v1"></script>
+</head>
+<body>
+
+<button onclick="startPayment()">결제하기</button>
+
+<script>
+    const clientKey = "test_ck_yL0qZ4G1VOj211Mwom2v3oWb2MQY";
+    const tossPayments = TossPayments(clientKey);
+
+    async function startPayment() {
+
+        const orderId = crypto.randomUUID();
+
+        // 1. prepare 호출
+        await fetch("http://localhost:9001/api/v1/payments/prepare", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                orderId: orderId,
+                productId: "11111111-1111-1111-1111-111111111111",
+                paymentAmount: 30000,
+                depositAmount: 0,
+                paymentMethod: "TOSS"
+            })
+        });
+
+        // 2. Toss 결제 호출
+        tossPayments.requestPayment("카드", {
+            amount: 30000,
+            orderId: orderId,
+            orderName: "테스트 상품",
+            successUrl: "http://localhost:5500/success.html",
+            failUrl: "http://localhost:5500/fail.html"
+        });
+    }
+</script>
+
+</body>
+</html>
