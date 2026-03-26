@@ -91,7 +91,7 @@ public class UserService implements UserUseCase {
 
 	@Override
 	public List<UserResponseDto> getUsersByIds(List<UUID> userIds) {
-		if (userIds.isEmpty()) {
+		if (userIds == null || userIds.isEmpty()) {
 			return List.of();
 		}
 
