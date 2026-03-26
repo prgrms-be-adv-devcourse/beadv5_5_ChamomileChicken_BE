@@ -7,7 +7,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 import jabaclass.product.domain.model.Product;
-import jabaclass.product.domain.model.ProductStatus;
+import jabaclass.product.domain.model.status.ProductStatus;
 
 public interface ProductRepository {
 	// 상품 등록/수정

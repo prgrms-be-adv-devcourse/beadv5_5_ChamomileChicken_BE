@@ -3,7 +3,7 @@ package jabaclass.product.presentation.dto.respose;
 import java.util.UUID;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import jabaclass.product.domain.model.ProductStatus;
+import jabaclass.product.domain.model.status.ProductStatus;
 import jakarta.validation.constraints.NotNull;
 
 @Schema(description = "상품 삭제 응답")

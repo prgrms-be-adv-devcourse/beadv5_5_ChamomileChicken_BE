@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+</head>
+<body>
+
+<h2>결제 성공</h2>
+
+<script>
+    const urlParams = new URLSearchParams(window.location.search);
+
+    const paymentKey = urlParams.get("paymentKey");
+    const amount = urlParams.get("amount");
+    const orderId = urlParams.get("orderId");
+
+    console.log("paymentKey:", paymentKey);
+    console.log("orderId:", orderId);
+
+    fetch("http://localhost:9001/api/v1/payments/confirm", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            orderId: orderId,
+            paymentKey: paymentKey,
+            amount: Number(amount)
+        })
+    })
+        .then(res => {
+            if (!res.ok) {
+                throw new Error("결제 승인 실패");
+            }
+            return res.json();
+        })
+        .then(data => {
+            console.log("결제 완료:", data);
+        })
+        .catch(err => {
+            console.error(err);
+        });
+</script>
+
+</body>
+</html>

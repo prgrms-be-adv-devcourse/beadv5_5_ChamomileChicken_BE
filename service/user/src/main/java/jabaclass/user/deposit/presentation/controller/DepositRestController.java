@@ -1,9 +1,6 @@
 package jabaclass.user.deposit.presentation.controller;
 
-import java.util.UUID;
-
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -13,6 +10,7 @@ import jabaclass.user.deposit.application.usecase.UseDepositUseCase;
 import jabaclass.user.deposit.application.usecase.ValidateDepositUseCase;
 import jabaclass.user.deposit.presentation.dto.request.UseDepositRequestDto;
 import jabaclass.user.deposit.presentation.dto.request.ValidateDepositRequestDto;
+import jabaclass.user.deposit.presentation.dto.response.ValidateDepositResponseDto;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -24,21 +22,19 @@ public class DepositRestController {
 	private final UseDepositUseCase useDepositUseCase;
 
 	@PostMapping("/validate")
-	public ResponseEntity<Boolean> validateDeposit(
-		@AuthenticationPrincipal UUID userId,
+	public ResponseEntity<ValidateDepositResponseDto> validateDeposit(
 		@RequestBody ValidateDepositRequestDto request
 	) {
-		boolean available = validateDepositUseCase.validate(userId, request.depositAmount());
-		return ResponseEntity.ok(available);
+		boolean valid = validateDepositUseCase.validate(request.userId(), request.depositAmount());
+		return ResponseEntity.ok(new ValidateDepositResponseDto(valid));
 	}
 
 	@PostMapping("/use")
 	public ResponseEntity<Void> useDeposit(
-		@AuthenticationPrincipal UUID userId,
 		@RequestBody UseDepositRequestDto request
 	) {
 
-		useDepositUseCase.use(userId, request.depositAmount());
+		useDepositUseCase.use(request.userId(), request.depositAmount());
 		return ResponseEntity.ok().build();
 	}
 }

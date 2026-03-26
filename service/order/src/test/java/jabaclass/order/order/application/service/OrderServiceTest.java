@@ -6,12 +6,17 @@ import java.util.Optional;
 import java.util.UUID;
 
 import jabaclass.order.common.error.BusinessException;
+import jabaclass.order.order.application.client.DepositClient;
+import jabaclass.order.order.application.client.ProductClient;
 import jabaclass.order.order.domain.model.Order;
+import jabaclass.order.order.domain.model.PaymentResultStatus;
 import jabaclass.order.order.domain.model.OrderStatus;
 import jabaclass.order.order.domain.repository.OrderRepository;
-import jabaclass.order.order.presentation.dto.request.CancelOrderRequestDto;
 import jabaclass.order.order.presentation.dto.request.CreateOrderRequestDto;
+import jabaclass.order.order.presentation.dto.request.UpdateOrderPaymentStatusRequestDto;
+import jabaclass.order.order.presentation.dto.response.CreateOrderResponseDto;
 import jabaclass.order.order.presentation.dto.response.OrderResponseDto;
+import jabaclass.order.order.infrastructure.client.product.dto.ProductReservationResponseDto;
 import org.junit.jupiter.api.DisplayNameGeneration;
 import org.junit.jupiter.api.DisplayNameGenerator.ReplaceUnderscores;
 import org.junit.jupiter.api.Test;
@@ -35,29 +40,42 @@ class OrderServiceTest {
     @Mock
     private OrderRepository orderRepository;
 
+    @Mock
+    private DepositClient depositClient;
+
+    @Mock
+    private ProductClient productClient;
+
     @InjectMocks
     private OrderService orderService;
 
     @Test
     void 주문을_생성한다() {
         // given
+        UUID userId = UUID.randomUUID();
         CreateOrderRequestDto requestDto = new CreateOrderRequestDto(
             UUID.randomUUID(),
             UUID.randomUUID(),
             2,
-            new BigDecimal("10000")
+            new BigDecimal("3000")
         );
+        given(depositClient.isValid(userId, requestDto.depositAmount())).willReturn(true);
+        given(productClient.reserve(requestDto.productScheduleId(), requestDto.quantity()))
+            .willReturn(new ProductReservationResponseDto(new BigDecimal("10000"), requestDto.quantity(), true));
         given(orderRepository.save(any(Order.class)))
             .willAnswer(invocation -> invocation.getArgument(0));
 
         // when
-        OrderResponseDto actual = orderService.create(requestDto);
+        CreateOrderResponseDto actual = orderService.create(userId, requestDto);
 
         // then
+        assertThat(actual.productId()).isEqualTo(requestDto.productId());
         assertThat(actual.productScheduleId()).isEqualTo(requestDto.productScheduleId());
-        assertThat(actual.userId()).isEqualTo(requestDto.userId());
+        assertThat(actual.buyerId()).isEqualTo(userId);
         assertThat(actual.quantity()).isEqualTo(requestDto.quantity());
-        assertThat(actual.price()).isEqualByComparingTo(requestDto.price());
+        assertThat(actual.totalAmount()).isEqualByComparingTo("20000");
+        assertThat(actual.depositAmount()).isEqualByComparingTo(requestDto.depositAmount());
+        assertThat(actual.paymentAmount()).isEqualByComparingTo("17000");
         assertThat(actual.status()).isEqualTo(OrderStatus.PENDING);
         then(orderRepository).should().save(any(Order.class));
     }
@@ -69,30 +87,54 @@ class OrderServiceTest {
             UUID.randomUUID(),
             UUID.randomUUID(),
             0,
-            new BigDecimal("10000")
+            new BigDecimal("1000")
         );
 
         // when & then
-        assertThatThrownBy(() -> orderService.create(requestDto))
+        assertThatThrownBy(() -> orderService.create(UUID.randomUUID(), requestDto))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessage("수량은 1 이상이어야 합니다.");
         then(orderRepository).should(never()).save(any(Order.class));
+        then(productClient).shouldHaveNoInteractions();
     }
 
     @Test
-    void 주문_가격이_음수이면_주문_생성시_예외가_발생한다() {
+    void 예치금이_부족하면_주문_생성시_예외가_발생한다() {
         // given
+        UUID userId = UUID.randomUUID();
         CreateOrderRequestDto requestDto = new CreateOrderRequestDto(
             UUID.randomUUID(),
             UUID.randomUUID(),
             1,
-            new BigDecimal("-1")
+            new BigDecimal("10000")
         );
+        given(depositClient.isValid(userId, requestDto.depositAmount())).willReturn(false);
 
         // when & then
-        assertThatThrownBy(() -> orderService.create(requestDto))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessage("주문 가격은 0 이상이어야 합니다.");
+        assertThatThrownBy(() -> orderService.create(userId, requestDto))
+            .isInstanceOf(BusinessException.class)
+            .hasMessage("사용 가능한 예치금이 부족합니다.");
+        then(orderRepository).should(never()).save(any(Order.class));
+    }
+
+    @Test
+    void 예약_가능한_상품_일정이_아니면_주문_생성시_예외가_발생한다() {
+        // given
+        UUID userId = UUID.randomUUID();
+        CreateOrderRequestDto requestDto = new CreateOrderRequestDto(
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            1,
+            new BigDecimal("1000")
+        );
+        given(depositClient.isValid(userId, requestDto.depositAmount())).willReturn(true);
+        given(productClient.reserve(requestDto.productScheduleId(), requestDto.quantity()))
+            .willReturn(new ProductReservationResponseDto(new BigDecimal("10000"), requestDto.quantity(), false));
+
+        // when & then
+        assertThatThrownBy(() -> orderService.create(userId, requestDto))
+            .isInstanceOf(BusinessException.class)
+            .hasMessage("예약 가능한 상품 일정이 아닙니다.");
         then(orderRepository).should(never()).save(any(Order.class));
     }
 
@@ -113,9 +155,9 @@ class OrderServiceTest {
         // then
         assertThat(actual.id()).isEqualTo(order.getId());
         assertThat(actual.productScheduleId()).isEqualTo(order.getProductScheduleId());
-        assertThat(actual.userId()).isEqualTo(order.getUserId());
+        assertThat(actual.buyerId()).isEqualTo(order.getUserId());
         assertThat(actual.quantity()).isEqualTo(order.getQuantity());
-        assertThat(actual.price()).isEqualByComparingTo(order.getPrice());
+        assertThat(actual.totalAmount()).isEqualByComparingTo(order.getPrice());
         assertThat(actual.status()).isEqualTo(OrderStatus.PENDING);
     }
 
@@ -154,8 +196,8 @@ class OrderServiceTest {
 
         // then
         assertThat(actual).hasSize(2);
-        assertThat(actual.get(0).userId()).isEqualTo(userId);
-        assertThat(actual.get(1).userId()).isEqualTo(userId);
+        assertThat(actual.get(0).buyerId()).isEqualTo(userId);
+        assertThat(actual.get(1).buyerId()).isEqualTo(userId);
     }
 
     @Test
@@ -189,11 +231,10 @@ class OrderServiceTest {
             1,
             new BigDecimal("15000")
         );
-        CancelOrderRequestDto requestDto = new CancelOrderRequestDto(userId);
         given(orderRepository.findById(order.getId())).willReturn(Optional.of(order));
 
         // when
-        OrderResponseDto actual = orderService.cancel(order.getId(), requestDto);
+        OrderResponseDto actual = orderService.cancel(order.getId(), userId);
 
         // then
         assertThat(actual.status()).isEqualTo(OrderStatus.CANCELED);
@@ -209,11 +250,10 @@ class OrderServiceTest {
             1,
             new BigDecimal("15000")
         );
-        CancelOrderRequestDto requestDto = new CancelOrderRequestDto(UUID.randomUUID());
         given(orderRepository.findById(order.getId())).willReturn(Optional.of(order));
 
         // when & then
-        assertThatThrownBy(() -> orderService.cancel(order.getId(), requestDto))
+        assertThatThrownBy(() -> orderService.cancel(order.getId(), UUID.randomUUID()))
             .isInstanceOf(BusinessException.class)
             .hasMessage("본인의 주문만 조회 및 취소할 수 있습니다.");
         then(orderRepository).should(never()).save(any(Order.class));
@@ -230,13 +270,102 @@ class OrderServiceTest {
             new BigDecimal("15000")
         );
         order.cancel();
-        CancelOrderRequestDto requestDto = new CancelOrderRequestDto(userId);
         given(orderRepository.findById(order.getId())).willReturn(Optional.of(order));
 
         // when & then
-        assertThatThrownBy(() -> orderService.cancel(order.getId(), requestDto))
+        assertThatThrownBy(() -> orderService.cancel(order.getId(), userId))
             .isInstanceOf(BusinessException.class)
             .hasMessage("현재 주문 상태에서는 취소할 수 없습니다.");
         then(orderRepository).should(never()).save(any(Order.class));
+    }
+
+    @Test
+    void 결제_금액이_일치하면_true를_반환한다() {
+        // given
+        Order order = Order.create(
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            1,
+            new BigDecimal("15000")
+        );
+        given(orderRepository.findById(order.getId())).willReturn(Optional.of(order));
+
+        // when
+        boolean actual = orderService.validatePaymentAmount(order.getId(), new BigDecimal("15000"));
+
+        // then
+        assertThat(actual).isTrue();
+    }
+
+    @Test
+    void 결제_성공을_반영한다() {
+        // given
+        Order order = Order.create(
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            1,
+            new BigDecimal("15000")
+        );
+        UpdateOrderPaymentStatusRequestDto requestDto = new UpdateOrderPaymentStatusRequestDto(
+            UUID.randomUUID(),
+            PaymentResultStatus.SUCCESS,
+            new BigDecimal("5000")
+        );
+        given(orderRepository.findById(order.getId())).willReturn(Optional.of(order));
+
+        // when
+        orderService.updatePaymentStatus(order.getId(), requestDto);
+
+        // then
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.PAID);
+        then(depositClient).should().use(order.getUserId(), new BigDecimal("5000"));
+    }
+
+    @Test
+    void 결제_실패를_반영한다() {
+        // given
+        Order order = Order.create(
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            2,
+            new BigDecimal("15000")
+        );
+        UpdateOrderPaymentStatusRequestDto requestDto = new UpdateOrderPaymentStatusRequestDto(
+            UUID.randomUUID(),
+            PaymentResultStatus.FAILED,
+            BigDecimal.ZERO
+        );
+        given(orderRepository.findById(order.getId())).willReturn(Optional.of(order));
+
+        // when
+        orderService.updatePaymentStatus(order.getId(), requestDto);
+
+        // then
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.FAILED);
+        then(productClient).should().release(order.getProductScheduleId(), order.getQuantity());
+    }
+
+    @Test
+    void 결제_취소를_반영한다() {
+        // given
+        Order order = Order.create(
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            2,
+            new BigDecimal("15000")
+        );
+        UpdateOrderPaymentStatusRequestDto requestDto = new UpdateOrderPaymentStatusRequestDto(
+            UUID.randomUUID(),
+            PaymentResultStatus.CANCELLED,
+            BigDecimal.ZERO
+        );
+        given(orderRepository.findById(order.getId())).willReturn(Optional.of(order));
+
+        // when
+        orderService.updatePaymentStatus(order.getId(), requestDto);
+
+        // then
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.CANCELED);
+        then(productClient).should().release(order.getProductScheduleId(), order.getQuantity());
     }
 }

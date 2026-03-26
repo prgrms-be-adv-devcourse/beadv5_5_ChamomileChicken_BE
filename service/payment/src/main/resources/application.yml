@@ -18,8 +18,15 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: create-drop
+      ddl-auto: update
     show-sql: true
     properties:
       hibernate:
         format_sql: true
+
+order:
+  service:
+    url: ${ORDER_SERVICE_URL}
+
+toss:
+  secret-key: ${TOSS_SECRET_KEY}

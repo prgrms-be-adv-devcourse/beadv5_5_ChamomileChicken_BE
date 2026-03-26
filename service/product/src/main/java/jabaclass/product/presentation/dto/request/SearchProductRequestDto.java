@@ -1,7 +1,7 @@
 package jabaclass.product.presentation.dto.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import jabaclass.product.domain.model.ProductStatus;
+import jabaclass.product.domain.model.status.ProductStatus;
 
 @Schema(description = "상품 검색")
 public record SearchProductRequestDto(

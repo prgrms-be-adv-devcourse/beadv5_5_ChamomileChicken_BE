@@ -23,7 +23,7 @@ import jabaclass.product.application.exception.BusinessException;
 import jabaclass.product.application.service.AuditorAwareService;
 import jabaclass.product.application.service.ProductService;
 import jabaclass.product.domain.model.Product;
-import jabaclass.product.domain.model.ProductStatus;
+import jabaclass.product.domain.model.status.ProductStatus;
 import jabaclass.product.domain.repository.ProductRepository;
 import jabaclass.product.infrastructure.acl.dto.SellerResponseDto;
 import jabaclass.product.infrastructure.event.dto.ProductEventResponseDto;

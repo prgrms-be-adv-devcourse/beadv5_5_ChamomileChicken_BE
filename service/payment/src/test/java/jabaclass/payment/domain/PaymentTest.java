@@ -1,4 +1,4 @@
-package jabaclass.payment;
+package jabaclass.payment.domain;
 
 import jabaclass.payment.domain.model.Payment;
 import jabaclass.payment.domain.model.PaymentStatus;
@@ -15,7 +15,7 @@ import static org.assertj.core.api.Assertions.*;
 
 @SuppressWarnings("NonAsciiCharacters")
 @DisplayNameGeneration(DisplayNameGenerator.ReplaceUnderscores.class)
-class PaymentServiceTest {
+class PaymentTest {
 
 	@Test
 	void 결제를_생성한다() {

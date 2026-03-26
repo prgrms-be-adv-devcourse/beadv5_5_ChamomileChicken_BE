@@ -40,8 +40,14 @@ public class Order {
 	protected Order() {
 	}
 
-	private Order(UUID id,UUID productScheduleId,UUID userId,Integer quantity,
-		BigDecimal price, OrderStatus status) {
+	private Order(
+		UUID id,
+		UUID productScheduleId,
+		UUID userId,
+		Integer quantity,
+		BigDecimal price,
+		OrderStatus status
+	) {
 		this.id = id;
 		this.productScheduleId = productScheduleId;
 		this.userId = userId;
@@ -50,11 +56,23 @@ public class Order {
 		this.status = status;
 	}
 
-	public static Order create(UUID productScheduleId, UUID userId, Integer quantity, BigDecimal price) {
+	public static Order create(
+		UUID productScheduleId,
+		UUID userId,
+		Integer quantity,
+		BigDecimal price
+	) {
 		validateQuantity(quantity);
 		validatePrice(price);
 
-		return new Order(UUID.randomUUID(), productScheduleId, userId, quantity, price, OrderStatus.PENDING);
+		return new Order(
+			UUID.randomUUID(),
+			productScheduleId,
+			userId,
+			quantity,
+			price,
+			OrderStatus.PENDING
+		);
 	}
 
 	public boolean isOwnedBy(UUID userId) {
@@ -67,6 +85,22 @@ public class Order {
 
 	public void cancel() {
 		this.status = OrderStatus.CANCELED;
+	}
+
+	public void pay() {
+		this.status = OrderStatus.PAID;
+	}
+
+	public void failPayment() {
+		this.status = OrderStatus.FAILED;
+	}
+
+	public boolean isPaymentAmountValid(BigDecimal amount) {
+		if (Objects.isNull(amount)) {
+			return false;
+		}
+
+		return price.compareTo(amount) == 0;
 	}
 
 	private static void validateQuantity(Integer quantity) {
