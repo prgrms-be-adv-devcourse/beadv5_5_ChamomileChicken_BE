@@ -19,7 +19,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import jabaclass.user.common.error.BusinessException;
@@ -67,6 +66,7 @@ class UserServiceTest {
 
 	@Test
 	void 회원가입을_성공한다() {
+		// given
 		RegisterUserRequestDto request = new RegisterUserRequestDto(
 			"용구",
 			"new@example.com",
@@ -75,18 +75,24 @@ class UserServiceTest {
 			"verified-token"
 		);
 
-		given(userRepository.saveAndFlush(any(User.class)))
+		given(userRepository.existsByEmail(request.email()))
+			.willReturn(false);
+		given(userRepository.save(any(User.class)))
 			.willAnswer(invocation -> invocation.getArgument(0));
 
+		// when
 		userService.register(request);
 
+		// then
+		then(userRepository).should(times(1)).existsByEmail(request.email());
 		then(emailVerificationUseCase).should(times(1))
 			.validateVerifiedToken(request.email(), request.verifiedToken());
-		then(userRepository).should(times(1)).saveAndFlush(any(User.class));
+		then(userRepository).should(times(1)).save(any(User.class));
 	}
 
 	@Test
 	void 회원가입시_이메일이_중복되면_예외가_발생한다() {
+		// given
 		RegisterUserRequestDto request = new RegisterUserRequestDto(
 			"용구",
 			"duplicate@example.com",
@@ -95,16 +101,18 @@ class UserServiceTest {
 			"verified-token"
 		);
 
-		given(userRepository.saveAndFlush(any(User.class)))
-			.willThrow(new DataIntegrityViolationException("uk_users_email"));
+		given(userRepository.existsByEmail(request.email()))
+			.willReturn(true);
 
+		// when & then
 		assertThatThrownBy(() -> userService.register(request))
 			.isInstanceOf(BusinessException.class)
 			.hasMessage(UserErrorCode.EMAIL_ALREADY_EXISTS.getMessage());
 
-		then(emailVerificationUseCase).should(times(1))
-			.validateVerifiedToken(request.email(), request.verifiedToken());
-		then(userRepository).should(times(1)).saveAndFlush(any(User.class));
+		then(userRepository).should(times(1)).existsByEmail(request.email());
+		then(emailVerificationUseCase).should(never())
+			.validateVerifiedToken(anyString(), anyString());
+		then(userRepository).should(never()).save(any(User.class));
 	}
 
 	@Test
