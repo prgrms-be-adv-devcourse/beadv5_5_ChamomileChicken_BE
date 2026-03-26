@@ -10,4 +10,6 @@ public interface UserRepository {
 	Optional<User> findById(UUID userId);
 
 	boolean existsByEmail(String email);
+
+	Optional<User> findByIdWithLock(UUID userId);
 }

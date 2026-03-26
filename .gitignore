@@ -50,3 +50,5 @@ wrapper/dists/
 .gradle/
 build/
 out/
+CLAUDE.md
+.claude/
