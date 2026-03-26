@@ -14,3 +14,6 @@ spring:
 app:
   mail:
     from: test@example.com
+
+jwt:
+  secret: "test-environment-secret-key-must-be-32-chars-long-!!!"

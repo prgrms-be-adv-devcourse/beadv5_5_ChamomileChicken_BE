@@ -39,4 +39,9 @@ public class UserRepositoryAdapter implements UserRepository {
 	public void delete(User user) {
 		userJpaRepository.delete(user);
 	}
+
+	@Override
+	public Optional<User> findByIdWithLock(UUID userId) {
+		return userJpaRepository.findByIdWithLock(userId);
+	}
 }

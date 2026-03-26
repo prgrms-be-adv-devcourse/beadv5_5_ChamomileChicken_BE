@@ -16,4 +16,6 @@ public interface UserRepository {
 	User saveAndFlush(User user);
 
 	void delete(User user);
+
+	Optional<User> findByIdWithLock(UUID userId);
 }
