@@ -86,7 +86,7 @@ public class Schedule extends EntityBase {
 		this.maxCapacity = maxCapacity;
 	}
 
-	public LocalDate fDt(String dt) {
+	public static LocalDate fDt(String dt) {
 		LocalDate scheduleDate;
 
 		try {
@@ -97,7 +97,7 @@ public class Schedule extends EntityBase {
 		return scheduleDate;
 	}
 
-	public LocalTime fTime(String time) {
+	public static LocalTime fTime(String time) {
 		LocalTime ltime;
 
 		try {
