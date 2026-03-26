@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -23,6 +24,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+@CrossOrigin(origins = "*")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/orders")
@@ -40,6 +42,18 @@ public class OrderController implements OrderOpenApi {
 
         return ResponseEntity.status(HttpStatus.CREATED).body(responseDto);
     }
+
+    // html 테스트용
+    /*PostMapping
+    public ResponseEntity<CreateOrderResponseDto> create(
+        @Valid @RequestBody CreateOrderRequestDto requestDto
+    ) {
+        UUID userId = UUID.fromString("22222222-2222-2222-2222-222222222222"); // ⭐ 임시
+
+        CreateOrderResponseDto responseDto = orderUseCase.create(userId, requestDto);
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(responseDto);
+    }*/
 
     @Override
     @GetMapping("/{orderId}")
