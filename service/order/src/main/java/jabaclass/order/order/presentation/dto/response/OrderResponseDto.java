@@ -9,9 +9,9 @@ import java.util.UUID;
 public record OrderResponseDto(
     UUID id,
     UUID productScheduleId,
-    UUID userId,
+    UUID buyerId,
     Integer quantity,
-    BigDecimal price,
+    BigDecimal totalAmount,
     OrderStatus status
 ) {
 
