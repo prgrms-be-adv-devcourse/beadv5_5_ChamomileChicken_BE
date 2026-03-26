@@ -47,4 +47,9 @@ public class ScheduleRepositoryAdapter implements ScheduleRepository {
 	public Optional<Schedule> findById(UUID schedulesId) {
 		return scheduleJpaRepository.findById(schedulesId);
 	}
+
+	@Override
+	public List<Schedule> findByProductIdAndDeleteDtIsNull(UUID productId) {
+		return scheduleJpaRepository.findByProductIdAndDeleteDtIsNull(productId);
+	}
 }

@@ -16,6 +16,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -53,6 +54,7 @@ import jabaclass.product.presentation.ProductRestController;
 import jabaclass.product.presentation.dto.request.CreateScheduleRequestDto;
 import jabaclass.product.presentation.dto.request.OrderRequestDto;
 import jabaclass.product.presentation.dto.request.UpdateScheduleRequestDto;
+import jabaclass.product.presentation.dto.respose.DeleteScheduleResposeDto;
 import jabaclass.product.presentation.dto.respose.OrderResponseDto;
 import jabaclass.product.presentation.dto.respose.SchedulesResponseDto;
 import jakarta.validation.ConstraintViolation;
@@ -463,6 +465,77 @@ class ScheduleTest {
 		productRestController.schedulesVerification(request);
 
 		then(scheduleUseCase).should().restoringInventory(request);
+	}
+
+	@Test
+	void 일정_삭제에_성공한다() {
+		prepareAuthorizedSellerAndOwnedProduct();
+		given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(schedule));
+
+		DeleteScheduleResposeDto result = scheduleService.delete(PRODUCT_ID, SCHEDULE_ID);
+
+		assertThat(result.scheduleId()).isEqualTo(SCHEDULE_ID);
+		assertThat(result.status()).isEqualTo(ReservedStatus.CLOSED);
+		assertThat(schedule.getStatus()).isEqualTo(ReservedStatus.CLOSED);
+		assertThat(schedule.getDeleteDt()).isNotNull();
+	}
+
+	@Test
+	void 상품의_일정_목록을_조회한다() {
+		Schedule secondSchedule = Schedule.builder()
+			.productId(PRODUCT_ID)
+			.scheduleDt(LocalDate.now().plusDays(2))
+			.startTime(LocalTime.of(14, 0))
+			.endTime(LocalTime.of(16, 0))
+			.status(ReservedStatus.AVAILABLE)
+			.maxCapacity(8)
+			.build();
+		ReflectionTestUtils.setField(secondSchedule, "id", UUID.randomUUID());
+
+		given(scheduleRepository.findByProductIdAndDeleteDtIsNull(PRODUCT_ID))
+			.willReturn(List.of(schedule, secondSchedule));
+
+		List<SchedulesResponseDto> result = scheduleService.schedulesList(PRODUCT_ID);
+
+		assertThat(result).hasSize(2);
+		assertThat(result).extracting(SchedulesResponseDto::productId)
+			.containsOnly(PRODUCT_ID);
+	}
+
+	@Test
+	void 삭제_요청이_들어오면_컨트롤러가_유스케이스를_호출한다() {
+		DeleteScheduleResposeDto response = DeleteScheduleResposeDto.from(SCHEDULE_ID, ReservedStatus.CLOSED);
+		given(scheduleUseCase.delete(PRODUCT_ID, SCHEDULE_ID)).willReturn(response);
+
+		ResponseEntity<?> result = productRestController.schedulesDelete(PRODUCT_ID, SCHEDULE_ID);
+
+		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+		then(scheduleUseCase).should().delete(PRODUCT_ID, SCHEDULE_ID);
+	}
+
+	@Test
+	void 목록_조회_요청이_들어오면_컨트롤러가_유스케이스를_호출한다() {
+		List<SchedulesResponseDto> response = List.of(
+			new SchedulesResponseDto(
+				SCHEDULE_ID,
+				PRODUCT_ID,
+				LocalDate.now().plusDays(1),
+				LocalTime.of(10, 0),
+				LocalTime.of(12, 0),
+				"AVAILABLE",
+				10,
+				SELLER_ID,
+				LocalDateTime.now(),
+				SELLER_ID,
+				LocalDateTime.now()
+			)
+		);
+		given(scheduleUseCase.schedulesList(PRODUCT_ID)).willReturn(response);
+
+		ResponseEntity<?> result = productRestController.schedulesSelectList(PRODUCT_ID);
+
+		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+		then(scheduleUseCase).should().schedulesList(PRODUCT_ID);
 	}
 
 	private void prepareAuthorizedSellerAndOwnedProduct() {

@@ -45,11 +45,7 @@ public class ProductService implements ProductUseCase {
 	@Transactional
 	public ProductResponseDto create(CreateProductRequestDto requestDto) {
 		// seller 룰을 확인
-		SellerResponseDto seller = findBySellerIdOrThrow(requestDto.sellerId());
-		SellerRole role = SellerRole.from(seller.role());
-		if (role != SellerRole.SELLER) {
-			throw new BusinessException(CommonErrorCode.NOT_SELLER);
-		}
+		SellerResponseDto seller = validateAndGetSeller();
 
 		Product product = Product.builder()
 			.sellerId(requestDto.sellerId())
@@ -70,15 +66,9 @@ public class ProductService implements ProductUseCase {
 	@Override
 	@Transactional
 	public ProductResponseDto update(UpdateProductRequestDto requestDto, UUID productId) {
-		UUID sellerId = auditorAwareService.getCurrentAuditor()
-			.orElseThrow(() -> new BusinessException(CommonErrorCode.EMPTY_USER));
+		// seller 룰을 확인
+		SellerResponseDto seller = validateAndGetSeller();
 
-		// sellerId를 확인
-		SellerResponseDto seller = findBySellerIdOrThrow(sellerId);
-		SellerRole role = SellerRole.from(seller.role());
-		if (role != SellerRole.SELLER) {
-			throw new BusinessException(CommonErrorCode.NOT_SELLER);
-		}
 		// 상품 존재하는지 확인
 		Product product = findByIdOrThrow(productId);
 		// 본인 상품인지 확인
@@ -97,20 +87,15 @@ public class ProductService implements ProductUseCase {
 	@Override
 	@Transactional
 	public DeleteProductResposeDto delete(UUID productId) {
-		UUID sellerId = auditorAwareService.getCurrentAuditor()
-			.orElseThrow(() -> new BusinessException(CommonErrorCode.EMPTY_USER));
-
-		// sellerId를 확인
-		SellerResponseDto seller = findBySellerIdOrThrow(sellerId);
-		SellerRole role = SellerRole.from(seller.role());
-		if (role != SellerRole.SELLER) {
-			throw new BusinessException(CommonErrorCode.NOT_SELLER);
-		}
+		// seller 룰을 확인
+		SellerResponseDto seller = validateAndGetSeller();
+		
 		// 상품 존재하는지 확인
 		Product product = findByIdOrThrow(productId);
 		// 본인 상품인지 확인
 		matchProductAndSellerId(productId, seller.sellerId());
 
+		product.changeStatus(ProductStatus.DISABLE);
 		product.changeDelete();
 
 		return DeleteProductResposeDto.from(productId, ProductStatus.DISABLE);
@@ -192,6 +177,17 @@ public class ProductService implements ProductUseCase {
 			.orElseThrow(() -> new BusinessException(CommonErrorCode.SELLER_NOT_FOUND));
 
 		return sellerInfo;
+	}
+
+	private SellerResponseDto validateAndGetSeller() {
+		UUID sellerId = auditorAwareService.getCurrentAuditor()
+			.orElseThrow(() -> new BusinessException(CommonErrorCode.EMPTY_USER));
+		SellerResponseDto seller = findBySellerIdOrThrow(sellerId);
+		SellerRole role = SellerRole.from(seller.role());
+		if (role != SellerRole.SELLER) {
+			throw new BusinessException(CommonErrorCode.NOT_SELLER);
+		}
+		return seller;
 	}
 
 }
