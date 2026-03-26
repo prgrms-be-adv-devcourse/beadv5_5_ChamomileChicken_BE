@@ -16,8 +16,8 @@ import jabaclass.product.application.acl.SellerRepository;
 import jabaclass.product.application.exception.BusinessException;
 import jabaclass.product.application.usecase.ProductUseCase;
 import jabaclass.product.common.exception.CommonErrorCode;
-import jabaclass.product.domain.model.Product;
-import jabaclass.product.domain.model.ProductStatus;
+import jabaclass.product.domain.model.Products;
+import jabaclass.product.domain.model.status.ProductStatus;
 import jabaclass.product.domain.repository.ProductRepository;
 import jabaclass.product.infrastructure.acl.dto.SellerResponseDto;
 import jabaclass.product.infrastructure.acl.dto.SellerRole;
@@ -51,7 +51,7 @@ public class ProductService implements ProductUseCase {
 			throw new BusinessException(CommonErrorCode.NOT_SELLER);
 		}
 
-		Product product = Product.builder()
+		Products product = Products.builder()
 			.sellerId(requestDto.sellerId())
 			.title(requestDto.title())
 			.maxCapacity(requestDto.maxCapacity())
@@ -61,7 +61,7 @@ public class ProductService implements ProductUseCase {
 			.status(requestDto.status())
 			.build();
 
-		Product saved = productRepository.save(product);
+		Products saved = productRepository.save(product);
 
 		publisher.publishEvent(new ProductEventResponseDto(saved.getId()));
 		return ProductResponseDto.from(saved, seller.sellerName());
@@ -80,7 +80,7 @@ public class ProductService implements ProductUseCase {
 			throw new BusinessException(CommonErrorCode.NOT_SELLER);
 		}
 		// 상품 존재하는지 확인
-		Product product = findByIdOrThrow(productId);
+		Products product = findByIdOrThrow(productId);
 		// 본인 상품인지 확인
 		matchProductAndSellerId(productId, seller.sellerId());
 
@@ -107,7 +107,7 @@ public class ProductService implements ProductUseCase {
 			throw new BusinessException(CommonErrorCode.NOT_SELLER);
 		}
 		// 상품 존재하는지 확인
-		Product product = findByIdOrThrow(productId);
+		Products product = findByIdOrThrow(productId);
 		// 본인 상품인지 확인
 		matchProductAndSellerId(productId, seller.sellerId());
 
@@ -121,7 +121,7 @@ public class ProductService implements ProductUseCase {
 		// 페이징 설정
 		Pageable pageable = PageRequest.of(requestDto.thisPage(), requestDto.pageSize());
 
-		Page<Product> page;
+		Page<Products> page;
 
 		// 페이징 및 키워드를 조건으로 가져온 상품 리스트
 		if (requestDto.keyword() == null || requestDto.keyword().isBlank()) {
@@ -135,7 +135,7 @@ public class ProductService implements ProductUseCase {
 		// 검색해온 상품의 user uuid를 List에 담는 작업
 		List<UUID> uuidList = page.getContent()
 			.stream()
-			.map(Product::getSellerId)
+			.map(Products::getSellerId)
 			.distinct()
 			.toList();
 
@@ -165,18 +165,25 @@ public class ProductService implements ProductUseCase {
 
 	@Override
 	public ProductResponseDto searchById(UUID productId) {
-		Product product = findByIdOrThrow(productId);
+		Products products = findByIdOrThrow(productId);
 
 		// sellerId를 확인
-		SellerResponseDto seller = findBySellerIdOrThrow(product.getSellerId());
+		SellerResponseDto seller = findBySellerIdOrThrow(products.getSellerId());
 
-		return ProductResponseDto.from(product, seller.sellerName());
+		return ProductResponseDto.from(products, seller.sellerName());
 	}
 
-	// 상품 존재 여부/단일 상품 검색
-	private Product findByIdOrThrow(UUID productId) {
+	@Override
+	public Products findByIdOrThrow(UUID productId) {
 		return productRepository.findById(productId)
 			.orElseThrow(() -> new BusinessException(CommonErrorCode.PRODUCT_NOT_FOUND));
+	}
+
+	@Override
+	// 해당 상품 보유자인지 확인
+	public Products matchProductAndSellerId(UUID productId, UUID sellerId) {
+		return productRepository.findByIdAndSellerId(productId, sellerId)
+			.orElseThrow(() -> new BusinessException(CommonErrorCode.MATCH_FAIL));
 	}
 
 	// 로그인 계정 여부
@@ -185,12 +192,6 @@ public class ProductService implements ProductUseCase {
 			.orElseThrow(() -> new BusinessException(CommonErrorCode.SELLER_NOT_FOUND));
 
 		return sellerInfo;
-	}
-
-	// 해당 상품 보유자인지 확인
-	private Product matchProductAndSellerId(UUID productId, UUID sellerId) {
-		return productRepository.findByIdAndSellerId(productId, sellerId)
-			.orElseThrow(() -> new BusinessException(CommonErrorCode.MATCH_FAIL));
 	}
 
 }

@@ -1,4 +1,4 @@
-package jabaclass.product.domain.model;
+package jabaclass.product.domain.model.status;
 
 public enum ProductStatus {
 	// 공개

@@ -23,7 +23,6 @@ public class SellerApiClient implements SellerClient {
 	public Optional<SellerResponseDto> findSeller(UUID sellerId) {
 
 		String id = sellerId.toString();
-		log.info(id);
 
 		// 판매자
 		if (id.startsWith("1")) {

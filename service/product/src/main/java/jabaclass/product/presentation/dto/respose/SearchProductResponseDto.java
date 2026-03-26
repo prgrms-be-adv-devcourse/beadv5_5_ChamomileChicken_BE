@@ -5,7 +5,7 @@ import java.util.List;
 import org.springframework.data.domain.Page;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import jabaclass.product.domain.model.Product;
+import jabaclass.product.domain.model.Products;
 
 @Schema(description = "검색 상품 응답")
 public record SearchProductResponseDto(
@@ -21,7 +21,7 @@ public record SearchProductResponseDto(
 	@Schema(description = "검색된 상품")
 	List<ProductResponseDto> content
 ) {
-	public static SearchProductResponseDto from(Page<Product> product, List<ProductResponseDto> content) {
+	public static SearchProductResponseDto from(Page<Products> product, List<ProductResponseDto> content) {
 		return new SearchProductResponseDto(
 			product.getTotalElements(),
 			product.getTotalPages(),

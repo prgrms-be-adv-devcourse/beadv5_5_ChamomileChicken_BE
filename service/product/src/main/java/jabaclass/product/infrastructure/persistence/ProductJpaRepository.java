@@ -7,14 +7,14 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import jabaclass.product.domain.model.Product;
-import jabaclass.product.domain.model.ProductStatus;
+import jabaclass.product.domain.model.Products;
+import jabaclass.product.domain.model.status.ProductStatus;
 
-public interface ProductJpaRepository extends JpaRepository<Product, UUID> {
-	Page<Product> findByStatusAndTitleContainingAndDeleteDtIsNull(ProductStatus status, String keyword,
+public interface ProductJpaRepository extends JpaRepository<Products, UUID> {
+	Page<Products> findByStatusAndTitleContainingAndDeleteDtIsNull(ProductStatus status, String keyword,
 		Pageable pageable);
 
-	Page<Product> findByStatusAndDeleteDtIsNull(ProductStatus status, Pageable pageable);
+	Page<Products> findByStatusAndDeleteDtIsNull(ProductStatus status, Pageable pageable);
 
-	Optional<Product> findByIdAndSellerId(UUID productId, UUID sellerId);
+	Optional<Products> findByIdAndSellerId(UUID productId, UUID sellerId);
 }

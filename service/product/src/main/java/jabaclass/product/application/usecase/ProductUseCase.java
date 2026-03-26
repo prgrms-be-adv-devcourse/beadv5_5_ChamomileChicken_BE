@@ -2,6 +2,7 @@ package jabaclass.product.application.usecase;
 
 import java.util.UUID;
 
+import jabaclass.product.domain.model.Products;
 import jabaclass.product.presentation.dto.request.CreateProductRequestDto;
 import jabaclass.product.presentation.dto.request.SearchProductRequestDto;
 import jabaclass.product.presentation.dto.request.UpdateProductRequestDto;
@@ -25,4 +26,10 @@ public interface ProductUseCase {
 
 	// 특정 상품 검색
 	ProductResponseDto searchById(UUID productId);
+
+	// 상품 존재 여부/단일 상품 검색
+	Products findByIdOrThrow(UUID productId);
+
+	// 해당 상품 보유자인지 확인
+	Products matchProductAndSellerId(UUID productId, UUID sellerId);
 }

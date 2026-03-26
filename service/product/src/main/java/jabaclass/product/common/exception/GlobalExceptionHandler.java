@@ -1,5 +1,7 @@
 package jabaclass.product.common.exception;
 
+import java.time.format.DateTimeParseException;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -17,7 +19,7 @@ public class GlobalExceptionHandler {
 	// request 값의 문제이므로 HttpStatus.BAD_REQUEST로 고정했습니다.
 	@ExceptionHandler(MethodArgumentNotValidException.class)
 	public ResponseEntity<ApiResponseDto<Void>> handleValidationException(MethodArgumentNotValidException ex) {
-		
+
 		String message = ex.getBindingResult().getFieldErrors().stream()
 			.map(fieldError -> fieldError.getDefaultMessage())
 			.collect(java.util.stream.Collectors.joining(", "));
@@ -46,4 +48,11 @@ public class GlobalExceptionHandler {
 			.body(ApiResponseDto.fail(CommonErrorCode.INTERNAL_SERVER_ERROR.getStatus()
 				, CommonErrorCode.INTERNAL_SERVER_ERROR.getMessage()));
 	}
+
+	// 날짜 예외 처리 -> 존재하지 않는 날짜
+	@ExceptionHandler(DateTimeParseException.class)
+	public ResponseEntity<?> handleDateParseException() {
+		throw new BusinessException(CommonErrorCode.INVALID_DATE_FORMAT);
+	}
+
 }

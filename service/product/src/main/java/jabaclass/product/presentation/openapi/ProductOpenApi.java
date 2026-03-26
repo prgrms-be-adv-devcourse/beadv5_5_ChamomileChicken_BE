@@ -11,10 +11,13 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jabaclass.product.common.exception.ApiResponseDto;
 import jabaclass.product.presentation.dto.request.CreateProductRequestDto;
+import jabaclass.product.presentation.dto.request.CreateSchedulesRequestDto;
 import jabaclass.product.presentation.dto.request.SearchProductRequestDto;
 import jabaclass.product.presentation.dto.request.UpdateProductRequestDto;
+import jabaclass.product.presentation.dto.request.UpdateSchedulesRequestDto;
 import jabaclass.product.presentation.dto.respose.DeleteProductResposeDto;
 import jabaclass.product.presentation.dto.respose.ProductResponseDto;
+import jabaclass.product.presentation.dto.respose.SchedulesResponseDto;
 import jabaclass.product.presentation.dto.respose.SearchProductResponseDto;
 
 @Tag(name = "Product", description = "상품 API")
@@ -74,4 +77,28 @@ public interface ProductOpenApi {
 	)
 	@CommonErrorResponses
 	ResponseEntity<ApiResponseDto<ProductResponseDto>> searchProduct(UUID productId);
+
+	@Operation(summary = "상품 일정 등록", description = "상품 일정을 등록 합니다.")
+	@ApiResponse(
+		responseCode = "202",
+		description = "상품 일정 등록 성공",
+		content = @Content(
+			schema = @Schema(implementation = ApiResponseDto.class)
+		)
+	)
+	@CommonErrorResponses
+	ResponseEntity<ApiResponseDto<SchedulesResponseDto>> schedulesCreate(CreateSchedulesRequestDto requestDto,
+		UUID productId);
+
+	@Operation(summary = "상품 일정 수정", description = "상품 일정을 수정 합니다.")
+	@ApiResponse(
+		responseCode = "202",
+		description = "상품 일정 수정 성공",
+		content = @Content(
+			schema = @Schema(implementation = ApiResponseDto.class)
+		)
+	)
+	@CommonErrorResponses
+	ResponseEntity<ApiResponseDto<SchedulesResponseDto>> schedulesUpdate(UpdateSchedulesRequestDto requestDto,
+		UUID productId, UUID scheduleId);
 }
