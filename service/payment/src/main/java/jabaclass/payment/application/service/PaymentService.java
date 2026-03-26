@@ -62,6 +62,9 @@ public class PaymentService implements PaymentUseCase {
 		Payment payment = paymentRepository.findByOrderId(orderId)
 			.orElseThrow(() -> new IllegalStateException("결제 정보를 찾을 수 없습니다."));
 
+		log.info("[confirm] validate 호출 전 orderId={}, requestAmount={}",
+			payment.getOrderId(), request.amount());
+
 		// 멱등성 체크
 		if (payment.isDone()) {
 			return PaymentResponseDto.from(payment);

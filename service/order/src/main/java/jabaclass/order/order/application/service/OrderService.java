@@ -51,6 +51,34 @@ public class OrderService implements OrderUseCase {
         return CreateOrderResponseDto.of(savedOrder, requestDto.productId(), requestDto.depositAmount());
     }
 
+    // html 테스트용
+    /*@Override
+    @Transactional
+    public CreateOrderResponseDto create(UUID userId, CreateOrderRequestDto requestDto) {
+
+        validateCreateRequest(requestDto);
+        validateDeposit(userId, requestDto.depositAmount());
+
+        // ⭐ 상품 검증 제거 (임시)
+        // ProductReservationResponseDto reservation = validateAndReserveProduct(requestDto);
+
+        // ⭐ 임시 금액
+        BigDecimal totalAmount = BigDecimal.valueOf(10000);
+
+        validateDepositAmount(requestDto.depositAmount(), totalAmount);
+
+        Order order = Order.create(
+            requestDto.productScheduleId(),
+            userId,
+            requestDto.quantity(),
+            totalAmount
+        );
+
+        Order savedOrder = orderRepository.save(order);
+
+        return CreateOrderResponseDto.of(savedOrder, requestDto.productId(), requestDto.depositAmount());
+    }*/
+
     @Override
     public OrderResponseDto getById(UUID orderId) {
         Order order = orderRepository.findById(orderId)

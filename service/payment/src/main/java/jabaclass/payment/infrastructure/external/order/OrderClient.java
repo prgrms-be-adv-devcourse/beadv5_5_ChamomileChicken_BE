@@ -1,5 +1,6 @@
 package jabaclass.payment.infrastructure.external.order;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -8,6 +9,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
 import jabaclass.payment.application.port.external.OrderPort;
+import jabaclass.payment.domain.model.PaymentResultStatus;
 import jabaclass.payment.infrastructure.external.order.dto.request.OrderStatusUpdateRequestDto;
 import lombok.RequiredArgsConstructor;
 
@@ -59,8 +61,17 @@ public class OrderClient implements OrderPort {
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.APPLICATION_JSON);
 
+		PaymentResultStatus paymentStatus =
+			status.equals("PAID")
+				? PaymentResultStatus.SUCCESS
+				: PaymentResultStatus.FAILED;
+
 		OrderStatusUpdateRequestDto body =
-			new OrderStatusUpdateRequestDto(paymentId, depositAmount, status);
+			new OrderStatusUpdateRequestDto(
+				paymentId,
+				paymentStatus,
+				BigDecimal.valueOf(depositAmount)
+			);
 
 		HttpEntity<OrderStatusUpdateRequestDto> request =
 			new HttpEntity<>(body, headers);
@@ -68,7 +79,7 @@ public class OrderClient implements OrderPort {
 		ResponseEntity<Void> response =
 			restTemplate.exchange(
 				url,
-				HttpMethod.PATCH,
+				HttpMethod.PUT,
 				request,
 				Void.class
 			);
