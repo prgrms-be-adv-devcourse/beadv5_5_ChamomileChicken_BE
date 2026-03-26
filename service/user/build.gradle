@@ -48,13 +48,17 @@ dependencies {
     annotationProcessor 'org.projectlombok:lombok'
 
     // DB Driver
-    runtimeOnly 'com.h2database:h2'
+//    runtimeOnly 'com.h2database:h2'
+    runtimeOnly 'org.postgresql:postgresql'
 
     // Swagger / OpenAPI
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.0'
 
     // RestTemplate
     implementation 'org.springframework.boot:spring-boot-starter-web'
+
+    // kafka
+    implementation 'org.springframework.kafka:spring-kafka'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.security:spring-security-test'
