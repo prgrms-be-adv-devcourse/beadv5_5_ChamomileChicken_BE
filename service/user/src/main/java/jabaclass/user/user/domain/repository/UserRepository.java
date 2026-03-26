@@ -1,5 +1,6 @@
 package jabaclass.user.user.domain.repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -11,5 +12,13 @@ public interface UserRepository {
 
 	boolean existsByEmail(String email);
 
+	User save(User user);
+
+	User saveAndFlush(User user);
+
+	void delete(User user);
+
 	Optional<User> findByIdWithLock(UUID userId);
+
+	List<User> findAllByIds(List<UUID> userIds);
 }

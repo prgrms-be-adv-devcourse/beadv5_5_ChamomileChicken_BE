@@ -20,6 +20,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import jabaclass.product.application.acl.SellerRepository;
 import jabaclass.product.application.exception.BusinessException;
+import jabaclass.product.application.service.AuditorAwareService;
 import jabaclass.product.application.service.ProductService;
 import jabaclass.product.domain.model.Product;
 import jabaclass.product.domain.model.ProductStatus;
@@ -27,15 +28,14 @@ import jabaclass.product.domain.repository.ProductRepository;
 import jabaclass.product.infrastructure.acl.dto.SellerResponseDto;
 import jabaclass.product.infrastructure.event.dto.ProductEventResponseDto;
 import jabaclass.product.presentation.dto.request.CreateProductRequestDto;
-import jabaclass.product.presentation.dto.respose.CreateProductResponseDto;
+import jabaclass.product.presentation.dto.request.UpdateProductRequestDto;
+import jabaclass.product.presentation.dto.respose.ProductResponseDto;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 
-//@DataJpaTest
 @ExtendWith(MockitoExtension.class)
-//@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
-public class ProductCreateTest {
+public class ProductCUDTest {
 	private Validator validator;
 
 	@InjectMocks
@@ -49,6 +49,28 @@ public class ProductCreateTest {
 
 	@Mock
 	private ApplicationEventPublisher publisher;
+
+	@Mock
+	private AuditorAwareService auditorAwareService;
+
+	// test 상품
+	private Product product1;
+
+	UUID productId = UUID.randomUUID();
+
+	@BeforeEach
+	void setup() {
+		product1 = Product.builder()
+			.id(productId)
+			.sellerId(SELLER_ID)
+			.title("상품A")
+			.maxCapacity(10)
+			.description("테스트1")
+			.descriptionImage(UUID.randomUUID().toString())
+			.price(PRICE)
+			.status(ProductStatus.ENABLE)
+			.build();
+	}
 
 	@BeforeEach
 	void setUp() {
@@ -85,7 +107,7 @@ public class ProductCreateTest {
 			});
 
 		// when
-		CreateProductResponseDto saved = productService.create(product);
+		ProductResponseDto saved = productService.create(product);
 
 		// then: 값 검증
 		assertThat(saved.title()).isEqualTo("테스트상품");
@@ -210,7 +232,7 @@ public class ProductCreateTest {
 		// when & then
 		assertThatThrownBy(() -> productService.create(product))
 			.isInstanceOf(BusinessException.class)
-			.hasMessage("존재하지 않는 판매자입니다.");
+			.hasMessage("존재하지 않는 판매자 입니다.");
 	}
 
 	@Test
@@ -233,4 +255,146 @@ public class ProductCreateTest {
 			.isInstanceOf(BusinessException.class)
 			.hasMessage("판매자가 아닙니다.");
 	}
+
+	@Test
+	void 상품_수정_성공() {
+		// given
+		UpdateProductRequestDto updateDto = new UpdateProductRequestDto(
+			"수정상품",
+			10,
+			"수정 설명",
+			UUID.randomUUID().toString(),
+			new BigDecimal("1200.00"),
+			ProductStatus.ENABLE
+		);
+
+		/// Stub: seller 조회
+		when(auditorAwareService.getCurrentAuditor())
+			.thenReturn(Optional.of(SELLER_ID));
+
+		given(sellerRepository.findSeller(eq(SELLER_ID)))
+			.willReturn(Optional.of(new SellerResponseDto(
+				SELLER_ID, "테스트 판매자", "SELLER"
+			)));
+
+		// 상품 조회 (1번)
+		given(productRepository.findById(productId))
+			.willReturn(Optional.of(product1));
+
+		// 권한 체크 (2번)
+		given(productRepository.findByIdAndSellerId(productId, SELLER_ID))
+			.willReturn(Optional.of(product1));
+
+		// when
+		ProductResponseDto updated = productService.update(updateDto, productId);
+
+		// then
+		assertThat(updated.title()).isEqualTo("수정상품");
+		assertThat(updated.price()).isEqualByComparingTo(updateDto.price());
+	}
+
+	@Test
+	void 없는_상품_수정_시_예외발생() {
+		UUID productId = UUID.randomUUID();
+		UpdateProductRequestDto updateDto = new UpdateProductRequestDto(
+			"수정상품",
+			10,
+			"수정 설명",
+			UUID.randomUUID().toString(),
+			new BigDecimal("1200.00"),
+			ProductStatus.ENABLE
+		);
+
+		// 존재하는 판매자
+		// Stub: seller 조회
+		when(auditorAwareService.getCurrentAuditor())
+			.thenReturn(Optional.of(SELLER_ID));
+
+		given(sellerRepository.findSeller(eq(SELLER_ID)))
+			.willReturn(Optional.of(new SellerResponseDto(SELLER_ID, "테스트 판매자", "SELLER")));
+
+		given(productRepository.findById(productId)).willReturn(Optional.empty());
+
+		assertThatThrownBy(() -> productService.update(updateDto, productId))
+			.isInstanceOf(BusinessException.class)
+			.hasMessage("존재하지 않는 상품 ID 입니다.");
+
+		then(productRepository).should(never()).save(any(Product.class));
+	}
+
+	@Test
+	void 상품_삭제_성공() {
+		// 존재하는 판매자
+		when(auditorAwareService.getCurrentAuditor())
+			.thenReturn(Optional.of(SELLER_ID));
+
+		// Stub: seller 조회
+		given(sellerRepository.findSeller(eq(SELLER_ID)))
+			.willReturn(Optional.of(new SellerResponseDto(
+				SELLER_ID, "테스트 판매자", "SELLER"
+			)));
+
+		//  상품 조회 (1번)
+		given(productRepository.findById(productId))
+			.willReturn(Optional.of(product1));
+
+		//  권한 체크 (2번)
+		given(productRepository.findByIdAndSellerId(productId, SELLER_ID))
+			.willReturn(Optional.of(product1));
+
+		// when
+		productService.delete(productId);
+
+		// then
+		assertThat(product1.getDeleteDt()).isNotNull();
+	}
+
+	@Test
+	void 없는_상품_삭제_시_예외발생() {
+		UUID productId = UUID.randomUUID();
+		given(productRepository.findById(productId)).willReturn(Optional.empty());
+
+		// 존재하는 판매자
+		// Stub: seller 조회
+		when(auditorAwareService.getCurrentAuditor())
+			.thenReturn(Optional.of(SELLER_ID));
+
+		given(sellerRepository.findSeller(eq(SELLER_ID)))
+			.willReturn(Optional.of(new SellerResponseDto(SELLER_ID, "테스트 판매자", "SELLER")));
+
+		assertThatThrownBy(() -> productService.delete(productId))
+			.isInstanceOf(BusinessException.class)
+			.hasMessage("존재하지 않는 상품 ID 입니다.");
+
+		then(productRepository).should(times(1)).findById(productId);
+	}
+
+	@Test
+	void 다른_판매자가_수정하면_예외() {
+		UpdateProductRequestDto updateDto = new UpdateProductRequestDto(
+			"수정상품",
+			10,
+			"수정 설명",
+			UUID.randomUUID().toString(),
+			new BigDecimal("1200.00"),
+			ProductStatus.ENABLE
+		);
+		when(auditorAwareService.getCurrentAuditor())
+			.thenReturn(Optional.of(SELLER_ID));
+
+		given(sellerRepository.findSeller(any(UUID.class)))
+			.willAnswer(invocation -> {
+				UUID id = invocation.getArgument(0);
+				return Optional.of(new SellerResponseDto(id, "판매자", "SELLER"));
+			});
+
+		// 같은 productId로 맞춰야 함
+		given(productRepository.findById(any(UUID.class)))
+			.willReturn(Optional.of(product1));
+
+		assertThatThrownBy(() -> productService.update(updateDto, SELLER_ID))
+			.isInstanceOf(BusinessException.class)
+			.hasMessage("해당 상품은 본인 상품이 아닙니다.");
+	}
+
 }

@@ -2,13 +2,14 @@ package jabaclass.product.presentation.dto.respose;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.UUID;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jabaclass.product.domain.model.Product;
 
 @Schema(description = "상품 응답")
-public record CreateProductResponseDto(
+public record ProductResponseDto(
 	@Schema(description = "상품 ID", example = "550e8400-e29b-41d4-a716-446655440000")
 	UUID id,
 
@@ -46,10 +47,27 @@ public record CreateProductResponseDto(
 	LocalDateTime modifyDt
 ) {
 
-	public static CreateProductResponseDto form(Product product, String sellerName) {
-		return new CreateProductResponseDto(
+	public static ProductResponseDto from(Product product, String sellerName) {
+		return new ProductResponseDto(
 			product.getId(),
 			sellerName,
+			product.getTitle(),
+			product.getMaxCapacity(),
+			product.getDescription(),
+			product.getDescriptionImage(),
+			product.getPrice(),
+			product.getStatus().getStatusName(),
+			product.getRegId(),
+			product.getRegDt(),
+			product.getModifyId(),
+			product.getModifyDt()
+		);
+	}
+
+	public static ProductResponseDto listFrom(Product product, Map<UUID, String> map) {
+		return new ProductResponseDto(
+			product.getId(),
+			map.getOrDefault(product.getSellerId(), "사용자 이름이 지정되지 않았습니다."),
 			product.getTitle(),
 			product.getMaxCapacity(),
 			product.getDescription(),
