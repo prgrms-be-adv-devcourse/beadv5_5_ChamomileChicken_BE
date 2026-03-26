@@ -49,7 +49,7 @@ public enum CommonErrorCode {
 	//404 상품 일자가 존재하지 않습니다.
 	SCHDULES_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 상품 일자 ID 입니다."),
 	// 400 일자가 존재하지 않습니다.
-	DATE_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 상품 일자 ID 입니다."),
+	DATE_NOT_FOUND(HttpStatus.NOT_FOUND, "일자를 입력해주세요."),
 	// 400 시작 시간이 존재하지 않습니다.
 	STTIME_NOT_FOUND(HttpStatus.NOT_FOUND, "시작 시간을 입력해주세요."),
 	// 400 종료 시간이 존재하지 않습니다.

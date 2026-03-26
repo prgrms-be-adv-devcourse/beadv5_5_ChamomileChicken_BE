@@ -36,7 +36,7 @@ public interface ProductOpenApi {
 
 	@Operation(summary = "상품 수정", description = "상품을 수정 합니다.")
 	@ApiResponse(
-		responseCode = "202",
+		responseCode = "200",
 		description = "상품 수정 성공",
 		content = @Content(
 			schema = @Schema(implementation = ApiResponseDto.class)
@@ -80,7 +80,7 @@ public interface ProductOpenApi {
 
 	@Operation(summary = "상품 일정 등록", description = "상품 일정을 등록 합니다.")
 	@ApiResponse(
-		responseCode = "202",
+		responseCode = "201",
 		description = "상품 일정 등록 성공",
 		content = @Content(
 			schema = @Schema(implementation = ApiResponseDto.class)
@@ -92,7 +92,7 @@ public interface ProductOpenApi {
 
 	@Operation(summary = "상품 일정 수정", description = "상품 일정을 수정 합니다.")
 	@ApiResponse(
-		responseCode = "202",
+		responseCode = "200",
 		description = "상품 일정 수정 성공",
 		content = @Content(
 			schema = @Schema(implementation = ApiResponseDto.class)
