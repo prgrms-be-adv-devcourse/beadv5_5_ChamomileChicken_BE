@@ -7,6 +7,8 @@ import java.math.BigDecimal;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import jabaclass.user.deposit.domain.exception.DepositException;
+
 class UserDepositTest {
 
 	private User user;
@@ -87,7 +89,7 @@ class UserDepositTest {
 
 		// when & then
 		assertThatThrownBy(() -> user.deductDeposit(new BigDecimal("10000")))
-			.isInstanceOf(IllegalArgumentException.class)
+			.isInstanceOf(DepositException.class)
 			.hasMessage("예치금이 부족합니다.");
 	}
 }
