@@ -44,4 +44,9 @@ public class UserRepositoryAdapter implements UserRepository {
 	public Optional<User> findByIdWithLock(UUID userId) {
 		return userJpaRepository.findByIdWithLock(userId);
 	}
+
+	@Override
+	public Optional<User> findByEmail(String email) {
+		return userJpaRepository.findByEmail(email);
+	}
 }

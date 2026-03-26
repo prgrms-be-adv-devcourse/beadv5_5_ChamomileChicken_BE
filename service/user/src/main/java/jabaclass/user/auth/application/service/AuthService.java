@@ -6,6 +6,7 @@ import jabaclass.user.auth.application.exception.AuthException;
 import jabaclass.user.auth.application.usecase.LoginUseCase;
 import jabaclass.user.auth.application.usecase.LogoutUseCase;
 import jabaclass.user.auth.application.usecase.ReissueUseCase;
+import jabaclass.user.auth.infrastructure.jwt.TokenProvider;
 import jabaclass.user.auth.presentation.dto.request.LoginRequestDto;
 import jabaclass.user.auth.presentation.dto.request.ReissueRequestDto;
 import jabaclass.user.auth.presentation.dto.response.LoginResponseDto;
@@ -23,6 +24,7 @@ public class AuthService implements LoginUseCase, LogoutUseCase, ReissueUseCase 
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final TokenProvider tokenProvider;
     private final JwtProvider jwtProvider;
 
     @Override
@@ -36,8 +38,8 @@ public class AuthService implements LoginUseCase, LogoutUseCase, ReissueUseCase 
             throw new AuthException(AuthErrorCode.INVALID_PASSWORD);
         }
 
-        String accessToken = jwtProvider.generateAccessToken(user.getId());
-        String refreshToken = jwtProvider.generateRefreshToken(user.getId());
+        String accessToken = tokenProvider.generateAccessToken(user.getId());
+        String refreshToken = tokenProvider.generateRefreshToken(user.getId());
 
         user.updateRefreshToken(refreshToken);
 
@@ -61,8 +63,8 @@ public class AuthService implements LoginUseCase, LogoutUseCase, ReissueUseCase 
             throw new AuthException(AuthErrorCode.REFRESH_TOKEN_MISMATCH);
         }
 
-        String newAccessToken = jwtProvider.generateAccessToken(userId);
-        String newRefreshToken = jwtProvider.generateRefreshToken(userId);
+        String newAccessToken = tokenProvider.generateAccessToken(userId);
+        String newRefreshToken = tokenProvider.generateRefreshToken(userId);
 
         user.updateRefreshToken(newRefreshToken);
 

@@ -9,13 +9,9 @@ import org.springframework.boot.context.properties.bind.ConstructorBinding;
 public class JwtProperties {
 
     private final String secret;
-    private final long accessTokenValidity;
-    private final long refreshTokenValidity;
 
     @ConstructorBinding
-    public JwtProperties(String secret, long accessTokenValidity, long refreshTokenValidity) {
+    public JwtProperties(String secret) {
         this.secret = secret;
-        this.accessTokenValidity = accessTokenValidity;
-        this.refreshTokenValidity = refreshTokenValidity;
     }
 }

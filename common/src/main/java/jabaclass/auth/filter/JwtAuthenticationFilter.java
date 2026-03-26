@@ -1,5 +1,6 @@
 package jabaclass.auth.filter;
 
+import jabaclass.auth.jwt.JwtProvider;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.Map;
@@ -19,7 +20,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jabaclass.auth.exception.JwtAuthException;
 import jabaclass.auth.exception.JwtErrorCode;
-import jabaclass.auth.jwt.JwtProvider;
 import jabaclass.auth.jwt.JwtTokenResolver;
 
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
