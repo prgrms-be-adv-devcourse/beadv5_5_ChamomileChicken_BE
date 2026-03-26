@@ -176,9 +176,10 @@ public class ScheduleService implements ScheduleUseCase {
 		int productMax = product.getMaxCapacity();
 		int maxCapacity = schedule.getMaxCapacity();
 		int quantity = requestDto.quantity();
-		int afterMaxCapacity = maxCapacity + quantity;
-		if (productMax < quantity)
-			afterMaxCapacity = productMax;
+		int afterMaxCapacity = Math.min(
+			productMax,
+			maxCapacity + quantity
+		);
 
 		schedule.changeMaxCapacity(afterMaxCapacity);
 	}

@@ -128,14 +128,14 @@ public class ProductRestController implements ProductOpenApi {
 	// 상품 스케줄 검증 -> 예약 가능한지
 	@Override
 	@PostMapping("/reservations")
-	public ResponseEntity<OrderResponseDto> schedulesReservations(OrderRequestDto requestDto) {
+	public ResponseEntity<OrderResponseDto> schedulesReservations(@RequestBody OrderRequestDto requestDto) {
 		OrderResponseDto response = scheduleUseCase.verification(requestDto);
 		return ResponseEntity.ok().body(response);
 	}
 
 	@Override
 	@PostMapping("/reservations/release")
-	public void schedulesVerification(OrderRequestDto requestDto) {
+	public void schedulesVerification(@RequestBody OrderRequestDto requestDto) {
 		scheduleUseCase.restoringInventory(requestDto);
 	}
 

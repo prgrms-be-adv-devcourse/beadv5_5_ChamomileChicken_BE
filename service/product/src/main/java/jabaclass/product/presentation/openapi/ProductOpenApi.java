@@ -109,7 +109,7 @@ public interface ProductOpenApi {
 		responseCode = "200",
 		description = "스케줄 검증 성공",
 		content = @Content(
-			schema = @Schema(implementation = OrderRequestDto.class)
+			schema = @Schema(implementation = OrderResponseDto.class)
 		)
 	)
 	@CommonErrorResponses
@@ -118,10 +118,7 @@ public interface ProductOpenApi {
 	@Operation(summary = "상품 일정 재고 추가", description = "상품 일정의 재고를 추가 합니다.")
 	@ApiResponse(
 		responseCode = "200",
-		description = "재고 추가 성공",
-		content = @Content(
-			schema = @Schema(implementation = OrderRequestDto.class)
-		)
+		description = "재고 추가 성공"
 	)
 	@CommonErrorResponses
 	void schedulesVerification(OrderRequestDto requestDto);
