@@ -1,5 +1,6 @@
 package jabaclass.product.presentation.openapi;
 
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.http.ResponseEntity;
@@ -17,6 +18,7 @@ import jabaclass.product.presentation.dto.request.SearchProductRequestDto;
 import jabaclass.product.presentation.dto.request.UpdateProductRequestDto;
 import jabaclass.product.presentation.dto.request.UpdateScheduleRequestDto;
 import jabaclass.product.presentation.dto.respose.DeleteProductResposeDto;
+import jabaclass.product.presentation.dto.respose.DeleteScheduleResposeDto;
 import jabaclass.product.presentation.dto.respose.OrderResponseDto;
 import jabaclass.product.presentation.dto.respose.ProductResponseDto;
 import jabaclass.product.presentation.dto.respose.SchedulesResponseDto;
@@ -122,4 +124,27 @@ public interface ProductOpenApi {
 	)
 	@CommonErrorResponses
 	void schedulesVerification(OrderRequestDto requestDto);
+
+	@Operation(summary = "상품 일정 삭제", description = "상품 일정을 삭제 합니다.")
+	@ApiResponse(
+		responseCode = "200",
+		description = "스케줄 삭제 성공",
+		content = @Content(
+			schema = @Schema(implementation = DeleteScheduleResposeDto.class)
+		)
+	)
+	@CommonErrorResponses
+	ResponseEntity<ApiResponseDto<DeleteScheduleResposeDto>> schedulesDelete(UUID productId, UUID scheduleId);
+
+	@Operation(summary = "상품 일정 검색", description = "상품 일정을 검색 합니다.")
+	@ApiResponse(
+		responseCode = "200",
+		description = "스케줄 검색 성공",
+		content = @Content(
+			schema = @Schema(implementation = SchedulesResponseDto.class)
+		)
+	)
+	@CommonErrorResponses
+	ResponseEntity<ApiResponseDto<List<SchedulesResponseDto>>> schedulesSelectList(UUID productId);
+
 }

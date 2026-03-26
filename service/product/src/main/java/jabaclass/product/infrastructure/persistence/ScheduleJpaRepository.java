@@ -48,4 +48,6 @@ public interface ScheduleJpaRepository extends JpaRepository<Schedule, UUID> {
 		@Param("endTime") LocalTime endTime,
 		@Param("id") UUID id
 	);
+
+	List<Schedule> findByProductIdAndDeleteDtIsNull(UUID productId);
 }

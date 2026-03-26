@@ -111,6 +111,7 @@ public class ProductService implements ProductUseCase {
 		// 본인 상품인지 확인
 		matchProductAndSellerId(productId, seller.sellerId());
 
+		product.changeStatus(ProductStatus.DISABLE);
 		product.changeDelete();
 
 		return DeleteProductResposeDto.from(productId, ProductStatus.DISABLE);
