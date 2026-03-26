@@ -18,4 +18,6 @@ public interface UserRepository {
 	void delete(User user);
 
 	Optional<User> findByIdWithLock(UUID userId);
+
+	Optional<User> findByEmail(String email);
 }

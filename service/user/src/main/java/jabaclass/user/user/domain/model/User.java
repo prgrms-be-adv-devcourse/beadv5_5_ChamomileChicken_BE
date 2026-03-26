@@ -52,6 +52,9 @@ public class User extends BaseEntity {
 	@Column(name = "deposit", nullable = false, precision = 19, scale = 2)
 	private BigDecimal deposit = BigDecimal.ZERO;
 
+	@Column(name = "refresh_token", length = 512)
+	private String refreshToken;
+
 	public void updateProfile(String name, String phone) {
 		this.name = name;
 		this.phone = phone;
@@ -72,4 +75,8 @@ public class User extends BaseEntity {
 
 		this.deposit = this.deposit.subtract(amount);
 	}
+
+    public void updateRefreshToken(String refreshToken) {
+		this.refreshToken = refreshToken;
+    }
 }
