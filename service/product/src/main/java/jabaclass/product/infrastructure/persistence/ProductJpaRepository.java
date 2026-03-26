@@ -8,7 +8,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import jabaclass.product.domain.model.Product;
-import jabaclass.product.domain.model.ProductStatus;
+import jabaclass.product.domain.model.status.ProductStatus;
 
 public interface ProductJpaRepository extends JpaRepository<Product, UUID> {
 	Page<Product> findByStatusAndTitleContainingAndDeleteDtIsNull(ProductStatus status, String keyword,

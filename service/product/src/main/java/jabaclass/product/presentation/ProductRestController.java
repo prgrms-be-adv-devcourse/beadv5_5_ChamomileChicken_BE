@@ -15,12 +15,16 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import jabaclass.product.application.usecase.ProductUseCase;
+import jabaclass.product.application.usecase.ScheduleUseCase;
 import jabaclass.product.common.exception.ApiResponseDto;
 import jabaclass.product.presentation.dto.request.CreateProductRequestDto;
+import jabaclass.product.presentation.dto.request.CreateScheduleRequestDto;
 import jabaclass.product.presentation.dto.request.SearchProductRequestDto;
 import jabaclass.product.presentation.dto.request.UpdateProductRequestDto;
+import jabaclass.product.presentation.dto.request.UpdateScheduleRequestDto;
 import jabaclass.product.presentation.dto.respose.DeleteProductResposeDto;
 import jabaclass.product.presentation.dto.respose.ProductResponseDto;
+import jabaclass.product.presentation.dto.respose.SchedulesResponseDto;
 import jabaclass.product.presentation.dto.respose.SearchProductResponseDto;
 import jabaclass.product.presentation.openapi.ProductOpenApi;
 import jakarta.validation.Valid;
@@ -33,7 +37,8 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class ProductRestController implements ProductOpenApi {
 
-	private final ProductUseCase useCase;
+	private final ProductUseCase productUseCase;
+	private final ScheduleUseCase scheduleUseCase;
 
 	// 상품 등록
 	@Override
@@ -41,7 +46,7 @@ public class ProductRestController implements ProductOpenApi {
 	public ResponseEntity<ApiResponseDto<ProductResponseDto>> create(
 		@RequestBody @Valid CreateProductRequestDto request
 	) {
-		ProductResponseDto response = useCase.create(request);
+		ProductResponseDto response = productUseCase.create(request);
 
 		return ResponseEntity.status(HttpStatus.CREATED)
 			.body(ApiResponseDto.success(HttpStatus.CREATED, "성공적으로 등록 되었습니다.", response));
@@ -54,7 +59,7 @@ public class ProductRestController implements ProductOpenApi {
 		@RequestBody @Valid UpdateProductRequestDto request,
 		@PathVariable UUID productId
 	) {
-		ProductResponseDto response = useCase.update(request, productId);
+		ProductResponseDto response = productUseCase.update(request, productId);
 
 		return ResponseEntity.ok()
 			.body(ApiResponseDto.success(HttpStatus.OK, "성공적으로 수정 되었습니다.", response));
@@ -64,7 +69,7 @@ public class ProductRestController implements ProductOpenApi {
 	@Override
 	@DeleteMapping("/{productId}")
 	public ResponseEntity<ApiResponseDto<DeleteProductResposeDto>> delete(@PathVariable UUID productId) {
-		DeleteProductResposeDto response = useCase.delete(productId);
+		DeleteProductResposeDto response = productUseCase.delete(productId);
 
 		return ResponseEntity.ok()
 			.body(ApiResponseDto.success(HttpStatus.OK, "성공적으로 삭제 되었습니다.", response));
@@ -75,7 +80,7 @@ public class ProductRestController implements ProductOpenApi {
 	@GetMapping
 	public ResponseEntity<ApiResponseDto<SearchProductResponseDto>> searchAllProduct(
 		@ModelAttribute SearchProductRequestDto request) {
-		SearchProductResponseDto response = useCase.searchAll(request);
+		SearchProductResponseDto response = productUseCase.searchAll(request);
 
 		return ResponseEntity.ok()
 			.body(ApiResponseDto.success(HttpStatus.OK, "성공적으로 전체 검색이 되었습니다.", response));
@@ -85,10 +90,37 @@ public class ProductRestController implements ProductOpenApi {
 	@Override
 	@GetMapping("/{productId}")
 	public ResponseEntity<ApiResponseDto<ProductResponseDto>> searchProduct(@PathVariable UUID productId) {
-		ProductResponseDto response = useCase.searchById(productId);
+		ProductResponseDto response = productUseCase.searchById(productId);
 
 		return ResponseEntity.ok()
 			.body(ApiResponseDto.success(HttpStatus.OK, "성공적으로 검색이 되었습니다.", response));
+	}
+
+	// 상품 일정 등록
+	@Override
+	@PostMapping("/{productId}/schedules")
+	public ResponseEntity<ApiResponseDto<SchedulesResponseDto>> schedulesCreate(
+		@RequestBody @Valid CreateScheduleRequestDto requestDto
+		, @PathVariable UUID productId) {
+
+		SchedulesResponseDto response = scheduleUseCase.create(requestDto, productId);
+
+		return ResponseEntity.status(HttpStatus.CREATED)
+			.body(ApiResponseDto.success(HttpStatus.CREATED, "성공적으로 등록 되었습니다.", response));
+	}
+
+	// 상품 일정 수정
+	@Override
+	@PutMapping("/{productId}/schedules/{scheduleId}")
+	public ResponseEntity<ApiResponseDto<SchedulesResponseDto>> schedulesUpdate(
+		@RequestBody @Valid UpdateScheduleRequestDto requestDto,
+		@PathVariable UUID productId,
+		@PathVariable UUID scheduleId
+	) {
+		SchedulesResponseDto response = scheduleUseCase.update(requestDto, productId, scheduleId);
+
+		return ResponseEntity.ok()
+			.body(ApiResponseDto.success(HttpStatus.OK, "성공적으로 수정 되었습니다.", response));
 	}
 
 }

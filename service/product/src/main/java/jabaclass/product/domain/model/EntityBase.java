@@ -19,7 +19,7 @@ import lombok.experimental.SuperBuilder;
 @Getter
 @SuperBuilder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public abstract class ProductBase {
+public abstract class EntityBase {
 	// AuditorAware 통해 세팅 가능-> 추후 확인
 	@CreatedBy
 	@Column(name = "reg_id", nullable = false, updatable = false)

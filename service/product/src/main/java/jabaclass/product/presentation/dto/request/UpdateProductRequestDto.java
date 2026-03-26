@@ -3,7 +3,7 @@ package jabaclass.product.presentation.dto.request;
 import java.math.BigDecimal;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import jabaclass.product.domain.model.ProductStatus;
+import jabaclass.product.domain.model.status.ProductStatus;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;

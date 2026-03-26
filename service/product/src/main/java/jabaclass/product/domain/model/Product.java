@@ -8,6 +8,7 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import jabaclass.product.application.exception.BusinessException;
 import jabaclass.product.common.exception.CommonErrorCode;
+import jabaclass.product.domain.model.status.ProductStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
@@ -25,8 +26,8 @@ import lombok.experimental.SuperBuilder;
 @NoArgsConstructor
 @SuperBuilder
 @EntityListeners(AuditingEntityListener.class)
-@Table(name = "\"product\"", schema = "public")
-public class Product extends ProductBase {
+@Table(name = "\"products\"", schema = "public")
+public class Product extends EntityBase {
 
 	@Id
 	@UuidGenerator

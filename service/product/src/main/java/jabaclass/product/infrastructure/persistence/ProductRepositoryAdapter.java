@@ -8,7 +8,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
 import jabaclass.product.domain.model.Product;
-import jabaclass.product.domain.model.ProductStatus;
+import jabaclass.product.domain.model.status.ProductStatus;
 import jabaclass.product.domain.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 

@@ -17,7 +17,7 @@ import jabaclass.product.application.exception.BusinessException;
 import jabaclass.product.application.usecase.ProductUseCase;
 import jabaclass.product.common.exception.CommonErrorCode;
 import jabaclass.product.domain.model.Product;
-import jabaclass.product.domain.model.ProductStatus;
+import jabaclass.product.domain.model.status.ProductStatus;
 import jabaclass.product.domain.repository.ProductRepository;
 import jabaclass.product.infrastructure.acl.dto.SellerResponseDto;
 import jabaclass.product.infrastructure.acl.dto.SellerRole;
@@ -173,10 +173,17 @@ public class ProductService implements ProductUseCase {
 		return ProductResponseDto.from(product, seller.sellerName());
 	}
 
-	// 상품 존재 여부/단일 상품 검색
-	private Product findByIdOrThrow(UUID productId) {
+	@Override
+	public Product findByIdOrThrow(UUID productId) {
 		return productRepository.findById(productId)
 			.orElseThrow(() -> new BusinessException(CommonErrorCode.PRODUCT_NOT_FOUND));
+	}
+
+	@Override
+	// 해당 상품 보유자인지 확인
+	public Product matchProductAndSellerId(UUID productId, UUID sellerId) {
+		return productRepository.findByIdAndSellerId(productId, sellerId)
+			.orElseThrow(() -> new BusinessException(CommonErrorCode.MATCH_FAIL));
 	}
 
 	// 로그인 계정 여부
@@ -185,12 +192,6 @@ public class ProductService implements ProductUseCase {
 			.orElseThrow(() -> new BusinessException(CommonErrorCode.SELLER_NOT_FOUND));
 
 		return sellerInfo;
-	}
-
-	// 해당 상품 보유자인지 확인
-	private Product matchProductAndSellerId(UUID productId, UUID sellerId) {
-		return productRepository.findByIdAndSellerId(productId, sellerId)
-			.orElseThrow(() -> new BusinessException(CommonErrorCode.MATCH_FAIL));
 	}
 
 }
