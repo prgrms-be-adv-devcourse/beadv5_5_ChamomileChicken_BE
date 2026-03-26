@@ -13,6 +13,7 @@ import jabaclass.user.deposit.application.usecase.UseDepositUseCase;
 import jabaclass.user.deposit.application.usecase.ValidateDepositUseCase;
 import jabaclass.user.deposit.presentation.dto.request.UseDepositRequestDto;
 import jabaclass.user.deposit.presentation.dto.request.ValidateDepositRequestDto;
+import jabaclass.user.deposit.presentation.dto.response.ValidateDepositResponseDto;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -24,12 +25,12 @@ public class DepositRestController {
 	private final UseDepositUseCase useDepositUseCase;
 
 	@PostMapping("/validate")
-	public ResponseEntity<Boolean> validateDeposit(
+	public ResponseEntity<ValidateDepositResponseDto> validateDeposit(
 		@AuthenticationPrincipal UUID userId,
 		@RequestBody ValidateDepositRequestDto request
 	) {
-		boolean available = validateDepositUseCase.validate(userId, request.depositAmount());
-		return ResponseEntity.ok(available);
+		boolean valid = validateDepositUseCase.validate(userId, request.depositAmount());
+		return ResponseEntity.ok(new ValidateDepositResponseDto(valid));
 	}
 
 	@PostMapping("/use")
