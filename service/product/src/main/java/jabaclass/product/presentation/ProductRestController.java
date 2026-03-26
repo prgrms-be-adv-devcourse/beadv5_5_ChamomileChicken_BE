@@ -1,5 +1,6 @@
 package jabaclass.product.presentation;
 
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
@@ -24,6 +25,7 @@ import jabaclass.product.presentation.dto.request.SearchProductRequestDto;
 import jabaclass.product.presentation.dto.request.UpdateProductRequestDto;
 import jabaclass.product.presentation.dto.request.UpdateScheduleRequestDto;
 import jabaclass.product.presentation.dto.respose.DeleteProductResposeDto;
+import jabaclass.product.presentation.dto.respose.DeleteScheduleResposeDto;
 import jabaclass.product.presentation.dto.respose.OrderResponseDto;
 import jabaclass.product.presentation.dto.respose.ProductResponseDto;
 import jabaclass.product.presentation.dto.respose.SchedulesResponseDto;
@@ -137,6 +139,26 @@ public class ProductRestController implements ProductOpenApi {
 	@PostMapping("/reservations/release")
 	public void schedulesVerification(@RequestBody OrderRequestDto requestDto) {
 		scheduleUseCase.restoringInventory(requestDto);
+	}
+
+	@Override
+	@DeleteMapping("/{productId}/schedules/{scheduleId}")
+	public ResponseEntity<ApiResponseDto<DeleteScheduleResposeDto>> schedulesDelete(@PathVariable UUID productId,
+		@PathVariable UUID scheduleId) {
+		DeleteScheduleResposeDto response = scheduleUseCase.delete(productId, scheduleId);
+
+		return ResponseEntity.ok()
+			.body(ApiResponseDto.success(HttpStatus.OK, "성공적으로 삭제 되었습니다.", response));
+	}
+
+	@Override
+	@GetMapping("/{productId}/schedules")
+	public ResponseEntity<ApiResponseDto<List<SchedulesResponseDto>>> schedulesSelectList(
+		@PathVariable UUID productId) {
+		List<SchedulesResponseDto> response = scheduleUseCase.schedulesList(productId);
+
+		return ResponseEntity.ok()
+			.body(ApiResponseDto.success(HttpStatus.OK, "성공적으로 검색 되었습니다.", response));
 	}
 
 }

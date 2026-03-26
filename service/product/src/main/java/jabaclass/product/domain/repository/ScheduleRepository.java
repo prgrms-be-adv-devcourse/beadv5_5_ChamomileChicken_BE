@@ -31,4 +31,6 @@ public interface ScheduleRepository {
 
 	Optional<Schedule> findById(UUID schedulesId);
 
+	List<Schedule> findByProductIdAndDeleteDtIsNull(UUID productId);
+
 }
