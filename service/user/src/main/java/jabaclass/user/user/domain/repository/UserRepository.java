@@ -13,5 +13,7 @@ public interface UserRepository {
 
 	User save(User user);
 
+	User saveAndFlush(User user);
+
 	void delete(User user);
 }

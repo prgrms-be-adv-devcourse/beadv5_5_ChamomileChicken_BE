@@ -31,6 +31,11 @@ public class UserRepositoryAdapter implements UserRepository {
 	}
 
 	@Override
+	public User saveAndFlush(User user) {
+		return userJpaRepository.saveAndFlush(user);
+	}
+
+	@Override
 	public void delete(User user) {
 		userJpaRepository.delete(user);
 	}
