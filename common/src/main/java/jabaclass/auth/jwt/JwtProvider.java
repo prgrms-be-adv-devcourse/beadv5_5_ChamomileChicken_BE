@@ -9,7 +9,6 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.MalformedJwtException;
-import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.UnsupportedJwtException;
 import io.jsonwebtoken.security.Keys;
 import jabaclass.auth.exception.JwtAuthException;
@@ -21,59 +20,39 @@ public class JwtProvider {
     private static final String CLAIM_TYPE = "type";
 
     private final Key key;
-    private final long accessTokenValidity;
-    private final long refreshTokenValidity;
 
     public JwtProvider(JwtProperties properties) {
-        this.key = Keys.hmacShaKeyFor(properties.getSecret().getBytes(StandardCharsets.UTF_8));
-        this.accessTokenValidity = properties.getAccessTokenValidity();
-        this.refreshTokenValidity = properties.getRefreshTokenValidity();
-    }
-
-    public String generateAccessToken(UUID userId) {
-        return generate(userId, accessTokenValidity, TokenType.ACCESS);
-    }
-
-    public String generateRefreshToken(UUID userId) {
-        return generate(userId, refreshTokenValidity, TokenType.REFRESH);
-    }
-
-    // DB 일치 여부 확인은 user-service AuthService 책임
-    public String reissueAccessToken(String refreshToken) {
-        Claims claims = parseClaims(refreshToken);
-        if (!TokenType.REFRESH.name().equals(claims.get(CLAIM_TYPE, String.class))) {
-            throw new JwtAuthException(JwtErrorCode.INVALID_TOKEN);
+        if (properties.getSecret().length() < 32) {
+            throw new IllegalArgumentException("JWT secret은 최소 32자 이상이어야 합니다.");
         }
-        UUID userId = UUID.fromString(claims.get(CLAIM_USER_ID, String.class));
-        return generateAccessToken(userId);
+        this.key = Keys.hmacShaKeyFor(properties.getSecret().getBytes(StandardCharsets.UTF_8));
     }
 
+    // 외부에서 token String만 있을 때 사용
     public UUID getUserId(String token) {
         return UUID.fromString(parseClaims(token).get(CLAIM_USER_ID, String.class));
     }
 
+    // filter에서 parseClaims 중복 호출 방지용
     public UUID getUserId(Claims claims) {
         return UUID.fromString(claims.get(CLAIM_USER_ID, String.class));
     }
 
+    // lastLogoutAt 기능 도입시 필요
     public Date getIssuedAt(String token) {
         return parseClaims(token).getIssuedAt();
     }
 
+    // 외부에서 token String만 있을 때 사용
     public boolean isAccessToken(String token) {
         return TokenType.ACCESS.name().equals(
                 parseClaims(token).get(CLAIM_TYPE, String.class)
         );
     }
 
+    // filter에서 parseClaims 중복 호출 방지용
     public boolean isAccessToken(Claims claims) {
         return TokenType.ACCESS.name().equals(claims.get(CLAIM_TYPE, String.class));
-    }
-
-    public boolean isRefreshToken(String token) {
-        return TokenType.REFRESH.name().equals(
-                parseClaims(token).get(CLAIM_TYPE, String.class)
-        );
     }
 
     public Claims parseClaims(String token) {
@@ -92,16 +71,5 @@ public class JwtProvider {
         } catch (io.jsonwebtoken.JwtException | IllegalArgumentException e) {
             throw new JwtAuthException(JwtErrorCode.INVALID_TOKEN);
         }
-    }
-
-    private String generate(UUID userId, long validity, TokenType tokenType) {
-        Date now = new Date();
-        return Jwts.builder()
-                .claim(CLAIM_USER_ID, userId.toString())
-                .claim(CLAIM_TYPE, tokenType.name())
-                .setIssuedAt(now)
-                .setExpiration(new Date(now.getTime() + validity))
-                .signWith(key, SignatureAlgorithm.HS256)
-                .compact();
     }
 }
