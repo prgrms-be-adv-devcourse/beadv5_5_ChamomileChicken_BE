@@ -1,11 +1,15 @@
 package jabaclass.product.infrastructure.acl.client;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.Random;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Component;
 
 import jabaclass.product.infrastructure.acl.dto.SellerResponseDto;
+import jabaclass.product.infrastructure.acl.dto.SellerRole;
 import lombok.extern.slf4j.Slf4j;
 
 // 실질적으로 API 통신 하는 곳.
@@ -14,12 +18,13 @@ import lombok.extern.slf4j.Slf4j;
 public class SellerApiClient implements SellerClient {
 
 	// TODO UserAPI를 통해 seller 정보를 받아오는 작업 필요
+	// seller에 대한 정보 검증 api
 	@Override
 	public Optional<SellerResponseDto> findSeller(UUID sellerId) {
 
 		String id = sellerId.toString();
 		log.info(id);
-		
+
 		// 판매자
 		if (id.startsWith("1")) {
 			return Optional.of(new SellerResponseDto(sellerId, "신짱구", "SELLER"));
@@ -36,5 +41,18 @@ public class SellerApiClient implements SellerClient {
 		}
 
 		return Optional.empty();
+	}
+
+	// 페이지에 보여질 seller 이름 가져오는 api
+	@Override
+	public Optional<List<SellerResponseDto>> findSellerList(List<UUID> sellerIds) {
+
+		Random random = new Random();
+
+		List<SellerResponseDto> sellerResponseDtoList = sellerIds.stream()
+			.map(id -> new SellerResponseDto(id, "판매자_" + id.toString().substring(0, 4), SellerRole.SELLER.toString()))
+			.collect(Collectors.toList());
+
+		return Optional.of(sellerResponseDtoList);
 	}
 }

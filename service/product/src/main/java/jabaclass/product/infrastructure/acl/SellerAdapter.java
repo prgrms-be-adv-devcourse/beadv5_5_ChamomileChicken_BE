@@ -1,5 +1,6 @@
 package jabaclass.product.infrastructure.acl;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -19,5 +20,11 @@ public class SellerAdapter implements SellerRepository {
 	@Override
 	public Optional<SellerResponseDto> findSeller(UUID sellerId) {
 		return sellerClient.findSeller(sellerId);
+	}
+
+	@Override
+	public Optional<List<SellerResponseDto>> findSellerList(List<UUID> sellerIds) {
+
+		return sellerClient.findSellerList(sellerIds);
 	}
 }
