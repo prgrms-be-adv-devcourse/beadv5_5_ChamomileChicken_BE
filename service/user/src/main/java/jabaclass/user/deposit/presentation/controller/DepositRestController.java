@@ -1,9 +1,6 @@
 package jabaclass.user.deposit.presentation.controller;
 
-import java.util.UUID;
-
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -26,20 +23,18 @@ public class DepositRestController {
 
 	@PostMapping("/validate")
 	public ResponseEntity<ValidateDepositResponseDto> validateDeposit(
-		@AuthenticationPrincipal UUID userId,
 		@RequestBody ValidateDepositRequestDto request
 	) {
-		boolean valid = validateDepositUseCase.validate(userId, request.depositAmount());
+		boolean valid = validateDepositUseCase.validate(request.userId(), request.depositAmount());
 		return ResponseEntity.ok(new ValidateDepositResponseDto(valid));
 	}
 
 	@PostMapping("/use")
 	public ResponseEntity<Void> useDeposit(
-		@AuthenticationPrincipal UUID userId,
 		@RequestBody UseDepositRequestDto request
 	) {
 
-		useDepositUseCase.use(userId, request.depositAmount());
+		useDepositUseCase.use(request.userId(), request.depositAmount());
 		return ResponseEntity.ok().build();
 	}
 }
