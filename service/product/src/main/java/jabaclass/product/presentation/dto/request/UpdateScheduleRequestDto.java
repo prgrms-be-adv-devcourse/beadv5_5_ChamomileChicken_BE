@@ -7,7 +7,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 
 @Schema(description = "상품 일정 수정")
-public record UpdateSchedulesRequestDto(
+public record UpdateScheduleRequestDto(
 	@NotBlank
 	@Pattern(regexp = "\\d{2}:\\d{2}", message = "시간 형식은 HH:mm이어야 합니다.")
 	@Schema(description = "클래스 시작 시간", example = "12:00")

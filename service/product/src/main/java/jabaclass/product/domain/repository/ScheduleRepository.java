@@ -8,20 +8,20 @@ import java.util.UUID;
 
 import org.springframework.data.repository.query.Param;
 
-import jabaclass.product.domain.model.Schedules;
+import jabaclass.product.domain.model.Schedule;
 
-public interface SchedulesRepository {
+public interface ScheduleRepository {
 
-	Schedules save(Schedules schedules);
+	Schedule save(Schedule schedule);
 
-	List<Schedules> findConflictSchedules(
+	List<Schedule> findConflictSchedules(
 		@Param("productId") UUID productId,
 		@Param("scheduleDt") LocalDate scheduleDt,
 		@Param("startTime") LocalTime startTime,
 		@Param("endTime") LocalTime endTime
 	);
 
-	List<Schedules> findConflictSchedulesNoId(
+	List<Schedule> findConflictSchedulesNoId(
 		@Param("productId") UUID productId,
 		@Param("scheduleDt") LocalDate scheduleDt,
 		@Param("startTime") LocalTime startTime,
@@ -29,6 +29,6 @@ public interface SchedulesRepository {
 		@Param("id") UUID id
 	);
 
-	Optional<Schedules> findById(UUID schedulesId);
+	Optional<Schedule> findById(UUID schedulesId);
 
 }

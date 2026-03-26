@@ -38,35 +38,35 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jabaclass.product.application.acl.SellerRepository;
 import jabaclass.product.application.exception.BusinessException;
 import jabaclass.product.application.service.AuditorAwareService;
-import jabaclass.product.application.service.SchedulesService;
+import jabaclass.product.application.service.ScheduleService;
 import jabaclass.product.application.usecase.ProductUseCase;
-import jabaclass.product.application.usecase.SchedulesUseCase;
+import jabaclass.product.application.usecase.ScheduleUseCase;
 import jabaclass.product.common.exception.CommonErrorCode;
-import jabaclass.product.domain.model.Products;
-import jabaclass.product.domain.model.Schedules;
+import jabaclass.product.domain.model.Product;
+import jabaclass.product.domain.model.Schedule;
 import jabaclass.product.domain.model.status.ProductStatus;
 import jabaclass.product.domain.model.status.ReservedStatus;
-import jabaclass.product.domain.repository.SchedulesRepository;
+import jabaclass.product.domain.repository.ScheduleRepository;
 import jabaclass.product.infrastructure.acl.dto.SellerResponseDto;
 import jabaclass.product.presentation.ProductRestController;
-import jabaclass.product.presentation.dto.request.CreateSchedulesRequestDto;
-import jabaclass.product.presentation.dto.request.UpdateSchedulesRequestDto;
+import jabaclass.product.presentation.dto.request.CreateScheduleRequestDto;
+import jabaclass.product.presentation.dto.request.UpdateScheduleRequestDto;
 import jabaclass.product.presentation.dto.respose.SchedulesResponseDto;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 
 @ExtendWith(MockitoExtension.class)
-class SchedulesTest {
+class ScheduleTest {
 
 	@InjectMocks
-	private SchedulesService schedulesService;
+	private ScheduleService scheduleService;
 
 	@InjectMocks
 	private ProductRestController productRestController;
 
 	@Mock
-	private SchedulesRepository schedulesRepository;
+	private ScheduleRepository scheduleRepository;
 
 	@Mock
 	private ProductUseCase productUseCase;
@@ -81,7 +81,7 @@ class SchedulesTest {
 	private AuditorAwareService auditorAwareService;
 
 	@Mock
-	private SchedulesUseCase schedulesUseCase;
+	private ScheduleUseCase scheduleUseCase;
 
 	private static final UUID SELLER_ID = UUID.fromString("123e4567-e89b-12d3-a456-426614174000");
 	private static final UUID PRODUCT_ID = UUID.fromString("223e4567-e89b-12d3-a456-426614174000");
@@ -92,17 +92,17 @@ class SchedulesTest {
 
 	private Validator validator;
 	private MockMvc mockMvc;
-	private Products product;
-	private Schedules schedule;
-	private CreateSchedulesRequestDto 생성요청;
-	private UpdateSchedulesRequestDto 수정요청;
+	private Product product;
+	private Schedule schedule;
+	private CreateScheduleRequestDto 생성요청;
+	private UpdateScheduleRequestDto 수정요청;
 
 	@BeforeEach
 	void 설정() {
 		validator = Validation.buildDefaultValidatorFactory().getValidator();
 		mockMvc = MockMvcBuilders.standaloneSetup(productRestController).build();
 
-		product = Products.builder()
+		product = Product.builder()
 			.id(PRODUCT_ID)
 			.sellerId(SELLER_ID)
 			.title("product-A")
@@ -113,7 +113,7 @@ class SchedulesTest {
 			.status(ProductStatus.ENABLE)
 			.build();
 
-		schedule = Schedules.builder()
+		schedule = Schedule.builder()
 			.productId(PRODUCT_ID)
 			.scheduleDt(LocalDate.now().plusDays(1))
 			.startTime(LocalTime.of(10, 0))
@@ -123,7 +123,7 @@ class SchedulesTest {
 			.build();
 		ReflectionTestUtils.setField(schedule, "id", SCHEDULE_ID);
 
-		생성요청 = new CreateSchedulesRequestDto(
+		생성요청 = new CreateScheduleRequestDto(
 			LocalDate.now().plusDays(1).toString(),
 			"10:00",
 			"12:00",
@@ -131,7 +131,7 @@ class SchedulesTest {
 			10
 		);
 
-		수정요청 = new UpdateSchedulesRequestDto(
+		수정요청 = new UpdateScheduleRequestDto(
 			"13:00",
 			"14:00",
 			ReservedStatus.CLOSED,
@@ -142,20 +142,20 @@ class SchedulesTest {
 	@Test
 	void 일정_생성에_성공한다() {
 		권한있는_판매자와_본인상품을_준비한다();
-		given(schedulesRepository.findConflictSchedules(
+		given(scheduleRepository.findConflictSchedules(
 			eq(PRODUCT_ID),
 			eq(LocalDate.parse(생성요청.scheduleDt())),
 			eq(LocalTime.parse(생성요청.startTime())),
 			eq(LocalTime.parse(생성요청.endTime()))
 		)).willReturn(Collections.emptyList());
-		given(schedulesRepository.save(any(Schedules.class)))
+		given(scheduleRepository.save(any(Schedule.class)))
 			.willAnswer(invocation -> {
-				Schedules saved = invocation.getArgument(0);
+				Schedule saved = invocation.getArgument(0);
 				ReflectionTestUtils.setField(saved, "id", UUID.randomUUID());
 				return saved;
 			});
 
-		SchedulesResponseDto result = schedulesService.create(생성요청, PRODUCT_ID);
+		SchedulesResponseDto result = scheduleService.create(생성요청, PRODUCT_ID);
 
 		assertThat(result.productId()).isEqualTo(PRODUCT_ID);
 		assertThat(result.scheduleDt()).isEqualTo(LocalDate.parse(생성요청.scheduleDt()));
@@ -165,7 +165,7 @@ class SchedulesTest {
 
 	@Test
 	void 존재하지_않는_날짜면_일정_생성에_실패한다() {
-		CreateSchedulesRequestDto request = new CreateSchedulesRequestDto(
+		CreateScheduleRequestDto request = new CreateScheduleRequestDto(
 			"2026-02-30",
 			"10:00",
 			"12:00",
@@ -175,7 +175,7 @@ class SchedulesTest {
 		권한있는_판매자와_본인상품을_준비한다();
 
 		비즈니스_예외를_검증한다(
-			() -> schedulesService.create(request, PRODUCT_ID),
+			() -> scheduleService.create(request, PRODUCT_ID),
 			HttpStatus.BAD_REQUEST,
 			CommonErrorCode.DATE_BAD_FORMAT
 		);
@@ -183,7 +183,7 @@ class SchedulesTest {
 
 	@Test
 	void 날짜_형식이_올바르지_않으면_일정_생성에_실패한다() {
-		CreateSchedulesRequestDto request = new CreateSchedulesRequestDto(
+		CreateScheduleRequestDto request = new CreateScheduleRequestDto(
 			"2026/03/26",
 			"10:00",
 			"12:00",
@@ -193,7 +193,7 @@ class SchedulesTest {
 		권한있는_판매자와_본인상품을_준비한다();
 
 		비즈니스_예외를_검증한다(
-			() -> schedulesService.create(request, PRODUCT_ID),
+			() -> scheduleService.create(request, PRODUCT_ID),
 			HttpStatus.BAD_REQUEST,
 			CommonErrorCode.DATE_BAD_FORMAT
 		);
@@ -201,7 +201,7 @@ class SchedulesTest {
 
 	@Test
 	void 시간_형식이_올바르지_않으면_일정_생성에_실패한다() {
-		CreateSchedulesRequestDto request = new CreateSchedulesRequestDto(
+		CreateScheduleRequestDto request = new CreateScheduleRequestDto(
 			LocalDate.now().plusDays(1).toString(),
 			"25:61",
 			"12:00",
@@ -211,7 +211,7 @@ class SchedulesTest {
 		권한있는_판매자와_본인상품을_준비한다();
 
 		비즈니스_예외를_검증한다(
-			() -> schedulesService.create(request, PRODUCT_ID),
+			() -> scheduleService.create(request, PRODUCT_ID),
 			HttpStatus.BAD_REQUEST,
 			CommonErrorCode.TIME_BAD_FORMAT
 		);
@@ -220,7 +220,7 @@ class SchedulesTest {
 	@Test
 	void 겹치는_일정이_있으면_일정_생성에_실패한다() {
 		권한있는_판매자와_본인상품을_준비한다();
-		given(schedulesRepository.findConflictSchedules(
+		given(scheduleRepository.findConflictSchedules(
 			eq(PRODUCT_ID),
 			eq(LocalDate.parse(생성요청.scheduleDt())),
 			eq(LocalTime.parse(생성요청.startTime())),
@@ -228,7 +228,7 @@ class SchedulesTest {
 		)).willReturn(Collections.singletonList(schedule));
 
 		비즈니스_예외를_검증한다(
-			() -> schedulesService.create(생성요청, PRODUCT_ID),
+			() -> scheduleService.create(생성요청, PRODUCT_ID),
 			HttpStatus.BAD_REQUEST,
 			CommonErrorCode.SCHEDULE_CONFLICT
 		);
@@ -237,8 +237,8 @@ class SchedulesTest {
 	@Test
 	void 일정_수정에_성공한다() {
 		권한있는_판매자와_본인상품을_준비한다();
-		given(schedulesRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(schedule));
-		given(schedulesRepository.findConflictSchedulesNoId(
+		given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(schedule));
+		given(scheduleRepository.findConflictSchedulesNoId(
 			eq(PRODUCT_ID),
 			eq(schedule.getScheduleDt()),
 			eq(LocalTime.parse(수정요청.startTime())),
@@ -246,7 +246,7 @@ class SchedulesTest {
 			eq(SCHEDULE_ID)
 		)).willReturn(Collections.emptyList());
 
-		SchedulesResponseDto result = schedulesService.update(수정요청, PRODUCT_ID, SCHEDULE_ID);
+		SchedulesResponseDto result = scheduleService.update(수정요청, PRODUCT_ID, SCHEDULE_ID);
 
 		assertThat(result.id()).isEqualTo(SCHEDULE_ID);
 		assertThat(result.startTime()).isEqualTo(LocalTime.parse("13:00"));
@@ -258,10 +258,10 @@ class SchedulesTest {
 	@Test
 	void 수정할_일정이_없으면_일정_수정에_실패한다() {
 		권한있는_판매자와_본인상품을_준비한다();
-		given(schedulesRepository.findById(SCHEDULE_ID)).willReturn(Optional.empty());
+		given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.empty());
 
 		비즈니스_예외를_검증한다(
-			() -> schedulesService.update(수정요청, PRODUCT_ID, SCHEDULE_ID),
+			() -> scheduleService.update(수정요청, PRODUCT_ID, SCHEDULE_ID),
 			HttpStatus.NOT_FOUND,
 			CommonErrorCode.SCHDULES_NOT_FOUND
 		);
@@ -269,17 +269,17 @@ class SchedulesTest {
 
 	@Test
 	void 수정_시간_형식이_올바르지_않으면_일정_수정에_실패한다() {
-		UpdateSchedulesRequestDto request = new UpdateSchedulesRequestDto(
+		UpdateScheduleRequestDto request = new UpdateScheduleRequestDto(
 			"99:99",
 			"14:00",
 			ReservedStatus.AVAILABLE,
 			5
 		);
 		권한있는_판매자와_본인상품을_준비한다();
-		given(schedulesRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(schedule));
+		given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(schedule));
 
 		비즈니스_예외를_검증한다(
-			() -> schedulesService.update(request, PRODUCT_ID, SCHEDULE_ID),
+			() -> scheduleService.update(request, PRODUCT_ID, SCHEDULE_ID),
 			HttpStatus.BAD_REQUEST,
 			CommonErrorCode.TIME_BAD_FORMAT
 		);
@@ -287,17 +287,17 @@ class SchedulesTest {
 
 	@Test
 	void 수정_시작시간이_종료시간과_같거나_늦으면_일정_수정에_실패한다() {
-		UpdateSchedulesRequestDto request = new UpdateSchedulesRequestDto(
+		UpdateScheduleRequestDto request = new UpdateScheduleRequestDto(
 			"14:00",
 			"14:00",
 			ReservedStatus.AVAILABLE,
 			5
 		);
 		권한있는_판매자와_본인상품을_준비한다();
-		given(schedulesRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(schedule));
+		given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(schedule));
 
 		비즈니스_예외를_검증한다(
-			() -> schedulesService.update(request, PRODUCT_ID, SCHEDULE_ID),
+			() -> scheduleService.update(request, PRODUCT_ID, SCHEDULE_ID),
 			HttpStatus.BAD_REQUEST,
 			CommonErrorCode.INVALID_TIME_RANGE
 		);
@@ -306,15 +306,15 @@ class SchedulesTest {
 	@Test
 	void 겹치는_수정_일정이_있으면_일정_수정에_실패한다() {
 		권한있는_판매자와_본인상품을_준비한다();
-		given(schedulesRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(schedule));
-		given(schedulesRepository.findConflictSchedulesNoId(
+		given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(schedule));
+		given(scheduleRepository.findConflictSchedulesNoId(
 			eq(PRODUCT_ID),
 			eq(schedule.getScheduleDt()),
 			eq(LocalTime.parse(수정요청.startTime())),
 			eq(LocalTime.parse(수정요청.endTime())),
 			eq(SCHEDULE_ID)
 		)).willReturn(Collections.singletonList(
-			Schedules.builder()
+			Schedule.builder()
 				.productId(PRODUCT_ID)
 				.scheduleDt(schedule.getScheduleDt())
 				.startTime(LocalTime.of(13, 30))
@@ -325,7 +325,7 @@ class SchedulesTest {
 		));
 
 		비즈니스_예외를_검증한다(
-			() -> schedulesService.update(수정요청, PRODUCT_ID, SCHEDULE_ID),
+			() -> scheduleService.update(수정요청, PRODUCT_ID, SCHEDULE_ID),
 			HttpStatus.BAD_REQUEST,
 			CommonErrorCode.SCHEDULE_CONFLICT
 		);
@@ -338,7 +338,7 @@ class SchedulesTest {
 			.willReturn(Optional.of(new SellerResponseDto(SELLER_ID, "user", "USER")));
 
 		비즈니스_예외를_검증한다(
-			() -> schedulesService.update(수정요청, PRODUCT_ID, SCHEDULE_ID),
+			() -> scheduleService.update(수정요청, PRODUCT_ID, SCHEDULE_ID),
 			HttpStatus.FORBIDDEN,
 			CommonErrorCode.NOT_SELLER
 		);
@@ -353,7 +353,7 @@ class SchedulesTest {
 			.willThrow(new BusinessException(CommonErrorCode.PRODUCT_NOT_FOUND));
 
 		비즈니스_예외를_검증한다(
-			() -> schedulesService.update(수정요청, PRODUCT_ID, SCHEDULE_ID),
+			() -> scheduleService.update(수정요청, PRODUCT_ID, SCHEDULE_ID),
 			HttpStatus.NOT_FOUND,
 			CommonErrorCode.PRODUCT_NOT_FOUND
 		);
@@ -374,7 +374,7 @@ class SchedulesTest {
 			SELLER_ID,
 			LocalDateTime.now()
 		);
-		given(schedulesUseCase.update(any(UpdateSchedulesRequestDto.class), eq(PRODUCT_ID), eq(SCHEDULE_ID)))
+		given(scheduleUseCase.update(any(UpdateScheduleRequestDto.class), eq(PRODUCT_ID), eq(SCHEDULE_ID)))
 			.willReturn(response);
 
 		mockMvc.perform(put("/api/products/{productId}/schedules/{scheduleId}", PRODUCT_ID, SCHEDULE_ID)
@@ -383,19 +383,19 @@ class SchedulesTest {
 			.andExpect(status().isOk())
 			.andExpect(content().string(org.hamcrest.Matchers.containsString(PRODUCT_ID.toString())));
 
-		then(schedulesUseCase).should().update(any(UpdateSchedulesRequestDto.class), eq(PRODUCT_ID), eq(SCHEDULE_ID));
+		then(scheduleUseCase).should().update(any(UpdateScheduleRequestDto.class), eq(PRODUCT_ID), eq(SCHEDULE_ID));
 	}
 
 	@Test
 	void 수정_DTO에서_시작시간_형식이_아니면_검증에_실패한다() {
-		UpdateSchedulesRequestDto request = new UpdateSchedulesRequestDto(
+		UpdateScheduleRequestDto request = new UpdateScheduleRequestDto(
 			"9:00",
 			"14-00",
 			ReservedStatus.AVAILABLE,
 			0
 		);
 
-		Set<ConstraintViolation<UpdateSchedulesRequestDto>> violations = validator.validate(request);
+		Set<ConstraintViolation<UpdateScheduleRequestDto>> violations = validator.validate(request);
 
 		assertThat(violations).extracting(ConstraintViolation::getPropertyPath)
 			.anyMatch(path -> path.toString().equals("startTime"))

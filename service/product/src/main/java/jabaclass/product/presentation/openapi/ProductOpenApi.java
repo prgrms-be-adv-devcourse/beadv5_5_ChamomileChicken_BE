@@ -11,10 +11,10 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jabaclass.product.common.exception.ApiResponseDto;
 import jabaclass.product.presentation.dto.request.CreateProductRequestDto;
-import jabaclass.product.presentation.dto.request.CreateSchedulesRequestDto;
+import jabaclass.product.presentation.dto.request.CreateScheduleRequestDto;
 import jabaclass.product.presentation.dto.request.SearchProductRequestDto;
 import jabaclass.product.presentation.dto.request.UpdateProductRequestDto;
-import jabaclass.product.presentation.dto.request.UpdateSchedulesRequestDto;
+import jabaclass.product.presentation.dto.request.UpdateScheduleRequestDto;
 import jabaclass.product.presentation.dto.respose.DeleteProductResposeDto;
 import jabaclass.product.presentation.dto.respose.ProductResponseDto;
 import jabaclass.product.presentation.dto.respose.SchedulesResponseDto;
@@ -87,7 +87,7 @@ public interface ProductOpenApi {
 		)
 	)
 	@CommonErrorResponses
-	ResponseEntity<ApiResponseDto<SchedulesResponseDto>> schedulesCreate(CreateSchedulesRequestDto requestDto,
+	ResponseEntity<ApiResponseDto<SchedulesResponseDto>> schedulesCreate(CreateScheduleRequestDto requestDto,
 		UUID productId);
 
 	@Operation(summary = "상품 일정 수정", description = "상품 일정을 수정 합니다.")
@@ -99,6 +99,6 @@ public interface ProductOpenApi {
 		)
 	)
 	@CommonErrorResponses
-	ResponseEntity<ApiResponseDto<SchedulesResponseDto>> schedulesUpdate(UpdateSchedulesRequestDto requestDto,
+	ResponseEntity<ApiResponseDto<SchedulesResponseDto>> schedulesUpdate(UpdateScheduleRequestDto requestDto,
 		UUID productId, UUID scheduleId);
 }

@@ -9,42 +9,42 @@ import java.util.UUID;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import jabaclass.product.domain.model.Schedules;
-import jabaclass.product.domain.repository.SchedulesRepository;
+import jabaclass.product.domain.model.Schedule;
+import jabaclass.product.domain.repository.ScheduleRepository;
 import lombok.RequiredArgsConstructor;
 
 @Repository
 @RequiredArgsConstructor
-public class SchedulesRepositoryAdapter implements SchedulesRepository {
+public class ScheduleRepositoryAdapter implements ScheduleRepository {
 
-	private final SchedulesJpaRepository schedulesJpaRepository;
+	private final ScheduleJpaRepository scheduleJpaRepository;
 
 	@Override
-	public Schedules save(Schedules schedules) {
-		return schedulesJpaRepository.save(schedules);
+	public Schedule save(Schedule schedule) {
+		return scheduleJpaRepository.save(schedule);
 	}
 
 	@Override
-	public List<Schedules> findConflictSchedules(
+	public List<Schedule> findConflictSchedules(
 		@Param("productId") UUID productId,
 		@Param("scheduleDt") LocalDate scheduleDt,
 		@Param("startTime") LocalTime startTime,
 		@Param("endTime") LocalTime endTime) {
-		return schedulesJpaRepository.findConflictSchedules(productId, scheduleDt, startTime, endTime);
+		return scheduleJpaRepository.findConflictSchedules(productId, scheduleDt, startTime, endTime);
 	}
 
 	@Override
-	public List<Schedules> findConflictSchedulesNoId(
+	public List<Schedule> findConflictSchedulesNoId(
 		@Param("productId") UUID productId,
 		@Param("scheduleDt") LocalDate scheduleDt,
 		@Param("startTime") LocalTime startTime,
 		@Param("endTime") LocalTime endTime,
 		@Param("id") UUID id) {
-		return schedulesJpaRepository.findConflictSchedulesNoId(productId, scheduleDt, startTime, endTime, id);
+		return scheduleJpaRepository.findConflictSchedulesNoId(productId, scheduleDt, startTime, endTime, id);
 	}
 
 	@Override
-	public Optional<Schedules> findById(UUID schedulesId) {
-		return schedulesJpaRepository.findById(schedulesId);
+	public Optional<Schedule> findById(UUID schedulesId) {
+		return scheduleJpaRepository.findById(schedulesId);
 	}
 }

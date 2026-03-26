@@ -6,7 +6,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 
 @Schema(description = "상품 일정 등록")
-public record CreateSchedulesRequestDto(
+public record CreateScheduleRequestDto(
 
 	@NotBlank
 	@Pattern(regexp = "\\d{4}-\\d{2}-\\d{2}", message = "날짜 형식은 yyyy-MM-dd이어야 합니다.")

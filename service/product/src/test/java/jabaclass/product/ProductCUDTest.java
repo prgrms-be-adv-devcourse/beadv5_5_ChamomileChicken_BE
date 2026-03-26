@@ -22,7 +22,7 @@ import jabaclass.product.application.acl.SellerRepository;
 import jabaclass.product.application.exception.BusinessException;
 import jabaclass.product.application.service.AuditorAwareService;
 import jabaclass.product.application.service.ProductService;
-import jabaclass.product.domain.model.Products;
+import jabaclass.product.domain.model.Product;
 import jabaclass.product.domain.model.status.ProductStatus;
 import jabaclass.product.domain.repository.ProductRepository;
 import jabaclass.product.infrastructure.acl.dto.SellerResponseDto;
@@ -35,7 +35,7 @@ import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 
 @ExtendWith(MockitoExtension.class)
-public class ProductsCUDTest {
+public class ProductCUDTest {
 	private Validator validator;
 
 	@InjectMocks
@@ -54,13 +54,13 @@ public class ProductsCUDTest {
 	private AuditorAwareService auditorAwareService;
 
 	// test 상품
-	private Products product1;
+	private Product product1;
 
 	UUID productId = UUID.randomUUID();
 
 	@BeforeEach
 	void setup() {
-		product1 = Products.builder()
+		product1 = Product.builder()
 			.id(productId)
 			.sellerId(SELLER_ID)
 			.title("상품A")
@@ -99,9 +99,9 @@ public class ProductsCUDTest {
 			.willReturn(Optional.of(new SellerResponseDto(SELLER_ID, "테스트 판매자", "SELLER")));
 
 		// Stub: repository.save -> 입력 객체 그대로 반환 + 단위 테스트용 ID 설정
-		given(productRepository.save(any(Products.class)))
+		given(productRepository.save(any(Product.class)))
 			.willAnswer(invocation -> {
-				Products p = invocation.getArgument(0);
+				Product p = invocation.getArgument(0);
 				ReflectionTestUtils.setField(p, "id", UUID.randomUUID());
 				return p;
 			});
@@ -114,7 +114,7 @@ public class ProductsCUDTest {
 		assertThat(saved.price()).isEqualByComparingTo(PRICE);
 
 		// then: repository 호출 검증
-		verify(productRepository, times(1)).save(any(Products.class));
+		verify(productRepository, times(1)).save(any(Product.class));
 
 		// then: 이벤트 발행 검증
 		verify(publisher, times(1)).publishEvent(any(ProductEventResponseDto.class));
@@ -319,7 +319,7 @@ public class ProductsCUDTest {
 			.isInstanceOf(BusinessException.class)
 			.hasMessage("존재하지 않는 상품 ID 입니다.");
 
-		then(productRepository).should(never()).save(any(Products.class));
+		then(productRepository).should(never()).save(any(Product.class));
 	}
 
 	@Test

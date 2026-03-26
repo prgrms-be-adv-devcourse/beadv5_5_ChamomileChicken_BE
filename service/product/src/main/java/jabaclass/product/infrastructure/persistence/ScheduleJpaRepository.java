@@ -10,21 +10,21 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import jabaclass.product.domain.model.Schedules;
+import jabaclass.product.domain.model.Schedule;
 import jakarta.persistence.LockModeType;
 
-public interface SchedulesJpaRepository extends JpaRepository<Schedules, UUID> {
+public interface ScheduleJpaRepository extends JpaRepository<Schedule, UUID> {
 
 	@Lock(LockModeType.PESSIMISTIC_WRITE)
 	@Query("""
 		    SELECT s 
-		    FROM Schedules s
+		    FROM Schedule s
 		    WHERE s.productId = :productId
 		      AND s.scheduleDt = :scheduleDt
 		      AND s.startTime < :endTime
 		      AND s.endTime > :startTime
 		""")
-	List<Schedules> findConflictSchedules(
+	List<Schedule> findConflictSchedules(
 		@Param("productId") UUID productId,
 		@Param("scheduleDt") LocalDate scheduleDt,
 		@Param("startTime") LocalTime startTime,
@@ -34,14 +34,14 @@ public interface SchedulesJpaRepository extends JpaRepository<Schedules, UUID> {
 	@Lock(LockModeType.PESSIMISTIC_WRITE)
 	@Query("""
 		    SELECT s 
-		    FROM Schedules s
+		    FROM Schedule s
 		    WHERE s.productId = :productId
 		      AND s.scheduleDt = :scheduleDt
 		      AND s.startTime < :endTime
 		      AND s.endTime > :startTime
 			  AND s.id != :id
 		""")
-	List<Schedules> findConflictSchedulesNoId(
+	List<Schedule> findConflictSchedulesNoId(
 		@Param("productId") UUID productId,
 		@Param("scheduleDt") LocalDate scheduleDt,
 		@Param("startTime") LocalTime startTime,

@@ -16,7 +16,7 @@ import jabaclass.product.application.acl.SellerRepository;
 import jabaclass.product.application.exception.BusinessException;
 import jabaclass.product.application.usecase.ProductUseCase;
 import jabaclass.product.common.exception.CommonErrorCode;
-import jabaclass.product.domain.model.Products;
+import jabaclass.product.domain.model.Product;
 import jabaclass.product.domain.model.status.ProductStatus;
 import jabaclass.product.domain.repository.ProductRepository;
 import jabaclass.product.infrastructure.acl.dto.SellerResponseDto;
@@ -51,7 +51,7 @@ public class ProductService implements ProductUseCase {
 			throw new BusinessException(CommonErrorCode.NOT_SELLER);
 		}
 
-		Products product = Products.builder()
+		Product product = Product.builder()
 			.sellerId(requestDto.sellerId())
 			.title(requestDto.title())
 			.maxCapacity(requestDto.maxCapacity())
@@ -61,7 +61,7 @@ public class ProductService implements ProductUseCase {
 			.status(requestDto.status())
 			.build();
 
-		Products saved = productRepository.save(product);
+		Product saved = productRepository.save(product);
 
 		publisher.publishEvent(new ProductEventResponseDto(saved.getId()));
 		return ProductResponseDto.from(saved, seller.sellerName());
@@ -80,7 +80,7 @@ public class ProductService implements ProductUseCase {
 			throw new BusinessException(CommonErrorCode.NOT_SELLER);
 		}
 		// 상품 존재하는지 확인
-		Products product = findByIdOrThrow(productId);
+		Product product = findByIdOrThrow(productId);
 		// 본인 상품인지 확인
 		matchProductAndSellerId(productId, seller.sellerId());
 
@@ -107,7 +107,7 @@ public class ProductService implements ProductUseCase {
 			throw new BusinessException(CommonErrorCode.NOT_SELLER);
 		}
 		// 상품 존재하는지 확인
-		Products product = findByIdOrThrow(productId);
+		Product product = findByIdOrThrow(productId);
 		// 본인 상품인지 확인
 		matchProductAndSellerId(productId, seller.sellerId());
 
@@ -121,7 +121,7 @@ public class ProductService implements ProductUseCase {
 		// 페이징 설정
 		Pageable pageable = PageRequest.of(requestDto.thisPage(), requestDto.pageSize());
 
-		Page<Products> page;
+		Page<Product> page;
 
 		// 페이징 및 키워드를 조건으로 가져온 상품 리스트
 		if (requestDto.keyword() == null || requestDto.keyword().isBlank()) {
@@ -135,7 +135,7 @@ public class ProductService implements ProductUseCase {
 		// 검색해온 상품의 user uuid를 List에 담는 작업
 		List<UUID> uuidList = page.getContent()
 			.stream()
-			.map(Products::getSellerId)
+			.map(Product::getSellerId)
 			.distinct()
 			.toList();
 
@@ -165,23 +165,23 @@ public class ProductService implements ProductUseCase {
 
 	@Override
 	public ProductResponseDto searchById(UUID productId) {
-		Products products = findByIdOrThrow(productId);
+		Product product = findByIdOrThrow(productId);
 
 		// sellerId를 확인
-		SellerResponseDto seller = findBySellerIdOrThrow(products.getSellerId());
+		SellerResponseDto seller = findBySellerIdOrThrow(product.getSellerId());
 
-		return ProductResponseDto.from(products, seller.sellerName());
+		return ProductResponseDto.from(product, seller.sellerName());
 	}
 
 	@Override
-	public Products findByIdOrThrow(UUID productId) {
+	public Product findByIdOrThrow(UUID productId) {
 		return productRepository.findById(productId)
 			.orElseThrow(() -> new BusinessException(CommonErrorCode.PRODUCT_NOT_FOUND));
 	}
 
 	@Override
 	// 해당 상품 보유자인지 확인
-	public Products matchProductAndSellerId(UUID productId, UUID sellerId) {
+	public Product matchProductAndSellerId(UUID productId, UUID sellerId) {
 		return productRepository.findByIdAndSellerId(productId, sellerId)
 			.orElseThrow(() -> new BusinessException(CommonErrorCode.MATCH_FAIL));
 	}

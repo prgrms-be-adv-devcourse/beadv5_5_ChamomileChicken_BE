@@ -6,7 +6,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import jabaclass.product.domain.model.Products;
+import jabaclass.product.domain.model.Product;
 
 @Schema(description = "상품 응답")
 public record ProductResponseDto(
@@ -47,7 +47,7 @@ public record ProductResponseDto(
 	LocalDateTime modifyDt
 ) {
 
-	public static ProductResponseDto from(Products product, String sellerName) {
+	public static ProductResponseDto from(Product product, String sellerName) {
 		return new ProductResponseDto(
 			product.getId(),
 			sellerName,
@@ -64,7 +64,7 @@ public record ProductResponseDto(
 		);
 	}
 
-	public static ProductResponseDto listFrom(Products product, Map<UUID, String> map) {
+	public static ProductResponseDto listFrom(Product product, Map<UUID, String> map) {
 		return new ProductResponseDto(
 			product.getId(),
 			map.getOrDefault(product.getSellerId(), "사용자 이름이 지정되지 않았습니다."),

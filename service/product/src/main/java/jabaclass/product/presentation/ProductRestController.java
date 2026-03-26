@@ -15,13 +15,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import jabaclass.product.application.usecase.ProductUseCase;
-import jabaclass.product.application.usecase.SchedulesUseCase;
+import jabaclass.product.application.usecase.ScheduleUseCase;
 import jabaclass.product.common.exception.ApiResponseDto;
 import jabaclass.product.presentation.dto.request.CreateProductRequestDto;
-import jabaclass.product.presentation.dto.request.CreateSchedulesRequestDto;
+import jabaclass.product.presentation.dto.request.CreateScheduleRequestDto;
 import jabaclass.product.presentation.dto.request.SearchProductRequestDto;
 import jabaclass.product.presentation.dto.request.UpdateProductRequestDto;
-import jabaclass.product.presentation.dto.request.UpdateSchedulesRequestDto;
+import jabaclass.product.presentation.dto.request.UpdateScheduleRequestDto;
 import jabaclass.product.presentation.dto.respose.DeleteProductResposeDto;
 import jabaclass.product.presentation.dto.respose.ProductResponseDto;
 import jabaclass.product.presentation.dto.respose.SchedulesResponseDto;
@@ -38,7 +38,7 @@ import lombok.extern.slf4j.Slf4j;
 public class ProductRestController implements ProductOpenApi {
 
 	private final ProductUseCase productUseCase;
-	private final SchedulesUseCase schedulesUseCase;
+	private final ScheduleUseCase scheduleUseCase;
 
 	// 상품 등록
 	@Override
@@ -100,10 +100,10 @@ public class ProductRestController implements ProductOpenApi {
 	@Override
 	@PostMapping("/{productId}/schedules")
 	public ResponseEntity<ApiResponseDto<SchedulesResponseDto>> schedulesCreate(
-		@RequestBody @Valid CreateSchedulesRequestDto requestDto
+		@RequestBody @Valid CreateScheduleRequestDto requestDto
 		, @PathVariable UUID productId) {
 
-		SchedulesResponseDto response = schedulesUseCase.create(requestDto, productId);
+		SchedulesResponseDto response = scheduleUseCase.create(requestDto, productId);
 
 		return ResponseEntity.status(HttpStatus.CREATED)
 			.body(ApiResponseDto.success(HttpStatus.CREATED, "성공적으로 등록 되었습니다.", response));
@@ -113,11 +113,11 @@ public class ProductRestController implements ProductOpenApi {
 	@Override
 	@PutMapping("/{productId}/schedules/{scheduleId}")
 	public ResponseEntity<ApiResponseDto<SchedulesResponseDto>> schedulesUpdate(
-		@RequestBody @Valid UpdateSchedulesRequestDto requestDto,
+		@RequestBody @Valid UpdateScheduleRequestDto requestDto,
 		@PathVariable UUID productId,
 		@PathVariable UUID scheduleId
 	) {
-		SchedulesResponseDto response = schedulesUseCase.update(requestDto, productId, scheduleId);
+		SchedulesResponseDto response = scheduleUseCase.update(requestDto, productId, scheduleId);
 
 		return ResponseEntity.ok()
 			.body(ApiResponseDto.success(HttpStatus.OK, "성공적으로 수정 되었습니다.", response));

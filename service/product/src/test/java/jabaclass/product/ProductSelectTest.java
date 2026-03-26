@@ -23,7 +23,7 @@ import org.springframework.data.domain.Pageable;
 import jabaclass.product.application.acl.SellerRepository;
 import jabaclass.product.application.exception.BusinessException;
 import jabaclass.product.application.service.ProductService;
-import jabaclass.product.domain.model.Products;
+import jabaclass.product.domain.model.Product;
 import jabaclass.product.domain.model.status.ProductStatus;
 import jabaclass.product.domain.repository.ProductRepository;
 import jabaclass.product.infrastructure.acl.dto.SellerResponseDto;
@@ -32,7 +32,7 @@ import jabaclass.product.presentation.dto.respose.ProductResponseDto;
 import jabaclass.product.presentation.dto.respose.SearchProductResponseDto;
 
 @ExtendWith(MockitoExtension.class)
-public class ProductsSelectTest {
+public class ProductSelectTest {
 
 	@InjectMocks
 	private ProductService productService;
@@ -51,12 +51,12 @@ public class ProductsSelectTest {
 	private static final UUID SELLER_ID = UUID.fromString("123e4567-e89b-12d3-a456-426614174000");
 
 	// test 상품
-	private Products product1;
-	private Products product2;
+	private Product product1;
+	private Product product2;
 
 	@BeforeEach
 	void setup() {
-		product1 = Products.builder()
+		product1 = Product.builder()
 			.sellerId(SELLER_ID)
 			.title("상품A")
 			.maxCapacity(10)
@@ -65,7 +65,7 @@ public class ProductsSelectTest {
 			.price(PRICE)
 			.status(ProductStatus.ENABLE)
 			.build();
-		product2 = Products.builder()
+		product2 = Product.builder()
 			.sellerId(SELLER_ID)
 			.title("상품B")
 			.maxCapacity(3)
@@ -85,7 +85,7 @@ public class ProductsSelectTest {
 			ProductStatus.ENABLE
 		);
 		Pageable pageable = PageRequest.of(request.thisPage(), request.pageSize());
-		Page<Products> page = new PageImpl<>(List.of(product1, product2));
+		Page<Product> page = new PageImpl<>(List.of(product1, product2));
 		// given
 		given(productRepository.findByStatusAndDeleteDtIsNull(any(), any(Pageable.class)))
 			.willReturn(page);

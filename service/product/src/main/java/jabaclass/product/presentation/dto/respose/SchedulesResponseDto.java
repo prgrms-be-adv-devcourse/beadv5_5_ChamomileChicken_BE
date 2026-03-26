@@ -6,7 +6,7 @@ import java.time.LocalTime;
 import java.util.UUID;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import jabaclass.product.domain.model.Schedules;
+import jabaclass.product.domain.model.Schedule;
 
 @Schema(description = "상품 일정 정보")
 public record SchedulesResponseDto(
@@ -44,19 +44,19 @@ public record SchedulesResponseDto(
 	LocalDateTime modifyDt
 
 ) {
-	public static SchedulesResponseDto from(Schedules schedules) {
+	public static SchedulesResponseDto from(Schedule schedule) {
 		return new SchedulesResponseDto(
-			schedules.getId(),
-			schedules.getProductId(),
-			schedules.getScheduleDt(),
-			schedules.getStartTime(),
-			schedules.getEndTime(),
-			schedules.getStatus().getStatusName(),
-			schedules.getMaxCapacity(),
-			schedules.getRegId(),
-			schedules.getRegDt(),
-			schedules.getModifyId(),
-			schedules.getModifyDt()
+			schedule.getId(),
+			schedule.getProductId(),
+			schedule.getScheduleDt(),
+			schedule.getStartTime(),
+			schedule.getEndTime(),
+			schedule.getStatus().getStatusName(),
+			schedule.getMaxCapacity(),
+			schedule.getRegId(),
+			schedule.getRegDt(),
+			schedule.getModifyId(),
+			schedule.getModifyDt()
 		);
 	}
 }
