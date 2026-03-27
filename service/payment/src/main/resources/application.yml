@@ -6,7 +6,7 @@ spring:
     name: payment
 
   datasource:
-    url: jdbc:h2:tcp://localhost/~/jabaclass-test
+    url: jdbc:h2:tcp://localhost/~/test
     driver-class-name: org.h2.Driver
     username: sa
     password:
@@ -30,7 +30,7 @@ order:
 
 user:
   service:
-    url: ${ORDER_SERVICE_URL}
+    url: ${USER_SERVICE_URL:http://localhost:9003}
 
 toss:
   secret-key: ${TOSS_SECRET_KEY}
