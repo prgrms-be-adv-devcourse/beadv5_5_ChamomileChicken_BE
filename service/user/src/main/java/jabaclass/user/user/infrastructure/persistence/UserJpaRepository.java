@@ -19,4 +19,8 @@ public interface UserJpaRepository extends JpaRepository<User, UUID> {
 	Optional<User> findByIdWithLock(UUID id);
 
     Optional<User> findByEmail(String email);
+
+	@Lock(LockModeType.PESSIMISTIC_WRITE)
+	@Query("SELECT u FROM User u WHERE u.email = :email")
+	Optional<User> findByEmailWithLock(String email);
 }

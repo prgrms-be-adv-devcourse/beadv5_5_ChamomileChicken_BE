@@ -32,7 +32,7 @@ public class AuthService implements LoginUseCase, LogoutUseCase, ReissueUseCase 
     @Transactional
     public LoginResponseDto login(LoginRequestDto request) {
 
-        User user = userRepository.findByEmail(request.getEmail())
+        User user = userRepository.findByEmailWithLock(request.getEmail())
                 .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
@@ -42,10 +42,7 @@ public class AuthService implements LoginUseCase, LogoutUseCase, ReissueUseCase 
         String accessToken = tokenProvider.generateAccessToken(user.getId());
         String refreshToken = tokenProvider.generateRefreshToken(user.getId());
 
-        User lockedUser = userRepository.findByIdWithLock(user.getId())
-                        .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
-
-        lockedUser.updateRefreshToken(refreshToken);
+        user.updateRefreshToken(refreshToken);
 
         return new LoginResponseDto(accessToken, refreshToken);
     }
