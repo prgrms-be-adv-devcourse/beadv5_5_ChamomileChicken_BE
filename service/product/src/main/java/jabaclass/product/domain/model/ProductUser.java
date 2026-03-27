@@ -34,7 +34,7 @@ public class ProductUser extends EntityBase {
 	@Column(name = "product_schedule_id", nullable = false)
 	private UUID productScheduleId;
 
-	@Column(name = "use_id", nullable = false)
+	@Column(name = "user_id", nullable = false)
 	private UUID userId;
 
 	@Column(name = "guest_count", nullable = false)
