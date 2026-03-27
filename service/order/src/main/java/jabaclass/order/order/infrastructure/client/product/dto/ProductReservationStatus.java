@@ -4,5 +4,5 @@ public enum ProductReservationStatus {
     PENDING,
     SUCCESS,
     FAILED,
-    CANCEL
+    CANCELLED
 }
