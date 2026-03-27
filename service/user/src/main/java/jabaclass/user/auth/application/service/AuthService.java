@@ -42,7 +42,10 @@ public class AuthService implements LoginUseCase, LogoutUseCase, ReissueUseCase 
         String accessToken = tokenProvider.generateAccessToken(user.getId());
         String refreshToken = tokenProvider.generateRefreshToken(user.getId());
 
-        user.updateRefreshToken(refreshToken);
+        User lockedUser = userRepository.findByIdWithLock(user.getId())
+                        .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
+
+        lockedUser.updateRefreshToken(refreshToken);
 
         return new LoginResponseDto(accessToken, refreshToken);
     }
@@ -53,8 +56,7 @@ public class AuthService implements LoginUseCase, LogoutUseCase, ReissueUseCase 
 
         Claims claims = jwtProvider.parseClaims(request.getRefreshToken());
 
-        String tokenType = claims.get("type", String.class);
-        if (!"REFRESH".equals(tokenType)) {
+        if (!jwtProvider.isRefreshToken(claims)) {
             throw new AuthException(AuthErrorCode.INVALID_REFRESH_TOKEN);
         }
 
