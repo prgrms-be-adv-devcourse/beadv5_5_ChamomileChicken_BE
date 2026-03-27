@@ -7,7 +7,7 @@ import jabaclass.user.auth.presentation.dto.request.LoginRequestDto;
 import jabaclass.user.auth.presentation.dto.request.ReissueRequestDto;
 import jabaclass.user.auth.presentation.dto.response.LoginResponseDto;
 import jabaclass.user.common.dto.ApiResponseDto;
-import jabaclass.user.common.util.SecurityUtil;
+import jabaclass.auth.util.SecurityUtil;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
