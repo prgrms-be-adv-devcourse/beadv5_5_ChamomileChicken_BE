@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -42,20 +43,25 @@ import jabaclass.product.application.exception.BusinessException;
 import jabaclass.product.application.service.AuditorAwareService;
 import jabaclass.product.application.service.ScheduleService;
 import jabaclass.product.application.usecase.ProductUseCase;
+import jabaclass.product.application.usecase.ProductUserUseCase;
 import jabaclass.product.application.usecase.ScheduleUseCase;
 import jabaclass.product.common.exception.CommonErrorCode;
 import jabaclass.product.domain.model.Product;
+import jabaclass.product.domain.model.ProductUser;
 import jabaclass.product.domain.model.Schedule;
+import jabaclass.product.domain.model.status.OrderStatus;
 import jabaclass.product.domain.model.status.ProductStatus;
 import jabaclass.product.domain.model.status.ReservedStatus;
 import jabaclass.product.domain.repository.ScheduleRepository;
 import jabaclass.product.infrastructure.acl.dto.SellerResponseDto;
 import jabaclass.product.presentation.ProductRestController;
+import jabaclass.product.presentation.dto.request.CreateProductUserRequestDto;
 import jabaclass.product.presentation.dto.request.CreateScheduleRequestDto;
 import jabaclass.product.presentation.dto.request.OrderRequestDto;
 import jabaclass.product.presentation.dto.request.UpdateScheduleRequestDto;
 import jabaclass.product.presentation.dto.respose.DeleteScheduleResposeDto;
 import jabaclass.product.presentation.dto.respose.OrderResponseDto;
+import jabaclass.product.presentation.dto.respose.ProductUserResponseDto;
 import jabaclass.product.presentation.dto.respose.SchedulesResponseDto;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
@@ -87,6 +93,9 @@ class ScheduleTest {
 
 	@Mock
 	private ScheduleUseCase scheduleUseCase;
+
+	@Mock
+	private ProductUserUseCase productUserUseCase;
 
 	private static final UUID SELLER_ID = UUID.fromString("123e4567-e89b-12d3-a456-426614174000");
 	private static final UUID PRODUCT_ID = UUID.fromString("223e4567-e89b-12d3-a456-426614174000");
@@ -407,8 +416,28 @@ class ScheduleTest {
 
 	@Test
 	void 예약_검증에_성공하면_재고를_차감하고_true를_반환한다() {
-		OrderRequestDto request = new OrderRequestDto(SCHEDULE_ID, 3);
+		UUID userId = UUID.randomUUID();
+		UUID productUserId = UUID.randomUUID();
+		OrderRequestDto request = new OrderRequestDto(SCHEDULE_ID, userId, OrderStatus.PENDING, 3, null);
 		given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(schedule));
+		given(productUserUseCase.innserUserList(SCHEDULE_ID)).willReturn(List.of(
+			ProductUser.builder()
+				.productScheduleId(SCHEDULE_ID)
+				.userId(UUID.randomUUID())
+				.guestCount(2)
+				.status(OrderStatus.PAID)
+				.build()
+		));
+		given(productUserUseCase.create(any(CreateProductUserRequestDto.class)))
+			.willReturn(new ProductUserResponseDto(
+				productUserId,
+				SCHEDULE_ID,
+				"user",
+				3,
+				OrderStatus.PENDING.getStatusName(),
+				userId,
+				null
+			));
 		given(productUseCase.findByIdOrThrow(PRODUCT_ID)).willReturn(product);
 
 		OrderResponseDto result = scheduleService.verification(request);
@@ -416,13 +445,28 @@ class ScheduleTest {
 		assertThat(result.quantity()).isEqualTo(3);
 		assertThat(result.valid()).isTrue();
 		assertThat(result.price()).isEqualByComparingTo(PRICE);
-		assertThat(schedule.getMaxCapacity()).isEqualTo(7);
+		assertThat(result.productUserId()).isEqualTo(productUserId);
+		then(productUserUseCase).should().create(any(CreateProductUserRequestDto.class));
 	}
 
 	@Test
 	void 예약_수량이_재고보다_많으면_false를_반환하고_재고를_유지한다() {
-		OrderRequestDto request = new OrderRequestDto(SCHEDULE_ID, 11);
+		OrderRequestDto request = new OrderRequestDto(
+			SCHEDULE_ID,
+			UUID.randomUUID(),
+			OrderStatus.PENDING,
+			11,
+			null
+		);
 		given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(schedule));
+		given(productUserUseCase.innserUserList(SCHEDULE_ID)).willReturn(List.of(
+			ProductUser.builder()
+				.productScheduleId(SCHEDULE_ID)
+				.userId(UUID.randomUUID())
+				.guestCount(3)
+				.status(OrderStatus.PAID)
+				.build()
+		));
 		given(productUseCase.findByIdOrThrow(PRODUCT_ID)).willReturn(product);
 
 		OrderResponseDto result = scheduleService.verification(request);
@@ -430,25 +474,46 @@ class ScheduleTest {
 		assertThat(result.quantity()).isEqualTo(11);
 		assertThat(result.valid()).isFalse();
 		assertThat(result.price()).isEqualByComparingTo(PRICE);
-		assertThat(schedule.getMaxCapacity()).isEqualTo(10);
+		assertThat(result.productUserId()).isNull();
+		then(productUserUseCase).should().innserUserList(SCHEDULE_ID);
+		then(productUserUseCase).should(never()).create(any(CreateProductUserRequestDto.class));
 	}
 
 	@Test
 	void 재고_복원_요청이_오면_수량만큼_재고를_복구한다() {
-		OrderRequestDto request = new OrderRequestDto(SCHEDULE_ID, 2);
-		schedule.changeMaxCapacity(6);
-		given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(schedule));
-		given(productUseCase.findByIdOrThrow(PRODUCT_ID)).willReturn(product);
+		UUID productUserId = UUID.randomUUID();
+		ProductUser productUser = ProductUser.builder()
+			.productScheduleId(SCHEDULE_ID)
+			.userId(UUID.randomUUID())
+			.guestCount(2)
+			.status(OrderStatus.PAID)
+			.build();
+		ReflectionTestUtils.setField(productUser, "id", productUserId);
+		OrderRequestDto request = new OrderRequestDto(
+			SCHEDULE_ID,
+			productUser.getUserId(),
+			OrderStatus.REFUNDED,
+			2,
+			productUserId
+		);
+		given(productUserUseCase.innerFindById(productUserId)).willReturn(productUser);
 
 		scheduleService.restoringInventory(request);
 
-		assertThat(schedule.getMaxCapacity()).isEqualTo(8);
+		assertThat(productUser.getStatus()).isEqualTo(OrderStatus.REFUNDED);
+		then(productUserUseCase).should().innerFindById(productUserId);
 	}
 
 	@Test
 	void 예약_검증_요청이_들어오면_컨트롤러가_유스케이스를_호출한다() {
-		OrderRequestDto request = new OrderRequestDto(SCHEDULE_ID, 2);
-		OrderResponseDto response = new OrderResponseDto(PRICE, 2, true);
+		OrderRequestDto request = new OrderRequestDto(
+			SCHEDULE_ID,
+			UUID.randomUUID(),
+			OrderStatus.PENDING,
+			2,
+			null
+		);
+		OrderResponseDto response = new OrderResponseDto(PRICE, 2, true, UUID.randomUUID());
 		given(scheduleUseCase.verification(request)).willReturn(response);
 
 		ResponseEntity<OrderResponseDto> result = productRestController.schedulesReservations(request);
@@ -460,7 +525,13 @@ class ScheduleTest {
 
 	@Test
 	void 재고_복원_요청이_들어오면_컨트롤러가_유스케이스를_호출한다() {
-		OrderRequestDto request = new OrderRequestDto(SCHEDULE_ID, 2);
+		OrderRequestDto request = new OrderRequestDto(
+			SCHEDULE_ID,
+			UUID.randomUUID(),
+			OrderStatus.REFUNDED,
+			2,
+			UUID.randomUUID()
+		);
 
 		productRestController.schedulesVerification(request);
 

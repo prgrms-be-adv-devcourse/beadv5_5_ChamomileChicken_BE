@@ -12,19 +12,24 @@ import org.springframework.transaction.annotation.Transactional;
 import jabaclass.product.application.acl.SellerRepository;
 import jabaclass.product.application.exception.BusinessException;
 import jabaclass.product.application.usecase.ProductUseCase;
+import jabaclass.product.application.usecase.ProductUserUseCase;
 import jabaclass.product.application.usecase.ScheduleUseCase;
 import jabaclass.product.common.exception.CommonErrorCode;
 import jabaclass.product.domain.model.Product;
+import jabaclass.product.domain.model.ProductUser;
 import jabaclass.product.domain.model.Schedule;
+import jabaclass.product.domain.model.status.OrderStatus;
 import jabaclass.product.domain.model.status.ReservedStatus;
 import jabaclass.product.domain.repository.ScheduleRepository;
 import jabaclass.product.infrastructure.acl.dto.SellerResponseDto;
 import jabaclass.product.infrastructure.acl.dto.SellerRole;
+import jabaclass.product.presentation.dto.request.CreateProductUserRequestDto;
 import jabaclass.product.presentation.dto.request.CreateScheduleRequestDto;
 import jabaclass.product.presentation.dto.request.OrderRequestDto;
 import jabaclass.product.presentation.dto.request.UpdateScheduleRequestDto;
 import jabaclass.product.presentation.dto.respose.DeleteScheduleResposeDto;
 import jabaclass.product.presentation.dto.respose.OrderResponseDto;
+import jabaclass.product.presentation.dto.respose.ProductUserResponseDto;
 import jabaclass.product.presentation.dto.respose.SchedulesResponseDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -40,6 +45,7 @@ public class ScheduleService implements ScheduleUseCase {
 	private final SellerRepository sellerRepository;
 	private final ApplicationEventPublisher publisher;
 	private final AuditorAwareService auditorAwareService;
+	private final ProductUserUseCase productUserUseCase;
 
 	@Override
 	@Transactional
@@ -157,38 +163,49 @@ public class ScheduleService implements ScheduleUseCase {
 	public OrderResponseDto verification(OrderRequestDto requestDto) {
 		Schedule schedule = findByIdOrThrow(requestDto.productScheduleId());
 		// 스케줄에 예약 가능 인원과 받아온 인원에 대한 체크
+		ProductUserResponseDto saved = null;
 		boolean status = true;
-		int maxCapacity = schedule.getMaxCapacity();
 		int quantity = requestDto.quantity();
 
+		// 해당 스케줄 예약자 수 확인
+		List<ProductUser> list = productUserUseCase.innserUserList(requestDto.productScheduleId());
+		int totalCount = list.stream()
+			.filter(l -> OrderStatus.PAID.equals(l.getStatus()))
+			.mapToInt(p -> p.getGuestCount())
+			.sum();
+
+		// 예약 가능 인원수
+		int maxCapacity = schedule.getMaxCapacity() - totalCount;
+		log.info(schedule.getMaxCapacity() + "");
+		log.info(totalCount + "");
+
 		// DB 값 < 받아온 값
-		if (maxCapacity < quantity) { // 예약이 안 되는 경우
+		if (quantity > maxCapacity) { // 예약이 안 되는 경우
 			status = false;
-		} else { // 예약이 되는 경우
-			int afterMaxCapacity = maxCapacity - quantity;
-			schedule.changeMaxCapacity(afterMaxCapacity);
+		} else {
+			CreateProductUserRequestDto dto = new CreateProductUserRequestDto(
+				requestDto.productScheduleId(),
+				requestDto.userId(),
+				quantity,
+				requestDto.status()
+			);
+			saved = productUserUseCase.create(dto);
 		}
 
 		Product product = productUseCase.findByIdOrThrow(schedule.getProductId());
 
-		return OrderResponseDto.from(product, requestDto.quantity(), status);
+		UUID puserId = saved == null ? null : saved.id();
+
+		return OrderResponseDto.from(product, requestDto.quantity(), status, puserId);
 	}
 
+	// 재고 수정
 	@Override
 	@Transactional
 	public void restoringInventory(OrderRequestDto requestDto) {
-		Schedule schedule = findByIdOrThrow(requestDto.productScheduleId());
-		Product product = productUseCase.findByIdOrThrow(schedule.getProductId());
+		ProductUser user = productUserUseCase.innerFindById(requestDto.productUserId());
 
-		int productMax = product.getMaxCapacity();
-		int maxCapacity = schedule.getMaxCapacity();
-		int quantity = requestDto.quantity();
-		int afterMaxCapacity = Math.min(
-			productMax,
-			maxCapacity + quantity
-		);
-
-		schedule.changeMaxCapacity(afterMaxCapacity);
+		user.changeStatus(requestDto.status());
 	}
 
 	// 상품 일자 존재 여부/단일 상품 일자 검색
