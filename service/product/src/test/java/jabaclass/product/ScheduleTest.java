@@ -53,6 +53,7 @@ import jabaclass.product.infrastructure.acl.dto.SellerResponseDto;
 import jabaclass.product.presentation.ProductRestController;
 import jabaclass.product.presentation.dto.request.CreateScheduleRequestDto;
 import jabaclass.product.presentation.dto.request.OrderRequestDto;
+import jabaclass.product.presentation.dto.request.ReservationRequestStatus;
 import jabaclass.product.presentation.dto.request.UpdateScheduleRequestDto;
 import jabaclass.product.presentation.dto.respose.DeleteScheduleResposeDto;
 import jabaclass.product.presentation.dto.respose.OrderResponseDto;
@@ -91,6 +92,7 @@ class ScheduleTest {
 	private static final UUID SELLER_ID = UUID.fromString("123e4567-e89b-12d3-a456-426614174000");
 	private static final UUID PRODUCT_ID = UUID.fromString("223e4567-e89b-12d3-a456-426614174000");
 	private static final UUID SCHEDULE_ID = UUID.fromString("323e4567-e89b-12d3-a456-426614174000");
+	private static final UUID USER_ID = UUID.fromString("423e4567-e89b-12d3-a456-426614174000");
 	private static final BigDecimal PRICE = new BigDecimal("1000.50");
 
 	private final ObjectMapper objectMapper = new ObjectMapper();
@@ -407,13 +409,14 @@ class ScheduleTest {
 
 	@Test
 	void 예약_검증에_성공하면_재고를_차감하고_true를_반환한다() {
-		OrderRequestDto request = new OrderRequestDto(SCHEDULE_ID, 3);
+		OrderRequestDto request = new OrderRequestDto(SCHEDULE_ID, USER_ID, ReservationRequestStatus.PENDING, null, 3);
 		given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(schedule));
 		given(productUseCase.findByIdOrThrow(PRODUCT_ID)).willReturn(product);
 
 		OrderResponseDto result = scheduleService.verification(request);
 
 		assertThat(result.quantity()).isEqualTo(3);
+		assertThat(result.productUserId()).isEqualTo(product.getSellerId());
 		assertThat(result.valid()).isTrue();
 		assertThat(result.price()).isEqualByComparingTo(PRICE);
 		assertThat(schedule.getMaxCapacity()).isEqualTo(7);
@@ -421,13 +424,14 @@ class ScheduleTest {
 
 	@Test
 	void 예약_수량이_재고보다_많으면_false를_반환하고_재고를_유지한다() {
-		OrderRequestDto request = new OrderRequestDto(SCHEDULE_ID, 11);
+		OrderRequestDto request = new OrderRequestDto(SCHEDULE_ID, USER_ID, ReservationRequestStatus.PENDING, null, 11);
 		given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(schedule));
 		given(productUseCase.findByIdOrThrow(PRODUCT_ID)).willReturn(product);
 
 		OrderResponseDto result = scheduleService.verification(request);
 
 		assertThat(result.quantity()).isEqualTo(11);
+		assertThat(result.productUserId()).isNull();
 		assertThat(result.valid()).isFalse();
 		assertThat(result.price()).isEqualByComparingTo(PRICE);
 		assertThat(schedule.getMaxCapacity()).isEqualTo(10);
@@ -435,7 +439,13 @@ class ScheduleTest {
 
 	@Test
 	void 재고_복원_요청이_오면_수량만큼_재고를_복구한다() {
-		OrderRequestDto request = new OrderRequestDto(SCHEDULE_ID, 2);
+		OrderRequestDto request = new OrderRequestDto(
+			SCHEDULE_ID,
+			USER_ID,
+			ReservationRequestStatus.FAILED,
+			product.getSellerId(),
+			2
+		);
 		schedule.changeMaxCapacity(6);
 		given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(schedule));
 		given(productUseCase.findByIdOrThrow(PRODUCT_ID)).willReturn(product);
@@ -447,8 +457,8 @@ class ScheduleTest {
 
 	@Test
 	void 예약_검증_요청이_들어오면_컨트롤러가_유스케이스를_호출한다() {
-		OrderRequestDto request = new OrderRequestDto(SCHEDULE_ID, 2);
-		OrderResponseDto response = new OrderResponseDto(PRICE, 2, true);
+		OrderRequestDto request = new OrderRequestDto(SCHEDULE_ID, USER_ID, ReservationRequestStatus.PENDING, null, 2);
+		OrderResponseDto response = new OrderResponseDto(PRICE, 2, product.getSellerId(), true);
 		given(scheduleUseCase.verification(request)).willReturn(response);
 
 		ResponseEntity<OrderResponseDto> result = productRestController.schedulesReservations(request);
@@ -460,7 +470,13 @@ class ScheduleTest {
 
 	@Test
 	void 재고_복원_요청이_들어오면_컨트롤러가_유스케이스를_호출한다() {
-		OrderRequestDto request = new OrderRequestDto(SCHEDULE_ID, 2);
+		OrderRequestDto request = new OrderRequestDto(
+			SCHEDULE_ID,
+			USER_ID,
+			ReservationRequestStatus.CANCEL,
+			product.getSellerId(),
+			2
+		);
 
 		productRestController.schedulesVerification(request);
 
