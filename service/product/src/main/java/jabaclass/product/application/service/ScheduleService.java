@@ -176,8 +176,6 @@ public class ScheduleService implements ScheduleUseCase {
 
 		// 예약 가능 인원수
 		int maxCapacity = schedule.getMaxCapacity() - totalCount;
-		log.info(schedule.getMaxCapacity() + "");
-		log.info(totalCount + "");
 
 		// DB 값 < 받아온 값
 		if (quantity > maxCapacity) { // 예약이 안 되는 경우
@@ -190,12 +188,14 @@ public class ScheduleService implements ScheduleUseCase {
 				requestDto.status()
 			);
 			saved = productUserUseCase.create(dto);
+			log.info(saved.id() + "");
+
 		}
 
 		Product product = productUseCase.findByIdOrThrow(schedule.getProductId());
 
 		UUID puserId = saved == null ? null : saved.id();
-
+		log.info(puserId + "");
 		return OrderResponseDto.from(product, requestDto.quantity(), status, puserId);
 	}
 
