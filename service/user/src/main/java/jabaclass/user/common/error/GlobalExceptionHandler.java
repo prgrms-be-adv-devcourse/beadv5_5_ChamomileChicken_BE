@@ -1,6 +1,6 @@
 package jabaclass.user.common.error;
 
-import jakarta.security.auth.message.AuthException;
+import jabaclass.user.auth.application.exception.AuthException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;

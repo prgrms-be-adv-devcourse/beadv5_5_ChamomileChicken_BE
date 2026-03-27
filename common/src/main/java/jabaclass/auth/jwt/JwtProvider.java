@@ -50,6 +50,10 @@ public class JwtProvider {
         );
     }
 
+    public boolean isRefreshToken(Claims claims) {
+        return TokenType.REFRESH.name().equals(claims.get(CLAIM_TYPE, String.class));
+    }
+
     // filter에서 parseClaims 중복 호출 방지용
     public boolean isAccessToken(Claims claims) {
         return TokenType.ACCESS.name().equals(claims.get(CLAIM_TYPE, String.class));

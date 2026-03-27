@@ -4,6 +4,9 @@ import java.util.UUID;
 
 public record ProductReservationReleaseRequestDto(
     UUID productScheduleId,
+    UUID userId,
+    ProductReservationStatus status,
+    UUID productUserId,
     Integer quantity
 ) {
 }
