@@ -35,9 +35,15 @@ public class ProductClientAdapter implements ProductClient {
 	public void updateReservation(UUID productScheduleId, UUID userId, ProductReservationStatus status,
 		UUID productUserId,
 		Integer quantity) {
+		String orderStatus = switch (status) {
+			case SUCCESS -> "PAID";
+			case FAILED -> "FAILED";
+			case CANCELLED -> "CANCELLED";
+			default -> status.name();
+		};
 		restTemplate.postForLocation(
 			productBaseUrl + "/api/v1/products/reservations/status",
-			new ProductReservationReleaseRequestDto(productScheduleId, userId, status, productUserId, quantity)
+			new ProductReservationReleaseRequestDto(productScheduleId, userId, orderStatus, productUserId, quantity)
 		);
 	}
 }
