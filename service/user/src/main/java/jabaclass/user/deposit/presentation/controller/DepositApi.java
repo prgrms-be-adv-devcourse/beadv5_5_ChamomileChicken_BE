@@ -62,33 +62,6 @@ public interface DepositApi {
 		@PathVariable UUID depositHistoryId
 	);
 
-	/*@Operation(
-		summary = "예치금 충전",
-		description = "결제 수단과 충전 금액으로 예치금을 충전합니다."
-	)
-	@SecurityRequirement(name = "bearerAuth")
-	@ApiErrorSpecs({
-		@ApiErrorSpec(
-			value = DepositErrorCode.class,
-			constant = "NOT_FOUND_USER",
-			summary = "존재하지 않는 회원입니다"
-		),
-		@ApiErrorSpec(
-			value = DepositErrorCode.class,
-			constant = "PAYMENT_FAILED",
-			summary = "결제에 실패했습니다"
-		),
-		@ApiErrorSpec(
-			value = DepositErrorCode.class,
-			constant = "PAYMENT_SERVICE_UNAVAILABLE",
-			summary = "결제 서비스에 연결할 수 없습니다"
-		)
-	})
-	ResponseEntity<DepositChargeResponseDto> chargeDeposit(
-		@AuthenticationPrincipal UUID userId,
-		@RequestBody DepositChargeRequestDto request
-	);*/
-
 	@Operation(
 		summary = "[Internal] 예치금 증가",
 		description = "결제 완료 후 payment 서비스에서 호출하여 예치금을 증가시킵니다."

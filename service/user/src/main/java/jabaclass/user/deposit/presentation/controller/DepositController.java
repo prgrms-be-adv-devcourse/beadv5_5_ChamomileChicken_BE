@@ -54,15 +54,6 @@ public class DepositController implements DepositApi {
 		return ResponseEntity.ok(depositQueryUseCase.findDepositHistory(depositHistoryId));
 	}
 
-	/*@Override
-	@PostMapping
-	public ResponseEntity<DepositChargeResponseDto> chargeDeposit(
-		@AuthenticationPrincipal UUID userId,
-		@RequestBody DepositChargeRequestDto request
-	) {
-		return ResponseEntity.ok(depositChargeUseCase.charge(userId, request));
-	}*/
-
 	@PutMapping("/internal/users/{userId}/deposit")
 	public ResponseEntity<Void> increaseDeposit(
 		@PathVariable UUID userId,
