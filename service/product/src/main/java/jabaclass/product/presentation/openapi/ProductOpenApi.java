@@ -156,7 +156,7 @@ public interface ProductOpenApi {
 		description = "예약 유저 조회 성공",
 		content = @Content(
 			array = @io.swagger.v3.oas.annotations.media.ArraySchema(
-				schema = @Schema(implementation = SchedulesResponseDto.class))
+				schema = @Schema(implementation = ProductUserResponseDto.class))
 		)
 	)
 	@CommonErrorResponses
