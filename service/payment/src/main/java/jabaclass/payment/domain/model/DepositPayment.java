@@ -33,6 +33,9 @@ public class DepositPayment {
 	@Column(name = "status", nullable = false, length = 20)
 	private DepositPaymentStatus status;
 
+	@Column(name = "payment_key")
+	private String paymentKey;
+
 	protected DepositPayment() {
 	}
 
@@ -48,7 +51,8 @@ public class DepositPayment {
 		return new DepositPayment(UUID.randomUUID(), userId, amount, paymentMethod);
 	}
 
-	public void markDone() {
+	public void markDone(String paymentKey) {
+		this.paymentKey = paymentKey;
 		this.status = DepositPaymentStatus.DONE;
 	}
 

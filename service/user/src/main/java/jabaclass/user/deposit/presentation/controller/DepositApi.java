@@ -13,8 +13,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jabaclass.user.common.apidocs.ApiErrorSpec;
 import jabaclass.user.common.apidocs.ApiErrorSpecs;
 import jabaclass.user.deposit.domain.exception.DepositErrorCode;
-import jabaclass.user.deposit.presentation.dto.request.DepositChargeRequestDto;
-import jabaclass.user.deposit.presentation.dto.response.DepositChargeResponseDto;
+import jabaclass.user.deposit.presentation.dto.request.IncreaseDepositRequestDto;
 import jabaclass.user.deposit.presentation.dto.response.DepositDetailResponseDto;
 import jabaclass.user.deposit.presentation.dto.response.DepositHistoryResponseDto;
 import jabaclass.user.deposit.presentation.dto.response.DepositMeResponseDto;
@@ -63,7 +62,7 @@ public interface DepositApi {
 		@PathVariable UUID depositHistoryId
 	);
 
-	@Operation(
+	/*@Operation(
 		summary = "예치금 충전",
 		description = "결제 수단과 충전 금액으로 예치금을 충전합니다."
 	)
@@ -88,5 +87,21 @@ public interface DepositApi {
 	ResponseEntity<DepositChargeResponseDto> chargeDeposit(
 		@AuthenticationPrincipal UUID userId,
 		@RequestBody DepositChargeRequestDto request
+	);*/
+
+	@Operation(
+		summary = "[Internal] 예치금 증가",
+		description = "결제 완료 후 payment 서비스에서 호출하여 예치금을 증가시킵니다."
+	)
+	@ApiErrorSpecs({
+		@ApiErrorSpec(
+			value = DepositErrorCode.class,
+			constant = "NOT_FOUND_USER",
+			summary = "존재하지 않는 회원입니다"
+		)
+	})
+	ResponseEntity<Void> increaseDeposit(
+		@PathVariable UUID userId,
+		@RequestBody IncreaseDepositRequestDto request
 	);
 }

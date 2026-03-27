@@ -1,5 +1,6 @@
 package jabaclass.user.deposit.application.usecase;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
@@ -28,10 +29,9 @@ public class DepositChargeUseCase {
 
 	private final UserRepository userRepository;
 	private final DepositHistoryRepository depositHistoryRepository;
-	private final PaymentClient paymentClient;
 	private final DepositHistoryStatusUpdater depositHistoryStatusUpdater;
 
-	// POST /deposits
+	/*// POST /deposits
 	@Transactional
 	public DepositChargeResponseDto charge(UUID userId, DepositChargeRequestDto request) {
 		User user = userRepository.findById(userId)
@@ -55,5 +55,29 @@ public class DepositChargeUseCase {
 			log.error("예치금 충전 실패 userId={}, amount={}", userId, request.chargeAmount(), e);
 			throw new BusinessException(DepositErrorCode.PAYMENT_FAILED);
 		}
+	}*/
+
+	@Transactional
+	public void increase(UUID userId, BigDecimal amount, UUID paymentId) {
+
+		User user = userRepository.findById(userId)
+			.orElseThrow(() -> new BusinessException(DepositErrorCode.NOT_FOUND_USER));
+
+		// 1. 예치금 증가
+		user.chargeDeposit(amount);
+
+		// 2. 이력 저장 (COMPLETED 바로)
+		DepositHistory history = DepositHistory.of(
+			user,
+			paymentId,
+			amount,
+			DepositType.CHARGE
+		);
+
+		history.updateStatus(DepositStatus.COMPLETED);
+
+		depositHistoryRepository.save(history);
+
+		log.info("예치금 증가 완료 userId={}, amount={}", userId, amount);
 	}
 }
