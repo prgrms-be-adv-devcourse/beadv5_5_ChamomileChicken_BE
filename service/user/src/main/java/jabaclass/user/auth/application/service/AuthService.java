@@ -42,10 +42,10 @@ public class AuthService implements LoginUseCase, LogoutUseCase, ReissueUseCase 
         String accessToken = tokenProvider.generateAccessToken(user.getId());
         String refreshToken = tokenProvider.generateRefreshToken(user.getId());
 
-        User lockedUser = userRepository.findByIdWithLock(user.getId())
-                        .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
+        userRepository.findByIdWithLock(user.getId())
+                .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
 
-        lockedUser.updateRefreshToken(refreshToken);
+        user.updateRefreshToken(refreshToken);
 
         return new LoginResponseDto(accessToken, refreshToken);
     }
