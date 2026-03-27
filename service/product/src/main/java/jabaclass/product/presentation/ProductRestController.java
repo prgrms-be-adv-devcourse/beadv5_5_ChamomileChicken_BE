@@ -16,8 +16,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import jabaclass.product.application.usecase.ProductUseCase;
+import jabaclass.product.application.usecase.ProductUserUseCase;
 import jabaclass.product.application.usecase.ScheduleUseCase;
 import jabaclass.product.common.exception.ApiResponseDto;
+import jabaclass.product.domain.model.status.OrderStatus;
 import jabaclass.product.presentation.dto.request.CreateProductRequestDto;
 import jabaclass.product.presentation.dto.request.CreateScheduleRequestDto;
 import jabaclass.product.presentation.dto.request.OrderRequestDto;
@@ -28,6 +30,7 @@ import jabaclass.product.presentation.dto.respose.DeleteProductResposeDto;
 import jabaclass.product.presentation.dto.respose.DeleteScheduleResposeDto;
 import jabaclass.product.presentation.dto.respose.OrderResponseDto;
 import jabaclass.product.presentation.dto.respose.ProductResponseDto;
+import jabaclass.product.presentation.dto.respose.ProductUserResponseDto;
 import jabaclass.product.presentation.dto.respose.SchedulesResponseDto;
 import jabaclass.product.presentation.dto.respose.SearchProductResponseDto;
 import jabaclass.product.presentation.openapi.ProductOpenApi;
@@ -43,6 +46,7 @@ public class ProductRestController implements ProductOpenApi {
 
 	private final ProductUseCase productUseCase;
 	private final ScheduleUseCase scheduleUseCase;
+	private final ProductUserUseCase productUserUseCase;
 
 	// 상품 등록
 	@Override
@@ -136,7 +140,7 @@ public class ProductRestController implements ProductOpenApi {
 	}
 
 	@Override
-	@PostMapping("/reservations/release")
+	@PostMapping("/reservations/status")
 	public void schedulesVerification(@RequestBody OrderRequestDto requestDto) {
 		scheduleUseCase.restoringInventory(requestDto);
 	}
@@ -159,6 +163,30 @@ public class ProductRestController implements ProductOpenApi {
 
 		return ResponseEntity.ok()
 			.body(ApiResponseDto.success(HttpStatus.OK, "성공적으로 검색 되었습니다.", response));
+	}
+
+	@Override
+	@GetMapping("/{productId}/schedules/{scheduleId}/user")
+	public ResponseEntity<ApiResponseDto<List<ProductUserResponseDto>>> schedulesSelectUser(
+		@PathVariable UUID scheduleId) {
+		List<ProductUserResponseDto> response = productUserUseCase.getUser(scheduleId);
+
+		return ResponseEntity.ok()
+			.body(ApiResponseDto.success(HttpStatus.OK, "성공적으로 검색 되었습니다.", response));
+	}
+
+	@Override
+	@DeleteMapping("/{productId}/schedules/{scheduleId}/user")
+	public ResponseEntity<ApiResponseDto<ProductUserResponseDto>> schedulesDeleteUser(UUID productUserId) {
+		return null;
+	}
+
+	@Override
+	@PutMapping("/{productId}/schedules/{scheduleId}/user")
+	public ResponseEntity<ApiResponseDto<ProductUserResponseDto>> schedulesUpdateUserStatus(
+		@RequestBody OrderStatus status
+	) {
+		return null;
 	}
 
 }
