@@ -26,7 +26,7 @@ import lombok.experimental.SuperBuilder;
 @NoArgsConstructor
 @SuperBuilder
 @EntityListeners(AuditingEntityListener.class)
-@Table(name = "\"products\"", schema = "public")
+@Table(name = "products", schema = "public")
 public class Product extends EntityBase {
 
 	@Id

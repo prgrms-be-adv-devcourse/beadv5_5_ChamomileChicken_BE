@@ -22,5 +22,4 @@ public record OrderRequestDto(
 	@Schema(description = "예약자 테이블 Id", example = "true")
 	UUID productUserId
 ) {
-	//분리
 }

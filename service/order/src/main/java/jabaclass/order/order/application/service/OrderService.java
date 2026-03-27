@@ -18,6 +18,7 @@ import jabaclass.order.order.presentation.dto.request.UpdateOrderPaymentStatusRe
 import jabaclass.order.order.presentation.dto.response.CreateOrderResponseDto;
 import jabaclass.order.order.presentation.dto.response.OrderResponseDto;
 import jabaclass.order.order.infrastructure.client.product.dto.ProductReservationResponseDto;
+import jabaclass.order.order.infrastructure.client.product.dto.ProductReservationStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,13 +37,14 @@ public class OrderService implements OrderUseCase {
     public CreateOrderResponseDto create(UUID userId, CreateOrderRequestDto requestDto) {
         validateCreateRequest(requestDto);
         validateDeposit(userId, requestDto.depositAmount());
-        ProductReservationResponseDto reservation = validateAndReserveProduct(requestDto);
+        ProductReservationResponseDto reservation = validateAndReserveProduct(userId, requestDto);
         BigDecimal totalAmount = calculateTotalAmount(reservation.price(), requestDto.quantity());
         validateDepositAmount(requestDto.depositAmount(), totalAmount);
 
         Order order = Order.create(
             requestDto.productScheduleId(),
             userId,
+            reservation.productUserId(),
             requestDto.quantity(),
             totalAmount
         );
@@ -50,6 +52,35 @@ public class OrderService implements OrderUseCase {
 
         return CreateOrderResponseDto.of(savedOrder, requestDto.productId(), requestDto.depositAmount());
     }
+
+    // html 테스트용
+    /*@Override
+    @Transactional
+    public CreateOrderResponseDto create(UUID userId, CreateOrderRequestDto requestDto) {
+
+        validateCreateRequest(requestDto);
+        validateDeposit(userId, requestDto.depositAmount());
+
+        // ⭐ 상품 검증 제거 (임시)
+        // ProductReservationResponseDto reservation = validateAndReserveProduct(requestDto);
+
+        // ⭐ 임시 금액
+        BigDecimal totalAmount = BigDecimal.valueOf(10000);
+
+        validateDepositAmount(requestDto.depositAmount(), totalAmount);
+
+        Order order = Order.create(
+            requestDto.productScheduleId(),
+            userId,
+            UUID.randomUUID(),
+            requestDto.quantity(),
+            totalAmount
+        );
+
+        Order savedOrder = orderRepository.save(order);
+
+        return CreateOrderResponseDto.of(savedOrder, requestDto.productId(), requestDto.depositAmount());
+    }*/
 
     @Override
     public OrderResponseDto getById(UUID orderId) {
@@ -127,13 +158,18 @@ public class OrderService implements OrderUseCase {
         }
     }
 
-    private ProductReservationResponseDto validateAndReserveProduct(CreateOrderRequestDto requestDto) {
+    private ProductReservationResponseDto validateAndReserveProduct(UUID userId, CreateOrderRequestDto requestDto) {
         ProductReservationResponseDto response = productClient.reserve(
             requestDto.productScheduleId(),
+            userId,
             requestDto.quantity()
         );
 
         if (response == null || !response.valid()) {
+            throw new BusinessException(OrderErrorCode.ORDER_PRODUCT_NOT_AVAILABLE);
+        }
+
+        if (response.productUserId() == null) {
             throw new BusinessException(OrderErrorCode.ORDER_PRODUCT_NOT_AVAILABLE);
         }
 
@@ -155,20 +191,45 @@ public class OrderService implements OrderUseCase {
     }
 
     private void processPaymentSuccess(Order order, BigDecimal depositAmount) {
+        UUID productUserId = requireProductUserId(order);
+
         if (depositAmount.signum() > 0) {
             depositClient.use(order.getUserId(), depositAmount);
         }
 
+        productClient.updateReservation(
+            order.getProductScheduleId(),
+            order.getUserId(),
+            ProductReservationStatus.SUCCESS,
+            productUserId,
+            order.getQuantity()
+        );
         order.pay();
     }
 
     private void processPaymentFailure(Order order) {
-        productClient.release(order.getProductScheduleId(), order.getQuantity());
+        UUID productUserId = requireProductUserId(order);
+
+        productClient.updateReservation(
+            order.getProductScheduleId(),
+            order.getUserId(),
+            ProductReservationStatus.FAILED,
+            productUserId,
+            order.getQuantity()
+        );
         order.failPayment();
     }
 
     private void processPaymentCancel(Order order) {
-        productClient.release(order.getProductScheduleId(), order.getQuantity());
+        UUID productUserId = requireProductUserId(order);
+
+        productClient.updateReservation(
+            order.getProductScheduleId(),
+            order.getUserId(),
+            ProductReservationStatus.CANCEL,
+            productUserId,
+            order.getQuantity()
+        );
         order.cancel();
     }
 
@@ -191,5 +252,13 @@ public class OrderService implements OrderUseCase {
         if (depositAmount.compareTo(totalAmount) > 0) {
             throw new IllegalArgumentException("예치금 사용 금액은 주문 가격보다 클 수 없습니다.");
         }
+    }
+
+    private UUID requireProductUserId(Order order) {
+        if (order.getProductUserId() == null) {
+            throw new IllegalStateException("상품 소유자 ID가 없는 주문입니다.");
+        }
+
+        return order.getProductUserId();
     }
 }
