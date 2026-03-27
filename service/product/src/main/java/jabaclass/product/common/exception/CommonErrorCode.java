@@ -53,7 +53,9 @@ public enum CommonErrorCode {
 	// 400 시작 시간이 존재하지 않습니다.
 	STTIME_NOT_FOUND(HttpStatus.NOT_FOUND, "시작 시간을 입력해주세요."),
 	// 400 종료 시간이 존재하지 않습니다.
-	EDTIME_NOT_FOUND(HttpStatus.NOT_FOUND, "종료 시간을 입력해주세요.");
+	EDTIME_NOT_FOUND(HttpStatus.NOT_FOUND, "종료 시간을 입력해주세요."),
+	// 404 유저가 없음
+	NOT_BUY_USER(HttpStatus.NOT_FOUND, "예약자가 존재하지 않습니다.");
 
 	private final HttpStatus status;
 	private final String message;

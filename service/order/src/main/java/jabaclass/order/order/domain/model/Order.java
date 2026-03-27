@@ -27,6 +27,9 @@ public class Order {
 	@Column(name = "user_id", nullable = false)
 	private UUID userId;
 
+	@Column(name = "product_user_id")
+	private UUID productUserId;
+
 	@Column(name = "quantity", nullable = false)
 	private Integer quantity;
 
@@ -44,6 +47,7 @@ public class Order {
 		UUID id,
 		UUID productScheduleId,
 		UUID userId,
+		UUID productUserId,
 		Integer quantity,
 		BigDecimal price,
 		OrderStatus status
@@ -51,6 +55,7 @@ public class Order {
 		this.id = id;
 		this.productScheduleId = productScheduleId;
 		this.userId = userId;
+		this.productUserId = productUserId;
 		this.quantity = quantity;
 		this.price = price;
 		this.status = status;
@@ -59,16 +64,19 @@ public class Order {
 	public static Order create(
 		UUID productScheduleId,
 		UUID userId,
+		UUID productUserId,
 		Integer quantity,
 		BigDecimal price
 	) {
 		validateQuantity(quantity);
+		validateProductUserId(productUserId);
 		validatePrice(price);
 
 		return new Order(
 			UUID.randomUUID(),
 			productScheduleId,
 			userId,
+			productUserId,
 			quantity,
 			price,
 			OrderStatus.PENDING
@@ -84,7 +92,7 @@ public class Order {
 	}
 
 	public void cancel() {
-		this.status = OrderStatus.CANCELED;
+		this.status = OrderStatus.CANCELLED;
 	}
 
 	public void pay() {
@@ -106,6 +114,12 @@ public class Order {
 	private static void validateQuantity(Integer quantity) {
 		if (Objects.isNull(quantity) || quantity <= 0) {
 			throw new IllegalArgumentException("수량은 1 이상이어야 합니다.");
+		}
+	}
+
+	private static void validateProductUserId(UUID productUserId) {
+		if (Objects.isNull(productUserId)) {
+			throw new IllegalArgumentException("상품 소유자 ID는 비어 있을 수 없습니다.");
 		}
 	}
 

@@ -30,16 +30,16 @@ public class SellerApiClient implements SellerClient {
 		}
 
 		// 일반 사용자
-		if (id.startsWith("3")) {
-			return Optional.of(new SellerResponseDto(sellerId, "김철수", "USER"));
-		}
+		//	if (id.startsWith("3")) {
+		//		return Optional.of(new SellerResponseDto(sellerId, "김철수", "USER"));
+		//	}
 
 		// 존재하지 않음
-		if (id.startsWith("2")) {
-			return Optional.empty();
-		}
+		//	if (id.startsWith("2")) {
+		//		return Optional.empty();
+		//	}
 
-		return Optional.empty();
+		return Optional.of(new SellerResponseDto(sellerId, "김철수", "USER"));
 	}
 
 	// 페이지에 보여질 seller 이름 가져오는 api

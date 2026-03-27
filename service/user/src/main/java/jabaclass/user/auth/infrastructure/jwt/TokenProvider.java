@@ -27,6 +27,9 @@ public class TokenProvider {
             @Value("${jwt.access-token-validity}") long accessTokenValidity,
             @Value("${jwt.refresh-token-validity}") long refreshTokenValidity
     ) {
+        if (secret.length() < 32) {
+            throw new IllegalArgumentException("JWT secret은 최소 32자 이상이어야 합니다.");
+        }
         this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
         this.accessTokenValidity = accessTokenValidity;
         this.refreshTokenValidity = refreshTokenValidity;
