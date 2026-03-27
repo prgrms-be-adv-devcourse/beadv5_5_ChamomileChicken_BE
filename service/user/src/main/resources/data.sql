@@ -1,0 +1,27 @@
+-- -- 테스트용 SELLER (product의 SELLER_ID와 일치)
+-- INSERT INTO USERS (ID, NAME, EMAIL, PASSWORD, PHONE, ROLE, DEPOSIT, CREATED_AT, UPDATED_AT)
+-- VALUES (
+--     'a0000000-0000-0000-0000-000000000002',
+--     '테스트판매자',
+--     'seller@test.com',
+--     '$2a$10$p8lTTdqrGp6iKYw5wS4TwuNIxGbfpH7Dpeiqmdpu6DeuoI.tFNz8y',
+--     '010-1111-1111',
+--     'SELLER',
+--     0,
+--     NOW(),
+--     NOW()
+-- );
+--
+-- -- 테스트용 BUYER (프론트 로그인 테스트)
+-- INSERT INTO USERS (ID, NAME, EMAIL, PASSWORD, PHONE, ROLE, DEPOSIT, CREATED_AT, UPDATED_AT)
+-- VALUES (
+--     'b0000000-0000-0000-0000-000000000001',
+--     '테스트구매자',
+--     'buyer@test.com',
+--     '$2a$10$p8lTTdqrGp6iKYw5wS4TwuNIxGbfpH7Dpeiqmdpu6DeuoI.tFNz8y',
+--     '010-2222-2222',
+--     'USER',
+--     0,
+--     NOW(),
+--     NOW()
+-- );
