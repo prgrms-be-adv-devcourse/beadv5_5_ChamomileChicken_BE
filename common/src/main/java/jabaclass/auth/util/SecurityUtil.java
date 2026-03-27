@@ -1,7 +1,7 @@
-package jabaclass.user.common.util;
+package jabaclass.auth.util;
 
-import jabaclass.user.auth.application.exception.AuthErrorCode;
-import jabaclass.user.auth.application.exception.AuthException;
+import jabaclass.auth.exception.JwtAuthException;
+import jabaclass.auth.exception.JwtErrorCode;
 import org.springframework.security.core.context.SecurityContextHolder;
 import java.util.UUID;
 
@@ -15,13 +15,13 @@ public class SecurityUtil {
         if (authentication == null
                 || !authentication.isAuthenticated()
                 || "anonymousUser".equals(authentication.getPrincipal())) {
-            throw new AuthException(AuthErrorCode.AUTHENTICATION_REQUIRED);
+            throw new JwtAuthException(JwtErrorCode.AUTHENTICATION_REQUIRED);
         }
 
         Object principal = authentication.getPrincipal();
 
         if (!(principal instanceof UUID userId)) {
-            throw new AuthException(AuthErrorCode.INVALID_AUTHENTICATION);
+            throw new JwtAuthException(JwtErrorCode.INVALID_AUTHENTICATION);
         }
 
         return userId;
