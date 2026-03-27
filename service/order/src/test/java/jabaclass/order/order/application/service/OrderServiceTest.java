@@ -246,8 +246,8 @@ class OrderServiceTest {
         OrderResponseDto actual = orderService.cancel(order.getId(), userId);
 
         // then
-        assertThat(actual.status()).isEqualTo(OrderStatus.CANCELED);
-        assertThat(order.getStatus()).isEqualTo(OrderStatus.CANCELED);
+        assertThat(actual.status()).isEqualTo(OrderStatus.CANCELLED);
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.CANCELLED);
     }
 
     @Test
@@ -396,11 +396,11 @@ class OrderServiceTest {
         orderService.updatePaymentStatus(order.getId(), requestDto);
 
         // then
-        assertThat(order.getStatus()).isEqualTo(OrderStatus.CANCELED);
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.CANCELLED);
         then(productClient).should().updateReservation(
             order.getProductScheduleId(),
             order.getUserId(),
-            ProductReservationStatus.CANCEL,
+            ProductReservationStatus.CANCELLED,
             productUserId,
             order.getQuantity()
         );
