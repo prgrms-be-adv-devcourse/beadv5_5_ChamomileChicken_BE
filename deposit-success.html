@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>예치금 충전 성공</title>
+</head>
+<body>
+
+<h2>예치금 충전 처리 중...</h2>
+
+<p id="status">결제 승인 진행 중입니다...</p>
+
+<script>
+    const urlParams = new URLSearchParams(window.location.search);
+
+    const paymentKey = urlParams.get("paymentKey");
+    const amount = urlParams.get("amount");
+    const orderId = urlParams.get("orderId"); // = depositPaymentId
+
+    console.log("paymentKey:", paymentKey);
+    console.log("depositPaymentId:", orderId);
+    console.log("amount:", amount);
+
+    // 🔥 confirm API 호출
+    fetch("http://localhost:9001/api/v1/payments/deposits/confirm", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            depositPaymentsId: orderId,
+            paymentKey: paymentKey,
+            amount: Number(amount)
+        })
+    })
+        .then(res => {
+            if (!res.ok) {
+                throw new Error("결제 승인 실패");
+            }
+            return res.json();
+        })
+        .then(data => {
+            console.log("충전 완료:", data);
+
+            document.getElementById("status").innerText =
+                "🎉 예치금 충전 완료!";
+
+        })
+        .catch(err => {
+            console.error(err);
+
+            document.getElementById("status").innerText =
+                "❌ 충전 실패. 다시 시도해주세요.";
+        });
+</script>
+
+</body>
+</html>

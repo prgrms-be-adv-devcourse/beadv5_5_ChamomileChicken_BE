@@ -31,3 +31,8 @@ external:
     base-url: http://localhost:9003
   products:
     base-url: http://localhost:9004
+
+logging:
+  level:
+    jabaclass: DEBUG
+    org.springframework.web: DEBUG
