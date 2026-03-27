@@ -17,6 +17,7 @@ import jabaclass.order.order.presentation.dto.request.UpdateOrderPaymentStatusRe
 import jabaclass.order.order.presentation.dto.response.CreateOrderResponseDto;
 import jabaclass.order.order.presentation.dto.response.OrderResponseDto;
 import jabaclass.order.order.infrastructure.client.product.dto.ProductReservationResponseDto;
+import jabaclass.order.order.infrastructure.client.product.dto.ProductReservationStatus;
 import org.junit.jupiter.api.DisplayNameGeneration;
 import org.junit.jupiter.api.DisplayNameGenerator.ReplaceUnderscores;
 import org.junit.jupiter.api.Test;
@@ -28,6 +29,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
@@ -53,6 +55,7 @@ class OrderServiceTest {
     void 주문을_생성한다() {
         // given
         UUID userId = UUID.randomUUID();
+        UUID productUserId = UUID.randomUUID();
         CreateOrderRequestDto requestDto = new CreateOrderRequestDto(
             UUID.randomUUID(),
             UUID.randomUUID(),
@@ -60,8 +63,8 @@ class OrderServiceTest {
             new BigDecimal("3000")
         );
         given(depositClient.isValid(userId, requestDto.depositAmount())).willReturn(true);
-        given(productClient.reserve(requestDto.productScheduleId(), requestDto.quantity()))
-            .willReturn(new ProductReservationResponseDto(new BigDecimal("10000"), requestDto.quantity(), true));
+        given(productClient.reserve(requestDto.productScheduleId(), userId, requestDto.quantity()))
+            .willReturn(new ProductReservationResponseDto(new BigDecimal("10000"), requestDto.quantity(), productUserId, true));
         given(orderRepository.save(any(Order.class)))
             .willAnswer(invocation -> invocation.getArgument(0));
 
@@ -77,7 +80,8 @@ class OrderServiceTest {
         assertThat(actual.depositAmount()).isEqualByComparingTo(requestDto.depositAmount());
         assertThat(actual.paymentAmount()).isEqualByComparingTo("17000");
         assertThat(actual.status()).isEqualTo(OrderStatus.PENDING);
-        then(orderRepository).should().save(any(Order.class));
+        then(productClient).should().reserve(requestDto.productScheduleId(), userId, requestDto.quantity());
+        then(orderRepository).should().save(argThat(order -> productUserId.equals(order.getProductUserId())));
     }
 
     @Test
@@ -128,8 +132,8 @@ class OrderServiceTest {
             new BigDecimal("1000")
         );
         given(depositClient.isValid(userId, requestDto.depositAmount())).willReturn(true);
-        given(productClient.reserve(requestDto.productScheduleId(), requestDto.quantity()))
-            .willReturn(new ProductReservationResponseDto(new BigDecimal("10000"), requestDto.quantity(), false));
+        given(productClient.reserve(requestDto.productScheduleId(), userId, requestDto.quantity()))
+            .willReturn(new ProductReservationResponseDto(new BigDecimal("10000"), requestDto.quantity(), null, false));
 
         // when & then
         assertThatThrownBy(() -> orderService.create(userId, requestDto))
@@ -142,6 +146,7 @@ class OrderServiceTest {
     void 주문을_조회한다() {
         // given
         Order order = Order.create(
+            UUID.randomUUID(),
             UUID.randomUUID(),
             UUID.randomUUID(),
             1,
@@ -180,12 +185,14 @@ class OrderServiceTest {
         Order firstOrder = Order.create(
             UUID.randomUUID(),
             userId,
+            UUID.randomUUID(),
             1,
             new BigDecimal("5000")
         );
         Order secondOrder = Order.create(
             UUID.randomUUID(),
             userId,
+            UUID.randomUUID(),
             2,
             new BigDecimal("10000")
         );
@@ -207,6 +214,7 @@ class OrderServiceTest {
         Order order = Order.create(
             UUID.randomUUID(),
             userId,
+            UUID.randomUUID(),
             1,
             new BigDecimal("7000")
         );
@@ -228,6 +236,7 @@ class OrderServiceTest {
         Order order = Order.create(
             UUID.randomUUID(),
             userId,
+            UUID.randomUUID(),
             1,
             new BigDecimal("15000")
         );
@@ -245,6 +254,7 @@ class OrderServiceTest {
     void 다른_사용자의_주문을_취소하면_예외가_발생한다() {
         // given
         Order order = Order.create(
+            UUID.randomUUID(),
             UUID.randomUUID(),
             UUID.randomUUID(),
             1,
@@ -266,6 +276,7 @@ class OrderServiceTest {
         Order order = Order.create(
             UUID.randomUUID(),
             userId,
+            UUID.randomUUID(),
             1,
             new BigDecimal("15000")
         );
@@ -285,6 +296,7 @@ class OrderServiceTest {
         Order order = Order.create(
             UUID.randomUUID(),
             UUID.randomUUID(),
+            UUID.randomUUID(),
             1,
             new BigDecimal("15000")
         );
@@ -300,9 +312,11 @@ class OrderServiceTest {
     @Test
     void 결제_성공을_반영한다() {
         // given
+        UUID productUserId = UUID.randomUUID();
         Order order = Order.create(
             UUID.randomUUID(),
             UUID.randomUUID(),
+            productUserId,
             1,
             new BigDecimal("15000")
         );
@@ -319,14 +333,23 @@ class OrderServiceTest {
         // then
         assertThat(order.getStatus()).isEqualTo(OrderStatus.PAID);
         then(depositClient).should().use(order.getUserId(), new BigDecimal("5000"));
+        then(productClient).should().updateReservation(
+            order.getProductScheduleId(),
+            order.getUserId(),
+            ProductReservationStatus.SUCCESS,
+            productUserId,
+            order.getQuantity()
+        );
     }
 
     @Test
     void 결제_실패를_반영한다() {
         // given
+        UUID productUserId = UUID.randomUUID();
         Order order = Order.create(
             UUID.randomUUID(),
             UUID.randomUUID(),
+            productUserId,
             2,
             new BigDecimal("15000")
         );
@@ -342,15 +365,23 @@ class OrderServiceTest {
 
         // then
         assertThat(order.getStatus()).isEqualTo(OrderStatus.FAILED);
-        then(productClient).should().release(order.getProductScheduleId(), order.getQuantity());
+        then(productClient).should().updateReservation(
+            order.getProductScheduleId(),
+            order.getUserId(),
+            ProductReservationStatus.FAILED,
+            productUserId,
+            order.getQuantity()
+        );
     }
 
     @Test
     void 결제_취소를_반영한다() {
         // given
+        UUID productUserId = UUID.randomUUID();
         Order order = Order.create(
             UUID.randomUUID(),
             UUID.randomUUID(),
+            productUserId,
             2,
             new BigDecimal("15000")
         );
@@ -366,6 +397,12 @@ class OrderServiceTest {
 
         // then
         assertThat(order.getStatus()).isEqualTo(OrderStatus.CANCELED);
-        then(productClient).should().release(order.getProductScheduleId(), order.getQuantity());
+        then(productClient).should().updateReservation(
+            order.getProductScheduleId(),
+            order.getUserId(),
+            ProductReservationStatus.CANCEL,
+            productUserId,
+            order.getQuantity()
+        );
     }
 }
