@@ -473,7 +473,7 @@ class ScheduleTest {
 		OrderRequestDto request = new OrderRequestDto(
 			SCHEDULE_ID,
 			USER_ID,
-			ReservationRequestStatus.CANCEL,
+			ReservationRequestStatus.CANCELLED,
 			product.getSellerId(),
 			2
 		);

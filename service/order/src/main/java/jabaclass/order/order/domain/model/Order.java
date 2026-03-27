@@ -92,7 +92,7 @@ public class Order {
 	}
 
 	public void cancel() {
-		this.status = OrderStatus.CANCELED;
+		this.status = OrderStatus.CANCELLED;
 	}
 
 	public void pay() {

@@ -177,17 +177,11 @@ public class OrderService implements OrderUseCase {
     }
 
     private void processPaymentResult(Order order, UpdateOrderPaymentStatusRequestDto requestDto) {
-        if (requestDto.paymentStatus() == PaymentResultStatus.SUCCESS) {
-            processPaymentSuccess(order, requestDto.depositAmount());
-            return;
+        switch (requestDto.paymentStatus()) {
+            case SUCCESS -> processPaymentSuccess(order, requestDto.depositAmount());
+            case FAILED -> processPaymentFailure(order);
+            case CANCELLED -> processPaymentCancel(order);
         }
-
-        if (requestDto.paymentStatus() == PaymentResultStatus.FAILED) {
-            processPaymentFailure(order);
-            return;
-        }
-
-        processPaymentCancel(order);
     }
 
     private void processPaymentSuccess(Order order, BigDecimal depositAmount) {
@@ -226,7 +220,7 @@ public class OrderService implements OrderUseCase {
         productClient.updateReservation(
             order.getProductScheduleId(),
             order.getUserId(),
-            ProductReservationStatus.CANCEL,
+            ProductReservationStatus.CANCELLED,
             productUserId,
             order.getQuantity()
         );
