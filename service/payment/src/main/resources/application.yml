@@ -26,7 +26,7 @@ spring:
 
 order:
   service:
-    url: ${ORDER_SERVICE_URL}
+    url: ${ORDER_SERVICE_URL:http://localhost:9005}
 
 toss:
   secret-key: ${TOSS_SECRET_KEY}
