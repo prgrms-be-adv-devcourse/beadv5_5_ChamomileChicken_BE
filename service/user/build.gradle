@@ -51,7 +51,9 @@ dependencies {
     annotationProcessor 'org.projectlombok:lombok'
 
     // DB Driver
-    runtimeOnly 'org.mariadb.jdbc:mariadb-java-client'
+    testRuntimeOnly 'com.h2database:h2'
+    runtimeOnly 'org.postgresql:postgresql'
+    runtimeOnly 'com.h2database:h2'
 
     // Swagger / OpenAPI
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.0'

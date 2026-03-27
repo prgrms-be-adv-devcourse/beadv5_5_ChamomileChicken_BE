@@ -1,5 +1,6 @@
 package jabaclass.user.auth.application.service;
 
+import io.jsonwebtoken.Claims;
 import jabaclass.auth.jwt.JwtProvider;
 import jabaclass.user.auth.application.exception.AuthErrorCode;
 import jabaclass.user.auth.application.exception.AuthException;
@@ -50,7 +51,14 @@ public class AuthService implements LoginUseCase, LogoutUseCase, ReissueUseCase 
     @Transactional
     public LoginResponseDto reissue(ReissueRequestDto request) {
 
-        UUID userId = jwtProvider.getUserId(request.getRefreshToken());
+        Claims claims = jwtProvider.parseClaims(request.getRefreshToken());
+
+        String tokenType = claims.get("type", String.class);
+        if (!"REFRESH".equals(tokenType)) {
+            throw new AuthException(AuthErrorCode.INVALID_REFRESH_TOKEN);
+        }
+
+        UUID userId = jwtProvider.getUserId(claims);
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
