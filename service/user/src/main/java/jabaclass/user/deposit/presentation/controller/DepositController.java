@@ -7,6 +7,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 import jabaclass.user.deposit.application.usecase.DepositChargeUseCase;
 import jabaclass.user.deposit.application.usecase.DepositQueryUseCase;
 import jabaclass.user.deposit.presentation.dto.request.DepositChargeRequestDto;
+import jabaclass.user.deposit.presentation.dto.request.IncreaseDepositRequestDto;
 import jabaclass.user.deposit.presentation.dto.response.DepositChargeResponseDto;
 import jabaclass.user.deposit.presentation.dto.response.DepositDetailResponseDto;
 import jabaclass.user.deposit.presentation.dto.response.DepositHistoryResponseDto;
@@ -52,12 +54,17 @@ public class DepositController implements DepositApi {
 		return ResponseEntity.ok(depositQueryUseCase.findDepositHistory(depositHistoryId));
 	}
 
-	@Override
-	@PostMapping
-	public ResponseEntity<DepositChargeResponseDto> chargeDeposit(
-		@AuthenticationPrincipal UUID userId,
-		@RequestBody DepositChargeRequestDto request
+	@PutMapping("/internal/users/{userId}/deposit")
+	public ResponseEntity<Void> increaseDeposit(
+		@PathVariable UUID userId,
+		@RequestBody IncreaseDepositRequestDto request
 	) {
-		return ResponseEntity.ok(depositChargeUseCase.charge(userId, request));
+		depositChargeUseCase.increase(
+			userId,
+			request.amount(),
+			request.paymentId()
+		);
+		return ResponseEntity.ok().build();
 	}
+
 }

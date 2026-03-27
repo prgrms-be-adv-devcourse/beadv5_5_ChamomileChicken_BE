@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <script src="https://js.tosspayments.com/v1"></script>
+</head>
+<body>
+
+<h2>예치금 충전 테스트</h2>
+
+<button onclick="prepareDeposit()">충전 준비</button>
+<button onclick="startPayment()">결제하기</button>
+
+<p id="orderIdText"></p>
+
+<script>
+    const clientKey = "test_ck_yL0qZ4G1VOj211Mwom2v3oWb2MQY";
+    const tossPayments = TossPayments(clientKey);
+
+    let depositPaymentId = null;
+
+    // 1. 예치금 충전 준비
+    async function prepareDeposit() {
+
+        const res = await fetch("http://localhost:9001/api/v1/payments/deposits/prepare", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                userId: "86975d07-b007-4f9a-af56-d35ef6736680",
+                amount: 10000,
+                paymentMethod: "TOSS"
+            })
+        });
+
+        const data = await res.json();
+
+        depositPaymentId = data.depositPaymentsId;
+
+        document.getElementById("orderIdText").innerText =
+            "depositPaymentId: " + depositPaymentId;
+
+        console.log("depositPayment 생성:", depositPaymentId);
+    }
+
+    // 2. 결제 시작
+    async function startPayment() {
+
+        if (!depositPaymentId) {
+            alert("먼저 충전 준비를 하세요!");
+            return;
+        }
+
+        tossPayments.requestPayment("카드", {
+            amount: 10000,
+            orderId: depositPaymentId,
+            orderName: "예치금 충전",
+            successUrl: "http://localhost:5500/deposit-success.html",
+            failUrl: "http://localhost:5500/fail.html"
+        });
+    }
+</script>
+
+</body>
+</html>
