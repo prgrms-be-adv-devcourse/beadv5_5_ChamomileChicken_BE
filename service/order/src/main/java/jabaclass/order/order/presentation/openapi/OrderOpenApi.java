@@ -33,6 +33,10 @@ public interface OrderOpenApi {
         @Parameter(hidden = true) @AuthenticationPrincipal UUID userId,
         @RequestBody CreateOrderRequestDto requestDto
     );
+    // html 테스트용
+    /*ResponseEntity<CreateOrderResponseDto> create(
+        @RequestBody CreateOrderRequestDto requestDto
+    );*/
 
     @Operation(summary = "주문 단건 조회", description = "주문 ID로 주문 정보를 조회합니다.")
     @ApiResponse(
