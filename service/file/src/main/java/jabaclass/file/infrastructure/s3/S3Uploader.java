@@ -1,11 +1,7 @@
 package jabaclass.file.infrastructure.s3;
 
-import jabaclass.file.domain.model.File;
 import java.time.Duration;
-import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.apache.coyote.BadRequestException;
-import org.springframework.data.crossstore.ChangeSetPersister.NotFoundException;
 import org.springframework.stereotype.Component;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedPutObjectRequest;

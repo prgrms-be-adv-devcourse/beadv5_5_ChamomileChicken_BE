@@ -42,8 +42,8 @@ public class File extends BaseEntity {
     private FileStatus status;
 
     @Builder
-    public File(UUID userId, String originalName, String storagePath, Long size) {
-        this.id = UUID.randomUUID();
+    public File(UUID id, UUID userId, String originalName, String storagePath, Long size) {
+        this.id = id;
         this.userId = userId;
         this.originalName = originalName;
         this.storagePath = storagePath;

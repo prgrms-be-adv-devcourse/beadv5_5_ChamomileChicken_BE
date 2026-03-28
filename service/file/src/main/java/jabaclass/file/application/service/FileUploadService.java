@@ -33,6 +33,7 @@ public class FileUploadService implements RequestUploadUseCase, CompleteUploadUs
         String storagePath = userId + "/" + fileId + "/" + request.getOriginalName();
 
         File file = File.builder()
+                .id(fileId)
                 .userId(userId)
                 .originalName(request.getOriginalName())
                 .storagePath(storagePath)

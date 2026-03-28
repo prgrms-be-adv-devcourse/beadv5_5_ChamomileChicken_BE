@@ -40,6 +40,10 @@ jwt:
   access-token-validity: 1800000
   refresh-token-validity: 604800000
 
+internal:
+  api:
+    key: test-internal-key
+
 springdoc:
   swagger-ui:
     path: /swagger-ui.html

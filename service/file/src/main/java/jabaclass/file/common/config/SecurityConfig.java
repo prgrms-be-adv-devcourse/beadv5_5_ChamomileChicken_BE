@@ -15,6 +15,7 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import jabaclass.file.common.filter.InternalApiFilter;
 
 @Configuration
 @EnableWebSecurity
@@ -23,6 +24,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtProperties jwtProperties;
+    private final InternalApiFilter internalApiFilter;
 
     @Bean
     public JwtProvider jwtProvider() {
@@ -50,9 +52,13 @@ public class SecurityConfig {
                 );
 
         http.authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/internal/**").permitAll()
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                 .anyRequest().authenticated()
+        );
+
+        http.addFilterBefore(
+                internalApiFilter,
+                JwtAuthenticationFilter.class
         );
 
         http.addFilterBefore(
