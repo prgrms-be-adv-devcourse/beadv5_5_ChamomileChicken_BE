@@ -188,8 +188,11 @@ public class ScheduleService implements ScheduleUseCase {
 				requestDto.status()
 			);
 			saved = productUserUseCase.create(dto);
-			log.info(saved.id() + "");
 
+			// 재고가 끝일 경우
+			int count = maxCapacity - saved.guestCount();
+			if (count == 0)
+				schedule.changeStatus(ReservedStatus.FULL);
 		}
 
 		Product product = productUseCase.findByIdOrThrow(schedule.getProductId());
