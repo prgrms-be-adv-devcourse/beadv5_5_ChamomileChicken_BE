@@ -1,37 +1,54 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="UTF-8">
-    <title>결제 - Jaba</title>
-    <script src="https://js.tosspayments.com/v1"></script>
-    <style>
-        body { font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; background: #f5f5f5; }
-        .box { background: white; border-radius: 8px; padding: 28px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
-        h2 { margin: 0 0 20px; }
-        .row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; }
-        .row:last-of-type { border-bottom: none; font-weight: bold; font-size: 18px; }
-        .pay-btn { margin-top: 24px; width: 100%; padding: 14px; background: #4a90e2; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; }
-        .pay-btn:hover { background: #357abd; }
-    </style>
-</head>
-<body>
-<div class="box">
-    <h2>결제 정보 확인</h2>
-    <div class="row">
-        <span>주문 번호</span>
-        <span th:text="${orderId}">-</span>
+<head th:replace="~{fragments/common-head :: head('결제 - Jaba')}"></head>
+<body class="bg-gray-50 dark:bg-[#121212] text-gray-900 dark:text-white antialiased min-h-screen flex items-center justify-center p-4">
+
+<button onclick="toggleTheme()" title="테마 변경"
+        class="fixed top-4 right-4 p-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1e1e1e] text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors shadow-sm">
+    <svg class="w-4 h-4 theme-icon-light" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+    <svg class="w-4 h-4 theme-icon-dark hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+</button>
+
+<div class="w-full max-w-md bg-white dark:bg-[#1e1e1e] border border-gray-200 dark:border-gray-800 rounded-2xl p-8 shadow-2xl">
+    <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-8 text-center">결제 정보 확인</h2>
+
+    <div class="space-y-4 mb-8">
+        <div class="flex justify-between items-center py-3 border-b border-gray-100 dark:border-gray-800">
+            <span class="text-gray-500 dark:text-gray-400 text-sm">주문 번호</span>
+            <span class="font-medium text-gray-700 dark:text-gray-200" th:text="${orderId}">-</span>
+        </div>
+        <div class="flex justify-between items-center py-3 border-b border-gray-100 dark:border-gray-800">
+            <span class="text-gray-500 dark:text-gray-400 text-sm">예치금 사용</span>
+            <span class="font-medium text-gray-700 dark:text-gray-200" th:text="'-₩' + ${#numbers.formatDecimal(depositAmount, 0, 'COMMA', 0, 'POINT')}">-</span>
+        </div>
+        <div class="flex justify-between items-center py-4">
+            <span class="text-gray-700 dark:text-gray-300 font-medium">최종 결제 금액</span>
+            <span class="text-2xl font-bold" th:text="'₩' + ${#numbers.formatDecimal(amount, 0, 'COMMA', 0, 'POINT')}">-</span>
+        </div>
     </div>
-    <div class="row">
-        <span>예치금 사용</span>
-        <span th:text="${#numbers.formatDecimal(depositAmount, 0, 'COMMA', 0, 'POINT')} + '원'">-</span>
+
+    <!-- 예치금 전액 결제 -->
+    <div th:if="${amount == 0}">
+        <form th:action="@{/payment/deposit-complete}" method="post">
+            <input type="hidden" name="orderId" th:value="${orderId}" />
+            <input type="hidden" name="depositAmount" th:value="${depositAmount}" />
+            <button type="submit"
+                    class="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-lg transition duration-200 shadow-[0_0_15px_rgba(37,99,235,0.3)]">
+                예치금으로 결제하기
+            </button>
+        </form>
     </div>
-    <div class="row">
-        <span>최종 결제 금액</span>
-        <span th:text="${#numbers.formatDecimal(amount, 0, 'COMMA', 0, 'POINT')} + '원'">-</span>
+
+    <!-- Toss 결제 (잔액 결제 필요한 경우) -->
+    <div th:if="${amount > 0}">
+        <button onclick="startPayment()"
+                class="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-lg transition duration-200 shadow-[0_0_15px_rgba(37,99,235,0.3)]">
+            결제하기
+        </button>
     </div>
-    <button class="pay-btn" onclick="startPayment()">결제하기</button>
 </div>
 
+<script src="https://js.tosspayments.com/v1"></script>
 <script th:inline="javascript">
     const tossClientKey = /*[[${tossClientKey}]]*/ '';
     const successUrl    = /*[[${tossSuccessUrl}]]*/ '';
@@ -41,10 +58,9 @@
     const amount        = /*[[${amount}]]*/ 0;
     const depositAmount = /*[[${depositAmount}]]*/ 0;
 
-    const tossPayments = TossPayments(tossClientKey);
+    const tossPayments = amount > 0 ? TossPayments(tossClientKey) : null;
 
     async function startPayment() {
-        // 1. BFF를 통해 payment prepare 호출
         const res = await fetch('/payment/prepare', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -63,7 +79,6 @@
             return;
         }
 
-        // 2. Toss 결제 위젯 실행
         tossPayments.requestPayment('카드', {
             amount: amount,
             orderId: orderId,

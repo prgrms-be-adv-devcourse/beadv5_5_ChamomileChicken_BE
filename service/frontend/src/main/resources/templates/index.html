@@ -1,42 +1,58 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="UTF-8">
-    <title>상품 목록 - Jaba</title>
-    <style>
-        body { font-family: sans-serif; max-width: 960px; margin: 0 auto; padding: 20px; background: #f5f5f5; }
-        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
-        h1 { margin: 0; }
-        .logout-btn { padding: 8px 16px; background: #e74c3c; color: white; border: none; border-radius: 4px; cursor: pointer; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
-        .card { background: white; border-radius: 8px; padding: 20px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
-        .card h3 { margin: 0 0 8px; }
-        .card .seller { color: #888; font-size: 13px; margin-bottom: 8px; }
-        .card .price { font-size: 18px; font-weight: bold; color: #4a90e2; margin-bottom: 12px; }
-        .card a { display: block; text-align: center; padding: 8px; background: #4a90e2; color: white; text-decoration: none; border-radius: 4px; }
-        .card a:hover { background: #357abd; }
-        .empty { text-align: center; color: #888; padding: 60px; }
-    </style>
-</head>
-<body>
-<header>
-    <h1>클래스 목록</h1>
-    <form th:action="@{/logout}" method="post">
-        <button class="logout-btn" type="submit">로그아웃</button>
-    </form>
-</header>
+<head th:replace="~{fragments/common-head :: head('상품 목록 - Jaba')}"></head>
+<body class="bg-gray-50 dark:bg-[#121212] text-gray-900 dark:text-white antialiased min-h-screen">
 
-<div class="grid" th:if="${not #lists.isEmpty(products)}">
-    <div class="card" th:each="product : ${products}">
-        <h3 th:text="${product.title}">상품명</h3>
-        <p class="seller" th:text="'판매자: ' + ${product.sellerName}">판매자</p>
-        <p th:text="${product.description}">설명</p>
-        <p class="price" th:text="${#numbers.formatDecimal(product.price, 0, 'COMMA', 0, 'POINT')} + '원'">가격</p>
-        <a th:href="@{/products/{id}(id=${product.id})}">상세 보기</a>
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+    <header class="flex justify-between items-center mb-10 pb-4 border-b border-gray-200 dark:border-gray-800">
+        <h1 class="text-2xl font-bold tracking-tight">Jaba 클래스</h1>
+        <div class="flex items-center gap-2">
+            <button onclick="toggleTheme()" title="테마 변경"
+                    class="p-2 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                <svg class="w-4 h-4 theme-icon-light" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+                <svg class="w-4 h-4 theme-icon-dark hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+            </button>
+            <a href="/mypage" class="bg-transparent border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 px-4 py-2 rounded-lg text-sm hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                마이페이지
+            </a>
+            <form th:action="@{/logout}" method="post">
+                <button class="bg-transparent border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 px-4 py-2 rounded-lg text-sm hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" type="submit">
+                    로그아웃
+                </button>
+            </form>
+        </div>
+    </header>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" th:if="${not #lists.isEmpty(products)}">
+        <div class="bg-white dark:bg-[#1e1e1e] rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-800 flex flex-col group cursor-pointer" th:each="product : ${products}">
+
+            <div class="relative h-56 bg-gray-200 dark:bg-gray-700 w-full overflow-hidden">
+                <div class="absolute top-3 left-3 bg-black bg-opacity-60 text-xs font-bold px-2 py-1 rounded-md text-gray-200">
+                    OPEN
+                </div>
+                <div class="absolute top-3 right-3 bg-white text-black p-1.5 rounded-full shadow-md">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path></svg>
+                </div>
+            </div>
+
+            <div class="p-5 flex-grow flex flex-col">
+                <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1" th:text="${product.sellerName}">CLASS</p>
+                <h3 class="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4 line-clamp-2" th:text="${product.title}">상품명</h3>
+
+                <div class="flex items-end gap-2 mb-4">
+                    <span class="text-xl font-bold" th:text="'₩' + ${#numbers.formatDecimal(product.price, 0, 'COMMA', 0, 'POINT')}">가격</span>
+                </div>
+
+                <div class="flex gap-2 mt-auto">
+                    <button class="px-4 py-2 bg-transparent border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition">장바구니</button>
+                    <a th:href="@{/products/{id}(id=${product.id})}" class="px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-black font-bold rounded-lg text-sm hover:bg-gray-700 dark:hover:bg-gray-200 transition">
+                        예약하기
+                    </a>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
-<div class="empty" th:if="${#lists.isEmpty(products)}">
-    <p>등록된 상품이 없습니다.</p>
-</div>
+
 </body>
 </html>

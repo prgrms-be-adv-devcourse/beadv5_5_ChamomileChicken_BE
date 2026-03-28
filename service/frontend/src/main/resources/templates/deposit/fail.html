@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/common-head :: head('결제 실패 - Jaba')}"></head>
+<head th:replace="~{fragments/common-head :: head('충전 실패 - Jaba')}"></head>
 <body class="bg-gray-50 dark:bg-[#121212] text-gray-900 dark:text-white antialiased min-h-screen flex items-center justify-center p-4">
 
 <button onclick="toggleTheme()" title="테마 변경"
@@ -16,22 +16,17 @@
         </svg>
     </div>
 
-    <h2 class="text-2xl font-bold mb-6">결제에 실패했습니다</h2>
+    <h2 class="text-2xl font-bold mb-2">충전 실패</h2>
+    <p class="text-gray-500 text-sm mb-8" th:text="${errorMessage} ?: '예치금 충전에 실패했습니다.'">예치금 충전에 실패했습니다.</p>
 
-    <div class="bg-gray-50 dark:bg-[#121212] rounded-xl p-5 mb-8 text-left border border-gray-200 dark:border-gray-800 space-y-3" th:if="${errorCode != null or errorMessage != null}">
-        <div class="flex flex-col gap-1" th:if="${errorCode}">
-            <span class="text-xs text-gray-400 dark:text-gray-500 font-semibold uppercase">에러 코드</span>
-            <strong class="text-red-600 dark:text-red-400 font-medium" th:text="${errorCode}">-</strong>
-        </div>
-        <div class="flex flex-col gap-1" th:if="${errorMessage}">
-            <span class="text-xs text-gray-400 dark:text-gray-500 font-semibold uppercase">에러 메시지</span>
-            <span class="text-gray-700 dark:text-gray-300 text-sm break-all leading-relaxed" th:text="${errorMessage}">-</span>
-        </div>
+    <div class="space-y-3">
+        <a href="/deposit/charge" class="inline-block w-full py-3.5 bg-gray-900 dark:bg-white text-white dark:text-black font-bold rounded-lg hover:bg-gray-700 dark:hover:bg-gray-200 transition-colors">
+            다시 시도
+        </a>
+        <a href="/mypage" class="inline-block w-full py-3.5 bg-transparent border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+            마이페이지로 이동
+        </a>
     </div>
-
-    <a href="/products" class="inline-block w-full py-3.5 bg-gray-900 dark:bg-white text-white dark:text-black font-bold rounded-lg hover:bg-gray-700 dark:hover:bg-gray-200 transition-colors">
-        다시 시도하기
-    </a>
 </div>
 
 </body>

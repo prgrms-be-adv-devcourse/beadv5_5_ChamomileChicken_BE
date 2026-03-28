@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/common-head :: head('회원가입 - Jaba')}"></head>
+<body class="bg-gray-50 dark:bg-[#121212] text-gray-900 dark:text-white antialiased min-h-screen flex items-center justify-center p-4">
+
+<button onclick="toggleTheme()" title="테마 변경"
+        class="fixed top-4 right-4 p-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1e1e1e] text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors shadow-sm">
+    <svg class="w-4 h-4 theme-icon-light" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+    <svg class="w-4 h-4 theme-icon-dark hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+</button>
+
+<div class="w-full max-w-sm bg-white dark:bg-[#1e1e1e] border border-gray-200 dark:border-gray-800 rounded-2xl p-8 shadow-2xl">
+    <div class="text-center mb-8">
+        <h2 class="text-3xl font-bold tracking-tight">Jaba</h2>
+        <p class="text-sm text-gray-500 mt-2">회원가입</p>
+    </div>
+
+    <div id="errorMsg" class="hidden bg-red-50 dark:bg-red-900/30 border border-red-300 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg mb-5 text-sm"></div>
+    <div id="successMsg" class="hidden bg-green-50 dark:bg-green-900/30 border border-green-300 dark:border-green-800 text-green-700 dark:text-green-400 px-4 py-3 rounded-lg mb-5 text-sm"></div>
+
+    <div class="space-y-5">
+        <!-- Step 1: 이메일 + 인증번호 발송 -->
+        <div>
+            <label class="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1.5">이메일</label>
+            <div class="flex gap-2">
+                <input type="email" id="email" placeholder="이메일 입력"
+                       class="flex-1 px-4 py-3 bg-gray-50 dark:bg-[#121212] border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors" />
+                <button id="sendBtn" onclick="sendCode()"
+                        class="px-3 py-3 bg-gray-900 dark:bg-white text-white dark:text-black font-bold rounded-lg text-xs hover:bg-gray-700 dark:hover:bg-gray-200 transition-colors whitespace-nowrap">
+                    인증번호 발송
+                </button>
+            </div>
+        </div>
+
+        <!-- Step 2: 인증번호 확인 (초기 숨김) -->
+        <div id="codeSection" class="hidden">
+            <label class="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1.5">인증번호</label>
+            <div class="flex gap-2">
+                <input type="text" id="code" placeholder="인증번호 입력" maxlength="6"
+                       class="flex-1 px-4 py-3 bg-gray-50 dark:bg-[#121212] border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors" />
+                <button onclick="verifyCode()"
+                        class="px-4 py-3 bg-gray-900 dark:bg-white text-white dark:text-black font-bold rounded-lg text-xs hover:bg-gray-700 dark:hover:bg-gray-200 transition-colors whitespace-nowrap">
+                    인증하기
+                </button>
+            </div>
+        </div>
+
+        <!-- Step 3: 나머지 정보 입력 (초기 숨김) -->
+        <div id="registerSection" class="hidden space-y-5">
+            <div>
+                <label class="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1.5">이름</label>
+                <input type="text" id="name" placeholder="이름 입력"
+                       class="w-full px-4 py-3 bg-gray-50 dark:bg-[#121212] border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors" />
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1.5">비밀번호</label>
+                <input type="password" id="password" placeholder="비밀번호 입력"
+                       class="w-full px-4 py-3 bg-gray-50 dark:bg-[#121212] border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors" />
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1.5">전화번호</label>
+                <input type="tel" id="phone" placeholder="전화번호 입력 (예: 01012345678)"
+                       class="w-full px-4 py-3 bg-gray-50 dark:bg-[#121212] border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors" />
+            </div>
+            <button onclick="register()"
+                    class="w-full py-3.5 bg-gray-900 dark:bg-white text-white dark:text-black font-bold rounded-lg text-sm hover:bg-gray-700 dark:hover:bg-gray-200 transition-colors">
+                회원가입
+            </button>
+        </div>
+    </div>
+
+    <p class="text-center text-sm text-gray-500 mt-6">
+        이미 계정이 있으신가요?
+        <a href="/login" class="text-gray-900 dark:text-white font-medium hover:underline">로그인</a>
+    </p>
+</div>
+
+<script>
+    let verifiedToken = '';
+
+    function showError(msg) {
+        const el = document.getElementById('errorMsg');
+        el.textContent = msg;
+        el.classList.remove('hidden');
+        document.getElementById('successMsg').classList.add('hidden');
+    }
+
+    function showSuccess(msg) {
+        const el = document.getElementById('successMsg');
+        el.textContent = msg;
+        el.classList.remove('hidden');
+        document.getElementById('errorMsg').classList.add('hidden');
+    }
+
+    async function sendCode() {
+        const email = document.getElementById('email').value.trim();
+        if (!email) { showError('이메일을 입력해주세요.'); return; }
+
+        const sendBtn = document.getElementById('sendBtn');
+        sendBtn.disabled = true;
+        sendBtn.textContent = '발송 중...';
+
+        try {
+            const res = await fetch('/signup/send-code', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email })
+            });
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.error || '인증번호 발송에 실패했습니다.');
+            }
+            showSuccess('인증번호가 이메일로 발송되었습니다.');
+            document.getElementById('codeSection').classList.remove('hidden');
+            sendBtn.textContent = '재발송';
+            sendBtn.disabled = false;
+        } catch (e) {
+            showError(e.message);
+            sendBtn.textContent = '인증번호 발송';
+            sendBtn.disabled = false;
+        }
+    }
+
+    async function verifyCode() {
+        const email = document.getElementById('email').value.trim();
+        const code = document.getElementById('code').value.trim();
+        if (!code) { showError('인증번호를 입력해주세요.'); return; }
+
+        try {
+            const res = await fetch('/signup/verify-code', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, code })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || '인증에 실패했습니다.');
+
+            verifiedToken = data.verifiedToken;
+            showSuccess('이메일 인증이 완료되었습니다.');
+            document.getElementById('codeSection').classList.add('hidden');
+            document.getElementById('email').disabled = true;
+            document.getElementById('sendBtn').disabled = true;
+            document.getElementById('registerSection').classList.remove('hidden');
+        } catch (e) {
+            showError(e.message);
+        }
+    }
+
+    async function register() {
+        const name = document.getElementById('name').value.trim();
+        const email = document.getElementById('email').value.trim();
+        const password = document.getElementById('password').value.trim();
+        const phone = document.getElementById('phone').value.trim();
+
+        if (!name || !password || !phone) {
+            showError('모든 항목을 입력해주세요.');
+            return;
+        }
+
+        try {
+            const res = await fetch('/signup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, email, password, phone, verifiedToken })
+            });
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.error || '회원가입에 실패했습니다.');
+            }
+            window.location.href = '/login?registered=true';
+        } catch (e) {
+            showError(e.message);
+        }
+    }
+</script>
+
+</body>
+</html>
