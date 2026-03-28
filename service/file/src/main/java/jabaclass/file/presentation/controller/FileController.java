@@ -5,7 +5,7 @@ import jabaclass.file.application.usecase.RequestUploadUseCase;
 import jabaclass.file.common.dto.ApiResponseDto;
 import jabaclass.file.presentation.dto.request.UploadRequestDto;
 import jabaclass.file.presentation.dto.response.UploadResponseDto;
-import jabastore.auth.util.SecurityUtil;
+import jabaclass.auth.util.SecurityUtil;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;

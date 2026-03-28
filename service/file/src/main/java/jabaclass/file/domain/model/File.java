@@ -1,5 +1,6 @@
 package jabaclass.file.domain.model;
 
+import jabaclass.file.common.model.BaseEntity;
 import jabaclass.file.domain.model.status.FileStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -18,7 +19,7 @@ import lombok.NoArgsConstructor;
 @Table(name = "files")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class File {
+public class File extends BaseEntity {
 
     @Id
     @Column(columnDefinition = "BINARY(16)")
