@@ -28,15 +28,15 @@ spring:
   cloud:
     aws:
       s3:
-        bucket: ${S3_BUCKET_NAME}
+        bucket: test-bucket
       region:
         static: ap-northeast-2
       credentials:
-        access-key: ${AWS_ACCESS_KEY}
-        secret-key: ${AWS_SECRET_KEY}
+        access-key: test-access-key
+        secret-key: test-secret-key
 
 jwt:
-  secret: ${JWT_SECRET}
+  secret: test-jwt-secret-key
   access-token-validity: 1800000
   refresh-token-validity: 604800000
 
