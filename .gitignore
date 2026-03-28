@@ -51,4 +51,5 @@ wrapper/dists/
 build/
 out/
 CLAUDE.md
+GEMINI.md
 .claude/
