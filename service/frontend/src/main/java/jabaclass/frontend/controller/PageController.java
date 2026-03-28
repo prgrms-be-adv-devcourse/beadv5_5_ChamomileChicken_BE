@@ -2,10 +2,12 @@ package jabaclass.frontend.controller;
 
 import jabaclass.frontend.client.OrderServiceClient;
 import jabaclass.frontend.client.ProductServiceClient;
+import jabaclass.frontend.client.UserServiceClient;
 import jabaclass.frontend.dto.CreateOrderRequest;
 import jabaclass.frontend.dto.CreateOrderResponse;
 import jabaclass.frontend.dto.ProductDto;
 import jabaclass.frontend.dto.ScheduleDto;
+import jabaclass.frontend.dto.UserInfoDto;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,6 +30,7 @@ public class PageController {
 
     private final ProductServiceClient productServiceClient;
     private final OrderServiceClient orderServiceClient;
+    private final UserServiceClient userServiceClient;
 
     @Value("${toss.client-key}")
     private String tossClientKey;
@@ -54,12 +57,25 @@ public class PageController {
 
     // 상품 상세
     @GetMapping("/products/{productId}")
-    public String productDetail(@PathVariable UUID productId, Model model) {
+    public String productDetail(@PathVariable UUID productId, HttpSession session, Model model) {
         try {
             ProductDto product = productServiceClient.getProduct(productId);
             List<ScheduleDto> schedules = productServiceClient.getSchedules(productId);
             model.addAttribute("product", product);
             model.addAttribute("schedules", schedules);
+
+            BigDecimal depositBalance = BigDecimal.ZERO;
+            String accessToken = (String) session.getAttribute("accessToken");
+            if (accessToken != null) {
+                try {
+                    UserInfoDto userInfo = userServiceClient.getMyInfo(accessToken);
+                    depositBalance = userInfo.getDeposit();
+                } catch (Exception e) {
+                    log.warn("예치금 잔액 조회 실패: {}", e.getMessage());
+                }
+            }
+            model.addAttribute("depositBalance", depositBalance);
+
             return "product";
         } catch (Exception e) {
             log.error("상품 상세 조회 실패: {}", e.getMessage());

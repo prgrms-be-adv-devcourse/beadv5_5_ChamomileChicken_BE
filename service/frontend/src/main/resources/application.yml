@@ -17,3 +17,5 @@ toss:
   client-key: ${TOSS_CLIENT_KEY:test_ck_yL0qZ4G1VOj211Mwom2v3oWb2MQY}
   success-url: ${TOSS_SUCCESS_URL:http://localhost:9006/payment/success}
   fail-url: ${TOSS_FAIL_URL:http://localhost:9006/payment/fail}
+  deposit-success-url: ${TOSS_DEPOSIT_SUCCESS_URL:http://localhost:9006/deposit/success}
+  deposit-fail-url: ${TOSS_DEPOSIT_FAIL_URL:http://localhost:9006/deposit/fail}

@@ -45,9 +45,10 @@ public class DepositQueryUseCase {
 			.map(history -> new DepositHistoryItemDto(
 				history.getId(),
 				history.getUser().getId(),
-				history.getPaymentId(),    // 누락된 paymentId 추가
+				history.getPaymentId(),
 				history.getType(),
-				history.getAmount()
+				history.getAmount(),
+				history.getCreatedAt()
 			))
 			.toList();
 

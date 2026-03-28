@@ -50,4 +50,43 @@ public class PaymentServiceClient {
         );
         return response.getBody();
     }
+
+    public UUID prepareDepositPayment(UUID userId, int amount, String accessToken) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(accessToken);
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        Map<String, Object> body = Map.of(
+            "userId", userId,
+            "amount", new java.math.BigDecimal(amount),
+            "paymentMethod", "CARD"
+        );
+
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
+        ResponseEntity<Map> response = restTemplate.postForEntity(
+            paymentUrl + "/api/v1/payments/deposits/prepare",
+            entity,
+            Map.class
+        );
+        return UUID.fromString(response.getBody().get("depositPaymentsId").toString());
+    }
+
+    public void confirmDepositPayment(UUID depositPaymentsId, String paymentKey, int amount, String accessToken) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(accessToken);
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        Map<String, Object> body = Map.of(
+            "depositPaymentsId", depositPaymentsId,
+            "paymentKey", paymentKey,
+            "amount", amount
+        );
+
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
+        restTemplate.postForEntity(
+            paymentUrl + "/api/v1/payments/deposits/confirm",
+            entity,
+            Map.class
+        );
+    }
 }
