@@ -19,10 +19,9 @@ public class S3Uploader {
     private final S3Client s3Client;
     private final S3Properties s3Properties;
 
-    // 유효시간 5분
     public String generatePresignedUrl(String storagePath) {
         PutObjectPresignRequest presignRequest = PutObjectPresignRequest.builder()
-                .signatureDuration(Duration.ofMinutes(5))
+                .signatureDuration(Duration.ofMinutes(s3Properties.getPresignedUrlExpiration()))
                 .putObjectRequest(req -> req
                         .bucket(s3Properties.getBucket())
                         .key(storagePath)

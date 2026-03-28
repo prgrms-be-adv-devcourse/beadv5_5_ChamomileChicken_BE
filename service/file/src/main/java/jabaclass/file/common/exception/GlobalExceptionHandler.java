@@ -2,12 +2,14 @@ package jabaclass.file.common.exception;
 
 import jabaclass.file.common.dto.ApiResponseDto;
 import jabaclass.auth.exception.JwtAuthException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.http.HttpStatus;
 
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -38,6 +40,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponseDto<Void>> handleServerError(Exception ex) {
+        log.error("Internal server error occurred", ex);
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ApiResponseDto.fail(HttpStatus.INTERNAL_SERVER_ERROR, "서버 에러입니다."));

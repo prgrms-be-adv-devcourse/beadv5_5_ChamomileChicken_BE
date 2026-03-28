@@ -13,10 +13,14 @@ import jabaclass.file.presentation.dto.request.UploadRequestDto;
 import jabaclass.file.presentation.dto.response.UploadResponseDto;
 import java.time.LocalDateTime;
 import java.util.UUID;
+import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 @Service
 @RequiredArgsConstructor
@@ -24,6 +28,7 @@ public class FileUploadService implements RequestUploadUseCase, CompleteUploadUs
 
     private final FileRepository fileRepository;
     private final S3Uploader s3Uploader;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional
@@ -88,15 +93,21 @@ public class FileUploadService implements RequestUploadUseCase, CompleteUploadUs
     }
 
     // 24시간 이상 PENDING 상태 파일 정리 (매일 새벽 3시)
-    @Scheduled(cron = "0 0 3 * * *")
+    \@Scheduled(cron = "0 0 3 * * *")
     @Transactional
     public void cleanupPendingFiles() {
         LocalDateTime threshold = LocalDateTime.now().minusHours(24);
-        fileRepository.findByStatusAndCreatedAtBefore(FileStatus.PENDING, threshold)
-                .forEach(file -> {
-                    s3Uploader.deleteObject(file.getStoragePath());
-                    // DB에서는 삭제하지 않고 FAIL로 마킹
-                    file.confirmFail();
-                });
+
+        try (Stream<File> files = fileRepository.streamByStatusAndCreatedAtBefore(FileStatus.PENDING, threshold)) {
+            files.forEach(file -> {
+                file.confirmFail();  // DB 상태 변경
+                eventPublisher.publishEvent(new FileCleanupEvent(file.getStoragePath()));
+            });
+        }
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void handleFileCleanup(FileCleanupEvent event) {
+        s3Uploader.deleteObject(event.getStoragePath());  // DB 커밋 후 S3 삭제
     }
 }
