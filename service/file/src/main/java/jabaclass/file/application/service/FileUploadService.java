@@ -108,6 +108,6 @@ public class FileUploadService implements RequestUploadUseCase, CompleteUploadUs
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleFileCleanup(FileCleanupEvent event) {
-        s3Uploader.deleteObject(event.getStoragePath());  // DB 커밋 후 S3 삭제
+        s3Uploader.deleteObject(event.storagePath());
     }
 }

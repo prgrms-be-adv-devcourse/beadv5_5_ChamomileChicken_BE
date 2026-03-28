@@ -7,6 +7,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
@@ -29,5 +30,10 @@ public class FileRepositoryAdapter implements FileRepository {
     @Override
     public List<File> findByStatusAndCreatedAtBefore(FileStatus status, LocalDateTime threshold) {
         return fileJpaRepository.findByStatusAndCreatedAtBefore(status, threshold);
+    }
+
+    @Override
+    public Stream<File> streamByStatusAndCreatedAtBefore(FileStatus status, LocalDateTime threshold) {
+        return fileJpaRepository.streamByStatusAndCreatedAtBefore(status, threshold);
     }
 }
