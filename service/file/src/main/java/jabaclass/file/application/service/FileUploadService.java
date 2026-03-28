@@ -93,7 +93,7 @@ public class FileUploadService implements RequestUploadUseCase, CompleteUploadUs
     }
 
     // 24시간 이상 PENDING 상태 파일 정리 (매일 새벽 3시)
-    \@Scheduled(cron = "0 0 3 * * *")
+    @Scheduled(cron = "0 0 3 * * *")
     @Transactional
     public void cleanupPendingFiles() {
         LocalDateTime threshold = LocalDateTime.now().minusHours(24);
