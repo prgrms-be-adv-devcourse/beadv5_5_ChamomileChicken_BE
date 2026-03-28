@@ -70,10 +70,11 @@ public class PaymentService implements PaymentUseCase {
 			return PaymentResponseDto.from(payment);
 		}
 
-		// Order 금액 검증
+		// Order 금액 검증: 카드 결제금액 + 예치금 = 총 주문금액
+		int totalAmount = request.amount() + payment.getDepositAmount().intValue();
 		boolean valid = orderPort.validateOrder(
 			payment.getOrderId(),
-			request.amount()
+			totalAmount
 		);
 		if (!valid) {
 			log.warn("Order 금액 검증 실패. orderId={}, amount={}",
