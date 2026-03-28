@@ -42,6 +42,11 @@ public class SecurityConfig {
     }
 
     @Bean
+    public JwtAuthenticationFilter jwtAuthenticationFilter() {
+        return new JwtAuthenticationFilter(jwtProvider(), tokenResolver(), objectMapper());
+    }
+
+    @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
@@ -58,11 +63,11 @@ public class SecurityConfig {
 
         http.addFilterBefore(
                 internalApiFilter,
-                JwtAuthenticationFilter.class
+                UsernamePasswordAuthenticationFilter.class
         );
 
         http.addFilterBefore(
-                new JwtAuthenticationFilter(jwtProvider(), tokenResolver(), objectMapper()),
+                jwtAuthenticationFilter(),
                 UsernamePasswordAuthenticationFilter.class
         );
 
