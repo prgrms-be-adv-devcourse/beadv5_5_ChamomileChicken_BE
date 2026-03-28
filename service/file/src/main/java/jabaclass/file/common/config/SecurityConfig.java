@@ -23,7 +23,6 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtProperties jwtProperties;
-    // private final ObjectMapper objectMapper; // 1. 이 줄을 삭제하세요.
 
     @Bean
     public JwtProvider jwtProvider() {
@@ -35,7 +34,6 @@ public class SecurityConfig {
         return new JwtTokenResolver();
     }
 
-    // 2. ObjectMapper를 다시 빈으로 등록합니다.
     @Bean
     public ObjectMapper objectMapper() {
         return new ObjectMapper();
@@ -57,7 +55,6 @@ public class SecurityConfig {
                 .anyRequest().authenticated()
         );
 
-        // 3. 필터에 넣을 때 직접 호출하거나, 메서드 파라미터로 받은 objectMapper()를 사용합니다.
         http.addFilterBefore(
                 new JwtAuthenticationFilter(jwtProvider(), tokenResolver(), objectMapper()),
                 UsernamePasswordAuthenticationFilter.class

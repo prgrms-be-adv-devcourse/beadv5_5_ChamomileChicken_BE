@@ -22,10 +22,10 @@ import lombok.NoArgsConstructor;
 public class File extends BaseEntity {
 
     @Id
-    @Column(columnDefinition = "BINARY(16)")
+    @Column(name = "id", nullable = false, length = 50)
     private UUID id;
 
-    @Column(name = "user_id", nullable = false, columnDefinition = "Binary(16)")
+    @Column(name = "user_id", nullable = false, length = 50)
     private UUID userId;
 
     @Column(name = "storage_path", nullable = false, length = 512)

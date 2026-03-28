@@ -1,7 +1,11 @@
 package jabaclass.file.infrastructure.s3;
 
+import jabaclass.file.domain.model.File;
 import java.time.Duration;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.apache.coyote.BadRequestException;
+import org.springframework.data.crossstore.ChangeSetPersister.NotFoundException;
 import org.springframework.stereotype.Component;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedPutObjectRequest;
@@ -33,11 +37,11 @@ public class S3Uploader {
         return presignedRequest.url().toString();
     }
 
-    public boolean doesObjectExist(String storagePath) {
+    public boolean existsInS3(String key) {
         try {
             s3Client.headObject(HeadObjectRequest.builder()
                     .bucket(s3Properties.getBucket())
-                    .key(storagePath)
+                    .key(key)
                     .build());
             return true;
         } catch (NoSuchKeyException e) {

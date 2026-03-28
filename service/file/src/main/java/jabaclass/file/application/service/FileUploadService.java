@@ -29,11 +29,9 @@ public class FileUploadService implements RequestUploadUseCase, CompleteUploadUs
     @Transactional
     public UploadResponseDto requestUpload(UUID userId, UploadRequestDto request) {
 
-        // 1. storagePath 생성 (userId/fileId/originalName 구조)
         UUID fileId = UUID.randomUUID();
         String storagePath = userId + "/" + fileId + "/" + request.getOriginalName();
 
-        // 2. PENDING 상태로 DB 저장
         File file = File.builder()
                 .userId(userId)
                 .originalName(request.getOriginalName())
@@ -42,7 +40,6 @@ public class FileUploadService implements RequestUploadUseCase, CompleteUploadUs
 
         fileRepository.save(file);
 
-        // 3. Pre-signed URL 생성
         String uploadUrl = s3Uploader.generatePresignedUrl(storagePath);
 
         return new UploadResponseDto(file.getId(), uploadUrl, storagePath);
@@ -55,13 +52,11 @@ public class FileUploadService implements RequestUploadUseCase, CompleteUploadUs
         File file = fileRepository.findById(fileId)
                 .orElseThrow(() -> new FileException(FileErrorCode.FILE_NOT_FOUND));
 
-        // 이미 처리된 파일이면 예외
         if (file.getStatus() != FileStatus.PENDING) {
             throw new FileException(FileErrorCode.FILE_ALREADY_CONFIRMED);
         }
 
-        // S3 실체 확인
-        if (!s3Uploader.doesObjectExist(file.getStoragePath())) {
+        if (!s3Uploader.existsInS3(file.getStoragePath())) {
             file.confirmFail();
             throw new FileException(FileErrorCode.FILE_NOT_UPLOADED);
         }
@@ -76,21 +71,18 @@ public class FileUploadService implements RequestUploadUseCase, CompleteUploadUs
         File file = fileRepository.findById(fileId)
                 .orElseThrow(() -> new FileException(FileErrorCode.FILE_NOT_FOUND));
 
-        // SUCCESS 상태면 바로 통과
         if (file.getStatus() == FileStatus.SUCCESS) {
             return;
         }
 
-        // PENDING이면 S3 재확인
         if (file.getStatus() == FileStatus.PENDING) {
-            if (!s3Uploader.doesObjectExist(file.getStoragePath())) {
+            if (!s3Uploader.existsInS3(file.getStoragePath())) {
                 throw new FileException(FileErrorCode.FILE_NOT_UPLOADED);
             }
             file.confirmSuccess();
             return;
         }
 
-        // FAIL이면 에러
         throw new FileException(FileErrorCode.FILE_NOT_UPLOADED);
     }
 
