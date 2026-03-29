@@ -12,6 +12,7 @@ public class PreparePaymentRequest {
     private UUID userId;
     private UUID productId;
     private UUID orderId;
+    private UUID productUserId;
     private String paymentMethod;
     private BigDecimal paymentAmount;
     private BigDecimal depositAmount;
