@@ -29,6 +29,9 @@ public class Payment {
 	@Column(name = "order_id", nullable = false)
 	private UUID orderId;
 
+	@Column(name = "product_user_id", nullable = false)
+	private UUID productUserId;
+
 	@Enumerated(EnumType.STRING)
 	@Column(name = "payment_method", length = 20)
 	private PaymentMethod paymentMethod;
@@ -58,6 +61,7 @@ public class Payment {
 		UUID userId,
 		UUID productId,
 		UUID orderId,
+		UUID productUserId,
 		PaymentMethod paymentMethod,
 		BigDecimal paymentAmount,
 		BigDecimal depositAmount,
@@ -68,6 +72,7 @@ public class Payment {
 		this.userId = userId;
 		this.productId = productId;
 		this.orderId = orderId;
+		this.productUserId = productUserId;
 		this.paymentMethod = paymentMethod;
 		this.paymentAmount = paymentAmount;
 		this.depositAmount = depositAmount;
@@ -79,11 +84,12 @@ public class Payment {
 		UUID userId,
 		UUID productId,
 		UUID orderId,
+		UUID productUserId,
 		PaymentMethod paymentMethod,
 		BigDecimal paymentAmount,
 		BigDecimal depositAmount
 	) {
-		validateAmount(paymentAmount, depositAmount);
+		validate(paymentAmount, depositAmount, productUserId);
 
 		BigDecimal totalAmount = paymentAmount.add(depositAmount);
 
@@ -92,6 +98,7 @@ public class Payment {
 			userId,
 			productId,
 			orderId,
+			productUserId,
 			paymentMethod,
 			paymentAmount,
 			depositAmount,
@@ -100,12 +107,17 @@ public class Payment {
 		);
 	}
 
-	private static void validateAmount(
+	private static void validate(
 		BigDecimal paymentAmount,
-		BigDecimal depositAmount
+		BigDecimal depositAmount,
+		UUID productUserId
 	) {
 		if (paymentAmount == null || depositAmount == null) {
 			throw new IllegalArgumentException("금액은 null일 수 없습니다");
+		}
+
+		if (productUserId == null) {
+			throw new IllegalArgumentException("productUserId는 null일 수 없습니다");
 		}
 
 		if (paymentAmount.compareTo(BigDecimal.ZERO) < 0) {
@@ -134,8 +146,8 @@ public class Payment {
 		this.status = PaymentStatus.FAILED;
 	}
 	public void markCancelled() {
-		if (this.status == PaymentStatus.PAID) {
-			throw new IllegalStateException("완료된 결제는 취소할 수 없습니다.");
+		if (this.status != PaymentStatus.PAID) {
+			throw new IllegalStateException("완료된 결제만 취소할 수 있습니다.");
 		}
 
 		this.status = PaymentStatus.CANCELLED;

@@ -44,4 +44,26 @@ public class TossPaymentClient implements PaymentGatewayPort {
 			throw new RuntimeException("결제 승인 실패", e);
 		}
 	}
+
+	@Override
+	public void refund(String paymentKey, int cancelAmount) {
+		String url = "https://api.tosspayments.com/v1/payments/" + paymentKey + "/cancel";
+
+		HttpHeaders headers = new HttpHeaders();
+		headers.setBasicAuth(secretKey, "");
+		headers.setContentType(MediaType.APPLICATION_JSON);
+
+		Map<String, Object> body = Map.of(
+			"cancelReason", "order refund",
+			"cancelAmount", cancelAmount
+		);
+
+		HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+
+		try {
+			restTemplate.postForEntity(url, request, String.class);
+		} catch (Exception e) {
+			throw new RuntimeException("환불 요청 실패", e);
+		}
+	}
 }
