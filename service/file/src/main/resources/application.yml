@@ -1,3 +1,56 @@
-server.port: 9000
+server:
+  port: 9000
+
 spring:
-  application: name:file
+  application:
+    name: file
+
+  datasource:
+    url: jdbc:h2:mem:testdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+  jpa:
+    hibernate:
+      ddl-auto: create
+    properties:
+      hibernate:
+        format_sql: true
+    show-sql: true
+    database-platform: org.hibernate.dialect.H2Dialect
+
+  cloud:
+    aws:
+      s3:
+        bucket: ${S3_BUCKET_NAME}
+        presigned-url-expiration: 5
+      region:
+        static: ap-northeast-2
+      # credentials는 application-local.yml 또는 환경변수로 관리
+
+jwt:
+  secret: 3f2c9a1b7d4e8f6a9c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3
+  access-token-validity: 1800000
+  refresh-token-validity: 604800000
+
+internal:
+  api:
+    key: test-internal-key
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs
+    version: OPENAPI_3_0
+
+logging:
+  level:
+    jabaclass: DEBUG
+    org.springframework.web: DEBUG

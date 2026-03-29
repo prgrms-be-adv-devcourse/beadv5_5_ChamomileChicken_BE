@@ -1,0 +1,55 @@
+name: "Deploy"
+description: "배포 작업"
+title: "deploy: "
+labels: ["deploy"]
+body:
+  - type: input
+    id: package_name
+    attributes:
+      label: "Package name"
+      description: "배포 대상 모듈/패키지명"
+      placeholder: "api"
+    validations:
+      required: true
+
+  - type: input
+    id: branch_keyword
+    attributes:
+      label: "Branch keyword"
+      description: "브랜치 기능 키워드"
+      placeholder: "dev-release"
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: "Environment"
+      description: "배포 환경"
+      placeholder: "dev"
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: "배포 범위"
+      description: "어떤 변경사항이 배포되는지"
+      placeholder: |
+        예)
+        - API 서버 이미지 업데이트
+        - DB 마이그레이션 포함 여부
+    validations:
+      required: true
+
+  - type: textarea
+    id: checklist
+    attributes:
+      label: "체크리스트"
+      description: "배포 전/후 확인"
+      placeholder: |
+        - [ ] 헬스체크 확인
+        - [ ] 주요 API smoke test
+        - [ ] 로그/모니터링 확인
+    validations:
+      required: false

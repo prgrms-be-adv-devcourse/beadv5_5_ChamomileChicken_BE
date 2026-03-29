@@ -3,6 +3,8 @@ rootProject.name = 'jaba'
 include 'common'
 
 include 'service'
+include 'service:frontend'
+include 'service:admin'
 include 'service:file'
 include 'service:order'
 include 'service:payment'

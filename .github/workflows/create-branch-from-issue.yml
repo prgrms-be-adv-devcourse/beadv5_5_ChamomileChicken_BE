@@ -1,0 +1,124 @@
+name: Create branch from issue
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  create-branch:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Create branch
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const repo = context.repo;
+            const body = issue.body || "";
+
+            function extractField(label) {
+              const regex = new RegExp(`###\\s*${label}\\s*\\n\\s*([^\\n\\r]+)`, "i");
+              const match = body.match(regex);
+              return match ? match[1].trim() : "";
+            }
+
+            function normalize(value) {
+              return value
+                .toLowerCase()
+                .replace(/[^a-z0-9/_-]/g, "-")
+                .replace(/-+/g, "-")
+                .replace(/\/+/g, "/")
+                .replace(/_+/g, "-")
+                .replace(/\/-/g, "/")
+                .replace(/-\//g, "/")
+                .replace(/^\/|\/$/g, "")
+                .replace(/^-|-$/g, "");
+            }
+
+            // 1) Issue Form에서 값 추출
+            const packageRaw = extractField("Package name");
+            const keywordRaw = extractField("Branch keyword");
+
+            if (!packageRaw) {
+              core.warning("Package name not found. Skip creating branch.");
+              return;
+            }
+
+            if (!keywordRaw) {
+              core.warning("Branch keyword not found. Skip creating branch.");
+              return;
+            }
+
+            // 2) 정규화
+            const packageName = normalize(packageRaw);
+            const featureName = normalize(keywordRaw);
+
+            if (!packageName || !featureName) {
+              core.warning("Normalized package name or branch keyword is empty. Skip creating branch.");
+              return;
+            }
+
+            // 3) 라벨 기반 prefix 결정
+            const labels = (issue.labels || []).map(l => (typeof l === "string" ? l : l.name));
+
+            const allowedPrefixes = new Set([
+              "feature", "hotfix", "fix", "refactor", "deploy", "chore", "test"
+            ]);
+
+            let prefix = "chore";
+            for (const label of labels) {
+              if (allowedPrefixes.has(label)) {
+                prefix = label;
+                break;
+              }
+            }
+
+            // 4) 브랜치명 생성
+            const issueNumber = issue.number;
+            const branchName = `${prefix}/${packageName}/${featureName}/${issueNumber}`;
+
+            // 5) base 브랜치
+            const baseBranch = "dev";
+
+            // 6) base SHA 가져오기
+            const base = await github.rest.git.getRef({
+              owner: repo.owner,
+              repo: repo.repo,
+              ref: `heads/${baseBranch}`,
+            });
+
+            const sha = base.data.object.sha;
+
+            // 7) 브랜치 생성
+            try {
+              await github.rest.git.createRef({
+                owner: repo.owner,
+                repo: repo.repo,
+                ref: `refs/heads/${branchName}`,
+                sha,
+              });
+            } catch (e) {
+              if (e.status === 422) {
+                core.warning(`Branch already exists: ${branchName}`);
+              } else {
+                throw e;
+              }
+            }
+
+            // 8) 안내 댓글
+            await github.rest.issues.createComment({
+              owner: repo.owner,
+              repo: repo.repo,
+              issue_number: issueNumber,
+              body: [
+                `✅ 브랜치 생성됨: \`${branchName}\``,
+                `- base: \`${baseBranch}\``,
+                `- package: \`${packageName}\``,
+                `- keyword: \`${featureName}\``,
+              ].join("\n"),
+            });

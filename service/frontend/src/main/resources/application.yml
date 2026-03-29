@@ -1,0 +1,19 @@
+server:
+  port: 9006
+
+spring:
+  application:
+    name: frontend
+  thymeleaf:
+    cache: false
+
+services:
+  user-url: ${USER_SERVICE_URL:http://localhost:9003}
+  product-url: ${PRODUCT_SERVICE_URL:http://localhost:9004}
+  order-url: ${ORDER_SERVICE_URL:http://localhost:9005}
+  payment-url: ${PAYMENT_SERVICE_URL:http://localhost:9001}
+
+toss:
+  client-key: ${TOSS_CLIENT_KEY:test_ck_yL0qZ4G1VOj211Mwom2v3oWb2MQY}
+  success-url: ${TOSS_SUCCESS_URL:http://localhost:9006/payment/success}
+  fail-url: ${TOSS_FAIL_URL:http://localhost:9006/payment/fail}

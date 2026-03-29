@@ -1,0 +1,215 @@
+name: CI Test
+
+on:
+  # main 또는 dev 대상으로 PR이 열리거나 업데이트되면 실행
+  pull_request:
+    branches: ["main", "dev"]
+
+permissions:
+  contents: read
+
+# 같은 PR에서 새 커밋이 올라오면 이전 실행은 취소
+concurrency:
+  group: ci-test-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # 1) 어떤 경로가 바뀌었는지 먼저 확인
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      common: ${{ steps.filter.outputs.common }}
+      admin: ${{ steps.filter.outputs.admin }}
+      user: ${{ steps.filter.outputs.user }}
+      order: ${{ steps.filter.outputs.order }}
+      payment: ${{ steps.filter.outputs.payment }}
+      product: ${{ steps.filter.outputs.product }}
+      settlement: ${{ steps.filter.outputs.settlement }}
+      file: ${{ steps.filter.outputs.file }}
+      global: ${{ steps.filter.outputs.global }}
+      docs_only: ${{ steps.filter.outputs.docs_only }}
+
+    steps:
+      # 레포 코드를 러너에 내려받아야 변경 파일 비교 가능
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # 변경 이력 비교를 위해 전체 히스토리 fetch
+          fetch-depth: 0
+
+      # 변경된 파일 경로를 기준으로 어떤 모듈이 수정되었는지 판별
+      - name: Detect changed paths
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            # common 변경 시 전체 테스트 대상으로 간주
+            common:
+              - 'common/**'
+
+            # admin 모듈 변경
+            admin:
+              - 'service/admin/**'
+
+            # user 모듈 변경
+            user:
+              - 'service/user/**'
+
+            # order 모듈 변경
+            order:
+              - 'service/order/**'
+
+            # payment 모듈 변경
+            payment:
+              - 'service/payment/**'
+
+            # product 모듈 변경
+            product:
+              - 'service/product/**'
+
+            # settlement 모듈 변경
+            settlement:
+              - 'service/settlement/**'
+
+            # file 모듈 변경
+            file:
+              - 'service/file/**'
+
+            # 루트 빌드 설정 / gradle 설정 / workflow 변경 시 전체 테스트
+            global: 
+              # 루트 gradle 설정 변경
+              - 'settings.gradle'
+              - 'settings.gradle.kts'
+              - 'build.gradle'
+              - 'build.gradle.kts'
+              - 'gradle.properties'
+            
+              # gradle wrapper 및 관련 설정 변경
+              - 'gradlew'
+              - 'gradlew.bat'
+              - 'gradle/**'
+            
+              # 공통 설정 디렉토리 변경
+              - 'config/**'
+            
+              # CI 워크플로우 변경
+              - '.github/workflows/**'
+
+            # 문서만 수정된 경우
+            docs_only:
+              - '**/*.md'
+              - 'docs/**'
+
+  # 2) 변경된 범위에 따라 필요한 테스트만 실행
+  test:
+    needs: detect-changes
+    runs-on: ubuntu-latest
+
+    # 문서만 바뀐 PR이 아니거나,
+    # 실제 테스트 대상(common/admin/user/...) 변경이 있으면 실행
+    if: ${{ needs.detect-changes.outputs.docs_only != 'true' || (
+      needs.detect-changes.outputs.common == 'true' ||
+      needs.detect-changes.outputs.admin == 'true' ||
+      needs.detect-changes.outputs.user == 'true' ||
+      needs.detect-changes.outputs.order == 'true' ||
+      needs.detect-changes.outputs.payment == 'true' ||
+      needs.detect-changes.outputs.product == 'true' ||
+      needs.detect-changes.outputs.settlement == 'true' ||
+      needs.detect-changes.outputs.file == 'true' ||
+      needs.detect-changes.outputs.global == 'true'
+      ) }}
+
+    steps:
+      # 테스트 실행을 위해 실제 레포 파일이 필요
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Java 21 환경 세팅
+      - name: Setup Java 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: "temurin"
+          java-version: "21"
+          cache: "gradle"
+
+      # gradlew 실행 권한 부여
+      - name: Grant execute permission for gradlew
+        run: chmod +x ./gradlew
+
+      # 어떤 테스트를 돌릴지 결정
+      - name: Decide test scope
+        id: scope
+        shell: bash
+        run: |
+          # common 또는 루트 설정이 변경되면 전체 테스트 수행
+          if [[ "${{ needs.detect-changes.outputs.common }}" == "true" || "${{ needs.detect-changes.outputs.global }}" == "true" ]]; then
+            echo "tasks=clean test" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          TASKS=""
+
+          # 변경된 서비스 모듈만 골라서 테스트 task 추가
+          if [[ "${{ needs.detect-changes.outputs.admin }}" == "true" ]]; then
+            TASKS="$TASKS :service:admin:test"
+          fi
+
+          if [[ "${{ needs.detect-changes.outputs.user }}" == "true" ]]; then
+            TASKS="$TASKS :service:user:test"
+          fi
+
+          if [[ "${{ needs.detect-changes.outputs.order }}" == "true" ]]; then
+            TASKS="$TASKS :service:order:test"
+          fi
+
+          if [[ "${{ needs.detect-changes.outputs.payment }}" == "true" ]]; then
+            TASKS="$TASKS :service:payment:test"
+          fi
+
+          if [[ "${{ needs.detect-changes.outputs.product }}" == "true" ]]; then
+            TASKS="$TASKS :service:product:test"
+          fi
+
+          if [[ "${{ needs.detect-changes.outputs.settlement }}" == "true" ]]; then
+            TASKS="$TASKS :service:settlement:test"
+          fi
+
+          if [[ "${{ needs.detect-changes.outputs.file }}" == "true" ]]; then
+            TASKS="$TASKS :service:file:test"
+          fi
+
+          # 앞뒤 공백 제거
+          TASKS=$(echo "$TASKS" | xargs)
+
+          # 실행할 task 목록을 output으로 전달
+          if [[ -z "$TASKS" ]]; then
+            echo "tasks=" >> $GITHUB_OUTPUT
+          else
+            echo "tasks=$TASKS" >> $GITHUB_OUTPUT
+          fi
+
+      # 어떤 task가 선택됐는지 로그 출력
+      - name: Show selected tasks
+        run: echo "Selected tasks => ${{ steps.scope.outputs.tasks }}"
+
+      # 선택된 task가 있으면 테스트 실행
+      - name: Run tests
+        if: ${{ steps.scope.outputs.tasks != '' }}
+        env:
+          SPRING_PROFILES_ACTIVE: test
+        run: ./gradlew ${{ steps.scope.outputs.tasks }} --no-daemon
+
+      # 실행할 테스트가 없으면 스킵 메시지 출력
+      - name: Skip test message
+        if: ${{ steps.scope.outputs.tasks == '' }}
+        run: echo "No testable module changes detected. Skipping tests."
+
+      # 테스트 리포트 업로드
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: |
+            **/build/reports/tests/test
+            **/build/test-results/test

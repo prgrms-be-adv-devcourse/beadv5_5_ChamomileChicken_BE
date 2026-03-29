@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="${product.title} + ' - Jaba'">상품 상세</title>
+    <style>
+        body { font-family: sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background: #f5f5f5; }
+        .back { color: #4a90e2; text-decoration: none; display: inline-block; margin-bottom: 16px; }
+        .product-box { background: white; border-radius: 8px; padding: 28px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); margin-bottom: 24px; }
+        .product-box h2 { margin: 0 0 8px; }
+        .seller { color: #888; margin-bottom: 12px; }
+        .price { font-size: 22px; font-weight: bold; color: #4a90e2; margin-bottom: 16px; }
+        .description { color: #555; line-height: 1.6; }
+        h3 { margin-top: 28px; }
+        .schedule-table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
+        .schedule-table th { background: #4a90e2; color: white; padding: 12px; text-align: left; }
+        .schedule-table td { padding: 12px; border-bottom: 1px solid #eee; }
+        .schedule-table tr:last-child td { border-bottom: none; }
+        .order-btn { background: #4a90e2; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; }
+        .order-btn:hover { background: #357abd; }
+        .order-btn:disabled { background: #ccc; cursor: not-allowed; }
+        .empty { color: #888; padding: 20px; text-align: center; }
+    </style>
+</head>
+<body>
+<a class="back" href="/products">← 목록으로</a>
+
+<div class="product-box">
+    <h2 th:text="${product.title}">상품명</h2>
+    <p class="seller" th:text="'판매자: ' + ${product.sellerName}">판매자</p>
+    <p class="price" th:text="${#numbers.formatDecimal(product.price, 0, 'COMMA', 0, 'POINT')} + '원'">가격</p>
+    <p class="description" th:text="${product.description}">설명</p>
+</div>
+
+<h3>예약 가능 일정</h3>
+
+<table class="schedule-table" th:if="${not #lists.isEmpty(schedules)}">
+    <thead>
+    <tr>
+        <th>날짜</th>
+        <th>시간</th>
+        <th>인원</th>
+        <th>상태</th>
+        <th>예약</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr th:each="schedule : ${schedules}">
+        <td th:text="${schedule.scheduleDt}">날짜</td>
+        <td th:text="${schedule.startTime} + ' ~ ' + ${schedule.endTime}">시간</td>
+        <td th:text="${schedule.maxCapacity} + '명'">인원</td>
+        <td th:text="${schedule.status}">상태</td>
+        <td>
+            <form th:action="@{/orders}" method="post">
+                <input type="hidden" name="productId" th:value="${product.id}" />
+                <input type="hidden" name="scheduleId" th:value="${schedule.id}" />
+                <input type="hidden" name="quantity" value="1" />
+                <input type="hidden" name="depositAmount" value="0" />
+                <button class="order-btn" type="submit"
+                        th:disabled="${schedule.status != '예약 가능'}">
+                    예약하기
+                </button>
+            </form>
+        </td>
+    </tr>
+    </tbody>
+</table>
+<p class="empty" th:if="${#lists.isEmpty(schedules)}">등록된 일정이 없습니다.</p>
+</body>
+</html>

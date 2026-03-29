@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <script src="https://js.tosspayments.com/v1"></script>
+</head>
+<body>
+
+<h2>결제 테스트 (기존 주문 사용)</h2>
+
+<!-- 방법 1: 직접 입력 -->
+<input type="text" id="orderIdInput" placeholder="orderId 입력">
+<button onclick="setOrderId()">orderId 설정</button>
+
+<!-- 방법 2: 그냥 하드코딩도 가능 -->
+<!-- let currentOrderId = "이미_DB에_있는_orderId"; -->
+
+<button onclick="startPayment()">결제하기</button>
+
+<p id="orderIdText"></p>
+
+<script>
+    const clientKey = "test_ck_yL0qZ4G1VOj211Mwom2v3oWb2MQY";
+    const tossPayments = TossPayments(clientKey);
+
+    let currentOrderId = null;
+
+    function setOrderId() {
+        currentOrderId = document.getElementById("orderIdInput").value;
+
+        document.getElementById("orderIdText").innerText =
+            "사용할 orderId: " + currentOrderId;
+
+        console.log("사용할 orderId:", currentOrderId);
+    }
+
+    async function startPayment() {
+
+        if (!currentOrderId) {
+            alert("orderId를 먼저 입력하세요!");
+            return;
+        }
+
+        // :fire: 중요: payment 준비 (기존 order 사용)
+        await fetch("http://localhost:9001/api/v1/payments/prepare", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                orderId: currentOrderId,
+                productId: "11111111-1111-1111-1111-111111111111",
+                paymentAmount: 10000,
+                depositAmount: 0,
+                paymentMethod: "TOSS"
+            })
+        });
+
+        // toss 결제
+        tossPayments.requestPayment("카드", {
+            amount: 10000,
+            orderId: currentOrderId,
+            orderName: "테스트 상품",
+            successUrl: "http://localhost:5500/order-success.html",
+            failUrl: "http://localhost:5500/fail.html"
+        });
+    }
+</script>
+
+</body>
+</html>

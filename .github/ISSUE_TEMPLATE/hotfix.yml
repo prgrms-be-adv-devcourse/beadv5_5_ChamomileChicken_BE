@@ -1,0 +1,56 @@
+name: "Hotfix"
+description: "긴급 수정"
+title: "hotfix: "
+labels: ["hotfix"]
+body:
+  - type: input
+    id: package_name
+    attributes:
+      label: "Package name"
+      description: "긴급 수정 대상 모듈/패키지명"
+      placeholder: "payment"
+    validations:
+      required: true
+
+  - type: input
+    id: branch_keyword
+    attributes:
+      label: "Branch keyword"
+      description: "브랜치 기능 키워드"
+      placeholder: "prod-crash"
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: "문제 상황"
+      description: "현재 어떤 문제가 발생하는지 (증상/영향도)"
+      placeholder: |
+        예)
+        - 로그인 시 500 에러 발생
+        - 결제 완료 후 주문 생성이 누락됨
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: "재현 방법"
+      description: "재현 절차 / 조건"
+      placeholder: |
+        예)
+        1) /api/auth/login 호출
+        2) 특정 계정으로 로그인
+        3) 500 발생
+    validations:
+      required: false
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: "기대 결과"
+      description: "정상 동작은 무엇인지"
+      placeholder: "예) 정상적으로 로그인되어 200 반환"
+    validations:
+      required: false
