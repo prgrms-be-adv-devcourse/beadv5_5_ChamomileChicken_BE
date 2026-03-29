@@ -103,6 +103,10 @@ public class Order {
 		this.status = OrderStatus.FAILED;
 	}
 
+	public void refund() {
+		this.status = OrderStatus.REFUNDED;
+	}
+
 	public boolean isPaymentAmountValid(BigDecimal amount) {
 		if (Objects.isNull(amount)) {
 			return false;

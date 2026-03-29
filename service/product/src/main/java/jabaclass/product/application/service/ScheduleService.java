@@ -167,18 +167,11 @@ public class ScheduleService implements ScheduleUseCase {
 		boolean status = true;
 		int quantity = requestDto.quantity();
 
-		// 해당 스케줄 예약자 수 확인
-		List<ProductUser> list = productUserUseCase.innserUserList(requestDto.productScheduleId());
-		int totalCount = list.stream()
-			.filter(l -> OrderStatus.PAID.equals(l.getStatus()))
-			.mapToInt(p -> p.getGuestCount())
-			.sum();
-
 		// 예약 가능 인원수
-		int maxCapacity = schedule.getMaxCapacity() - totalCount;
+		int remainingCapacity = calculateRemainingCapacity(requestDto.productScheduleId(), schedule.getMaxCapacity());
 
 		// DB 값 < 받아온 값
-		if (quantity > maxCapacity) { // 예약이 안 되는 경우
+		if (quantity > remainingCapacity) { // 예약이 안 되는 경우
 			status = false;
 		} else {
 			CreateProductUserRequestDto dto = new CreateProductUserRequestDto(
@@ -190,7 +183,7 @@ public class ScheduleService implements ScheduleUseCase {
 			saved = productUserUseCase.create(dto);
 
 			// 재고가 끝일 경우
-			int count = maxCapacity - saved.guestCount();
+			int count = remainingCapacity - saved.guestCount();
 			if (count == 0)
 				schedule.changeStatus(ReservedStatus.FULL);
 		}
@@ -207,8 +200,20 @@ public class ScheduleService implements ScheduleUseCase {
 	@Transactional
 	public void restoringInventory(OrderRequestDto requestDto) {
 		ProductUser user = productUserUseCase.innerFindById(requestDto.productUserId());
+		Schedule schedule = findByIdOrThrow(user.getProductScheduleId());
 
 		user.changeStatus(requestDto.status());
+		refreshScheduleStatus(schedule);
+	}
+
+	@Override
+	@Transactional
+	public void refundReservation(UUID productUserId) {
+		ProductUser user = productUserUseCase.innerFindById(productUserId);
+		Schedule schedule = findByIdOrThrow(user.getProductScheduleId());
+
+		user.changeStatus(OrderStatus.REFUNDED);
+		refreshScheduleStatus(schedule);
 	}
 
 	// 상품 일자 존재 여부/단일 상품 일자 검색
@@ -237,6 +242,29 @@ public class ScheduleService implements ScheduleUseCase {
 		if (!start.isBefore(end)) {
 			throw new BusinessException(CommonErrorCode.INVALID_TIME_RANGE);
 		}
+	}
+
+	private void refreshScheduleStatus(Schedule schedule) {
+		int remainingCapacity = calculateRemainingCapacity(schedule.getId(), schedule.getMaxCapacity());
+
+		if (remainingCapacity <= 0) {
+			schedule.changeStatus(ReservedStatus.FULL);
+			return;
+		}
+
+		if (schedule.getStatus() == ReservedStatus.FULL) {
+			schedule.changeStatus(ReservedStatus.AVAILABLE);
+		}
+	}
+
+	private int calculateRemainingCapacity(UUID scheduleId, int maxCapacity) {
+		int reservedCount = productUserUseCase.innserUserList(scheduleId).stream()
+			.filter(productUser -> productUser.getStatus() == OrderStatus.PAID
+				|| productUser.getStatus() == OrderStatus.PENDING)
+			.mapToInt(ProductUser::getGuestCount)
+			.sum();
+
+		return maxCapacity - reservedCount;
 	}
 
 	private SellerResponseDto validateAndGetSeller() {

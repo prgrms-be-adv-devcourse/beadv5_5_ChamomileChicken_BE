@@ -128,6 +128,15 @@ public class OrderService implements OrderUseCase {
         processPaymentResult(order, requestDto);
     }
 
+    @Override
+    @Transactional
+    public void refund(UUID orderId) {
+        Order order = orderRepository.findById(orderId)
+            .orElseThrow(() -> new BusinessException(OrderErrorCode.ORDER_NOT_FOUND));
+
+        order.refund();
+    }
+
     private List<Order> getOrdersByCondition(UUID userId, OrderStatus status) {
         if (status == null) {
             return orderRepository.findAllByUserId(userId);
