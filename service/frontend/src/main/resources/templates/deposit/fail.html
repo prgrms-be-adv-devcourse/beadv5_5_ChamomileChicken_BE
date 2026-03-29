@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/common-head :: head('충전 실패 - Jaba')}"></head>
+<body class="bg-gray-50 dark:bg-[#121212] text-gray-900 dark:text-white min-h-screen flex items-center justify-center p-4">
+<div class="w-full max-w-md bg-white dark:bg-[#1e1e1e] rounded-2xl border p-8 text-center">
+    <h2 class="text-xl font-bold mb-2">충전 실패</h2>
+    <p class="text-sm text-gray-500 mb-6" th:text="${errorMessage} ?: '예치금 충전에 실패했습니다.'">예치금 충전에 실패했습니다.</p>
+    <a href="/deposit/charge" class="inline-block px-4 py-2 border rounded-lg">다시 시도</a>
+</div>
+</body>
+</html>

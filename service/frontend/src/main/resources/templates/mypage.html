@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/common-head :: head('마이페이지 - Jaba')}"></head>
+<body class="bg-gray-50 dark:bg-[#121212] text-gray-900 dark:text-white min-h-screen">
+<div class="max-w-4xl mx-auto px-4 py-10">
+    <div class="flex items-center justify-between mb-8">
+        <a href="/products" class="font-bold text-xl">Jaba</a>
+        <div class="flex gap-2 items-center">
+            <a href="/deposit/charge" class="px-4 py-2 border rounded-lg">예치금 충전</a>
+            <form th:action="@{/logout}" method="post">
+                <button class="px-4 py-2 border rounded-lg" type="submit">로그아웃</button>
+            </form>
+        </div>
+    </div>
+
+    <div th:if="${userInfo}" class="bg-white dark:bg-[#1e1e1e] rounded-2xl border p-6 mb-8">
+        <h2 class="text-lg font-bold mb-4">내 정보</h2>
+        <p th:text="'이름: ' + ${userInfo.name}">이름</p>
+        <p th:text="'이메일: ' + ${userInfo.email}">이메일</p>
+        <p th:text="'전화번호: ' + ${userInfo.phone}">전화번호</p>
+        <p class="mt-4 text-2xl font-bold" th:text="'예치금 ₩' + ${#numbers.formatDecimal(userInfo.deposit, 0, 'COMMA', 0, 'POINT')}">예치금</p>
+    </div>
+
+    <div th:if="${paymentMessage}" class="bg-green-50 text-green-700 border border-green-200 rounded-xl px-4 py-3 mb-6" th:text="${paymentMessage}">
+        환불 완료
+    </div>
+
+    <div th:if="${paymentError}" class="bg-red-50 text-red-700 border border-red-200 rounded-xl px-4 py-3 mb-6" th:text="${paymentError}">
+        환불 실패
+    </div>
+
+    <div class="bg-white dark:bg-[#1e1e1e] rounded-2xl border p-6 mb-8">
+        <h2 class="text-lg font-bold mb-4">예치금 내역</h2>
+        <div th:if="${depositHistoriesError}" th:text="${depositHistoriesError}">내역 조회 실패</div>
+        <div th:if="${depositHistories != null and #lists.isEmpty(depositHistories)}">예치금 내역이 없습니다.</div>
+        <div th:if="${depositHistories != null and not #lists.isEmpty(depositHistories)}" class="space-y-2">
+            <div th:each="item : ${depositHistories}" class="flex justify-between border rounded-lg px-4 py-3">
+                <span th:text="${item.type}">TYPE</span>
+                <span th:text="${#numbers.formatDecimal(item.amount, 0, 'COMMA', 0, 'POINT')} + '원'">0원</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white dark:bg-[#1e1e1e] rounded-2xl border p-6">
+        <h2 class="text-lg font-bold mb-4">주문 내역</h2>
+        <div th:if="${ordersError}" th:text="${ordersError}">주문 조회 실패</div>
+        <div th:if="${orders != null and #lists.isEmpty(orders)}">주문 내역이 없습니다.</div>
+        <div th:if="${orders != null and not #lists.isEmpty(orders)}" class="space-y-4">
+            <div th:each="order : ${orders}" class="border rounded-2xl p-4 flex gap-4 items-start">
+                <div class="w-24 h-24 rounded-xl overflow-hidden bg-gray-100 flex items-center justify-center text-xs text-gray-500 shrink-0">
+                    <img th:if="${order.productDescriptionImage != null}" th:src="${order.productDescriptionImage}" alt="상품 이미지" class="w-full h-full object-cover" />
+                    <span th:if="${order.productDescriptionImage == null}">이미지 없음</span>
+                </div>
+
+                <div class="flex-1 min-w-0">
+                    <p class="font-bold text-lg mb-1" th:text="${order.productTitle != null ? order.productTitle : '상품 정보 없음'}">상품명</p>
+                    <p class="text-sm text-gray-500 break-all mb-1">
+                        주문 번호:
+                        <span th:text="${order.id}">주문ID</span>
+                    </p>
+                    <p class="text-sm mb-1">
+                        결제 금액:
+                        <span th:text="${#numbers.formatDecimal(order.totalAmount, 0, 'COMMA', 0, 'POINT')} + '원'">0원</span>
+                    </p>
+                    <p class="text-sm">
+                        상태:
+                        <span class="font-semibold" th:text="${order.status}">PAID</span>
+                    </p>
+                </div>
+
+                <div class="flex flex-col gap-2 shrink-0">
+                    <a
+                        th:if="${order.productId != null}"
+                        th:href="@{/products/{productId}(productId=${order.productId})}"
+                        class="px-3 py-2 border rounded-lg text-center"
+                    >
+                        상품 보기
+                    </a>
+
+                    <form
+                        th:if="${order.status == 'PAID'}"
+                        th:action="@{/payment/refund}"
+                        method="post"
+                        onsubmit="return confirm('이 주문을 환불하시겠습니까?');"
+                    >
+                        <input type="hidden" name="orderId" th:value="${order.id}" />
+                        <button type="submit" class="px-3 py-2 rounded-lg bg-red-500 text-white w-full">환불</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>
