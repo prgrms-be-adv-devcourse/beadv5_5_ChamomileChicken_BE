@@ -405,4 +405,22 @@ class OrderServiceTest {
             order.getQuantity()
         );
     }
+
+    @Test
+    void 환불을_반영한다() {
+        UUID orderId = UUID.randomUUID();
+        Order order = Order.create(
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            2,
+            new BigDecimal("15000")
+        );
+        order.pay();
+        given(orderRepository.findById(orderId)).willReturn(Optional.of(order));
+
+        orderService.refund(orderId);
+
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.REFUNDED);
+    }
 }
