@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import jabaclass.user.deposit.application.usecase.DepositChargeUseCase;
 import jabaclass.user.deposit.application.usecase.DepositQueryUseCase;
+import jabaclass.user.deposit.application.usecase.RefundDepositUseCase;
 import jabaclass.user.deposit.presentation.dto.request.DepositChargeRequestDto;
 import jabaclass.user.deposit.presentation.dto.request.IncreaseDepositRequestDto;
 import jabaclass.user.deposit.presentation.dto.response.DepositChargeResponseDto;
@@ -29,6 +30,7 @@ public class DepositController implements DepositApi {
 
 	private final DepositChargeUseCase depositChargeUseCase;
 	private final DepositQueryUseCase depositQueryUseCase;
+	private final RefundDepositUseCase refundDepositUseCase;
 
 	@Override
 	@GetMapping
@@ -60,6 +62,19 @@ public class DepositController implements DepositApi {
 		@RequestBody IncreaseDepositRequestDto request
 	) {
 		depositChargeUseCase.increase(
+			userId,
+			request.amount(),
+			request.paymentId()
+		);
+		return ResponseEntity.ok().build();
+	}
+
+	@PutMapping("/internal/users/{userId}/refund")
+	public ResponseEntity<Void> refundDeposit(
+		@PathVariable UUID userId,
+		@RequestBody IncreaseDepositRequestDto request
+	) {
+		refundDepositUseCase.refund(
 			userId,
 			request.amount(),
 			request.paymentId()
