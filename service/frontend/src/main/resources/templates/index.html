@@ -21,9 +21,12 @@
 <body>
 <header>
     <h1>클래스 목록</h1>
-    <form th:action="@{/logout}" method="post">
-        <button class="logout-btn" type="submit">로그아웃</button>
-    </form>
+    <div style="display:flex; gap:8px; align-items:center;">
+        <a href="/mypage" style="display:inline-block; padding:8px 16px; background:#fff; color:#333; border:1px solid #ddd; border-radius:4px; text-decoration:none;">마이페이지</a>
+        <form th:action="@{/logout}" method="post">
+            <button class="logout-btn" type="submit">로그아웃</button>
+        </form>
+    </div>
 </header>
 
 <div class="grid" th:if="${not #lists.isEmpty(products)}">
