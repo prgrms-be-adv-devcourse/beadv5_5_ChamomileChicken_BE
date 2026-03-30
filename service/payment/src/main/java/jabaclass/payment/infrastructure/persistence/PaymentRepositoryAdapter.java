@@ -1,11 +1,14 @@
 package jabaclass.payment.infrastructure.persistence;
 
 import jabaclass.payment.domain.model.Payment;
+import jabaclass.payment.domain.model.PaymentStatus;
 import jabaclass.payment.domain.repository.PaymentRepository;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -27,4 +30,12 @@ public class PaymentRepositoryAdapter implements PaymentRepository {
 
 	@Override
 	public Optional<Payment> findByOrderId(UUID orderId) { return paymentJpaRepository.findByOrderId(orderId); }
+
+	@Override
+	public List<Payment> findByStatusAndCreatedAtBefore(PaymentStatus status, LocalDateTime threshold) {
+		return paymentJpaRepository.findByStatusAndCreatedAtBefore(
+			status,
+			threshold
+		);
+	}
 }
