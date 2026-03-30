@@ -1,4 +1,4 @@
-package jabaclass.settlement.application.port.outt;
+package jabaclass.settlement.application.port.external;
 
 import java.time.LocalDateTime;
 import java.util.UUID;

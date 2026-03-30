@@ -1,4 +1,4 @@
-package jabaclass.settlement.application.port.outt;
+package jabaclass.settlement.application.port.external;
 
 import jabaclass.settlement.application.dto.SettlementTransferCommand;
 import jabaclass.settlement.application.dto.SettlementTransferResult;

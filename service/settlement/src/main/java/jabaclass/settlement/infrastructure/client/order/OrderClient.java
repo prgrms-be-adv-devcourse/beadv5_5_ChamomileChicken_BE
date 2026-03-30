@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
 import jabaclass.settlement.application.dto.OrderSettlementDetail;
-import jabaclass.settlement.application.port.outt.OrderSettlementPort;
+import jabaclass.settlement.application.port.external.OrderSettlementPort;
 import jabaclass.settlement.infrastructure.config.ClientProperties;
 import lombok.RequiredArgsConstructor;
 

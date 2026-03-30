@@ -12,7 +12,7 @@ import org.springframework.web.client.RestTemplate;
 
 import jabaclass.settlement.application.dto.SellerSettlementAccount;
 import jabaclass.settlement.application.dto.SellerSettlementDetail;
-import jabaclass.settlement.application.port.outt.SellerSettlementPort;
+import jabaclass.settlement.application.port.external.SellerSettlementPort;
 import jabaclass.settlement.infrastructure.config.ClientProperties;
 import lombok.RequiredArgsConstructor;
 

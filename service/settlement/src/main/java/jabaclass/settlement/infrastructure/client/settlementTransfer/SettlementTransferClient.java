@@ -9,7 +9,7 @@ import org.springframework.web.client.RestTemplate;
 
 import jabaclass.settlement.application.dto.SettlementTransferCommand;
 import jabaclass.settlement.application.dto.SettlementTransferResult;
-import jabaclass.settlement.application.port.outt.SettlementTransferPort;
+import jabaclass.settlement.application.port.external.SettlementTransferPort;
 import jabaclass.settlement.infrastructure.config.ClientProperties;
 import lombok.RequiredArgsConstructor;
 

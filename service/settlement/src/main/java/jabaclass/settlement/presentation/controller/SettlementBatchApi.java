@@ -9,8 +9,8 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jabaclass.settlement.application.exception.SettlementBatchErrorCode;
-import jabaclass.settlement.common.apidocs.ApiErrorSpec;
-import jabaclass.settlement.common.apidocs.ApiErrorSpecs;
+import jabaclass.settlement.presentation.apidocs.ApiErrorSpec;
+import jabaclass.settlement.presentation.apidocs.ApiErrorSpecs;
 
 @Tag(name = "Settlement Batch", description = "정산 배치 수동 실행 API")
 public interface SettlementBatchApi {

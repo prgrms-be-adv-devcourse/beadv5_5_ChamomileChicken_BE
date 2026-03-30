@@ -15,7 +15,7 @@ import org.springframework.web.client.RestTemplate;
 import jabaclass.settlement.application.dto.PaymentSettlementSource;
 import jabaclass.settlement.application.dto.RefundSettlementSource;
 import jabaclass.settlement.application.dto.SettlementSliceResult;
-import jabaclass.settlement.application.port.outt.PaymentSettlementPort;
+import jabaclass.settlement.application.port.external.PaymentSettlementPort;
 import jabaclass.settlement.infrastructure.config.ClientProperties;
 import lombok.RequiredArgsConstructor;
 

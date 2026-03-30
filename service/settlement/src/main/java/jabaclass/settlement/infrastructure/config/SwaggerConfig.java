@@ -1,4 +1,4 @@
-package jabaclass.settlement.common.apidocs;
+package jabaclass.settlement.infrastructure.config;
 
 import java.util.Collections;
 

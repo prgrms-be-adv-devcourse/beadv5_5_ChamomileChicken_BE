@@ -16,8 +16,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jabaclass.settlement.application.exception.CommonErrorCode;
 import jabaclass.settlement.application.exception.SettlementErrorCode;
-import jabaclass.settlement.common.apidocs.ApiErrorSpec;
-import jabaclass.settlement.common.apidocs.ApiErrorSpecs;
+import jabaclass.settlement.presentation.apidocs.ApiErrorSpec;
+import jabaclass.settlement.presentation.apidocs.ApiErrorSpecs;
 import jabaclass.settlement.presentation.dto.response.SettlementResponse;
 
 @Tag(name = "Settlement", description = "정산 조회 API")

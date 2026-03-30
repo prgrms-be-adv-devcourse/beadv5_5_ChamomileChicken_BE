@@ -1,4 +1,4 @@
-package jabaclass.settlement.application.port.outt;
+package jabaclass.settlement.application.port.external;
 
 import java.util.List;
 import java.util.Set;

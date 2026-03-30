@@ -1,4 +1,4 @@
-package jabaclass.settlement.common.apidocs;
+package jabaclass.settlement.presentation.apidocs;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

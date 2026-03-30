@@ -1,4 +1,4 @@
-package jabaclass.settlement.common.apidocs;
+package jabaclass.settlement.presentation.apidocs;
 
 import org.springdoc.core.customizers.OperationCustomizer;
 import org.springframework.stereotype.Component;
