@@ -1,18 +1,21 @@
 package jabaclass.order.order.presentation.controller;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 import jabaclass.order.order.application.usecase.OrderUseCase;
+import jabaclass.order.order.presentation.dto.request.OrderBulkReadRequestDto;
 import jabaclass.order.order.presentation.dto.request.UpdateOrderPaymentStatusRequestDto;
+import jabaclass.order.order.presentation.dto.response.OrderSettlementItemResponseDto;
 import jabaclass.order.order.presentation.dto.response.ValidatePaymentAmountResponseDto;
 import jabaclass.order.order.presentation.openapi.OrderInternalOpenApi;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -46,5 +49,13 @@ public class OrderInternalController implements OrderInternalOpenApi {
         orderUseCase.updatePaymentStatus(orderId, requestDto);
 
         return ResponseEntity.noContent().build();
+    }
+
+    @Override
+    @PostMapping("/bulk")
+    public ResponseEntity<List<OrderSettlementItemResponseDto>> getOrdersByIds(
+        @Valid @RequestBody OrderBulkReadRequestDto requestDto
+    ) {
+        return ResponseEntity.ok(orderUseCase.getOrdersByIds(requestDto));
     }
 }
