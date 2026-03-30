@@ -1,5 +1,6 @@
 package jabaclass.product.infrastructure.persistence;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -43,6 +44,11 @@ public class ProductRepositoryAdapter implements ProductRepository {
 	@Override
 	public Optional<Product> findByIdAndSellerId(UUID productId, UUID sellerId) {
 		return productJpaRepository.findByIdAndSellerId(productId, sellerId);
+	}
+
+	@Override
+	public List<Product> findAllByIds(List<UUID> productIds) {
+		return productJpaRepository.findAllByIdIn(productIds);
 	}
 
 }
