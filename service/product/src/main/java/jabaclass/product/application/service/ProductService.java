@@ -104,9 +104,7 @@ public class ProductService implements ProductUseCase {
 
 	@Override
 	public SearchProductResponseDto searchAll(SearchProductRequestDto requestDto) {
-		log.info(requestDto.thisPage() + "");
-		log.info(requestDto.pageSize() + "");
-		log.info(requestDto.status() + "");
+
 		// 페이징 설정
 		Pageable pageable = PageRequest.of(requestDto.thisPage(), requestDto.pageSize());
 
@@ -142,7 +140,6 @@ public class ProductService implements ProductUseCase {
 						UserResponseDto::name
 					)
 				);
-		log.info("sellerMap: {}", sellerMap);
 
 		// sellerId를 가져온 기준으로 sellerNmae set
 		List<ProductResponseDto> resultPro = page.getContent().stream()

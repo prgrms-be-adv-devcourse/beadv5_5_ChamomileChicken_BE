@@ -12,7 +12,7 @@ public interface ReviewJpaRepository extends JpaRepository<Review, UUID> {
 
 	Optional<Review> findByIdAndUserIdAndDeleteDtIsNull(UUID reviewId, UUID userId);
 
-	List<Review> findByUserIdAndDeleteDtIsNull(UUID review);
+	List<Review> findByUserIdAndDeleteDtIsNull(UUID userId);
 
 	List<Review> findByProductIdAndDeleteDtIsNull(UUID productId);
 }

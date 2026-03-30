@@ -129,7 +129,7 @@ class ReviewTest {
 	void 상품_리뷰_목록을_조회한다() {
 		given(reviewRepository.findByProductIdAndDeleteDtIsNull(PRODUCT_ID)).willReturn(List.of(review));
 
-		List<ReviewResponseDto> result = reviewService.prodcutReview(PRODUCT_ID);
+		List<ReviewResponseDto> result = reviewService.productReview(PRODUCT_ID);
 
 		assertThat(result).hasSize(1);
 		assertThat(result.get(0).content()).isEqualTo("좋아요");
@@ -139,7 +139,7 @@ class ReviewTest {
 	void 리뷰를_단건_조회한다() {
 		given(reviewRepository.findById(REVIEW_ID)).willReturn(Optional.of(review));
 
-		ReviewResponseDto result = reviewService.reivew(REVIEW_ID);
+		ReviewResponseDto result = reviewService.review(REVIEW_ID);
 
 		assertThat(result.id()).isEqualTo(REVIEW_ID);
 		assertThat(result.rating()).isEqualTo(5);
@@ -216,26 +216,26 @@ class ReviewTest {
 	@Test
 	void 상품_리뷰_조회_요청이_들어오면_컨트롤러가_유스케이스를_호출한다() {
 		List<ReviewResponseDto> response = List.of(new ReviewResponseDto(REVIEW_ID, 5, "좋아요"));
-		given(reviewUseCase.prodcutReview(PRODUCT_ID)).willReturn(response);
+		given(reviewUseCase.productReview(PRODUCT_ID)).willReturn(response);
 
 		ResponseEntity<ApiResponseDto<List<ReviewResponseDto>>> result = reviewRestController.productReview(PRODUCT_ID);
 
 		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
 		assertThat(result.getBody()).isNotNull();
 		assertThat(result.getBody().getData()).hasSize(1);
-		then(reviewUseCase).should().prodcutReview(PRODUCT_ID);
+		then(reviewUseCase).should().productReview(PRODUCT_ID);
 	}
 
 	@Test
 	void 리뷰_단건_조회_요청이_들어오면_컨트롤러가_유스케이스를_호출한다() {
 		ReviewResponseDto response = new ReviewResponseDto(REVIEW_ID, 5, "좋아요");
-		given(reviewUseCase.reivew(REVIEW_ID)).willReturn(response);
+		given(reviewUseCase.review(REVIEW_ID)).willReturn(response);
 
 		ResponseEntity<ApiResponseDto<ReviewResponseDto>> result = reviewRestController.review(REVIEW_ID);
 
 		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
 		assertThat(result.getBody()).isNotNull();
 		assertThat(result.getBody().getData()).isEqualTo(response);
-		then(reviewUseCase).should().reivew(REVIEW_ID);
+		then(reviewUseCase).should().review(REVIEW_ID);
 	}
 }

@@ -49,8 +49,6 @@ public class ReviewService implements ReviewUseCase {
 		UUID userId = auditorAwareService.getCurrentAuditor()
 			.orElseThrow(() -> new BusinessException(CommonErrorCode.EMPTY_USER));
 
-		log.info(userId + "");
-		log.info(revewId + "");
 		// 본인 리뷰인지 매치
 		Review review = findByUserId(userId, revewId);
 
@@ -87,7 +85,7 @@ public class ReviewService implements ReviewUseCase {
 	}
 
 	@Override
-	public List<ReviewResponseDto> prodcutReview(UUID productId) {
+	public List<ReviewResponseDto> productReview(UUID productId) {
 		List<Review> reviews = reviewRepository.findByProductIdAndDeleteDtIsNull(productId);
 
 		return reviews.stream()
@@ -96,8 +94,8 @@ public class ReviewService implements ReviewUseCase {
 	}
 
 	@Override
-	public ReviewResponseDto reivew(UUID reivewId) {
-		Review review = reviewRepository.findById(reivewId)
+	public ReviewResponseDto review(UUID reviewId) {
+		Review review = reviewRepository.findById(reviewId)
 			.orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND_REVIEW));
 
 		return ReviewResponseDto.from(review);

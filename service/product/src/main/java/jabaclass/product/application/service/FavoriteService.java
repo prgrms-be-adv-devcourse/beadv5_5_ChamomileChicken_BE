@@ -50,7 +50,7 @@ public class FavoriteService implements FavoriteUseCase {
 		Favorite matched = favoriteRepository.findByIdAndUserIdAndDeleteDtIsNull(favoriteId, userId);
 
 		if (matched == null) {
-			new BusinessException(CommonErrorCode.NOT_MATCH_USER_LIKE);
+			throw new BusinessException(CommonErrorCode.NOT_MATCH_USER_LIKE);
 		}
 
 		matched.changeDelete();

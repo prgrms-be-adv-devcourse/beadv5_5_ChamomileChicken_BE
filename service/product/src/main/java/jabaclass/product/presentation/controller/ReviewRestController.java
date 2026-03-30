@@ -42,7 +42,8 @@ public class ReviewRestController implements ReviewOpenApi {
 
 	@Override
 	@PutMapping("/{productId}/reviews/{reviewId}")
-	public ResponseEntity<ApiResponseDto<ReviewResponseDto>> update(ReviewRequestDto request, UUID reivewId) {
+	public ResponseEntity<ApiResponseDto<ReviewResponseDto>> update(@RequestBody ReviewRequestDto request,
+		@PathVariable UUID reivewId) {
 		ReviewResponseDto response = reviewUseCase.updateReview(request, reivewId);
 
 		return ResponseEntity.ok()
@@ -51,7 +52,7 @@ public class ReviewRestController implements ReviewOpenApi {
 
 	@Override
 	@DeleteMapping("/{productId}/reviews/{reviewId}")
-	public ResponseEntity<ApiResponseDto<UUID>> delete(UUID reivewId) {
+	public ResponseEntity<ApiResponseDto<UUID>> delete(@PathVariable UUID reivewId) {
 		reviewUseCase.deleteReview(reivewId);
 
 		return ResponseEntity.ok()
@@ -59,7 +60,7 @@ public class ReviewRestController implements ReviewOpenApi {
 	}
 
 	@Override
-	@GetMapping("/{productId}/reviews/user")
+	@GetMapping("/me/reviews")
 	public ResponseEntity<ApiResponseDto<List<ReviewResponseDto>>> userReview() {
 		List<ReviewResponseDto> response = reviewUseCase.userReview();
 
@@ -70,7 +71,7 @@ public class ReviewRestController implements ReviewOpenApi {
 	@Override
 	@GetMapping("/{productId}/reviews")
 	public ResponseEntity<ApiResponseDto<List<ReviewResponseDto>>> productReview(@PathVariable UUID productId) {
-		List<ReviewResponseDto> response = reviewUseCase.prodcutReview(productId);
+		List<ReviewResponseDto> response = reviewUseCase.productReview(productId);
 
 		return ResponseEntity.ok()
 			.body(ApiResponseDto.success(HttpStatus.OK, "성공적으로 검색 되었습니다.", response));
@@ -78,8 +79,8 @@ public class ReviewRestController implements ReviewOpenApi {
 
 	@Override
 	@GetMapping("/{productId}/reviews/{reviewId}")
-	public ResponseEntity<ApiResponseDto<ReviewResponseDto>> review(UUID reviewId) {
-		ReviewResponseDto response = reviewUseCase.reivew(reviewId);
+	public ResponseEntity<ApiResponseDto<ReviewResponseDto>> review(@PathVariable UUID reviewId) {
+		ReviewResponseDto response = reviewUseCase.review(reviewId);
 
 		return ResponseEntity.ok()
 			.body(ApiResponseDto.success(HttpStatus.OK, "성공적으로 검색 되었습니다.", response));

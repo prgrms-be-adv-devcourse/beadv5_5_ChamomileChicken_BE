@@ -91,7 +91,7 @@ public class UserController implements UserApi {
 
 	@Override
 	@PostMapping("/me")
-	public ResponseEntity<UserResponseDto> getUserInfo(UUID userId) {
+	public ResponseEntity<UserResponseDto> getUserInfo(@RequestBody UUID userId) {
 
 		return ResponseEntity.ok(userUseCase.getMyInfo(userId));
 	}

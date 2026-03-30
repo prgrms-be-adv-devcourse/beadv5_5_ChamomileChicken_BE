@@ -16,8 +16,8 @@ public interface ReviewUseCase {
 
 	List<ReviewResponseDto> userReview();
 
-	List<ReviewResponseDto> prodcutReview(UUID productId);
+	List<ReviewResponseDto> productReview(UUID productId);
 
-	ReviewResponseDto reivew(UUID reivewId);
+	ReviewResponseDto review(UUID reivewId);
 
 }
