@@ -9,6 +9,7 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
@@ -51,6 +52,9 @@ public class Payment extends BaseEntity{
 
 	@Column(name = "payment_key")
 	private String paymentKey;
+
+	@Column(name = "paid_at")
+	private LocalDateTime paidAt;
 
 	protected Payment() {
 
@@ -136,6 +140,7 @@ public class Payment extends BaseEntity{
 	public void markDone(String paymentKey) {
 		this.paymentKey = paymentKey;
 		this.status = PaymentStatus.PAID;
+		this.paidAt = LocalDateTime.now();
 	}
 
 	public void markFailed() {
