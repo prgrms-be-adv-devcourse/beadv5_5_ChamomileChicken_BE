@@ -19,6 +19,9 @@
         .order-btn { background: #4a90e2; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; }
         .order-btn:hover { background: #357abd; }
         .order-btn:disabled { background: #ccc; cursor: not-allowed; }
+        .order-form { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .deposit-input { width: 110px; padding: 6px 8px; border: 1px solid #d9d9d9; border-radius: 4px; }
+        .deposit-label { font-size: 13px; color: #666; }
         .empty { color: #888; padding: 20px; text-align: center; }
     </style>
 </head>
@@ -51,11 +54,20 @@
         <td th:text="${schedule.maxCapacity} + '명'">인원</td>
         <td th:text="${schedule.status}">상태</td>
         <td>
-            <form th:action="@{/orders}" method="post">
+            <form class="order-form" th:action="@{/orders}" method="post">
                 <input type="hidden" name="productId" th:value="${product.id}" />
                 <input type="hidden" name="scheduleId" th:value="${schedule.id}" />
                 <input type="hidden" name="quantity" value="1" />
-                <input type="hidden" name="depositAmount" value="0" />
+                <label class="deposit-label" th:for="'depositAmount-' + ${schedule.id}">예치금</label>
+                <input
+                    class="deposit-input"
+                    th:id="'depositAmount-' + ${schedule.id}"
+                    type="number"
+                    name="depositAmount"
+                    value="0"
+                    min="0"
+                    step="100"
+                />
                 <button class="order-btn" type="submit"
                         th:disabled="${schedule.status != '예약 가능'}">
                     예약하기

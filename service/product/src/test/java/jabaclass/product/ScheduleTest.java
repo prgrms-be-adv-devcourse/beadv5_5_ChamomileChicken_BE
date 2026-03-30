@@ -484,6 +484,32 @@ class ScheduleTest {
 	}
 
 	@Test
+	void 예약_검증시_pending예약도_남은_재고에서_차감한다() {
+		OrderRequestDto request = new OrderRequestDto(
+			SCHEDULE_ID,
+			USER_ID,
+			OrderStatus.PENDING,
+			7,
+			null
+		);
+		ProductUser pendingUser = ProductUser.builder()
+			.productScheduleId(SCHEDULE_ID)
+			.userId(UUID.randomUUID())
+			.guestCount(4)
+			.status(OrderStatus.PENDING)
+			.build();
+		given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(schedule));
+		given(productUserUseCase.innserUserList(SCHEDULE_ID)).willReturn(List.of(pendingUser));
+		given(productUseCase.findByIdOrThrow(PRODUCT_ID)).willReturn(product);
+
+		OrderResponseDto result = scheduleService.verification(request);
+
+		assertThat(result.valid()).isFalse();
+		assertThat(result.productUserId()).isNull();
+		then(productUserUseCase).should(never()).create(any(CreateProductUserRequestDto.class));
+	}
+
+	@Test
 	void 재고_상태복원_요청이_오면_예약상태를_변경한다() {
 		ProductUser productUser = ProductUser.builder()
 			.productScheduleId(SCHEDULE_ID)
@@ -500,11 +526,39 @@ class ScheduleTest {
 			PRODUCT_USER_ID
 		);
 		given(productUserUseCase.innerFindById(PRODUCT_USER_ID)).willReturn(productUser);
+		given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(schedule));
+		given(productUserUseCase.innserUserList(SCHEDULE_ID)).willReturn(List.of(productUser));
 
 		scheduleService.restoringInventory(request);
 
 		assertThat(productUser.getStatus()).isEqualTo(OrderStatus.REFUNDED);
 		then(productUserUseCase).should().innerFindById(PRODUCT_USER_ID);
+	}
+
+	@Test
+	void 환불시_남은예약을_다시계산해_full상태를_available로_복구한다() {
+		ProductUser refundedUser = ProductUser.builder()
+			.productScheduleId(SCHEDULE_ID)
+			.userId(USER_ID)
+			.guestCount(4)
+			.status(OrderStatus.PAID)
+			.build();
+		ProductUser activeUser = ProductUser.builder()
+			.productScheduleId(SCHEDULE_ID)
+			.userId(UUID.randomUUID())
+			.guestCount(2)
+			.status(OrderStatus.PAID)
+			.build();
+		ReflectionTestUtils.setField(refundedUser, "id", PRODUCT_USER_ID);
+		schedule.changeStatus(ReservedStatus.FULL);
+		given(productUserUseCase.innerFindById(PRODUCT_USER_ID)).willReturn(refundedUser);
+		given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(schedule));
+		given(productUserUseCase.innserUserList(SCHEDULE_ID)).willReturn(List.of(refundedUser, activeUser));
+
+		scheduleService.refundReservation(PRODUCT_USER_ID);
+
+		assertThat(refundedUser.getStatus()).isEqualTo(OrderStatus.REFUNDED);
+		assertThat(schedule.getStatus()).isEqualTo(ReservedStatus.AVAILABLE);
 	}
 
 	@Test

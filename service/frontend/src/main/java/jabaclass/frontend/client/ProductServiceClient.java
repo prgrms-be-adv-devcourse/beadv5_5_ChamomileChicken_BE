@@ -10,7 +10,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @Component
@@ -49,6 +51,29 @@ public class ProductServiceClient {
         );
         List<Map> data = (List<Map>) response.get("data");
         return data.stream().map(this::mapToScheduleDto).toList();
+    }
+
+    public Map<UUID, ProductDto> getProductsByScheduleIds(Set<UUID> scheduleIds) {
+        Map<UUID, ProductDto> productsByScheduleId = new HashMap<>();
+
+        if (scheduleIds == null || scheduleIds.isEmpty()) {
+            return productsByScheduleId;
+        }
+
+        for (ProductDto product : getProducts()) {
+            List<ScheduleDto> schedules = getSchedules(product.getId());
+            for (ScheduleDto schedule : schedules) {
+                if (scheduleIds.contains(schedule.getId())) {
+                    productsByScheduleId.put(schedule.getId(), product);
+                }
+            }
+
+            if (productsByScheduleId.size() == scheduleIds.size()) {
+                break;
+            }
+        }
+
+        return productsByScheduleId;
     }
 
     private ProductDto mapToProductDto(Map m) {

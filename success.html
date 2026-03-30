@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>결제 성공</title>
+    <style>
+        body { font-family: sans-serif; max-width: 720px; margin: 0 auto; padding: 24px; background: #f6f7fb; }
+        .card { background: #fff; border-radius: 10px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
+        pre { background: #111827; color: #e5e7eb; padding: 14px; border-radius: 8px; overflow: auto; font-size: 13px; }
+    </style>
+</head>
+<body>
+<div class="card">
+    <h2>결제 성공</h2>
+    <pre id="result">결제 승인 처리 중...</pre>
+</div>
+
+<script>
+    const result = document.getElementById("result");
+    const params = new URLSearchParams(window.location.search);
+
+    const payload = {
+        orderId: params.get("orderId"),
+        paymentKey: params.get("paymentKey"),
+        amount: Number(params.get("amount"))
+    };
+
+    result.textContent = JSON.stringify({ confirmRequest: payload }, null, 2);
+
+    fetch("http://localhost:9001/api/v1/payments/confirm", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+    })
+        .then(async response => {
+            const body = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw { status: response.status, body };
+            }
+            result.textContent = JSON.stringify({ confirmResponse: body }, null, 2);
+        })
+        .catch(error => {
+            result.textContent = JSON.stringify({ confirmError: error }, null, 2);
+        });
+</script>
+</body>
+</html>

@@ -49,4 +49,33 @@ public class UserClient implements UserPort {
 			);
 		}
 	}
+
+	@Override
+	public void refundDeposit(UUID userId, BigDecimal amount, UUID paymentId) {
+
+		String url = baseUrl + "/api/v1/deposits/internal/users/" + userId + "/refund";
+
+		HttpHeaders headers = new HttpHeaders();
+		headers.setContentType(MediaType.APPLICATION_JSON);
+
+		IncreaseDepositRequestDto body =
+			new IncreaseDepositRequestDto(amount, paymentId);
+
+		HttpEntity<IncreaseDepositRequestDto> request =
+			new HttpEntity<>(body, headers);
+
+		ResponseEntity<Void> response =
+			restTemplate.exchange(
+				url,
+				HttpMethod.PUT,
+				request,
+				Void.class
+			);
+
+		if (!response.getStatusCode().is2xxSuccessful()) {
+			throw new IllegalStateException(
+				"유저 예치금 환불 실패. status=" + response.getStatusCode()
+			);
+		}
+	}
 }

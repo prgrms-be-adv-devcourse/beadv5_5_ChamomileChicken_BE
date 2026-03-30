@@ -28,4 +28,6 @@ public interface ScheduleUseCase {
 
 	void restoringInventory(OrderRequestDto requestDto);
 
+	void refundReservation(UUID productUserId);
+
 }

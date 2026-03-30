@@ -16,6 +16,14 @@ repositories {
 	mavenCentral()
 }
 
+configurations {
+	h2Server
+}
+
+dependencies {
+	h2Server 'com.h2database:h2:2.4.240'
+}
+
 // BOM으로 버전 관리
 dependencyManagement {
 	imports {
@@ -37,4 +45,13 @@ subprojects {
 			mavenBom "org.springframework.boot:spring-boot-dependencies:4.0.4"
 		}
 	}
+}
+
+tasks.register('runH2Server', JavaExec) {
+	group = 'application'
+	description = 'Runs the shared local H2 TCP/Web server for the project.'
+
+	classpath = configurations.h2Server
+	mainClass = 'org.h2.tools.Server'
+	args = ['-tcp', '-tcpPort', '8082', '-web', '-webPort', '8083', '-ifNotExists']
 }

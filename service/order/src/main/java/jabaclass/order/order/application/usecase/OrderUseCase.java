@@ -24,4 +24,6 @@ public interface OrderUseCase {
     boolean validatePaymentAmount(UUID orderId, BigDecimal amount);
 
     void updatePaymentStatus(UUID orderId, UpdateOrderPaymentStatusRequestDto requestDto);
+
+    void refund(UUID orderId);
 }

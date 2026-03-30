@@ -32,6 +32,7 @@ class PaymentTest {
 			userId,
 			productId,
 			orderId,
+			UUID.randomUUID(),
 			PaymentMethod.TOSS,
 			paymentAmount,
 			depositAmount
@@ -56,6 +57,7 @@ class PaymentTest {
 			userId,
 			productId,
 			orderId,
+			UUID.randomUUID(),
 			PaymentMethod.TOSS,
 			null,
 			BigDecimal.valueOf(500)
@@ -76,6 +78,7 @@ class PaymentTest {
 			userId,
 			productId,
 			orderId,
+			UUID.randomUUID(),
 			PaymentMethod.TOSS,
 			BigDecimal.valueOf(1000),
 			null
@@ -96,6 +99,7 @@ class PaymentTest {
 			userId,
 			productId,
 			orderId,
+			UUID.randomUUID(),
 			PaymentMethod.TOSS,
 			BigDecimal.valueOf(-1),
 			BigDecimal.valueOf(500)
@@ -116,11 +120,27 @@ class PaymentTest {
 			userId,
 			productId,
 			orderId,
+			UUID.randomUUID(),
 			PaymentMethod.TOSS,
 			BigDecimal.valueOf(1000),
 			BigDecimal.valueOf(-1)
 		))
 			.isInstanceOf(IllegalArgumentException.class)
 			.hasMessage("depositAmount는 0 이상이어야 합니다");
+	}
+
+	@Test
+	void productUserId가_null이면_예외가_발생한다() {
+		assertThatThrownBy(() -> Payment.create(
+			UUID.randomUUID(),
+			UUID.randomUUID(),
+			UUID.randomUUID(),
+			null,
+			PaymentMethod.TOSS,
+			BigDecimal.valueOf(1000),
+			BigDecimal.ZERO
+		))
+			.isInstanceOf(IllegalArgumentException.class)
+			.hasMessage("productUserId는 null일 수 없습니다");
 	}
 }
