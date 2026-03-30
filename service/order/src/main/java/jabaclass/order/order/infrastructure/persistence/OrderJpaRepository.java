@@ -9,6 +9,8 @@ import java.util.UUID;
 
 public interface OrderJpaRepository extends JpaRepository<Order, UUID> {
 
+    List<Order> findAllByIdIn(List<UUID> orderIds);
+
     List<Order> findAllByUserId(UUID userId);
 
     List<Order> findAllByUserIdAndStatus(UUID userId, OrderStatus status);

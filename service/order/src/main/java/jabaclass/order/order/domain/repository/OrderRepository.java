@@ -13,6 +13,8 @@ public interface OrderRepository {
 
     Optional<Order> findById(UUID orderId);
 
+    List<Order> findAllByIds(List<UUID> orderIds);
+
     List<Order> findAllByUserId(UUID userId);
 
     List<Order> findAllByUserIdAndStatus(UUID userId, OrderStatus status);
