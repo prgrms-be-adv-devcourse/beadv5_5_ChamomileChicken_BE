@@ -82,7 +82,7 @@ jobs:
     needs: build-and-push
 
     # EC2 안에 설치된 self-hosted runner에서 실행
-    runs-on: [self-hosted, linux, x64]
+    runs-on: [self-hosted, ec2, docker]
 
     steps:
       - name: Checkout
