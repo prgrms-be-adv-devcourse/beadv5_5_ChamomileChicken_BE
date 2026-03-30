@@ -6,18 +6,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import jabaclass.user.deposit.application.usecase.DepositChargeUseCase;
-import jabaclass.user.deposit.application.usecase.DepositQueryUseCase;
-import jabaclass.user.deposit.application.usecase.RefundDepositUseCase;
-import jabaclass.user.deposit.presentation.dto.request.DepositChargeRequestDto;
+import jabaclass.user.deposit.application.usecase.DepositUseCase;
 import jabaclass.user.deposit.presentation.dto.request.IncreaseDepositRequestDto;
-import jabaclass.user.deposit.presentation.dto.response.DepositChargeResponseDto;
 import jabaclass.user.deposit.presentation.dto.response.DepositDetailResponseDto;
 import jabaclass.user.deposit.presentation.dto.response.DepositHistoryResponseDto;
 import jabaclass.user.deposit.presentation.dto.response.DepositMeResponseDto;
@@ -28,16 +23,14 @@ import lombok.RequiredArgsConstructor;
 @RequestMapping("/api/v1/deposits")
 public class DepositController implements DepositApi {
 
-	private final DepositChargeUseCase depositChargeUseCase;
-	private final DepositQueryUseCase depositQueryUseCase;
-	private final RefundDepositUseCase refundDepositUseCase;
+	private final DepositUseCase depositUseCase;
 
 	@Override
 	@GetMapping
 	public ResponseEntity<DepositHistoryResponseDto> findAllDepositHistories(
 		@AuthenticationPrincipal UUID userId
 	) {
-		return ResponseEntity.ok(depositQueryUseCase.findAllDepositHistories(userId));
+		return ResponseEntity.ok(depositUseCase.findAllDepositHistories(userId));
 	}
 
 	@Override
@@ -45,7 +38,7 @@ public class DepositController implements DepositApi {
 	public ResponseEntity<DepositMeResponseDto> findMyDeposit(
 		@AuthenticationPrincipal UUID userId
 	) {
-		return ResponseEntity.ok(depositQueryUseCase.findMyDeposit(userId));
+		return ResponseEntity.ok(depositUseCase.findMyDeposit(userId));
 	}
 
 	@Override
@@ -53,7 +46,7 @@ public class DepositController implements DepositApi {
 	public ResponseEntity<DepositDetailResponseDto> findDepositHistory(
 		@PathVariable UUID depositHistoryId
 	) {
-		return ResponseEntity.ok(depositQueryUseCase.findDepositHistory(depositHistoryId));
+		return ResponseEntity.ok(depositUseCase.findDepositHistory(depositHistoryId));
 	}
 
 	@PutMapping("/internal/users/{userId}/deposit")
@@ -61,11 +54,7 @@ public class DepositController implements DepositApi {
 		@PathVariable UUID userId,
 		@RequestBody IncreaseDepositRequestDto request
 	) {
-		depositChargeUseCase.increase(
-			userId,
-			request.amount(),
-			request.paymentId()
-		);
+		depositUseCase.increase(userId, request.amount(), request.paymentId());
 		return ResponseEntity.ok().build();
 	}
 
@@ -74,12 +63,7 @@ public class DepositController implements DepositApi {
 		@PathVariable UUID userId,
 		@RequestBody IncreaseDepositRequestDto request
 	) {
-		refundDepositUseCase.refund(
-			userId,
-			request.amount(),
-			request.paymentId()
-		);
+		depositUseCase.refund(userId, request.amount(), request.paymentId());
 		return ResponseEntity.ok().build();
 	}
-
 }

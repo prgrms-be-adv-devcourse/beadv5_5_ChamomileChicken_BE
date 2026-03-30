@@ -17,6 +17,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import jabaclass.user.common.error.BusinessException;
+import jabaclass.user.deposit.application.service.DepositQueryService;
 import jabaclass.user.deposit.domain.DepositHistory;
 import jabaclass.user.deposit.domain.DepositType;
 import jabaclass.user.deposit.domain.repository.DepositHistoryRepository;
@@ -37,7 +38,7 @@ class DepositQueryUseCaseTest {
 	private DepositHistoryRepository depositHistoryRepository;
 
 	@InjectMocks
-	private DepositQueryUseCase depositQueryUseCase;
+	private DepositQueryService depositQueryService;
 
 	private UUID userId;
 	private User user;
@@ -66,7 +67,7 @@ class DepositQueryUseCaseTest {
 		given(userRepository.findById(userId)).willReturn(Optional.of(user));
 
 		// when
-		DepositMeResponseDto result = depositQueryUseCase.findMyDeposit(userId);
+		DepositMeResponseDto result = depositQueryService.findMyDeposit(userId);
 
 		// then
 		assertThat(result.userId()).isEqualTo(userId);
@@ -79,7 +80,7 @@ class DepositQueryUseCaseTest {
 		given(userRepository.findById(userId)).willReturn(Optional.empty());
 
 		// when & then
-		assertThatThrownBy(() -> depositQueryUseCase.findMyDeposit(userId))
+		assertThatThrownBy(() -> depositQueryService.findMyDeposit(userId))
 			.isInstanceOf(BusinessException.class)
 			.hasMessage("존재하지 않는 회원입니다.");
 	}
@@ -102,7 +103,7 @@ class DepositQueryUseCaseTest {
 		given(depositHistoryRepository.findAllByUserId(userId)).willReturn(List.of(history1, history2));
 
 		// when
-		DepositHistoryResponseDto result = depositQueryUseCase.findAllDepositHistories(userId);
+		DepositHistoryResponseDto result = depositQueryService.findAllDepositHistories(userId);
 
 		// then
 		assertThat(result.items()).hasSize(2);
@@ -118,7 +119,7 @@ class DepositQueryUseCaseTest {
 		given(depositHistoryRepository.findAllByUserId(userId)).willReturn(List.of());
 
 		// when
-		DepositHistoryResponseDto result = depositQueryUseCase.findAllDepositHistories(userId);
+		DepositHistoryResponseDto result = depositQueryService.findAllDepositHistories(userId);
 
 		// then
 		assertThat(result.items()).isEmpty();
@@ -139,7 +140,7 @@ class DepositQueryUseCaseTest {
 		given(depositHistoryRepository.findById(depositHistoryId)).willReturn(Optional.of(history));
 
 		// when
-		DepositDetailResponseDto result = depositQueryUseCase.findDepositHistory(depositHistoryId);
+		DepositDetailResponseDto result = depositQueryService.findDepositHistory(depositHistoryId);
 
 		// then
 		assertThat(result.depositHistoryId()).isEqualTo(depositHistoryId);
@@ -156,7 +157,7 @@ class DepositQueryUseCaseTest {
 		given(depositHistoryRepository.findById(depositHistoryId)).willReturn(Optional.empty());
 
 		// when & then
-		assertThatThrownBy(() -> depositQueryUseCase.findDepositHistory(depositHistoryId))
+		assertThatThrownBy(() -> depositQueryService.findDepositHistory(depositHistoryId))
 			.isInstanceOf(BusinessException.class)
 			.hasMessage("존재하지 않는 예치금 이력입니다.");
 	}
