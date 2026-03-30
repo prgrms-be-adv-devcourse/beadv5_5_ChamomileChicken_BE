@@ -43,3 +43,9 @@ spring:
     api-docs:
       path: /v3/api-docs
       version: OPENAPI_3_0
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health

@@ -42,3 +42,9 @@ logging:
   level:
     jabaclass: DEBUG
     org.springframework.web: DEBUG
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health

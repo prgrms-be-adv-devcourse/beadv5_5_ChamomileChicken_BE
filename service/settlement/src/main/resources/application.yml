@@ -2,3 +2,10 @@ server.port: 9002
 spring:
   application:
     name: settlement
+
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
