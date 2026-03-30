@@ -38,6 +38,7 @@ public class UserServiceClient {
         LoginResponse loginResponse = new LoginResponse();
         loginResponse.setAccessToken((String) body.get("accessToken"));
         loginResponse.setRefreshToken((String) body.get("refreshToken"));
+        loginResponse.setRole((String) body.get("role"));
         return loginResponse;
     }
 
