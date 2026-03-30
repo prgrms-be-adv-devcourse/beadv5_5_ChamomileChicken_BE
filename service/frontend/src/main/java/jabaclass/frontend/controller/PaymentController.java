@@ -1,6 +1,5 @@
 package jabaclass.frontend.controller;
 
-import jabaclass.frontend.client.OrderServiceClient;
 import jabaclass.frontend.client.PaymentServiceClient;
 import jabaclass.frontend.dto.PreparePaymentRequest;
 import jakarta.servlet.http.HttpSession;
@@ -17,7 +16,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import java.math.BigDecimal;
 import java.util.Map;
 import java.util.UUID;
 
@@ -28,7 +26,6 @@ import java.util.UUID;
 public class PaymentController {
 
     private final PaymentServiceClient paymentServiceClient;
-    private final OrderServiceClient orderServiceClient;
 
     // Toss 결제 전 prepare 호출 (JS에서 fetch로 호출)
     @PostMapping("/prepare")
@@ -83,21 +80,13 @@ public class PaymentController {
     @PostMapping("/deposit-complete")
     public String depositComplete(
         @RequestParam UUID orderId,
-        @RequestParam BigDecimal depositAmount,
-        HttpSession session,
         Model model
     ) {
-        String accessToken = (String) session.getAttribute("accessToken");
-        try {
-            orderServiceClient.updatePaymentStatus(orderId, depositAmount, accessToken);
-            model.addAttribute("orderId", orderId);
-            model.addAttribute("amount", 0);
-            return "payment/success";
-        } catch (Exception e) {
-            log.error("예치금 결제 실패: {}", e.getMessage());
-            model.addAttribute("errorMessage", "예치금 결제 처리 중 오류가 발생했습니다.");
-            return "payment/fail";
-        }
+        // prepare 단계(PaymentService.create)에서 이미 PAID 처리 + 예치금 차감 완료
+        // 여기서 updatePaymentStatus를 다시 호출하면 예치금이 이중 차감됨
+        model.addAttribute("orderId", orderId);
+        model.addAttribute("amount", 0);
+        return "payment/success";
     }
 
     @PostMapping("/refund")

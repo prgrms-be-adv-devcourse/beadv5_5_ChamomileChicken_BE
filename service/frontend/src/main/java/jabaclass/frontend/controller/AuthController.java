@@ -41,6 +41,7 @@ public class AuthController {
             session.setAttribute("accessToken", loginResponse.getAccessToken());
             session.setAttribute("refreshToken", loginResponse.getRefreshToken());
             session.setAttribute("email", request.getEmail());
+            session.setAttribute("role", loginResponse.getRole());
 
             return "redirect:/products";
         } catch (Exception e) {
