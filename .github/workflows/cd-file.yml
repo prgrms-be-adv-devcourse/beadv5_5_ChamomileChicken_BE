@@ -129,17 +129,22 @@ jobs:
         run: |
           /home/ubuntu/apps/deploy/scripts/deploy-app.sh file
 
+      - name: Load common env
+        run: |
+          set -a
+          source /home/ubuntu/apps/deploy/env/common.env
+          set +a
+          echo "APP_HOST=$APP_HOST" >> $GITHUB_ENV
+
       - name: Health check
         run: |
           for i in {1..10}; do
-            if curl -f http://localhost:9000/actuator/health; then
+            if curl -f "http://${APP_HOST}:9000/actuator/health"; then
               echo "Health check passed"
               exit 0
             fi
-
             echo "Retrying..."
             sleep 5
           done
-
           echo "Health check failed"
           exit 1
