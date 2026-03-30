@@ -1,10 +1,8 @@
 package jabaclass.product;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.BDDMockito.then;
+import static org.assertj.core.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.BDDMockito.*;
 
 import java.util.List;
 import java.util.Optional;
@@ -29,7 +27,7 @@ import jabaclass.product.common.exception.ApiResponseDto;
 import jabaclass.product.common.exception.CommonErrorCode;
 import jabaclass.product.domain.model.Review;
 import jabaclass.product.domain.repository.ReviewRepository;
-import jabaclass.product.presentation.ReviewRestController;
+import jabaclass.product.presentation.controller.ReviewRestController;
 import jabaclass.product.presentation.dto.request.ReviewRequestDto;
 import jabaclass.product.presentation.dto.respose.ReviewResponseDto;
 import jakarta.validation.ConstraintViolation;
@@ -185,7 +183,8 @@ class ReviewTest {
 		ReviewRequestDto updateRequest = new ReviewRequestDto(3, "보통이에요");
 		given(reviewUseCase.updateReview(updateRequest, REVIEW_ID)).willReturn(response);
 
-		ResponseEntity<ApiResponseDto<ReviewResponseDto>> result = reviewRestController.update(updateRequest, REVIEW_ID);
+		ResponseEntity<ApiResponseDto<ReviewResponseDto>> result = reviewRestController.update(updateRequest,
+			REVIEW_ID);
 
 		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
 		assertThat(result.getBody()).isNotNull();

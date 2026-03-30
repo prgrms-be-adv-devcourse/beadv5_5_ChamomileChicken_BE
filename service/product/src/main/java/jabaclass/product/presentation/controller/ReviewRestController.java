@@ -1,4 +1,4 @@
-package jabaclass.product.presentation;
+package jabaclass.product.presentation.controller;
 
 import java.util.List;
 import java.util.UUID;

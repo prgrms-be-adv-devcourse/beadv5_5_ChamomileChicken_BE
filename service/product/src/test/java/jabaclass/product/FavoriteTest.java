@@ -1,10 +1,8 @@
 package jabaclass.product;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.BDDMockito.then;
+import static org.assertj.core.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.BDDMockito.*;
 
 import java.util.List;
 import java.util.Optional;
@@ -28,7 +26,7 @@ import jabaclass.product.common.exception.ApiResponseDto;
 import jabaclass.product.common.exception.CommonErrorCode;
 import jabaclass.product.domain.model.Favorite;
 import jabaclass.product.domain.repository.FavoriteRepository;
-import jabaclass.product.presentation.FavoritesRestController;
+import jabaclass.product.presentation.controller.FavoritesRestController;
 import jabaclass.product.presentation.dto.respose.FavoritesResposeDto;
 
 @ExtendWith(MockitoExtension.class)
