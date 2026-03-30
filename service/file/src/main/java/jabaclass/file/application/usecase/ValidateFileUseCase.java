@@ -1,7 +1,8 @@
 package jabaclass.file.application.usecase;
 
+import jabaclass.file.presentation.dto.response.FileConfirmResponse;
 import java.util.UUID;
 
 public interface ValidateFileUseCase {
-    void validateAndConfirm(UUID fileId);
+    FileConfirmResponse validateAndConfirm(UUID fileId);
 }

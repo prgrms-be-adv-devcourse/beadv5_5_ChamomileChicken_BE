@@ -10,6 +10,7 @@ import jabaclass.file.domain.model.status.FileStatus;
 import jabaclass.file.domain.repository.FileRepository;
 import jabaclass.file.infrastructure.s3.S3Uploader;
 import jabaclass.file.presentation.dto.request.UploadRequestDto;
+import jabaclass.file.presentation.dto.response.FileConfirmResponse;
 import jabaclass.file.presentation.dto.response.UploadResponseDto;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -72,13 +73,13 @@ public class FileUploadService implements RequestUploadUseCase, CompleteUploadUs
 
     @Override
     @Transactional
-    public void validateAndConfirm(UUID fileId) {
+    public FileConfirmResponse validateAndConfirm(UUID fileId) {
 
         File file = fileRepository.findById(fileId)
                 .orElseThrow(() -> new FileException(FileErrorCode.FILE_NOT_FOUND));
 
         if (file.getStatus() == FileStatus.SUCCESS) {
-            return;
+            return new FileConfirmResponse(file.getId(), file.getStoragePath());
         }
 
         if (file.getStatus() == FileStatus.PENDING) {
@@ -86,7 +87,7 @@ public class FileUploadService implements RequestUploadUseCase, CompleteUploadUs
                 throw new FileException(FileErrorCode.FILE_NOT_UPLOADED);
             }
             file.confirmSuccess();
-            return;
+            return new FileConfirmResponse(file.getId(), file.getStoragePath());
         }
 
         throw new FileException(FileErrorCode.FILE_NOT_UPLOADED);
