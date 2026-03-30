@@ -3,6 +3,7 @@ package jabaclass.product.application.service;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -28,6 +29,7 @@ import jabaclass.product.presentation.dto.request.SearchProductRequestDto;
 import jabaclass.product.presentation.dto.request.UpdateProductRequestDto;
 import jabaclass.product.presentation.dto.respose.DeleteProductResposeDto;
 import jabaclass.product.presentation.dto.respose.ProductResponseDto;
+import jabaclass.product.presentation.dto.respose.ProductSettlementItemResponseDto;
 import jabaclass.product.presentation.dto.respose.SearchProductResponseDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -173,6 +175,26 @@ public class ProductService implements ProductUseCase {
 	public Product matchProductAndSellerId(UUID productId, UUID sellerId) {
 		return productRepository.findByIdAndSellerId(productId, sellerId)
 			.orElseThrow(() -> new BusinessException(CommonErrorCode.MATCH_FAIL));
+	}
+
+	@Override
+	public List<ProductSettlementItemResponseDto> getProductsByIds(List<UUID> productIds) {
+		if (productIds == null || productIds.isEmpty()) {
+			return List.of();
+		}
+
+		List<UUID> distinctProductIds = productIds.stream()
+			.distinct()
+			.toList();
+
+		Map<UUID, Product> productMap = productRepository.findAllByIds(distinctProductIds).stream()
+			.collect(Collectors.toMap(Product::getId, product -> product));
+
+		return distinctProductIds.stream()
+			.map(productMap::get)
+			.filter(Objects::nonNull)
+			.map(ProductSettlementItemResponseDto::from)
+			.toList();
 	}
 
 	// 로그인 계정 여부
