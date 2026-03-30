@@ -16,6 +16,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import jabaclass.user.common.error.BusinessException;
+import jabaclass.user.deposit.application.service.DepositChargeService;
 import jabaclass.user.deposit.domain.DepositType;
 import jabaclass.user.deposit.domain.repository.DepositHistoryRepository;
 import jabaclass.user.user.domain.model.User;
@@ -32,7 +33,7 @@ class DepositChargeUseCaseTest {
 	private DepositHistoryRepository depositHistoryRepository;
 
 	@InjectMocks
-	private DepositChargeUseCase depositChargeUseCase;
+	private DepositChargeService depositChargeService;
 
 	private UUID userId;
 	private User user;
@@ -63,7 +64,7 @@ class DepositChargeUseCaseTest {
 			.willAnswer(invocation -> invocation.getArgument(0));
 
 		// when
-		depositChargeUseCase.increase(userId, amount, paymentId);
+		depositChargeService.increase(userId, amount, paymentId);
 
 		// then
 		assertThat(user.getDeposit()).isEqualByComparingTo(amount);
@@ -84,7 +85,7 @@ class DepositChargeUseCaseTest {
 
 		// when & then
 		assertThatThrownBy(() ->
-			depositChargeUseCase.increase(userId, amount, UUID.randomUUID())
+			depositChargeService.increase(userId, amount, UUID.randomUUID())
 		)
 			.isInstanceOf(BusinessException.class)
 			.hasMessage("존재하지 않는 회원입니다.");
