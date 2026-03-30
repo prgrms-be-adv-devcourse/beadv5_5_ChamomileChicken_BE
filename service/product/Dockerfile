@@ -18,4 +18,4 @@ VOLUME /app/logs
 # 포트 설정
 EXPOSE 9004
 # 애플리케이션 실행
-ENTRYPOINT ["java", "-jar", "${JAR_NAME}.jar"]
+ENTRYPOINT ["java", "-jar", "app.jar"]
