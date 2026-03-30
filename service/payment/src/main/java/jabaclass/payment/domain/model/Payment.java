@@ -14,7 +14,7 @@ import java.util.UUID;
 @Entity
 @Table(name = "payments")
 @Getter
-public class Payment {
+public class Payment extends BaseEntity{
 
 	@Id
 	@Column(name = "id", nullable = false, updatable = false)
