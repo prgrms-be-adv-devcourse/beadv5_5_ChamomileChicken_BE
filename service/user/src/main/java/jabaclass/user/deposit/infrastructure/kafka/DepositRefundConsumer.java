@@ -29,7 +29,7 @@ public class DepositRefundConsumer {
 			log.info("예치금 복구 이벤트 수신 - orderId: {}, userId: {}, amount: {}",
 				event.orderId(), event.userId(), event.depositAmount());
 
-			refundDepositUseCase.refund(event.userId(), event.depositAmount());
+			refundDepositUseCase.refund(event.userId(), event.depositAmount(), event.orderId());
 
 		} catch (Exception e) {
 			log.error("예치금 복구 실패 - message: {}, error: {}", message, e.getMessage());

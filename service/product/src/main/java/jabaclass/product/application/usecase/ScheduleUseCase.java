@@ -34,4 +34,6 @@ public interface ScheduleUseCase {
 	// 스케줄 예약 상태 검색
 	AvailabilityScheduleResponseDto availabilitySchedule(UUID scheduleId);
 
+	void refundReservation(UUID productUserId);
+
 }

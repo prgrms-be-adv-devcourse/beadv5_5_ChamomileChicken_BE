@@ -13,6 +13,7 @@ public class CreateOrderResponse {
     private UUID buyerId;
     private UUID productId;
     private UUID productScheduleId;
+    private UUID productUserId;
     private Integer quantity;
     private BigDecimal totalAmount;
     private BigDecimal depositAmount;

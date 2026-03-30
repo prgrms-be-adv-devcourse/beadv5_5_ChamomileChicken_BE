@@ -2,10 +2,12 @@ package jabaclass.frontend.controller;
 
 import jabaclass.frontend.client.OrderServiceClient;
 import jabaclass.frontend.client.ProductServiceClient;
+import jabaclass.frontend.client.UserServiceClient;
 import jabaclass.frontend.dto.CreateOrderRequest;
 import jabaclass.frontend.dto.CreateOrderResponse;
 import jabaclass.frontend.dto.ProductDto;
 import jabaclass.frontend.dto.ScheduleDto;
+import jabaclass.frontend.dto.UserInfoDto;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,6 +30,7 @@ public class PageController {
 
     private final ProductServiceClient productServiceClient;
     private final OrderServiceClient orderServiceClient;
+    private final UserServiceClient userServiceClient;
 
     @Value("${toss.client-key}")
     private String tossClientKey;
@@ -54,12 +57,24 @@ public class PageController {
 
     // 상품 상세
     @GetMapping("/products/{productId}")
-    public String productDetail(@PathVariable UUID productId, Model model) {
+    public String productDetail(@PathVariable UUID productId, HttpSession session, Model model) {
         try {
             ProductDto product = productServiceClient.getProduct(productId);
             List<ScheduleDto> schedules = productServiceClient.getSchedules(productId);
             model.addAttribute("product", product);
             model.addAttribute("schedules", schedules);
+
+            BigDecimal depositBalance = BigDecimal.ZERO;
+            String accessToken = (String) session.getAttribute("accessToken");
+            if (accessToken != null) {
+                try {
+                    UserInfoDto userInfo = userServiceClient.getMyInfo(accessToken);
+                    depositBalance = userInfo.getDeposit();
+                } catch (Exception e) {
+                    log.warn("예치금 잔액 조회 실패: {}", e.getMessage());
+                }
+            }
+            model.addAttribute("depositBalance", depositBalance);
             return "product";
         } catch (Exception e) {
             log.error("상품 상세 조회 실패: {}", e.getMessage());
@@ -89,7 +104,9 @@ public class PageController {
         CreateOrderResponse order = orderServiceClient.createOrder(request, accessToken);
 
         return "redirect:/payment/checkout?orderId=" + order.getId()
+            + "&buyerId=" + order.getBuyerId()
             + "&productId=" + order.getProductId()
+            + "&productUserId=" + order.getProductUserId()
             + "&amount=" + order.getPaymentAmount().intValue()
             + "&depositAmount=" + order.getDepositAmount().intValue();
     }
@@ -98,13 +115,17 @@ public class PageController {
     @GetMapping("/payment/checkout")
     public String checkoutPage(
         @RequestParam UUID orderId,
+        @RequestParam UUID buyerId,
         @RequestParam UUID productId,
+        @RequestParam UUID productUserId,
         @RequestParam int amount,
         @RequestParam int depositAmount,
         Model model
     ) {
         model.addAttribute("orderId", orderId.toString());
+        model.addAttribute("buyerId", buyerId.toString());
         model.addAttribute("productId", productId.toString());
+        model.addAttribute("productUserId", productUserId.toString());
         model.addAttribute("amount", amount);
         model.addAttribute("depositAmount", depositAmount);
         model.addAttribute("tossClientKey", tossClientKey);

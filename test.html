@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>통합 결제 테스트</title>
+    <script src="https://js.tosspayments.com/v1"></script>
+    <style>
+        body { font-family: sans-serif; max-width: 720px; margin: 0 auto; padding: 24px; background: #f6f7fb; color: #222; }
+        .card { background: #fff; border-radius: 10px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); margin-bottom: 20px; }
+        h2, h3 { margin-top: 0; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        label { display: block; font-size: 14px; margin-bottom: 6px; color: #555; }
+        input { width: 100%; box-sizing: border-box; padding: 10px; border: 1px solid #d7dbe3; border-radius: 6px; }
+        button { margin-top: 12px; padding: 12px 16px; border: none; border-radius: 6px; background: #3578e5; color: #fff; cursor: pointer; }
+        button:hover { background: #2767cf; }
+        pre { background: #111827; color: #e5e7eb; padding: 14px; border-radius: 8px; overflow: auto; font-size: 13px; }
+        .hint { font-size: 13px; color: #666; margin-top: 6px; }
+    </style>
+</head>
+<body>
+<div class="card">
+    <h2>통합 결제 테스트</h2>
+    <p class="hint">팀 브랜치의 테스트 페이지를 현재 결제 구조에 맞춰 옮긴 버전입니다. 주문 생성 응답의 <code>buyerId</code>, <code>productUserId</code>, 예치금 사용 금액을 그대로 payment prepare에 넘깁니다.</p>
+</div>
+
+<div class="card">
+    <h3>1. 주문 생성</h3>
+    <div class="grid">
+        <div>
+            <label for="accessToken">Access Token</label>
+            <input id="accessToken" placeholder="Bearer 없이 토큰만 입력">
+        </div>
+        <div>
+            <label for="productId">Product ID</label>
+            <input id="productId" value="a1b2c3d4-0001-0000-0000-000000000001">
+        </div>
+        <div>
+            <label for="scheduleId">Schedule ID</label>
+            <input id="scheduleId" value="b1000000-0001-0000-0000-000000000001">
+        </div>
+        <div>
+            <label for="quantity">Quantity</label>
+            <input id="quantity" type="number" min="1" value="1">
+        </div>
+        <div>
+            <label for="depositAmount">Deposit Amount</label>
+            <input id="depositAmount" type="number" min="0" step="100" value="0">
+        </div>
+    </div>
+    <button onclick="createOrder()">주문 생성</button>
+    <pre id="orderResult">주문 생성 전</pre>
+</div>
+
+<div class="card">
+    <h3>2. 결제 준비 및 Toss 결제</h3>
+    <div class="grid">
+        <div>
+            <label for="orderId">Order ID</label>
+            <input id="orderId" placeholder="주문 생성 후 자동 입력">
+        </div>
+        <div>
+            <label for="buyerId">Buyer ID</label>
+            <input id="buyerId" placeholder="주문 생성 후 자동 입력">
+        </div>
+        <div>
+            <label for="productUserId">Product User ID</label>
+            <input id="productUserId" placeholder="주문 생성 후 자동 입력">
+        </div>
+        <div>
+            <label for="paymentAmount">Payment Amount</label>
+            <input id="paymentAmount" type="number" min="0" step="100" placeholder="주문 생성 후 자동 입력">
+        </div>
+    </div>
+    <button onclick="startPayment()">결제하기</button>
+    <pre id="paymentResult">결제 준비 전</pre>
+</div>
+
+<script>
+    const clientKey = "test_ck_yL0qZ4G1VOj211Mwom2v3oWb2MQY";
+    const tossPayments = TossPayments(clientKey);
+
+    function authHeaders() {
+        const token = document.getElementById("accessToken").value.trim();
+        const headers = { "Content-Type": "application/json" };
+        if (token) {
+            headers["Authorization"] = `Bearer ${token}`;
+        }
+        return headers;
+    }
+
+    function setText(id, value) {
+        document.getElementById(id).textContent = typeof value === "string" ? value : JSON.stringify(value, null, 2);
+    }
+
+    async function createOrder() {
+        const payload = {
+            productId: document.getElementById("productId").value.trim(),
+            productScheduleId: document.getElementById("scheduleId").value.trim(),
+            quantity: Number(document.getElementById("quantity").value),
+            depositAmount: Number(document.getElementById("depositAmount").value)
+        };
+
+        setText("orderResult", { request: payload });
+
+        const response = await fetch("http://localhost:9005/api/v1/orders", {
+            method: "POST",
+            headers: authHeaders(),
+            body: JSON.stringify(payload)
+        });
+
+        const body = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            setText("orderResult", { status: response.status, body });
+            alert("주문 생성 실패");
+            return;
+        }
+
+        document.getElementById("orderId").value = body.id ?? "";
+        document.getElementById("buyerId").value = body.buyerId ?? "";
+        document.getElementById("productUserId").value = body.productUserId ?? "";
+        document.getElementById("paymentAmount").value = body.paymentAmount ?? "";
+
+        setText("orderResult", body);
+    }
+
+    async function startPayment() {
+        const payload = {
+            userId: document.getElementById("buyerId").value.trim(),
+            orderId: document.getElementById("orderId").value.trim(),
+            productId: document.getElementById("productId").value.trim(),
+            productUserId: document.getElementById("productUserId").value.trim(),
+            paymentAmount: Number(document.getElementById("paymentAmount").value),
+            depositAmount: Number(document.getElementById("depositAmount").value),
+            paymentMethod: "TOSS"
+        };
+
+        setText("paymentResult", { prepareRequest: payload });
+
+        const response = await fetch("http://localhost:9001/api/v1/payments/prepare", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+
+        const body = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            setText("paymentResult", { status: response.status, body });
+            alert("payment prepare 실패");
+            return;
+        }
+
+        setText("paymentResult", { prepareResponse: body });
+
+        tossPayments.requestPayment("카드", {
+            amount: payload.paymentAmount,
+            orderId: payload.orderId,
+            orderName: "통합 테스트 상품",
+            successUrl: "http://localhost:5500/success.html",
+            failUrl: "http://localhost:5500/fail.html"
+        });
+    }
+</script>
+</body>
+</html>
