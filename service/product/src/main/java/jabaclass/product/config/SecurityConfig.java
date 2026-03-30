@@ -36,6 +36,8 @@ public class SecurityConfig {
 			.authorizeHttpRequests(auth ->
 				auth.requestMatchers(HttpMethod.GET, "/api/v1/products/**").permitAll()
 					.requestMatchers(HttpMethod.GET, "/api/v1/products/*/reviews/user").authenticated()
+					// api 통신용
+					.requestMatchers(HttpMethod.POST, "/api/v1/products/reservations").permitAll()
 					.requestMatchers("/swagger-ui/**")
 					.permitAll()
 					.requestMatchers("/swagger-ui.html")
