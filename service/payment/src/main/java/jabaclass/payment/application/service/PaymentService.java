@@ -50,6 +50,24 @@ public class PaymentService implements PaymentUseCase {
 			request.depositAmount()
 		);
 
+		if (payment.getPaymentAmount().compareTo(BigDecimal.ZERO) == 0) {
+
+			log.info("예치금 100% 결제 - 즉시 완료 처리 orderId={}", payment.getOrderId());
+
+			payment.markDone("DEPOSIT_ONLY");
+
+			try {
+				orderPort.updatePaymentStatus(
+					payment.getOrderId(),
+					payment.getId(),
+					payment.getDepositAmount().intValue(),
+					"PAID"
+				);
+			} catch (Exception ex) {
+				log.error("Order 상태 업데이트 실패 (deposit only)", ex);
+			}
+		}
+
 		Payment savedPayment = paymentRepository.save(payment);
 
 		return PaymentResponseDto.from(savedPayment);
