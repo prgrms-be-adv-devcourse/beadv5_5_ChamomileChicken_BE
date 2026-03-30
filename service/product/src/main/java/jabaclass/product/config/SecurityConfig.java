@@ -39,6 +39,7 @@ public class SecurityConfig {
 					// api 통신용
 					.requestMatchers(HttpMethod.POST, "/api/v1/products/reservations").permitAll()
 					.requestMatchers(HttpMethod.POST, "/api/v1/products/reservations/status").permitAll()
+					.requestMatchers(HttpMethod.POST, "/api/v1/products/bulk").permitAll()
 					.requestMatchers("/swagger-ui/**")
 					.permitAll()
 					.requestMatchers("/swagger-ui.html")
