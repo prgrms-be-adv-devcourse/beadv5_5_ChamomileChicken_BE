@@ -88,4 +88,12 @@ public class UserController implements UserApi {
 		return ResponseEntity
 			.ok(userUseCase.getUsersByIds(request.userIds()));
 	}
+
+	@Override
+	@PostMapping("/me")
+	public ResponseEntity<UserResponseDto> getUserInfo(@RequestBody UUID userId) {
+
+		return ResponseEntity.ok(userUseCase.getMyInfo(userId));
+	}
+
 }

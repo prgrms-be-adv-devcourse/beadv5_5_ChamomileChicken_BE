@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 
 import jabaclass.product.application.acl.SellerRepository;
 import jabaclass.product.infrastructure.acl.client.SellerClient;
-import jabaclass.product.infrastructure.acl.dto.SellerResponseDto;
+import jabaclass.product.infrastructure.acl.dto.response.UserResponseDto;
 import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
@@ -18,12 +18,12 @@ public class SellerAdapter implements SellerRepository {
 	private final SellerClient sellerClient;
 
 	@Override
-	public Optional<SellerResponseDto> findSeller(UUID sellerId) {
+	public Optional<UserResponseDto> findSeller(UUID sellerId) {
 		return sellerClient.findSeller(sellerId);
 	}
 
 	@Override
-	public Optional<List<SellerResponseDto>> findSellerList(List<UUID> sellerIds) {
+	public Optional<List<UserResponseDto>> findSellerList(List<UUID> sellerIds) {
 
 		return sellerClient.findSellerList(sellerIds);
 	}

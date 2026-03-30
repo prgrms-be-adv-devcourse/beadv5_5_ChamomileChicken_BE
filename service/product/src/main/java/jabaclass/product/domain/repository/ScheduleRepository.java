@@ -29,7 +29,7 @@ public interface ScheduleRepository {
 		@Param("id") UUID id
 	);
 
-	Optional<Schedule> findById(UUID schedulesId);
+	Optional<Schedule> findByIdAndDeleteDtIsNull(UUID schedulesId);
 
 	List<Schedule> findByProductIdAndDeleteDtIsNull(UUID productId);
 

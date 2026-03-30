@@ -26,7 +26,7 @@ import jabaclass.product.application.service.ProductService;
 import jabaclass.product.domain.model.Product;
 import jabaclass.product.domain.model.status.ProductStatus;
 import jabaclass.product.domain.repository.ProductRepository;
-import jabaclass.product.infrastructure.acl.dto.SellerResponseDto;
+import jabaclass.product.infrastructure.acl.dto.response.UserResponseDto;
 import jabaclass.product.presentation.dto.request.SearchProductRequestDto;
 import jabaclass.product.presentation.dto.respose.ProductResponseDto;
 import jabaclass.product.presentation.dto.respose.SearchProductResponseDto;
@@ -93,7 +93,7 @@ public class ProductSelectTest {
 		// 존재하는 판매자
 		given(sellerRepository.findSellerList(anyList()))
 			.willReturn(Optional.of(List.of(
-				new SellerResponseDto(SELLER_ID, "판매자1", "SELLER")
+				new UserResponseDto(SELLER_ID, "판매자1", "SELLER")
 			)));
 
 		// when
@@ -114,7 +114,7 @@ public class ProductSelectTest {
 		// 존재하는 판매자
 		// Stub: seller 조회
 		given(sellerRepository.findSeller(eq(SELLER_ID)))
-			.willReturn(Optional.of(new SellerResponseDto(SELLER_ID, "테스트 판매자", "SELLER")));
+			.willReturn(Optional.of(new UserResponseDto(SELLER_ID, "테스트 판매자", "SELLER")));
 
 		// when
 		ProductResponseDto result = productService.searchById(id);

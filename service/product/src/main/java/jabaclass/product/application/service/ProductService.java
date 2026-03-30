@@ -1,5 +1,6 @@
 package jabaclass.product.application.service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -19,8 +20,8 @@ import jabaclass.product.common.exception.CommonErrorCode;
 import jabaclass.product.domain.model.Product;
 import jabaclass.product.domain.model.status.ProductStatus;
 import jabaclass.product.domain.repository.ProductRepository;
-import jabaclass.product.infrastructure.acl.dto.SellerResponseDto;
 import jabaclass.product.infrastructure.acl.dto.SellerRole;
+import jabaclass.product.infrastructure.acl.dto.response.UserResponseDto;
 import jabaclass.product.infrastructure.event.dto.ProductEventResponseDto;
 import jabaclass.product.presentation.dto.request.CreateProductRequestDto;
 import jabaclass.product.presentation.dto.request.SearchProductRequestDto;
@@ -45,7 +46,7 @@ public class ProductService implements ProductUseCase {
 	@Transactional
 	public ProductResponseDto create(CreateProductRequestDto requestDto) {
 		// seller 룰을 확인
-		SellerResponseDto seller = validateAndGetSeller();
+		UserResponseDto seller = validateAndGetSeller();
 
 		Product product = Product.builder()
 			.sellerId(requestDto.sellerId())
@@ -60,19 +61,19 @@ public class ProductService implements ProductUseCase {
 		Product saved = productRepository.save(product);
 
 		publisher.publishEvent(new ProductEventResponseDto(saved.getId()));
-		return ProductResponseDto.from(saved, seller.sellerName());
+		return ProductResponseDto.from(saved, seller.name());
 	}
 
 	@Override
 	@Transactional
 	public ProductResponseDto update(UpdateProductRequestDto requestDto, UUID productId) {
 		// seller 룰을 확인
-		SellerResponseDto seller = validateAndGetSeller();
+		UserResponseDto seller = validateAndGetSeller();
 
 		// 상품 존재하는지 확인
 		Product product = findByIdOrThrow(productId);
 		// 본인 상품인지 확인
-		matchProductAndSellerId(productId, seller.sellerId());
+		matchProductAndSellerId(productId, seller.userId());
 
 		product.changeTitle(requestDto.title());
 		product.changeMaxCapacity(requestDto.maxCapacity());
@@ -81,19 +82,19 @@ public class ProductService implements ProductUseCase {
 		product.changePrice(requestDto.price());
 		product.changeStatus(requestDto.status());
 
-		return ProductResponseDto.from(product, seller.sellerName());
+		return ProductResponseDto.from(product, seller.name());
 	}
 
 	@Override
 	@Transactional
 	public DeleteProductResposeDto delete(UUID productId) {
 		// seller 룰을 확인
-		SellerResponseDto seller = validateAndGetSeller();
-		
+		UserResponseDto seller = validateAndGetSeller();
+
 		// 상품 존재하는지 확인
 		Product product = findByIdOrThrow(productId);
 		// 본인 상품인지 확인
-		matchProductAndSellerId(productId, seller.sellerId());
+		matchProductAndSellerId(productId, seller.userId());
 
 		product.changeStatus(ProductStatus.DISABLE);
 		product.changeDelete();
@@ -103,17 +104,20 @@ public class ProductService implements ProductUseCase {
 
 	@Override
 	public SearchProductResponseDto searchAll(SearchProductRequestDto requestDto) {
+
 		// 페이징 설정
 		Pageable pageable = PageRequest.of(requestDto.thisPage(), requestDto.pageSize());
 
+		List<Product> products = new ArrayList<>();
+		// = new PageImpl<>(products)
 		Page<Product> page;
 
 		// 페이징 및 키워드를 조건으로 가져온 상품 리스트
-		if (requestDto.keyword() == null || requestDto.keyword().isBlank()) {
+		if (requestDto.title() == null || requestDto.title().isBlank()) {
 			page = productRepository.findByStatusAndDeleteDtIsNull(requestDto.status(), pageable);
 		} else {
 			page = productRepository.findByStatusAndTitleContainingAndDeleteDtIsNull(requestDto.status(),
-				requestDto.keyword(),
+				requestDto.title(),
 				pageable);
 		}
 
@@ -125,15 +129,15 @@ public class ProductService implements ProductUseCase {
 			.toList();
 
 		// seller List 가져오기
-		List<SellerResponseDto> sellerList = sellerRepository.findSellerList(uuidList)
+		List<UserResponseDto> sellerList = sellerRepository.findSellerList(uuidList)
 			.orElseThrow(() -> new BusinessException(CommonErrorCode.SELLER_NOT_FOUND));
 
 		// seller를 map으로 변환
 		Map<UUID, String> sellerMap =
 			sellerList.stream()
 				.collect(Collectors.toMap(
-						SellerResponseDto::sellerId,
-						SellerResponseDto::sellerName
+						UserResponseDto::userId,
+						UserResponseDto::name
 					)
 				);
 
@@ -153,9 +157,9 @@ public class ProductService implements ProductUseCase {
 		Product product = findByIdOrThrow(productId);
 
 		// sellerId를 확인
-		SellerResponseDto seller = findBySellerIdOrThrow(product.getSellerId());
+		UserResponseDto seller = findBySellerIdOrThrow(product.getSellerId());
 
-		return ProductResponseDto.from(product, seller.sellerName());
+		return ProductResponseDto.from(product, seller.name());
 	}
 
 	@Override
@@ -172,17 +176,17 @@ public class ProductService implements ProductUseCase {
 	}
 
 	// 로그인 계정 여부
-	private SellerResponseDto findBySellerIdOrThrow(UUID sellerId) {
-		SellerResponseDto sellerInfo = sellerRepository.findSeller(sellerId)
+	private UserResponseDto findBySellerIdOrThrow(UUID sellerId) {
+		UserResponseDto sellerInfo = sellerRepository.findSeller(sellerId)
 			.orElseThrow(() -> new BusinessException(CommonErrorCode.SELLER_NOT_FOUND));
 
 		return sellerInfo;
 	}
 
-	private SellerResponseDto validateAndGetSeller() {
+	private UserResponseDto validateAndGetSeller() {
 		UUID sellerId = auditorAwareService.getCurrentAuditor()
 			.orElseThrow(() -> new BusinessException(CommonErrorCode.EMPTY_USER));
-		SellerResponseDto seller = findBySellerIdOrThrow(sellerId);
+		UserResponseDto seller = findBySellerIdOrThrow(sellerId);
 		SellerRole role = SellerRole.from(seller.role());
 		if (role != SellerRole.SELLER) {
 			throw new BusinessException(CommonErrorCode.NOT_SELLER);

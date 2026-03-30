@@ -1,6 +1,7 @@
 package jabaclass.user.user.presentation.controller;
 
 import java.util.List;
+import java.util.UUID;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -27,10 +28,10 @@ public interface UserApi {
 	@Operation(
 		summary = "이메일 중복 확인",
 		description = """
-            회원가입 또는 이메일 변경에 사용할 이메일의 중복 여부를 확인합니다.
-            - 중복이 아니면 available=true 를 반환합니다.
-            - 이미 사용 중인 이메일이면 예외가 발생합니다.
-            """
+			회원가입 또는 이메일 변경에 사용할 이메일의 중복 여부를 확인합니다.
+			- 중복이 아니면 available=true 를 반환합니다.
+			- 이미 사용 중인 이메일이면 예외가 발생합니다.
+			"""
 	)
 	@ApiErrorSpecs({
 		@ApiErrorSpec(
@@ -46,10 +47,10 @@ public interface UserApi {
 	@Operation(
 		summary = "회원가입",
 		description = """
-            이메일 인증이 완료된 사용자가 회원가입을 진행합니다.
-            - email, verifiedToken 조합이 유효해야 회원가입할 수 있습니다.
-            - 성공 시 201 Created 를 반환합니다.
-            """
+			이메일 인증이 완료된 사용자가 회원가입을 진행합니다.
+			- email, verifiedToken 조합이 유효해야 회원가입할 수 있습니다.
+			- 성공 시 201 Created 를 반환합니다.
+			"""
 	)
 	@ApiErrorSpecs({
 		@ApiErrorSpec(
@@ -80,8 +81,8 @@ public interface UserApi {
 	@Operation(
 		summary = "내 정보 조회",
 		description = """
-            현재 로그인한 사용자의 정보를 조회합니다.
-            """
+			현재 로그인한 사용자의 정보를 조회합니다.
+			"""
 	)
 	@SecurityRequirement(name = "bearerAuth")
 	@ApiErrorSpecs({
@@ -96,9 +97,9 @@ public interface UserApi {
 	@Operation(
 		summary = "내 정보 수정",
 		description = """
-            현재 로그인한 사용자의 이름과 전화번호를 수정합니다.
-            - 성공 시 204 No Content 를 반환합니다.
-            """
+			현재 로그인한 사용자의 이름과 전화번호를 수정합니다.
+			- 성공 시 204 No Content 를 반환합니다.
+			"""
 	)
 	@SecurityRequirement(name = "bearerAuth")
 	@ApiErrorSpecs({
@@ -115,10 +116,10 @@ public interface UserApi {
 	@Operation(
 		summary = "이메일 수정",
 		description = """
-            현재 로그인한 사용자의 이메일을 수정합니다.
-            - 사전에 이메일 인증을 완료하여 verifiedToken 을 발급받아야 합니다.
-            - 성공 시 204 No Content 를 반환합니다.
-            """
+			현재 로그인한 사용자의 이메일을 수정합니다.
+			- 사전에 이메일 인증을 완료하여 verifiedToken 을 발급받아야 합니다.
+			- 성공 시 204 No Content 를 반환합니다.
+			"""
 	)
 	@SecurityRequirement(name = "bearerAuth")
 	@ApiErrorSpecs({
@@ -155,9 +156,9 @@ public interface UserApi {
 	@Operation(
 		summary = "회원 탈퇴",
 		description = """
-            현재 로그인한 사용자를 탈퇴 처리합니다.
-            - 성공 시 204 No Content 를 반환합니다.
-            """
+			현재 로그인한 사용자를 탈퇴 처리합니다.
+			- 성공 시 204 No Content 를 반환합니다.
+			"""
 	)
 	@SecurityRequirement(name = "bearerAuth")
 	@ApiErrorSpecs({
@@ -172,12 +173,22 @@ public interface UserApi {
 	@Operation(
 		summary = "사용자 ID 목록으로 사용자 정보 조회",
 		description = """
-        사용자 ID 목록을 받아 여러 사용자의 정보를 조회합니다.
-        - 요청한 사용자 ID 순서를 기준으로 응답합니다.
-        - 존재하지 않는 사용자 ID는 응답에서 제외합니다.
-        """
+			사용자 ID 목록을 받아 여러 사용자의 정보를 조회합니다.
+			- 요청한 사용자 ID 순서를 기준으로 응답합니다.
+			- 존재하지 않는 사용자 ID는 응답에서 제외합니다.
+			"""
 	)
 	ResponseEntity<List<UserResponseDto>> getUsersByIds(
 		@Valid @RequestBody UserBulkReadRequestDto request
+	);
+
+	@Operation(
+		summary = "내 정보 조회",
+		description = """
+			현재 로그인한 사용자의 정보를 조회합니다.(모듈용)
+			"""
+	)
+	ResponseEntity<UserResponseDto> getUserInfo(
+		@RequestBody UUID userId
 	);
 }

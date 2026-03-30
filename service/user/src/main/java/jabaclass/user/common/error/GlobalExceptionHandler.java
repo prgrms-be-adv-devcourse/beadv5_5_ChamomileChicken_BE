@@ -1,6 +1,5 @@
 package jabaclass.user.common.error;
 
-import jabaclass.user.auth.application.exception.AuthException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -8,9 +7,12 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import jabaclass.auth.exception.JwtAuthException;
+import jabaclass.user.auth.application.exception.AuthException;
 import jabaclass.user.common.dto.ApiResponseDto;
+import lombok.extern.slf4j.Slf4j;
 
 @RestControllerAdvice
+@Slf4j
 public class GlobalExceptionHandler {
 
 	/**
@@ -20,11 +22,11 @@ public class GlobalExceptionHandler {
 	@ExceptionHandler(MethodArgumentNotValidException.class)
 	public ResponseEntity<ApiResponseDto<Void>> handleValidationException(MethodArgumentNotValidException ex) {
 		String message = ex.getBindingResult()
-				.getFieldError()
-				.getDefaultMessage();
+			.getFieldError()
+			.getDefaultMessage();
 
 		return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-				.body(ApiResponseDto.fail(HttpStatus.BAD_REQUEST, message));
+			.body(ApiResponseDto.fail(HttpStatus.BAD_REQUEST, message));
 	}
 
 	/**
@@ -34,7 +36,7 @@ public class GlobalExceptionHandler {
 	@ExceptionHandler(BusinessException.class)
 	public ResponseEntity<ApiResponseDto<Void>> handleBusinessException(BusinessException ex) {
 		return ResponseEntity.status(ex.getStatus())
-				.body(ApiResponseDto.fail(ex.getStatus(), ex.getMessage()));
+			.body(ApiResponseDto.fail(ex.getStatus(), ex.getMessage()));
 	}
 
 	/**
@@ -44,7 +46,7 @@ public class GlobalExceptionHandler {
 	@ExceptionHandler(JwtAuthException.class)
 	public ResponseEntity<ApiResponseDto<Void>> handleJwtAuthException(JwtAuthException ex) {
 		return ResponseEntity.status(ex.getErrorCode().getStatus())
-				.body(ApiResponseDto.fail(ex.getErrorCode().getStatus(), ex.getErrorCode().getMessage()));
+			.body(ApiResponseDto.fail(ex.getErrorCode().getStatus(), ex.getErrorCode().getMessage()));
 	}
 
 	/**
@@ -53,22 +55,23 @@ public class GlobalExceptionHandler {
 	 */
 	@ExceptionHandler(Exception.class)
 	public ResponseEntity<ApiResponseDto<Void>> handleServerError(Exception ex) {
+		log.error("Internal Server Error", ex); // 예외 스택 트레이스 로깅 추가
 		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-				.body(ApiResponseDto.fail(
-						CommonErrorCode.INTERNAL_SERVER_ERROR.getStatus(),
-						CommonErrorCode.INTERNAL_SERVER_ERROR.getMessage()
-				));
+			.body(ApiResponseDto.fail(
+				CommonErrorCode.INTERNAL_SERVER_ERROR.getStatus(),
+				CommonErrorCode.INTERNAL_SERVER_ERROR.getMessage()
+			));
 	}
 
 	/**
 	 *  Auth 에러 처리
 	 *  로그인 관련 예외를 처리합니다.
-	*/
+	 */
 	@ExceptionHandler(AuthException.class)
 	public ResponseEntity<ApiResponseDto<Void>> handleAuthException(
-			jabaclass.user.auth.application.exception.AuthException ex) {
+		jabaclass.user.auth.application.exception.AuthException ex) {
 		return ResponseEntity
-				.status(ex.getStatus())
-				.body(ApiResponseDto.fail(ex.getStatus(), ex.getMessage()));
+			.status(ex.getStatus())
+			.body(ApiResponseDto.fail(ex.getStatus(), ex.getMessage()));
 	}
 }

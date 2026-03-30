@@ -21,12 +21,13 @@ import jabaclass.product.domain.model.Schedule;
 import jabaclass.product.domain.model.status.OrderStatus;
 import jabaclass.product.domain.model.status.ReservedStatus;
 import jabaclass.product.domain.repository.ScheduleRepository;
-import jabaclass.product.infrastructure.acl.dto.SellerResponseDto;
 import jabaclass.product.infrastructure.acl.dto.SellerRole;
+import jabaclass.product.infrastructure.acl.dto.response.UserResponseDto;
 import jabaclass.product.presentation.dto.request.CreateProductUserRequestDto;
 import jabaclass.product.presentation.dto.request.CreateScheduleRequestDto;
 import jabaclass.product.presentation.dto.request.OrderRequestDto;
 import jabaclass.product.presentation.dto.request.UpdateScheduleRequestDto;
+import jabaclass.product.presentation.dto.respose.AvailabilityScheduleResponseDto;
 import jabaclass.product.presentation.dto.respose.DeleteScheduleResposeDto;
 import jabaclass.product.presentation.dto.respose.OrderResponseDto;
 import jabaclass.product.presentation.dto.respose.ProductUserResponseDto;
@@ -50,12 +51,12 @@ public class ScheduleService implements ScheduleUseCase {
 	@Override
 	@Transactional
 	public SchedulesResponseDto create(CreateScheduleRequestDto requestDto, UUID productId) {
-		SellerResponseDto seller = validateAndGetSeller();
+		UserResponseDto seller = validateAndGetSeller();
 
 		// 상품 존재하는지 확인
 		Product product = productUseCase.findByIdOrThrow(productId);
 		// 본인 상품인지 확인
-		productUseCase.matchProductAndSellerId(productId, seller.sellerId());
+		productUseCase.matchProductAndSellerId(productId, seller.userId());
 
 		// 날짜/시간 형태
 		Schedule schedule = new Schedule();
@@ -93,14 +94,14 @@ public class ScheduleService implements ScheduleUseCase {
 	@Override
 	@Transactional
 	public DeleteScheduleResposeDto delete(UUID productId, UUID scheduleId) {
-		SellerResponseDto seller = validateAndGetSeller();
+		UserResponseDto seller = validateAndGetSeller();
 
 		// 상품 존재하는지 확인
 		Product product = productUseCase.findByIdOrThrow(productId);
 		// 상품 일자가 존재하는지
 		Schedule schedule = findByIdOrThrow(scheduleId);
 		// 본인 상품인지 확인
-		productUseCase.matchProductAndSellerId(product.getId(), seller.sellerId());
+		productUseCase.matchProductAndSellerId(product.getId(), seller.userId());
 
 		if (!schedule.getProductId().equals(product.getId())) {
 			throw new BusinessException(CommonErrorCode.MATCH_FAIL);
@@ -115,14 +116,14 @@ public class ScheduleService implements ScheduleUseCase {
 	@Override
 	@Transactional
 	public SchedulesResponseDto update(UpdateScheduleRequestDto requestDto, UUID productId, UUID scheduleId) {
-		SellerResponseDto seller = validateAndGetSeller();
+		UserResponseDto seller = validateAndGetSeller();
 
 		// 상품 존재하는지 확인
 		productUseCase.findByIdOrThrow(productId);
 		// 상품 일자 데이터가 존재하는지 확인
 		Schedule schedule = findByIdOrThrow(scheduleId);
 		// 본인 상품인지 확인
-		productUseCase.matchProductAndSellerId(productId, seller.sellerId());
+		productUseCase.matchProductAndSellerId(productId, seller.userId());
 		// 시간 형태
 		LocalTime startTime = schedule.fTime(requestDto.startTime());
 		LocalTime endTime = schedule.fTime(requestDto.endTime());
@@ -216,15 +217,31 @@ public class ScheduleService implements ScheduleUseCase {
 		refreshScheduleStatus(schedule);
 	}
 
+	@Override
+	public AvailabilityScheduleResponseDto availabilitySchedule(UUID scheduleId) {
+		Schedule schedule = findByIdOrThrow(scheduleId);
+
+		// 해당 스케줄 예약자 수 확인
+		List<ProductUser> list = productUserUseCase.innserUserList(schedule.getId());
+		int reservedCount = list.stream()
+			.filter(l -> OrderStatus.PAID.equals(l.getStatus()))
+			.mapToInt(p -> p.getGuestCount())
+			.sum();
+
+		int remainingCount = schedule.getMaxCapacity() - reservedCount;
+
+		return AvailabilityScheduleResponseDto.from(schedule, reservedCount, remainingCount);
+	}
+
 	// 상품 일자 존재 여부/단일 상품 일자 검색
 	private Schedule findByIdOrThrow(UUID schedulesId) {
-		return scheduleRepository.findById(schedulesId)
+		return scheduleRepository.findByIdAndDeleteDtIsNull(schedulesId)
 			.orElseThrow(() -> new BusinessException(CommonErrorCode.SCHDULES_NOT_FOUND));
 	}
 
 	// 로그인 계정 여부
-	public SellerResponseDto findBySellerIdOrThrow(UUID sellerId) {
-		SellerResponseDto sellerInfo = sellerRepository.findSeller(sellerId)
+	public UserResponseDto findBySellerIdOrThrow(UUID sellerId) {
+		UserResponseDto sellerInfo = sellerRepository.findSeller(sellerId)
 			.orElseThrow(() -> new BusinessException(CommonErrorCode.SELLER_NOT_FOUND));
 
 		return sellerInfo;
@@ -267,10 +284,10 @@ public class ScheduleService implements ScheduleUseCase {
 		return maxCapacity - reservedCount;
 	}
 
-	private SellerResponseDto validateAndGetSeller() {
+	private UserResponseDto validateAndGetSeller() {
 		UUID sellerId = auditorAwareService.getCurrentAuditor()
 			.orElseThrow(() -> new BusinessException(CommonErrorCode.EMPTY_USER));
-		SellerResponseDto seller = findBySellerIdOrThrow(sellerId);
+		UserResponseDto seller = findBySellerIdOrThrow(sellerId);
 		SellerRole role = SellerRole.from(seller.role());
 		if (role != SellerRole.SELLER) {
 			throw new BusinessException(CommonErrorCode.NOT_SELLER);

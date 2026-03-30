@@ -4,10 +4,10 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import jabaclass.product.infrastructure.acl.dto.SellerResponseDto;
+import jabaclass.product.infrastructure.acl.dto.response.UserResponseDto;
 
 public interface SellerClient {
-	Optional<SellerResponseDto> findSeller(UUID sellerId);
+	Optional<UserResponseDto> findSeller(UUID sellerId);
 
-	Optional<List<SellerResponseDto>> findSellerList(List<UUID> sellerIds);
+	Optional<List<UserResponseDto>> findSellerList(List<UUID> sellerIds);
 }
