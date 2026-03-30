@@ -14,7 +14,7 @@ import java.util.UUID;
 @Entity
 @Table(name = "payments")
 @Getter
-public class Payment {
+public class Payment extends BaseEntity{
 
 	@Id
 	@Column(name = "id", nullable = false, updatable = false)
@@ -145,11 +145,19 @@ public class Payment {
 
 		this.status = PaymentStatus.FAILED;
 	}
+
 	public void markCancelled() {
 		if (this.status != PaymentStatus.PAID) {
 			throw new IllegalStateException("완료된 결제만 취소할 수 있습니다.");
 		}
 
 		this.status = PaymentStatus.CANCELLED;
+	}
+
+	public void expire() {
+		if (this.status != PaymentStatus.READY) {
+			throw new IllegalStateException("만료 가능한 상태가 아닙니다.");
+		}
+		this.status = PaymentStatus.EXPIRED;
 	}
 }
