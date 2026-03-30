@@ -1,6 +1,8 @@
 server.port: 9004
 spring:
-  application: name:product
+  application:
+    name: product
+
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     consumer:
@@ -27,7 +29,7 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
-    defer-datasource-initialization: true # 테스트 sql 삽입용
+    #    defer-datasource-initialization: true # 테스트 sql 삽입용
     show-sql: true
     properties:
       hibernate:
@@ -43,3 +45,6 @@ spring:
     api-docs:
       path: /v3/api-docs
       version: OPENAPI_3_0
+
+api:
+  user-host: ${USER_SERVICE_URL:http://localhost:9003}
