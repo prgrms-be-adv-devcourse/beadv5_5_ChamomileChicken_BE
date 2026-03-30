@@ -20,6 +20,7 @@ public class SecurityConfig {
 					"/swagger-ui/**",
 					"/v3/api-docs/**"
 				).permitAll()
+				.requestMatchers("/actuator/health").permitAll()
 				.anyRequest().permitAll() // 지금은 개발용
 			)
 			.formLogin(form -> form.disable());
