@@ -14,8 +14,8 @@ import jabaclass.product.application.usecase.ProductUserUseCase;
 import jabaclass.product.common.exception.CommonErrorCode;
 import jabaclass.product.domain.model.ProductUser;
 import jabaclass.product.domain.repository.ProductUserRepository;
-import jabaclass.product.infrastructure.acl.dto.SellerResponseDto;
 import jabaclass.product.infrastructure.acl.dto.SellerRole;
+import jabaclass.product.infrastructure.acl.dto.response.UserResponseDto;
 import jabaclass.product.presentation.dto.request.CreateProductUserRequestDto;
 import jabaclass.product.presentation.dto.respose.ProductUserResponseDto;
 import lombok.RequiredArgsConstructor;
@@ -44,15 +44,15 @@ public class ProductUserService implements ProductUserUseCase {
 			.toList();
 
 		// seller List 가져오기
-		List<SellerResponseDto> sellerList = sellerRepository.findSellerList(uuidList)
+		List<UserResponseDto> sellerList = sellerRepository.findSellerList(uuidList)
 			.orElseThrow(() -> new BusinessException(CommonErrorCode.SELLER_NOT_FOUND));
 
 		// seller를 map으로 변환
 		Map<UUID, String> sellerMap =
 			sellerList.stream()
 				.collect(Collectors.toMap(
-						SellerResponseDto::sellerId,
-						SellerResponseDto::sellerName
+						UserResponseDto::userId,
+						UserResponseDto::name
 					)
 				);
 
@@ -76,11 +76,11 @@ public class ProductUserService implements ProductUserUseCase {
 			.status(requestDto.status())
 			.build();
 
-		SellerResponseDto seller = findBySellerIdOrThrow(user.getUserId());
+		UserResponseDto seller = findBySellerIdOrThrow(user.getUserId());
 
 		ProductUser saved = pUserRepository.save(user);
 
-		return ProductUserResponseDto.from(saved, seller.sellerName());
+		return ProductUserResponseDto.from(saved, seller.name());
 	}
 
 	// 외부용
@@ -107,17 +107,17 @@ public class ProductUserService implements ProductUserUseCase {
 	}
 
 	// 로그인 계정 여부
-	public SellerResponseDto findBySellerIdOrThrow(UUID sellerId) {
-		SellerResponseDto sellerInfo = sellerRepository.findSeller(sellerId)
+	public UserResponseDto findBySellerIdOrThrow(UUID sellerId) {
+		UserResponseDto sellerInfo = sellerRepository.findSeller(sellerId)
 			.orElseThrow(() -> new BusinessException(CommonErrorCode.SELLER_NOT_FOUND));
 
 		return sellerInfo;
 	}
 
-	private SellerResponseDto validateAndGetSeller() {
+	private UserResponseDto validateAndGetSeller() {
 		UUID sellerId = auditorAwareService.getCurrentAuditor()
 			.orElseThrow(() -> new BusinessException(CommonErrorCode.EMPTY_USER));
-		SellerResponseDto seller = findBySellerIdOrThrow(sellerId);
+		UserResponseDto seller = findBySellerIdOrThrow(sellerId);
 		SellerRole role = SellerRole.from(seller.role());
 		if (role != SellerRole.SELLER) {
 			throw new BusinessException(CommonErrorCode.NOT_SELLER);

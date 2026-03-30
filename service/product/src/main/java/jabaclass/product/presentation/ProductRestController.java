@@ -19,13 +19,13 @@ import jabaclass.product.application.usecase.ProductUseCase;
 import jabaclass.product.application.usecase.ProductUserUseCase;
 import jabaclass.product.application.usecase.ScheduleUseCase;
 import jabaclass.product.common.exception.ApiResponseDto;
-import jabaclass.product.domain.model.status.OrderStatus;
 import jabaclass.product.presentation.dto.request.CreateProductRequestDto;
 import jabaclass.product.presentation.dto.request.CreateScheduleRequestDto;
 import jabaclass.product.presentation.dto.request.OrderRequestDto;
 import jabaclass.product.presentation.dto.request.SearchProductRequestDto;
 import jabaclass.product.presentation.dto.request.UpdateProductRequestDto;
 import jabaclass.product.presentation.dto.request.UpdateScheduleRequestDto;
+import jabaclass.product.presentation.dto.respose.AvailabilityScheduleResponseDto;
 import jabaclass.product.presentation.dto.respose.DeleteProductResposeDto;
 import jabaclass.product.presentation.dto.respose.DeleteScheduleResposeDto;
 import jabaclass.product.presentation.dto.respose.OrderResponseDto;
@@ -176,17 +176,13 @@ public class ProductRestController implements ProductOpenApi {
 	}
 
 	@Override
-	@DeleteMapping("/{productId}/schedules/{scheduleId}/user")
-	public ResponseEntity<ApiResponseDto<ProductUserResponseDto>> schedulesDeleteUser(UUID productUserId) {
-		return null;
-	}
+	@GetMapping("/{scheduleId}/availability")
+	public ResponseEntity<ApiResponseDto<AvailabilityScheduleResponseDto>> schedulesaAvailability(
+		@PathVariable UUID scheduleId) {
+		AvailabilityScheduleResponseDto response = scheduleUseCase.availabilitySchedule(scheduleId);
 
-	@Override
-	@PutMapping("/{productId}/schedules/{scheduleId}/user")
-	public ResponseEntity<ApiResponseDto<ProductUserResponseDto>> schedulesUpdateUserStatus(
-		@RequestBody OrderStatus status
-	) {
-		return null;
+		return ResponseEntity.ok()
+			.body(ApiResponseDto.success(HttpStatus.OK, "성공적으로 검색 되었습니다.", response));
 	}
 
 }

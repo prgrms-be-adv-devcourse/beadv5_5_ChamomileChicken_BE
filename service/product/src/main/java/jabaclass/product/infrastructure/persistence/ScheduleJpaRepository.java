@@ -3,6 +3,7 @@ package jabaclass.product.infrastructure.persistence;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -50,4 +51,6 @@ public interface ScheduleJpaRepository extends JpaRepository<Schedule, UUID> {
 	);
 
 	List<Schedule> findByProductIdAndDeleteDtIsNull(UUID productId);
+
+	Optional<Schedule> findByIdAndDeleteDtIsNull(UUID schedulesId);
 }

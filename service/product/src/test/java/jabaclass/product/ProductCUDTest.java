@@ -1,11 +1,8 @@
 package jabaclass.product;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.BDDMockito.then;
+import static org.assertj.core.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.BDDMockito.*;
 
 import java.math.BigDecimal;
 import java.util.Optional;
@@ -28,7 +25,7 @@ import jabaclass.product.application.service.ProductService;
 import jabaclass.product.domain.model.Product;
 import jabaclass.product.domain.model.status.ProductStatus;
 import jabaclass.product.domain.repository.ProductRepository;
-import jabaclass.product.infrastructure.acl.dto.SellerResponseDto;
+import jabaclass.product.infrastructure.acl.dto.response.UserResponseDto;
 import jabaclass.product.infrastructure.event.dto.ProductEventResponseDto;
 import jabaclass.product.presentation.dto.request.CreateProductRequestDto;
 import jabaclass.product.presentation.dto.request.UpdateProductRequestDto;
@@ -92,7 +89,7 @@ class ProductCUDTest {
 		);
 		given(auditorAwareService.getCurrentAuditor()).willReturn(Optional.of(SELLER_ID));
 		given(sellerRepository.findSeller(eq(SELLER_ID)))
-			.willReturn(Optional.of(new SellerResponseDto(SELLER_ID, "테스트 판매자", "SELLER")));
+			.willReturn(Optional.of(new UserResponseDto(SELLER_ID, "테스트 판매자", "SELLER")));
 		given(productRepository.save(any(Product.class)))
 			.willAnswer(invocation -> {
 				Product saved = invocation.getArgument(0);
@@ -212,7 +209,7 @@ class ProductCUDTest {
 		);
 		given(auditorAwareService.getCurrentAuditor()).willReturn(Optional.of(SELLER_ID));
 		given(sellerRepository.findSeller(any(UUID.class)))
-			.willReturn(Optional.of(new SellerResponseDto(SELLER_ID, "일반 사용자", "USER")));
+			.willReturn(Optional.of(new UserResponseDto(SELLER_ID, "일반 사용자", "USER")));
 
 		assertThatThrownBy(() -> productService.create(request))
 			.isInstanceOf(BusinessException.class)
@@ -231,7 +228,7 @@ class ProductCUDTest {
 		);
 		given(auditorAwareService.getCurrentAuditor()).willReturn(Optional.of(SELLER_ID));
 		given(sellerRepository.findSeller(eq(SELLER_ID)))
-			.willReturn(Optional.of(new SellerResponseDto(SELLER_ID, "테스트 판매자", "SELLER")));
+			.willReturn(Optional.of(new UserResponseDto(SELLER_ID, "테스트 판매자", "SELLER")));
 		given(productRepository.findById(productId)).willReturn(Optional.of(product));
 		given(productRepository.findByIdAndSellerId(productId, SELLER_ID)).willReturn(Optional.of(product));
 
@@ -254,7 +251,7 @@ class ProductCUDTest {
 		);
 		given(auditorAwareService.getCurrentAuditor()).willReturn(Optional.of(SELLER_ID));
 		given(sellerRepository.findSeller(eq(SELLER_ID)))
-			.willReturn(Optional.of(new SellerResponseDto(SELLER_ID, "테스트 판매자", "SELLER")));
+			.willReturn(Optional.of(new UserResponseDto(SELLER_ID, "테스트 판매자", "SELLER")));
 		given(productRepository.findById(missingProductId)).willReturn(Optional.empty());
 
 		assertThatThrownBy(() -> productService.update(request, missingProductId))
@@ -266,7 +263,7 @@ class ProductCUDTest {
 	void 상품_삭제에_성공한다() {
 		given(auditorAwareService.getCurrentAuditor()).willReturn(Optional.of(SELLER_ID));
 		given(sellerRepository.findSeller(eq(SELLER_ID)))
-			.willReturn(Optional.of(new SellerResponseDto(SELLER_ID, "테스트 판매자", "SELLER")));
+			.willReturn(Optional.of(new UserResponseDto(SELLER_ID, "테스트 판매자", "SELLER")));
 		given(productRepository.findById(productId)).willReturn(Optional.of(product));
 		given(productRepository.findByIdAndSellerId(productId, SELLER_ID)).willReturn(Optional.of(product));
 
@@ -281,7 +278,7 @@ class ProductCUDTest {
 		UUID missingProductId = UUID.randomUUID();
 		given(auditorAwareService.getCurrentAuditor()).willReturn(Optional.of(SELLER_ID));
 		given(sellerRepository.findSeller(eq(SELLER_ID)))
-			.willReturn(Optional.of(new SellerResponseDto(SELLER_ID, "테스트 판매자", "SELLER")));
+			.willReturn(Optional.of(new UserResponseDto(SELLER_ID, "테스트 판매자", "SELLER")));
 		given(productRepository.findById(missingProductId)).willReturn(Optional.empty());
 
 		assertThatThrownBy(() -> productService.delete(missingProductId))
@@ -303,7 +300,7 @@ class ProductCUDTest {
 		given(sellerRepository.findSeller(any(UUID.class)))
 			.willAnswer(invocation -> {
 				UUID id = invocation.getArgument(0);
-				return Optional.of(new SellerResponseDto(id, "판매자", "SELLER"));
+				return Optional.of(new UserResponseDto(id, "판매자", "SELLER"));
 			});
 		given(productRepository.findById(any(UUID.class))).willReturn(Optional.of(product));
 		given(productRepository.findByIdAndSellerId(any(UUID.class), any(UUID.class))).willReturn(Optional.empty());

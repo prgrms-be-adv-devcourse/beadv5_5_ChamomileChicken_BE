@@ -1,16 +1,10 @@
 package jabaclass.product;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.BDDMockito.then;
-import static org.mockito.Mockito.lenient;
-import static org.mockito.Mockito.never;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.assertj.core.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.BDDMockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -53,12 +47,13 @@ import jabaclass.product.domain.model.status.OrderStatus;
 import jabaclass.product.domain.model.status.ProductStatus;
 import jabaclass.product.domain.model.status.ReservedStatus;
 import jabaclass.product.domain.repository.ScheduleRepository;
-import jabaclass.product.infrastructure.acl.dto.SellerResponseDto;
+import jabaclass.product.infrastructure.acl.dto.response.UserResponseDto;
 import jabaclass.product.presentation.ProductRestController;
 import jabaclass.product.presentation.dto.request.CreateProductUserRequestDto;
 import jabaclass.product.presentation.dto.request.CreateScheduleRequestDto;
 import jabaclass.product.presentation.dto.request.OrderRequestDto;
 import jabaclass.product.presentation.dto.request.UpdateScheduleRequestDto;
+import jabaclass.product.presentation.dto.respose.AvailabilityScheduleResponseDto;
 import jabaclass.product.presentation.dto.respose.DeleteScheduleResposeDto;
 import jabaclass.product.presentation.dto.respose.OrderResponseDto;
 import jabaclass.product.presentation.dto.respose.ProductUserResponseDto;
@@ -250,7 +245,7 @@ class ScheduleTest {
 	@Test
 	void 일정_수정에_성공한다() {
 		prepareAuthorizedSellerAndOwnedProduct();
-		given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(schedule));
+		given(scheduleRepository.findByIdAndDeleteDtIsNull(SCHEDULE_ID)).willReturn(Optional.of(schedule));
 		given(scheduleRepository.findConflictSchedulesNoId(
 			eq(PRODUCT_ID),
 			eq(schedule.getScheduleDt()),
@@ -271,7 +266,7 @@ class ScheduleTest {
 	@Test
 	void 수정할_일정이_없으면_일정_수정에_실패한다() {
 		prepareAuthorizedSellerAndOwnedProduct();
-		given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.empty());
+		given(scheduleRepository.findByIdAndDeleteDtIsNull(SCHEDULE_ID)).willReturn(Optional.empty());
 
 		assertBusinessException(
 			() -> scheduleService.update(updateRequest, PRODUCT_ID, SCHEDULE_ID),
@@ -289,7 +284,7 @@ class ScheduleTest {
 			5
 		);
 		prepareAuthorizedSellerAndOwnedProduct();
-		given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(schedule));
+		given(scheduleRepository.findByIdAndDeleteDtIsNull(SCHEDULE_ID)).willReturn(Optional.of(schedule));
 
 		assertBusinessException(
 			() -> scheduleService.update(request, PRODUCT_ID, SCHEDULE_ID),
@@ -307,7 +302,7 @@ class ScheduleTest {
 			5
 		);
 		prepareAuthorizedSellerAndOwnedProduct();
-		given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(schedule));
+		given(scheduleRepository.findByIdAndDeleteDtIsNull(SCHEDULE_ID)).willReturn(Optional.of(schedule));
 
 		assertBusinessException(
 			() -> scheduleService.update(request, PRODUCT_ID, SCHEDULE_ID),
@@ -319,7 +314,7 @@ class ScheduleTest {
 	@Test
 	void 겹치는_수정_일정이_있으면_일정_수정에_실패한다() {
 		prepareAuthorizedSellerAndOwnedProduct();
-		given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(schedule));
+		given(scheduleRepository.findByIdAndDeleteDtIsNull(SCHEDULE_ID)).willReturn(Optional.of(schedule));
 		given(scheduleRepository.findConflictSchedulesNoId(
 			eq(PRODUCT_ID),
 			eq(schedule.getScheduleDt()),
@@ -348,7 +343,7 @@ class ScheduleTest {
 	void 판매자_권한이_아니면_일정_수정에_실패한다() {
 		given(auditorAwareService.getCurrentAuditor()).willReturn(Optional.of(SELLER_ID));
 		given(sellerRepository.findSeller(SELLER_ID))
-			.willReturn(Optional.of(new SellerResponseDto(SELLER_ID, "user", "USER")));
+			.willReturn(Optional.of(new UserResponseDto(SELLER_ID, "user", "USER")));
 
 		assertBusinessException(
 			() -> scheduleService.update(updateRequest, PRODUCT_ID, SCHEDULE_ID),
@@ -361,7 +356,7 @@ class ScheduleTest {
 	void 상품이_존재하지_않으면_일정_수정에_실패한다() {
 		given(auditorAwareService.getCurrentAuditor()).willReturn(Optional.of(SELLER_ID));
 		given(sellerRepository.findSeller(SELLER_ID))
-			.willReturn(Optional.of(new SellerResponseDto(SELLER_ID, "seller", "SELLER")));
+			.willReturn(Optional.of(new UserResponseDto(SELLER_ID, "seller", "SELLER")));
 		given(productUseCase.findByIdOrThrow(PRODUCT_ID))
 			.willThrow(new BusinessException(CommonErrorCode.PRODUCT_NOT_FOUND));
 
@@ -400,7 +395,7 @@ class ScheduleTest {
 	}
 
 	@Test
-	void 수정_DTO에서_시작시간_형식이_아니면_검증에_실패한다() {
+	void 수정_DTO에서_형식이_올바르지_않으면_검증에_실패한다() {
 		UpdateScheduleRequestDto request = new UpdateScheduleRequestDto(
 			"9:00",
 			"14-00",
@@ -417,7 +412,7 @@ class ScheduleTest {
 	}
 
 	@Test
-	void 예약_검증에_성공하면_유저예약을_생성하고_true를_반환한다() {
+	void 예약_검증에_성공하면_예약을_생성하고_true를_반환한다() {
 		OrderRequestDto request = new OrderRequestDto(
 			SCHEDULE_ID,
 			USER_ID,
@@ -440,7 +435,7 @@ class ScheduleTest {
 			USER_ID,
 			null
 		);
-		given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(schedule));
+		given(scheduleRepository.findByIdAndDeleteDtIsNull(SCHEDULE_ID)).willReturn(Optional.of(schedule));
 		given(productUserUseCase.innserUserList(SCHEDULE_ID)).willReturn(List.of(paidUser));
 		given(productUserUseCase.create(any(CreateProductUserRequestDto.class))).willReturn(createdUser);
 		given(productUseCase.findByIdOrThrow(PRODUCT_ID)).willReturn(product);
@@ -455,7 +450,7 @@ class ScheduleTest {
 	}
 
 	@Test
-	void 예약_수량이_남은_재고보다_많으면_false를_반환한다() {
+	void 예약_수량이_재고보다_많으면_false를_반환한다() {
 		OrderRequestDto request = new OrderRequestDto(
 			SCHEDULE_ID,
 			USER_ID,
@@ -469,7 +464,7 @@ class ScheduleTest {
 			.guestCount(3)
 			.status(OrderStatus.PAID)
 			.build();
-		given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(schedule));
+		given(scheduleRepository.findByIdAndDeleteDtIsNull(SCHEDULE_ID)).willReturn(Optional.of(schedule));
 		given(productUserUseCase.innserUserList(SCHEDULE_ID)).willReturn(List.of(paidUser));
 		given(productUseCase.findByIdOrThrow(PRODUCT_ID)).willReturn(product);
 
@@ -484,7 +479,7 @@ class ScheduleTest {
 	}
 
 	@Test
-	void 재고_상태복원_요청이_오면_예약상태를_변경한다() {
+	void 재고_복원_요청이_오면_예약_상태를_변경한다() {
 		ProductUser productUser = ProductUser.builder()
 			.productScheduleId(SCHEDULE_ID)
 			.userId(USER_ID)
@@ -544,7 +539,7 @@ class ScheduleTest {
 	@Test
 	void 일정_삭제에_성공한다() {
 		prepareAuthorizedSellerAndOwnedProduct();
-		given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(schedule));
+		given(scheduleRepository.findByIdAndDeleteDtIsNull(SCHEDULE_ID)).willReturn(Optional.of(schedule));
 
 		DeleteScheduleResposeDto result = scheduleService.delete(PRODUCT_ID, SCHEDULE_ID);
 
@@ -631,10 +626,53 @@ class ScheduleTest {
 		then(productUserUseCase).should().getUser(SCHEDULE_ID);
 	}
 
+	@Test
+	void 일정별_예약_상태를_조회한다() {
+		ProductUser paidUser = ProductUser.builder()
+			.productScheduleId(SCHEDULE_ID)
+			.userId(UUID.randomUUID())
+			.guestCount(4)
+			.status(OrderStatus.PAID)
+			.build();
+		ProductUser pendingUser = ProductUser.builder()
+			.productScheduleId(SCHEDULE_ID)
+			.userId(UUID.randomUUID())
+			.guestCount(2)
+			.status(OrderStatus.PENDING)
+			.build();
+		given(scheduleRepository.findByIdAndDeleteDtIsNull(SCHEDULE_ID)).willReturn(Optional.of(schedule));
+		given(productUserUseCase.innserUserList(SCHEDULE_ID)).willReturn(List.of(paidUser, pendingUser));
+
+		AvailabilityScheduleResponseDto result = scheduleService.availabilitySchedule(SCHEDULE_ID);
+
+		assertThat(result.scheduleId()).isEqualTo(SCHEDULE_ID);
+		assertThat(result.reservationStatus()).isEqualTo(ReservedStatus.AVAILABLE);
+		assertThat(result.maxCapacity()).isEqualTo(10);
+		assertThat(result.reservedCount()).isEqualTo(4);
+		assertThat(result.remainingCount()).isEqualTo(6);
+	}
+
+	@Test
+	void 일정별_예약_상태_조회_요청이_들어오면_유스케이스를_호출한다() {
+		AvailabilityScheduleResponseDto response = new AvailabilityScheduleResponseDto(
+			SCHEDULE_ID,
+			ReservedStatus.AVAILABLE,
+			10,
+			4,
+			6
+		);
+		given(scheduleUseCase.availabilitySchedule(SCHEDULE_ID)).willReturn(response);
+
+		ResponseEntity<?> result = productRestController.schedulesaAvailability(SCHEDULE_ID);
+
+		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+		then(scheduleUseCase).should().availabilitySchedule(SCHEDULE_ID);
+	}
+
 	private void prepareAuthorizedSellerAndOwnedProduct() {
 		given(auditorAwareService.getCurrentAuditor()).willReturn(Optional.of(SELLER_ID));
 		given(sellerRepository.findSeller(eq(SELLER_ID)))
-			.willReturn(Optional.of(new SellerResponseDto(SELLER_ID, "seller", "SELLER")));
+			.willReturn(Optional.of(new UserResponseDto(SELLER_ID, "seller", "SELLER")));
 		given(productUseCase.findByIdOrThrow(eq(PRODUCT_ID))).willReturn(product);
 		lenient().when(productUseCase.matchProductAndSellerId(eq(PRODUCT_ID), eq(SELLER_ID))).thenReturn(product);
 	}

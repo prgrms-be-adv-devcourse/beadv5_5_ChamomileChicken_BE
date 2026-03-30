@@ -42,6 +42,9 @@ public class SecurityConfig {
 			.requestMatchers("/api/v1/auth/reissue").permitAll()
 			.requestMatchers("/api/v1/users/register").permitAll()
 			.requestMatchers("/api/v1/users/email-check").permitAll()
+			// 403 에러로  임시 작업
+			.requestMatchers("/api/v1/users/bulk").permitAll()
+			.requestMatchers("/api/v1/users/me").permitAll()
 			.requestMatchers("/api/v1/email/**").permitAll()
 			.requestMatchers("/api/v1/deposits/validate").permitAll()
 			.requestMatchers("/api/v1/deposits/use").permitAll()

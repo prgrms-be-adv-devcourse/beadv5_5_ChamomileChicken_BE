@@ -1,5 +1,7 @@
 package jabaclass.product.domain.model.status;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+
 public enum ProductStatus {
 	// 공개
 	ENABLE("공개"),
@@ -14,6 +16,11 @@ public enum ProductStatus {
 
 	public String getStatusName() {
 		return this.statusName;
+	}
+
+	@JsonCreator
+	public static ProductStatus from(String value) {
+		return ProductStatus.valueOf(value.replace("\"", ""));
 	}
 
 }

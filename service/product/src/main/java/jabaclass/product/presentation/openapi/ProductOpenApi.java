@@ -11,13 +11,13 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jabaclass.product.common.exception.ApiResponseDto;
-import jabaclass.product.domain.model.status.OrderStatus;
 import jabaclass.product.presentation.dto.request.CreateProductRequestDto;
 import jabaclass.product.presentation.dto.request.CreateScheduleRequestDto;
 import jabaclass.product.presentation.dto.request.OrderRequestDto;
 import jabaclass.product.presentation.dto.request.SearchProductRequestDto;
 import jabaclass.product.presentation.dto.request.UpdateProductRequestDto;
 import jabaclass.product.presentation.dto.request.UpdateScheduleRequestDto;
+import jabaclass.product.presentation.dto.respose.AvailabilityScheduleResponseDto;
 import jabaclass.product.presentation.dto.respose.DeleteProductResposeDto;
 import jabaclass.product.presentation.dto.respose.DeleteScheduleResposeDto;
 import jabaclass.product.presentation.dto.respose.OrderResponseDto;
@@ -162,26 +162,15 @@ public interface ProductOpenApi {
 	@CommonErrorResponses
 	ResponseEntity<ApiResponseDto<List<ProductUserResponseDto>>> schedulesSelectUser(UUID scheduleId);
 
-	@Operation(summary = "예약 유저 삭제", description = "예약 유저 삭제 입니다.")
+	@Operation(summary = "상품 일정 예약 상태 확인", description = "상품 일정의 예약 상태를 확인 합니다.")
 	@ApiResponse(
 		responseCode = "200",
-		description = "예약 삭제 성공",
+		description = "스케줄 예약 상태 확인 성공",
 		content = @Content(
-			schema = @Schema(implementation = ProductUserResponseDto.class)
+			schema = @Schema(implementation = SchedulesResponseDto.class)
 		)
 	)
 	@CommonErrorResponses
-	ResponseEntity<ApiResponseDto<ProductUserResponseDto>> schedulesDeleteUser(UUID productUserId);
-
-	@Operation(summary = "예약 유저 수정", description = "예약 유저 수정 입니다.")
-	@ApiResponse(
-		responseCode = "200",
-		description = "예약 유저 성공",
-		content = @Content(
-			schema = @Schema(implementation = ProductUserResponseDto.class)
-		)
-	)
-	@CommonErrorResponses
-	ResponseEntity<ApiResponseDto<ProductUserResponseDto>> schedulesUpdateUserStatus(OrderStatus status);
+	ResponseEntity<ApiResponseDto<AvailabilityScheduleResponseDto>> schedulesaAvailability(UUID scheduleId);
 
 }
