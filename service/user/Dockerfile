@@ -11,7 +11,7 @@ COPY common /app/common
 COPY service/build.gradle /app/service/build.gradle
 COPY service/user /app/service/user
 
-# user 모듈 bootJar 빌드
+# user 모듈만 bootJar 빌드
 RUN gradle :service:user:bootJar -x test --no-daemon
 
 # Stage 2: Run
@@ -21,14 +21,10 @@ WORKDIR /app
 # build 결과 복사
 COPY --from=build /app/service/user/build/libs/*.jar app.jar
 
-# Spring profile
 ENV SPRING_PROFILES_ACTIVE=prod
 
-# 로그 디렉토리
 VOLUME /app/logs
 
-# user 모듈 포트
 EXPOSE 9003
 
-# 실행
 ENTRYPOINT ["java", "-jar", "app.jar"]
