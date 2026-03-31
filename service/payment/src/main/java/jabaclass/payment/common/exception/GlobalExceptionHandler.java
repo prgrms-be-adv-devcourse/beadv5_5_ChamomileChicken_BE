@@ -16,10 +16,10 @@ public class GlobalExceptionHandler {
 
 		PaymentErrorCode errorCode = ex.getErrorCode();
 
-		log.warn("[PaymentException] code={}, message={}, cause={}",
+		log.warn("[PaymentException] code={}, message={}",
 			errorCode.name(),
 			errorCode.getMessage(),
-			ex.getMessage()
+			ex
 		);
 
 		return ResponseEntity
