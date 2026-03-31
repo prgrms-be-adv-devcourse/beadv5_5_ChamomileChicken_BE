@@ -1,5 +1,7 @@
 package jabaclass.payment.domain;
 
+import jabaclass.payment.common.exception.PaymentErrorCode;
+import jabaclass.payment.common.exception.PaymentException;
 import jabaclass.payment.domain.model.Payment;
 import jabaclass.payment.domain.model.PaymentStatus;
 import jabaclass.payment.domain.model.PaymentMethod;
@@ -62,8 +64,8 @@ class PaymentTest {
 			null,
 			BigDecimal.valueOf(500)
 		))
-			.isInstanceOf(IllegalArgumentException.class)
-			.hasMessage("금액은 null일 수 없습니다");
+			.isInstanceOf(PaymentException.class)
+			.hasMessage(PaymentErrorCode.INVALID_AMOUNT.getMessage());
 	}
 
 	@Test
@@ -83,8 +85,8 @@ class PaymentTest {
 			BigDecimal.valueOf(1000),
 			null
 		))
-			.isInstanceOf(IllegalArgumentException.class)
-			.hasMessage("금액은 null일 수 없습니다");
+			.isInstanceOf(PaymentException.class)
+			.hasMessage(PaymentErrorCode.INVALID_AMOUNT.getMessage());
 	}
 
 	@Test
@@ -104,8 +106,8 @@ class PaymentTest {
 			BigDecimal.valueOf(-1),
 			BigDecimal.valueOf(500)
 		))
-			.isInstanceOf(IllegalArgumentException.class)
-			.hasMessage("paymentAmount는 0 이상이어야 합니다");
+			.isInstanceOf(PaymentException.class)
+			.hasMessage(PaymentErrorCode.INVALID_NEGATIVE_AMOUNT.getMessage());
 	}
 
 	@Test
@@ -125,8 +127,8 @@ class PaymentTest {
 			BigDecimal.valueOf(1000),
 			BigDecimal.valueOf(-1)
 		))
-			.isInstanceOf(IllegalArgumentException.class)
-			.hasMessage("depositAmount는 0 이상이어야 합니다");
+			.isInstanceOf(PaymentException.class)
+			.hasMessage(PaymentErrorCode.INVALID_NEGATIVE_AMOUNT.getMessage());
 	}
 
 	@Test
@@ -140,7 +142,7 @@ class PaymentTest {
 			BigDecimal.valueOf(1000),
 			BigDecimal.ZERO
 		))
-			.isInstanceOf(IllegalArgumentException.class)
-			.hasMessage("productUserId는 null일 수 없습니다");
+			.isInstanceOf(PaymentException.class)
+			.hasMessage(PaymentErrorCode.INVALID_PRODUCT_USER.getMessage());
 	}
 }

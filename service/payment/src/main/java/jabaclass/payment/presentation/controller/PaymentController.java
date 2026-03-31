@@ -1,6 +1,7 @@
 package jabaclass.payment.presentation.controller;
 
 import jabaclass.payment.application.usecase.PaymentUseCase;
+import jabaclass.payment.common.dto.ApiResponseDto;
 import jabaclass.payment.presentation.dto.request.ConfirmPaymentRequestDto;
 import jabaclass.payment.presentation.dto.request.PreparePaymentRequestDto;
 import jabaclass.payment.presentation.dto.request.RefundPaymentRequestDto;
@@ -22,23 +23,40 @@ public class PaymentController implements PaymentApi {
 
 	@Override
 	@PostMapping("/api/v1/payments/prepare")
-	public ResponseEntity<PaymentResponseDto> preparePayment(@RequestBody PreparePaymentRequestDto request) {
+	public ResponseEntity<ApiResponseDto<PaymentResponseDto>> preparePayment(@RequestBody PreparePaymentRequestDto request) {
 		PaymentResponseDto response = paymentUseCase.create(request);
 
-		return ResponseEntity.status(HttpStatus.CREATED).body(response);
+		return ResponseEntity.status(HttpStatus.CREATED)
+			.body(ApiResponseDto.success(
+				HttpStatus.CREATED,
+				"결제 생성 성공",
+				response
+			));
 	}
 
 	@Override
 	@PostMapping("/api/v1/payments/confirm")
-	public ResponseEntity<PaymentResponseDto> confirmPayment(@RequestBody ConfirmPaymentRequestDto request) {
+	public ResponseEntity<ApiResponseDto<PaymentResponseDto>> confirmPayment(@RequestBody ConfirmPaymentRequestDto request) {
 		PaymentResponseDto response = paymentUseCase.confirm(request);
 
-		return ResponseEntity.ok(response);
+		return ResponseEntity.ok(
+			ApiResponseDto.success(
+				HttpStatus.OK,
+				"결제 성공",
+				response
+			)
+		);
 	}
 
 	@Override
 	@PostMapping("/api/v1/refunds")
-	public ResponseEntity<RefundPaymentResponseDto> refundPayment(@RequestBody RefundPaymentRequestDto request) {
-		return ResponseEntity.ok(paymentUseCase.refund(request));
+	public ResponseEntity<ApiResponseDto<RefundPaymentResponseDto>> refundPayment(@RequestBody RefundPaymentRequestDto request) {
+		return ResponseEntity.ok(
+			ApiResponseDto.success(
+				HttpStatus.OK,
+				"환불 성공",
+				paymentUseCase.refund(request)
+			)
+		);
 	}
 }

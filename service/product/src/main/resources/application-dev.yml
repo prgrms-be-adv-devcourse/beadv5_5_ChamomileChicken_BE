@@ -1,0 +1,37 @@
+api:
+  user-host: ${USER_SERVICE_URL:http://localhost:9003}
+
+internal:
+  file:
+    url: http://localhost:9000
+  api:
+    key: test-internal-key
+
+spring:
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:backend5}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    show-sql: true                     # SQL만 찍힘
+    properties:
+      hibernate:
+        format_sql: true               # 보기 좋게 들여쓰기
+        use_sql_comments: true         # 주석으로 쿼리 위치 표시
+    hibernate:
+      ddl-auto: update
+
+  springdoc:
+    swagger-ui:
+      path: /swagger-ui.html
+    api-docs:
+      path: /v3/api-docs
+      version: OPENAPI_3_0
+
+logging:
+  level:
+    org.hibernate.SQL: DEBUG            # 실제 실행되는 SQL
+    org.hibernate.type.descriptor.sql: TRACE  # 바인딩 파라미터까지

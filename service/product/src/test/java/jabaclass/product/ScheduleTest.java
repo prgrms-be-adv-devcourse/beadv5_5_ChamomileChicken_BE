@@ -104,7 +104,6 @@ class ScheduleTest {
 			.title("product-A")
 			.maxCapacity(10)
 			.description("test product")
-			.descriptionImage(UUID.randomUUID().toString())
 			.price(PRICE)
 			.status(ProductStatus.ENABLE)
 			.build();

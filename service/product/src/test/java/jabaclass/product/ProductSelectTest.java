@@ -3,6 +3,8 @@ package jabaclass.product;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.BDDMockito.*;
 
+import jabaclass.product.application.service.AuditorAwareService;
+import jabaclass.product.infrastructure.acl.client.FileConfirmClient;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
@@ -46,6 +48,12 @@ public class ProductSelectTest {
 	@Mock
 	private ApplicationEventPublisher publisher;
 
+	@Mock
+	private AuditorAwareService auditorAwareService;
+
+	@Mock
+	private FileConfirmClient fileConfirmClient;
+
 	private static final BigDecimal PRICE = new BigDecimal("1000.50");
 
 	private static final UUID SELLER_ID = UUID.fromString("123e4567-e89b-12d3-a456-426614174000");
@@ -61,7 +69,6 @@ public class ProductSelectTest {
 			.title("상품A")
 			.maxCapacity(10)
 			.description("테스트1")
-			.descriptionImage(UUID.randomUUID().toString())
 			.price(PRICE)
 			.status(ProductStatus.ENABLE)
 			.build();
@@ -70,7 +77,6 @@ public class ProductSelectTest {
 			.title("상품B")
 			.maxCapacity(3)
 			.description("테스트2")
-			.descriptionImage(UUID.randomUUID().toString())
 			.price(PRICE)
 			.status(ProductStatus.ENABLE)
 			.build();

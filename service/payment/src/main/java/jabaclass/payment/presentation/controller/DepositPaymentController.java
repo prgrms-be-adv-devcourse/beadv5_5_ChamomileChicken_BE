@@ -1,6 +1,7 @@
 package jabaclass.payment.presentation.controller;
 
 import jabaclass.payment.application.usecase.DepositPaymentUseCase;
+import jabaclass.payment.common.dto.ApiResponseDto;
 import jabaclass.payment.presentation.dto.request.ConfirmDepositPaymentRequestDto;
 import jabaclass.payment.presentation.dto.request.PrepareDepositPaymentRequestDto;
 import jabaclass.payment.presentation.dto.response.ConfirmDepositPaymentResponseDto;
@@ -22,19 +23,32 @@ public class DepositPaymentController implements DepositPaymentApi {
 
 	@Override
 	@PostMapping("/prepare")
-	public ResponseEntity<PrepareDepositPaymentResponseDto> prepareDepositPayment(
+	public ResponseEntity<ApiResponseDto<PrepareDepositPaymentResponseDto>> prepareDepositPayment(
 		@RequestBody PrepareDepositPaymentRequestDto request
 	) {
 		PrepareDepositPaymentResponseDto response = depositPaymentUseCase.prepare(request);
-		return ResponseEntity.status(HttpStatus.CREATED).body(response);
+
+		return ResponseEntity.status(HttpStatus.CREATED)
+			.body(ApiResponseDto.success(
+				HttpStatus.CREATED,
+				"예치금 결제 생성 성공",
+				response
+			));
 	}
 
 	@Override
 	@PostMapping("/confirm")
-	public ResponseEntity<ConfirmDepositPaymentResponseDto> confirmDepositPayment(
+	public ResponseEntity<ApiResponseDto<ConfirmDepositPaymentResponseDto>> confirmDepositPayment(
 		@RequestBody ConfirmDepositPaymentRequestDto request
 	) {
 		ConfirmDepositPaymentResponseDto response = depositPaymentUseCase.confirm(request);
-		return ResponseEntity.ok(response);
+
+		return ResponseEntity.ok(
+			ApiResponseDto.success(
+				HttpStatus.OK,
+				"예치금 결제 승인 성공",
+				response
+			)
+		);
 	}
 }
