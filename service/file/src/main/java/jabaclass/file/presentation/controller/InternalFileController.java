@@ -2,7 +2,9 @@ package jabaclass.file.presentation.controller;
 
 import jabaclass.file.application.usecase.ValidateFileUseCase;
 import jabaclass.file.common.dto.ApiResponseDto;
+import jabaclass.file.infrastructure.s3.S3Uploader;
 import jabaclass.file.presentation.dto.response.FileConfirmResponse;
+import jabaclass.file.presentation.dto.response.PresignedUrlResponse;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class InternalFileController {
 
     private final ValidateFileUseCase validateFileUseCase;
+    private final S3Uploader s3Uploader;
 
     // 단건 — product 단일 이미지 검증용
     @GetMapping("/{fileId}/confirm")
@@ -42,5 +45,17 @@ public class InternalFileController {
         return ResponseEntity
                 .status(HttpStatus.OK)
                 .body(ApiResponseDto.success(HttpStatus.OK, "파일 검증 성공", responses));
+    }
+
+    // storagePath 목록으로 presigned GET URL 일괄 발급
+    @PostMapping("/presigned-urls")
+    public ResponseEntity<ApiResponseDto<List<PresignedUrlResponse>>> getPresignedUrls(
+            @RequestBody List<String> storagePaths) {
+        List<PresignedUrlResponse> responses = storagePaths.stream()
+                .map(path -> new PresignedUrlResponse(path, s3Uploader.generatePresignedGetUrl(path)))
+                .toList();
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(ApiResponseDto.success(HttpStatus.OK, "Presigned URL 발급 성공", responses));
     }
 }

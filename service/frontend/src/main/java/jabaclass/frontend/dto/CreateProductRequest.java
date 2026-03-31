@@ -4,6 +4,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 @Getter
@@ -13,7 +14,7 @@ public class CreateProductRequest {
     private String title;
     private int maxCapacity;
     private String description;
-    private String descriptionImage;
+    private List<String> imageIds;
     private BigDecimal price;
     private String status;
 }

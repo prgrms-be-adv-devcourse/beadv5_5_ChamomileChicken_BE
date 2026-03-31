@@ -27,9 +27,11 @@ payment:
 
 app:
   mail:
-    from: ${MAIL_FROM:no-reply@example.com}
+    from: ${MAIL_FROM}
+    
 management:
   endpoints:
     web:
       exposure:
         include: health
+

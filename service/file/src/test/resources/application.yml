@@ -1,0 +1,24 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    database-platform: org.hibernate.dialect.H2Dialect
+  cloud:
+    aws:
+      region:
+        static: ap-northeast-2
+      s3:
+        bucket: test-bucket
+        presigned-url-expiration: 5
+
+jwt:
+  secret: test-secret-key-must-be-at-least-32-characters
+
+internal:
+  api:
+    key: test-internal-key

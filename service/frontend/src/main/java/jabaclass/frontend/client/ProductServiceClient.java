@@ -24,6 +24,8 @@ public class ProductServiceClient {
 
 	private final RestTemplate restTemplate;
 
+	private final FileServiceClient fileServiceClient;
+
 	@Value("${services.product-url}")
 	private String productUrl;
 
@@ -48,10 +50,11 @@ public class ProductServiceClient {
 			productUrl + "/api/v1/products?thisPage=0&pageSize=20&status=ENABLE",
 			Map.class
 		);
-		// SearchProductResponseDto.content 추출
 		Map data = (Map)response.get("data");
 		List<Map> content = (List<Map>)data.get("content");
-		return content.stream().map(this::mapToProductDto).toList();
+		List<ProductDto> products = content.stream().map(this::mapToProductDto).toList();
+		enrichWithPresignedUrls(products);
+		return products;
 	}
 
 	public ProductDto getProduct(UUID productId) {
@@ -60,7 +63,9 @@ public class ProductServiceClient {
 			Map.class
 		);
 		Map data = (Map)response.get("data");
-		return mapToProductDto(data);
+		ProductDto product = mapToProductDto(data);
+		enrichWithPresignedUrls(java.util.List.of(product));
+		return product;
 	}
 
 	public List<ScheduleDto> getSchedules(UUID productId) {
@@ -95,18 +100,39 @@ public class ProductServiceClient {
 		return productsByScheduleId;
 	}
 
+	private void enrichWithPresignedUrls(List<ProductDto> products) {
+		List<String> allPaths = new java.util.ArrayList<>();
+		products.forEach(p -> {
+			if (p.getThumbnailPath() != null) allPaths.add(p.getThumbnailPath());
+			if (p.getImagePaths() != null) allPaths.addAll(p.getImagePaths());
+		});
+
+		List<String> distinctPaths = allPaths.stream().distinct().toList();
+		if (distinctPaths.isEmpty()) return;
+
+		Map<String, String> presignedUrls = fileServiceClient.getPresignedGetUrls(distinctPaths);
+
+		products.forEach(p -> {
+			if (p.getThumbnailPath() != null)
+				p.setThumbnailPath(presignedUrls.getOrDefault(p.getThumbnailPath(), p.getThumbnailPath()));
+			if (p.getImagePaths() != null)
+				p.setImagePaths(p.getImagePaths().stream()
+						.map(path -> presignedUrls.getOrDefault(path, path))
+						.toList());
+		});
+	}
+
 	private ProductDto mapToProductDto(Map m) {
 		ProductDto dto = new ProductDto();
 		dto.setId(m.get("id") != null ? UUID.fromString(m.get("id").toString()) : null);
-		dto.setSellerName((String)m.get("sellerName"));
-		dto.setTitle((String)m.get("title"));
-		dto.setDescription((String)m.get("description"));
-		dto.setDescriptionImage((String)m.get("descriptionImage"));
-		dto.setStatusName((String)m.get("statusName"));
-		if (m.get("maxCapacity") != null)
-			dto.setMaxCapacity((int)m.get("maxCapacity"));
-		if (m.get("price") != null)
-			dto.setPrice(new java.math.BigDecimal(m.get("price").toString()));
+		dto.setSellerName((String) m.get("sellerName"));
+		dto.setTitle((String) m.get("title"));
+		dto.setDescription((String) m.get("description"));
+		dto.setThumbnailPath((String) m.get("thumbnailPath"));
+		dto.setImagePaths(m.get("imagePaths") != null ? (List<String>) m.get("imagePaths") : List.of());
+		dto.setStatusName((String) m.get("statusName"));
+		if (m.get("maxCapacity") != null) dto.setMaxCapacity((int) m.get("maxCapacity"));
+		if (m.get("price") != null) dto.setPrice(new java.math.BigDecimal(m.get("price").toString()));
 		return dto;
 	}
 

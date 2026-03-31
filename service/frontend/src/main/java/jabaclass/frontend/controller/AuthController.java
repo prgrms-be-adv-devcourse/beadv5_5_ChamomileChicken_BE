@@ -36,6 +36,7 @@ public class AuthController {
     public String login(@ModelAttribute LoginRequest request, HttpSession session, Model model) {
         try {
             LoginResponse loginResponse = userServiceClient.login(request);
+            log.info("login role: '{}'", loginResponse.getRole()); // 추가
 
             // JWT를 세션에 저장 (SessionAuthFilter가 매 요청마다 인증 복원)
             session.setAttribute("accessToken", loginResponse.getAccessToken());
