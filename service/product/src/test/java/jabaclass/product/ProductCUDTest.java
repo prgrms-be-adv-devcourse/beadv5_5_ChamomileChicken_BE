@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.*;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -33,6 +34,8 @@ import jabaclass.product.presentation.dto.respose.ProductResponseDto;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
+import jabaclass.product.infrastructure.acl.client.FileConfirmClient;
+import jabaclass.product.infrastructure.acl.client.FileConfirmResponse;
 
 @ExtendWith(MockitoExtension.class)
 class ProductCUDTest {
@@ -52,6 +55,9 @@ class ProductCUDTest {
 	@Mock
 	private AuditorAwareService auditorAwareService;
 
+	@Mock
+	private FileConfirmClient fileConfirmClient;
+
 	private static final UUID SELLER_ID = UUID.fromString("123e4567-e89b-12d3-a456-426614174000");
 	private static final BigDecimal PRICE = new BigDecimal("1000.50");
 
@@ -70,7 +76,6 @@ class ProductCUDTest {
 			.title("상품A")
 			.maxCapacity(10)
 			.description("테스트 상품")
-			.descriptionImage(UUID.randomUUID().toString())
 			.price(PRICE)
 			.status(ProductStatus.ENABLE)
 			.build();
@@ -79,27 +84,28 @@ class ProductCUDTest {
 	@Test
 	void 상품_생성에_성공한다() {
 		CreateProductRequestDto request = new CreateProductRequestDto(
-			SELLER_ID,
-			"테스트상품",
-			5,
-			"테스트 상품 입니다.",
-			UUID.randomUUID().toString(),
-			PRICE,
-			ProductStatus.ENABLE
+				SELLER_ID, "테스트상품", 5, "테스트 상품 입니다.",
+				List.of(UUID.randomUUID()), PRICE, ProductStatus.ENABLE
 		);
+
+		UUID fileId = UUID.randomUUID();
+		given(fileConfirmClient.confirmBulk(any()))
+				.willReturn(List.of(new FileConfirmResponse(fileId, "userId/fileId/img.jpg")));
+
 		given(auditorAwareService.getCurrentAuditor()).willReturn(Optional.of(SELLER_ID));
 		given(sellerRepository.findSeller(eq(SELLER_ID)))
-			.willReturn(Optional.of(new UserResponseDto(SELLER_ID, "테스트 판매자", "SELLER")));
+				.willReturn(Optional.of(new UserResponseDto(SELLER_ID, "테스트 판매자", "SELLER")));
 		given(productRepository.save(any(Product.class)))
-			.willAnswer(invocation -> {
-				Product saved = invocation.getArgument(0);
-				ReflectionTestUtils.setField(saved, "id", UUID.randomUUID());
-				return saved;
-			});
+				.willAnswer(invocation -> {
+					Product saved = invocation.getArgument(0);
+					ReflectionTestUtils.setField(saved, "id", UUID.randomUUID());
+					return saved;
+				});
 
 		ProductResponseDto saved = productService.create(request);
 
 		assertThat(saved.title()).isEqualTo("테스트상품");
+		assertThat(saved.thumbnailPath()).isEqualTo("userId/fileId/img.jpg");  // 추가
 		assertThat(saved.price()).isEqualByComparingTo(PRICE);
 		then(productRepository).should().save(any(Product.class));
 		then(publisher).should().publishEvent(any(ProductEventResponseDto.class));
@@ -112,7 +118,7 @@ class ProductCUDTest {
 			"테스트상품",
 			0,
 			"테스트 상품 입니다.",
-			UUID.randomUUID().toString(),
+			List.of(UUID.randomUUID()),
 			PRICE,
 			ProductStatus.ENABLE
 		);
@@ -130,7 +136,7 @@ class ProductCUDTest {
 			"",
 			10,
 			"테스트 상품 입니다.",
-			UUID.randomUUID().toString(),
+			List.of(UUID.randomUUID()),
 			PRICE,
 			ProductStatus.ENABLE
 		);
@@ -148,7 +154,7 @@ class ProductCUDTest {
 			"테스트상품",
 			10,
 			"테스트 상품 입니다.",
-			UUID.randomUUID().toString(),
+			List.of(UUID.randomUUID()),
 			PRICE,
 			ProductStatus.ENABLE
 		);
@@ -166,7 +172,7 @@ class ProductCUDTest {
 			"테스트상품",
 			10,
 			"테스트 상품 입니다.",
-			UUID.randomUUID().toString(),
+			List.of(UUID.randomUUID()),
 			BigDecimal.ZERO,
 			ProductStatus.ENABLE
 		);
@@ -184,7 +190,7 @@ class ProductCUDTest {
 			"테스트상품",
 			5,
 			"테스트 상품 입니다.",
-			UUID.randomUUID().toString(),
+			List.of(UUID.randomUUID()),
 			PRICE,
 			ProductStatus.ENABLE
 		);
@@ -203,7 +209,7 @@ class ProductCUDTest {
 			"테스트상품",
 			5,
 			"테스트 상품 입니다.",
-			UUID.randomUUID().toString(),
+			List.of(UUID.randomUUID()),
 			PRICE,
 			ProductStatus.ENABLE
 		);
@@ -219,16 +225,17 @@ class ProductCUDTest {
 	@Test
 	void 상품_수정에_성공한다() {
 		UpdateProductRequestDto request = new UpdateProductRequestDto(
-			"수정상품",
-			10,
-			"수정 설명",
-			UUID.randomUUID().toString(),
-			new BigDecimal("1200.00"),
-			ProductStatus.ENABLE
+				"수정상품", 10, "수정 설명",
+				List.of(UUID.randomUUID()), new BigDecimal("1200.00"), ProductStatus.ENABLE
 		);
+
+		UUID fileId = UUID.randomUUID();
+		given(fileConfirmClient.confirmBulk(any()))
+				.willReturn(List.of(new FileConfirmResponse(fileId, "userId/fileId/img.jpg")));
+
 		given(auditorAwareService.getCurrentAuditor()).willReturn(Optional.of(SELLER_ID));
 		given(sellerRepository.findSeller(eq(SELLER_ID)))
-			.willReturn(Optional.of(new UserResponseDto(SELLER_ID, "테스트 판매자", "SELLER")));
+				.willReturn(Optional.of(new UserResponseDto(SELLER_ID, "테스트 판매자", "SELLER")));
 		given(productRepository.findById(productId)).willReturn(Optional.of(product));
 		given(productRepository.findByIdAndSellerId(productId, SELLER_ID)).willReturn(Optional.of(product));
 
@@ -245,7 +252,7 @@ class ProductCUDTest {
 			"수정상품",
 			10,
 			"수정 설명",
-			UUID.randomUUID().toString(),
+			List.of(UUID.randomUUID()),
 			new BigDecimal("1200.00"),
 			ProductStatus.ENABLE
 		);
@@ -292,7 +299,7 @@ class ProductCUDTest {
 			"수정상품",
 			10,
 			"수정 설명",
-			UUID.randomUUID().toString(),
+			List.of(UUID.randomUUID()),
 			new BigDecimal("1200.00"),
 			ProductStatus.ENABLE
 		);

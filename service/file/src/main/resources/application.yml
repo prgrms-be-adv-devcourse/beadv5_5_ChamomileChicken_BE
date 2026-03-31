@@ -29,7 +29,9 @@ spring:
     aws:
       s3:
         bucket: ${S3_BUCKET_NAME}
-        presigned-url-expiration: 5
+#        배포시 수정
+#        presigned-url-expiration: 5
+        presigned-url-expiration: 10
       region:
         static: ap-northeast-2
       # credentials는 application-local.yml 또는 환경변수로 관리

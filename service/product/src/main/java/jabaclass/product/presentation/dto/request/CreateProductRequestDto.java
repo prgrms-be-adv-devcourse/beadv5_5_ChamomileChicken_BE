@@ -1,6 +1,7 @@
 package jabaclass.product.presentation.dto.request;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -29,8 +30,9 @@ public record CreateProductRequestDto(
 	@Schema(description = "설명", example = "상품에 대한 설명입니다.")
 	String description,
 
-	@Schema(description = "설명이미지 ID", example = "550e8400-e29b-41d4-a716-446655440000")
-	String descriptionImage,
+	@Size(max = 10, message = "이미지는 최대 10장까지 등록 가능합니다.")
+	@Schema(description = "상품 이미지 fileId 목록 (순서 = 표시 순서, 첫 번째가 썸네일)")
+	List<UUID> imageIds,
 
 	@Min(value = 1, message = "가격은 1원 이상이어야 합니다.")
 	@Schema(description = "가격", example = "550000.00")

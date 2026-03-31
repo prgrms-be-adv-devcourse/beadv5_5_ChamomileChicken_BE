@@ -60,7 +60,7 @@ class ProductRestControllerTest {
 			"상품",
 			10,
 			"설명",
-			"image-id",
+			List.of(UUID.randomUUID()),
 			new BigDecimal("10000"),
 			ProductStatus.ENABLE
 		);
@@ -69,7 +69,7 @@ class ProductRestControllerTest {
 			"수정상품",
 			20,
 			"수정설명",
-			"updated-image-id",
+			List.of(UUID.randomUUID()),
 			new BigDecimal("20000"),
 			ProductStatus.DISABLE
 		);
@@ -80,7 +80,8 @@ class ProductRestControllerTest {
 			"상품",
 			10,
 			"설명",
-			"image-id",
+			"userId/fileId/img.jpg",
+			List.of("userId/fileId/img.jpg"),
 			new BigDecimal("10000"),
 			"활성",
 			SELLER_ID,

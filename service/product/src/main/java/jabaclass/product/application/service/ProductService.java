@@ -1,5 +1,8 @@
 package jabaclass.product.application.service;
 
+import jabaclass.product.domain.model.ProductImageItem;
+import jabaclass.product.infrastructure.acl.client.FileConfirmClient;
+import jabaclass.product.infrastructure.acl.client.FileConfirmResponse;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -41,6 +44,7 @@ public class ProductService implements ProductUseCase {
 	private final SellerRepository sellerRepository;
 	private final ApplicationEventPublisher publisher;
 	private final AuditorAwareService auditorAwareService;
+	private final FileConfirmClient fileConfirmClient;
 
 	@Override
 	@Transactional
@@ -48,18 +52,27 @@ public class ProductService implements ProductUseCase {
 		// seller 룰을 확인
 		UserResponseDto seller = validateAndGetSeller();
 
+		List<ProductImageItem> images = List.of();
+		if (requestDto.imageIds() != null && !requestDto.imageIds().isEmpty()) {
+			List<FileConfirmResponse> confirmed =
+					fileConfirmClient.confirmBulk(requestDto.imageIds());
+			images = confirmed.stream()
+					.map(r -> new ProductImageItem(r.fileId(), r.storagePath()))
+					.toList();
+		}
+
 		Product product = Product.builder()
 			.sellerId(requestDto.sellerId())
 			.title(requestDto.title())
 			.maxCapacity(requestDto.maxCapacity())
 			.description(requestDto.description())
-			.descriptionImage(requestDto.descriptionImage())
 			.price(requestDto.price())
 			.status(requestDto.status())
 			.build();
 
-		Product saved = productRepository.save(product);
+		product.changeImages(images);
 
+		Product saved = productRepository.save(product);
 		publisher.publishEvent(new ProductEventResponseDto(saved.getId()));
 		return ProductResponseDto.from(saved, seller.name());
 	}
@@ -67,20 +80,31 @@ public class ProductService implements ProductUseCase {
 	@Override
 	@Transactional
 	public ProductResponseDto update(UpdateProductRequestDto requestDto, UUID productId) {
-		// seller 룰을 확인
+
 		UserResponseDto seller = validateAndGetSeller();
 
-		// 상품 존재하는지 확인
 		Product product = findByIdOrThrow(productId);
-		// 본인 상품인지 확인
+
 		matchProductAndSellerId(productId, seller.userId());
 
 		product.changeTitle(requestDto.title());
 		product.changeMaxCapacity(requestDto.maxCapacity());
 		product.changeDescription(requestDto.description());
-		product.changeDescriptionImage(requestDto.descriptionImage());
 		product.changePrice(requestDto.price());
 		product.changeStatus(requestDto.status());
+
+		// 이미지 수정 — null이면 기존 이미지 유지
+		if (requestDto.imageIds() != null) {
+			List<ProductImageItem> images = List.of();
+			if (!requestDto.imageIds().isEmpty()) {
+				List<FileConfirmResponse> confirmed =
+						fileConfirmClient.confirmBulk(requestDto.imageIds());
+				images = confirmed.stream()
+						.map(r -> new ProductImageItem(r.fileId(), r.storagePath()))
+						.toList();
+			}
+			product.changeImages(images);
+		}
 
 		return ProductResponseDto.from(product, seller.name());
 	}
