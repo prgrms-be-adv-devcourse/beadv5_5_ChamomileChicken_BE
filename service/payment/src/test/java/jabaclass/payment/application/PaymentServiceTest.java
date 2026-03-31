@@ -4,6 +4,8 @@ import jabaclass.payment.application.port.external.OrderPort;
 import jabaclass.payment.application.port.external.PaymentGatewayPort;
 import jabaclass.payment.application.port.external.UserPort;
 import jabaclass.payment.application.service.PaymentService;
+import jabaclass.payment.common.exception.PaymentErrorCode;
+import jabaclass.payment.common.exception.PaymentException;
 import jabaclass.payment.domain.model.Payment;
 import jabaclass.payment.domain.model.PaymentMethod;
 import jabaclass.payment.domain.model.Refund;
@@ -114,8 +116,8 @@ class PaymentServiceTest {
 
 		// when & then
 		assertThatThrownBy(() -> paymentService.confirm(request))
-			.isInstanceOf(IllegalStateException.class)
-			.hasMessage("결제 정보를 찾을 수 없습니다.");
+			.isInstanceOf(PaymentException.class)
+			.hasMessage(PaymentErrorCode.PAYMENT_NOT_FOUND.getMessage());
 	}
 
 	@Test
@@ -147,8 +149,8 @@ class PaymentServiceTest {
 
 		// when & then
 		assertThatThrownBy(() -> paymentService.confirm(request))
-			.isInstanceOf(IllegalStateException.class)
-			.hasMessage("주문 금액이 일치하지 않습니다.");
+			.isInstanceOf(PaymentException.class)
+			.hasMessage(PaymentErrorCode.INVALID_ORDER_AMOUNT.getMessage());
 
 		verify(paymentGatewayPort, never()).confirm(any(), any(), anyInt());
 		verify(orderPort, never())
@@ -184,8 +186,8 @@ class PaymentServiceTest {
 
 		// when & then
 		assertThatThrownBy(() -> paymentService.confirm(request))
-			.isInstanceOf(IllegalStateException.class)
-			.hasMessage("결제 금액이 일치하지 않습니다.");
+			.isInstanceOf(PaymentException.class)
+			.hasMessage(PaymentErrorCode.INVALID_PAYMENT_AMOUNT.getMessage());
 
 		verify(paymentGatewayPort, never()).confirm(any(), any(), anyInt());
 		verify(orderPort, never())

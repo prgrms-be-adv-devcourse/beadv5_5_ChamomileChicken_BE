@@ -1,5 +1,7 @@
 package jabaclass.payment.domain.model;
 
+import jabaclass.payment.common.exception.PaymentErrorCode;
+import jabaclass.payment.common.exception.PaymentException;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -14,7 +16,7 @@ import java.util.UUID;
 @Entity
 @Table(name = "payments")
 @Getter
-public class Payment {
+public class Payment extends BaseEntity{
 
 	@Id
 	@Column(name = "id", nullable = false, updatable = false)
@@ -113,19 +115,19 @@ public class Payment {
 		UUID productUserId
 	) {
 		if (paymentAmount == null || depositAmount == null) {
-			throw new IllegalArgumentException("금액은 null일 수 없습니다");
+			throw new PaymentException(PaymentErrorCode.INVALID_AMOUNT);
 		}
 
 		if (productUserId == null) {
-			throw new IllegalArgumentException("productUserId는 null일 수 없습니다");
+			throw new PaymentException(PaymentErrorCode.INVALID_PRODUCT_USER);
 		}
 
 		if (paymentAmount.compareTo(BigDecimal.ZERO) < 0) {
-			throw new IllegalArgumentException("paymentAmount는 0 이상이어야 합니다");
+			throw new PaymentException(PaymentErrorCode.INVALID_NEGATIVE_AMOUNT);
 		}
 
 		if (depositAmount.compareTo(BigDecimal.ZERO) < 0) {
-			throw new IllegalArgumentException("depositAmount는 0 이상이어야 합니다");
+			throw new PaymentException(PaymentErrorCode.INVALID_NEGATIVE_AMOUNT);
 		}
 	}
 
@@ -140,16 +142,24 @@ public class Payment {
 
 	public void markFailed() {
 		if (this.status == PaymentStatus.PAID) {
-			throw new IllegalStateException("이미 완료된 결제는 실패 처리할 수 없습니다.");
+			throw new PaymentException(PaymentErrorCode.PAYMENT_ALREADY_COMPLETED);
 		}
 
 		this.status = PaymentStatus.FAILED;
 	}
+
 	public void markCancelled() {
 		if (this.status != PaymentStatus.PAID) {
-			throw new IllegalStateException("완료된 결제만 취소할 수 있습니다.");
+			throw new PaymentException(PaymentErrorCode.PAYMENT_NOT_COMPLETED);
 		}
 
 		this.status = PaymentStatus.CANCELLED;
+	}
+
+	public void expire() {
+		if (this.status != PaymentStatus.READY) {
+			throw new PaymentException(PaymentErrorCode.PAYMENT_INVALID_STATUS);
+		}
+		this.status = PaymentStatus.EXPIRED;
 	}
 }

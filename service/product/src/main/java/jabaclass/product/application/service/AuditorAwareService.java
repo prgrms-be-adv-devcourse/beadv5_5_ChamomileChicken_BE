@@ -12,10 +12,11 @@ import jabaclass.auth.util.SecurityUtil;
 public class AuditorAwareService implements AuditorAware<UUID> {
 	@Override
 	public Optional<UUID> getCurrentAuditor() {
-		// 테스트용입니다.
-		UUID USER_ID = SecurityUtil.getCurrentUserId();
-
-		return Optional.of(USER_ID);
+		try {
+			return Optional.of(SecurityUtil.getCurrentUserId());
+		} catch (Exception e) {
+			return Optional.empty();
+		}
 	}
 
 }

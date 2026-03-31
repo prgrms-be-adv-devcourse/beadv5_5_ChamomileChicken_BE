@@ -1,28 +1,30 @@
 package jabaclass.payment.application.service;
 
-import jabaclass.payment.application.port.external.OrderPort;
-import jabaclass.payment.application.port.external.PaymentGatewayPort;
-import jabaclass.payment.application.port.external.UserPort;
-import jabaclass.payment.application.usecase.PaymentUseCase;
-import jabaclass.payment.domain.model.Payment;
-import jabaclass.payment.domain.model.Refund;
-import jabaclass.payment.domain.repository.PaymentRepository;
-import jabaclass.payment.domain.repository.RefundRepository;
-import jabaclass.payment.presentation.dto.request.PreparePaymentRequestDto;
-import jabaclass.payment.presentation.dto.request.ConfirmPaymentRequestDto;
-import jabaclass.payment.presentation.dto.request.RefundPaymentRequestDto;
-import jabaclass.payment.presentation.dto.response.PaymentResponseDto;
-import jabaclass.payment.presentation.dto.response.RefundPaymentResponseDto;
-import jabaclass.payment.infrastructure.kafka.PaymentRefundCompletedEvent;
-import jabaclass.payment.infrastructure.kafka.PaymentRefundCompletedEventPublisher;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import java.math.BigDecimal;
+import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
-import java.util.UUID;
+import jabaclass.payment.application.port.external.OrderPort;
+import jabaclass.payment.application.port.external.PaymentGatewayPort;
+import jabaclass.payment.application.port.external.UserPort;
+import jabaclass.payment.application.usecase.PaymentUseCase;
+import jabaclass.payment.common.exception.PaymentErrorCode;
+import jabaclass.payment.common.exception.PaymentException;
+import jabaclass.payment.domain.model.Payment;
+import jabaclass.payment.domain.model.Refund;
+import jabaclass.payment.domain.repository.PaymentRepository;
+import jabaclass.payment.domain.repository.RefundRepository;
+import jabaclass.payment.infrastructure.kafka.PaymentRefundCompletedEvent;
+import jabaclass.payment.infrastructure.kafka.PaymentRefundCompletedEventPublisher;
+import jabaclass.payment.presentation.dto.request.ConfirmPaymentRequestDto;
+import jabaclass.payment.presentation.dto.request.PreparePaymentRequestDto;
+import jabaclass.payment.presentation.dto.request.RefundPaymentRequestDto;
+import jabaclass.payment.presentation.dto.response.PaymentResponseDto;
+import jabaclass.payment.presentation.dto.response.RefundPaymentResponseDto;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
@@ -50,6 +52,24 @@ public class PaymentService implements PaymentUseCase {
 			request.depositAmount()
 		);
 
+		if (payment.getPaymentAmount().compareTo(BigDecimal.ZERO) == 0) {
+
+			log.info("예치금 100% 결제 - 즉시 완료 처리 orderId={}", payment.getOrderId());
+
+			payment.markDone("DEPOSIT_ONLY");
+
+			try {
+				orderPort.updatePaymentStatus(
+					payment.getOrderId(),
+					payment.getId(),
+					payment.getDepositAmount().intValue(),
+					"PAID"
+				);
+			} catch (Exception ex) {
+				log.error("Order 상태 업데이트 실패 (deposit only)", ex);
+			}
+		}
+
 		Payment savedPayment = paymentRepository.save(payment);
 
 		return PaymentResponseDto.from(savedPayment);
@@ -62,7 +82,7 @@ public class PaymentService implements PaymentUseCase {
 		UUID orderId = request.orderId();
 
 		Payment payment = paymentRepository.findByOrderId(orderId)
-			.orElseThrow(() -> new IllegalStateException("결제 정보를 찾을 수 없습니다."));
+			.orElseThrow(() -> new PaymentException(PaymentErrorCode.PAYMENT_NOT_FOUND));
 
 		log.info("[confirm] validate 호출 전 orderId={}, requestAmount={}, totalAmount={}",
 			payment.getOrderId(), request.amount(), payment.getTotalAmount());
@@ -81,13 +101,13 @@ public class PaymentService implements PaymentUseCase {
 			log.warn("Order 금액 검증 실패. orderId={}, totalAmount={}, requestAmount={}",
 				payment.getOrderId(), payment.getTotalAmount(), request.amount());
 
-			throw new IllegalStateException("주문 금액이 일치하지 않습니다.");
+			throw new PaymentException(PaymentErrorCode.INVALID_ORDER_AMOUNT);
 		}
 
 		// Payment 내부 금액 검증
 		if (payment.getPaymentAmount()
 			.compareTo(BigDecimal.valueOf(request.amount())) != 0) {
-			throw new IllegalStateException("결제 금액이 일치하지 않습니다.");
+			throw new PaymentException(PaymentErrorCode.INVALID_PAYMENT_AMOUNT);
 		}
 
 		try {
@@ -134,9 +154,8 @@ public class PaymentService implements PaymentUseCase {
 					payment.getOrderId(), ex);
 			}
 
-			throw new IllegalStateException("결제 승인에 실패했습니다.", e);
+			throw new PaymentException(PaymentErrorCode.PAYMENT_CONFIRM_FAILED, e);
 		}
-
 
 		// 결과 반환
 		return PaymentResponseDto.from(payment);
@@ -146,10 +165,10 @@ public class PaymentService implements PaymentUseCase {
 	@Transactional
 	public RefundPaymentResponseDto refund(RefundPaymentRequestDto request) {
 		Payment payment = paymentRepository.findByOrderId(request.orderId())
-			.orElseThrow(() -> new IllegalStateException("결제 정보를 찾을 수 없습니다."));
+			.orElseThrow(() -> new PaymentException(PaymentErrorCode.PAYMENT_NOT_FOUND));
 
 		if (!payment.isDone()) {
-			throw new IllegalStateException("완료된 결제만 환불할 수 있습니다.");
+			throw new PaymentException(PaymentErrorCode.PAYMENT_NOT_COMPLETED);
 		}
 
 		Refund refund = Refund.create(
@@ -179,6 +198,7 @@ public class PaymentService implements PaymentUseCase {
 
 			payment.markCancelled();
 			refund.markCompleted();
+			refundRepository.save(refund);
 
 			refundCompletedEventPublisher.publish(
 				new PaymentRefundCompletedEvent(
@@ -188,8 +208,10 @@ public class PaymentService implements PaymentUseCase {
 			);
 		} catch (Exception e) {
 			refund.markFailed();
+			refundRepository.save(refund);
 			log.error("환불 실패. orderId={}, paymentId={}", payment.getOrderId(), payment.getId(), e);
-			throw new IllegalStateException("환불 처리에 실패했습니다.", e);
+
+			throw new PaymentException(PaymentErrorCode.PAYMENT_REFUND_FAILED, e);
 		}
 
 		return RefundPaymentResponseDto.from(refund, payment.getOrderId());

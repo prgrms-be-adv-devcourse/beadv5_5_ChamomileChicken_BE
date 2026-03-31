@@ -61,7 +61,15 @@ public enum CommonErrorCode {
 	// 404 본인 즐겨찾기가 아닙니다.
 	NOT_MATCH_USER_REVIEW(HttpStatus.NOT_FOUND, "본인의 리뷰가 아닙니다."),
 	// 404 리뷰가 존재하지 않습니다.
-	NOT_FOUND_REVIEW(HttpStatus.NOT_FOUND, "리뷰가 존재하지 않습니다.");
+	NOT_FOUND_REVIEW(HttpStatus.NOT_FOUND, "리뷰가 존재하지 않습니다."),
+	// 이미지 최대 10장
+	IMAGE_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "이미지는 최대 10장까지 등록 가능합니다."),
+	// 파일을 찾을수 없음.
+	FILE_NOT_FOUND(HttpStatus.NOT_FOUND, "파일을 찾을 수 없습니다."),
+	// 파일 검증 실패
+	FILE_CONFIRM_FAIL(HttpStatus.BAD_REQUEST, "파일 검증에 실패했습니다."),
+	// 파일 서비스 연결 불가
+	FILE_MODULE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "파일 서비스에 연결할 수 없습니다.");
 
 	private final HttpStatus status;
 	private final String message;

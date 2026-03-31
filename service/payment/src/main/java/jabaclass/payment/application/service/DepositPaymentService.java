@@ -3,6 +3,8 @@ package jabaclass.payment.application.service;
 import jabaclass.payment.application.port.external.PaymentGatewayPort;
 import jabaclass.payment.application.port.external.UserPort;
 import jabaclass.payment.application.usecase.DepositPaymentUseCase;
+import jabaclass.payment.common.exception.PaymentErrorCode;
+import jabaclass.payment.common.exception.PaymentException;
 import jabaclass.payment.domain.model.DepositPayment;
 import jabaclass.payment.domain.repository.DepositPaymentRepository;
 import jabaclass.payment.presentation.dto.request.ConfirmDepositPaymentRequestDto;
@@ -45,7 +47,7 @@ public class DepositPaymentService implements DepositPaymentUseCase {
 
 		// DepositPayment 조회
 		DepositPayment depositPayment = depositPaymentRepository.findById(request.depositPaymentsId())
-			.orElseThrow(() -> new IllegalStateException("예치금 결제 정보를 찾을 수 없습니다."));
+			.orElseThrow(() -> new PaymentException(PaymentErrorCode.DEPOSIT_PAYMENT_NOT_FOUND));
 
 		// 멱등성 체크
 		if (depositPayment.isDone()) {
@@ -54,7 +56,7 @@ public class DepositPaymentService implements DepositPaymentUseCase {
 
 		// 충전 금액 검증
 		if (depositPayment.getAmount().intValue() != request.amount()) {
-			throw new IllegalStateException("결제 금액이 일치하지 않습니다.");
+			throw new PaymentException(PaymentErrorCode.INVALID_PAYMENT_AMOUNT);
 		}
 
 		try {
@@ -83,7 +85,7 @@ public class DepositPaymentService implements DepositPaymentUseCase {
 			// 실패 처리
 			depositPayment.markFailed();
 
-			throw new IllegalStateException("예치금 결제 승인에 실패했습니다.", e);
+			throw new PaymentException(PaymentErrorCode.DEPOSIT_PAYMENT_CONFIRM_FAILED, e);
 		}
 
 		return new ConfirmDepositPaymentResponseDto(true);

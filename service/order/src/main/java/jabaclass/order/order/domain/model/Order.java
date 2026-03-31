@@ -132,4 +132,11 @@ public class Order {
 			throw new IllegalArgumentException("주문 가격은 0 이상이어야 합니다.");
 		}
 	}
+
+	public void expire() {
+		if (this.status != OrderStatus.PENDING) {
+			throw new IllegalStateException("PENDING 상태만 만료 가능합니다.");
+		}
+		this.status = OrderStatus.EXPIRED;
+	}
 }

@@ -22,7 +22,7 @@ import lombok.experimental.SuperBuilder;
 public abstract class EntityBase {
 	// AuditorAware 통해 세팅 가능-> 추후 확인
 	@CreatedBy
-	@Column(name = "reg_id", nullable = false, updatable = false)
+	@Column(name = "reg_id", nullable = true, updatable = false)
 	private UUID regId;
 
 	@CreatedDate

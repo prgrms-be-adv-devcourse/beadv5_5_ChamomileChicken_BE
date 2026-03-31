@@ -44,7 +44,7 @@ public class AuthService implements LoginUseCase, LogoutUseCase, ReissueUseCase 
 
         user.updateRefreshToken(refreshToken);
 
-        return new LoginResponseDto(accessToken, refreshToken);
+        return new LoginResponseDto(accessToken, refreshToken, user.getRole().name());
     }
 
     @Override
@@ -75,7 +75,7 @@ public class AuthService implements LoginUseCase, LogoutUseCase, ReissueUseCase 
 
         user.updateRefreshToken(newRefreshToken);
 
-        return new LoginResponseDto(newAccessToken, newRefreshToken);
+        return new LoginResponseDto(newAccessToken, newRefreshToken, user.getRole().name());
     }
 
     @Override
