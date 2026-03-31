@@ -1,5 +1,6 @@
 package jabaclass.product.domain.repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -25,4 +26,6 @@ public interface ProductRepository {
 
 	// 판매자와 상품 매치
 	Optional<Product> findByIdAndSellerId(UUID productId, UUID sellerId);
+
+	List<Product> findAllByIds(List<UUID> productIds);
 }

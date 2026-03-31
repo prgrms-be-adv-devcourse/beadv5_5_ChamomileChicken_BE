@@ -1,6 +1,5 @@
 package jabaclass.user.user.presentation.controller;
 
-import java.util.List;
 import java.util.UUID;
 
 import org.springframework.http.ResponseEntity;
@@ -17,7 +16,6 @@ import jabaclass.user.user.presentation.dto.request.ChangeMyEmailRequestDto;
 import jabaclass.user.user.presentation.dto.request.EmailCheckRequestDto;
 import jabaclass.user.user.presentation.dto.request.RegisterUserRequestDto;
 import jabaclass.user.user.presentation.dto.request.UpdateUserRequestDto;
-import jabaclass.user.user.presentation.dto.request.UserBulkReadRequestDto;
 import jabaclass.user.user.presentation.dto.response.EmailCheckResponseDto;
 import jabaclass.user.user.presentation.dto.response.UserResponseDto;
 import jakarta.validation.Valid;
@@ -171,24 +169,13 @@ public interface UserApi {
 	ResponseEntity<Void> withdraw();
 
 	@Operation(
-		summary = "사용자 ID 목록으로 사용자 정보 조회",
+		summary = "내부 사용자 단건 조회",
 		description = """
-			사용자 ID 목록을 받아 여러 사용자의 정보를 조회합니다.
-			- 요청한 사용자 ID 순서를 기준으로 응답합니다.
-			- 존재하지 않는 사용자 ID는 응답에서 제외합니다.
-			"""
-	)
-	ResponseEntity<List<UserResponseDto>> getUsersByIds(
-		@Valid @RequestBody UserBulkReadRequestDto request
-	);
-
-	@Operation(
-		summary = "내 정보 조회",
-		description = """
-			현재 로그인한 사용자의 정보를 조회합니다.(모듈용)
+			내부 모듈에서 사용자 ID로 사용자 정보를 조회합니다.
 			"""
 	)
 	ResponseEntity<UserResponseDto> getUserInfo(
 		@RequestBody UUID userId
 	);
+
 }

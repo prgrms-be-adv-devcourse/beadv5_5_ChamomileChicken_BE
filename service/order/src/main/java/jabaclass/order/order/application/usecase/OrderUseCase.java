@@ -7,8 +7,10 @@ import java.math.BigDecimal;
 
 import jabaclass.order.order.domain.model.OrderStatus;
 import jabaclass.order.order.presentation.dto.request.CreateOrderRequestDto;
+import jabaclass.order.order.presentation.dto.request.OrderBulkReadRequestDto;
 import jabaclass.order.order.presentation.dto.request.UpdateOrderPaymentStatusRequestDto;
 import jabaclass.order.order.presentation.dto.response.CreateOrderResponseDto;
+import jabaclass.order.order.presentation.dto.response.OrderSettlementItemResponseDto;
 import jabaclass.order.order.presentation.dto.response.OrderResponseDto;
 
 public interface OrderUseCase {
@@ -26,4 +28,6 @@ public interface OrderUseCase {
     void updatePaymentStatus(UUID orderId, UpdateOrderPaymentStatusRequestDto requestDto);
 
     void refund(UUID orderId);
+
+    List<OrderSettlementItemResponseDto> getOrdersByIds(OrderBulkReadRequestDto requestDto);
 }
