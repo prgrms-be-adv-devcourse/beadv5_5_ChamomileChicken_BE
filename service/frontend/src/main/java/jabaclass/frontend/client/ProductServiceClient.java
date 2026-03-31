@@ -24,6 +24,8 @@ public class ProductServiceClient {
 
 	private final RestTemplate restTemplate;
 
+	private final FileServiceClient fileServiceClient;
+
 	@Value("${services.product-url}")
 	private String productUrl;
 
@@ -48,10 +50,11 @@ public class ProductServiceClient {
 			productUrl + "/api/v1/products?thisPage=0&pageSize=20&status=ENABLE",
 			Map.class
 		);
-		// SearchProductResponseDto.content 추출
 		Map data = (Map)response.get("data");
 		List<Map> content = (List<Map>)data.get("content");
-		return content.stream().map(this::mapToProductDto).toList();
+		List<ProductDto> products = content.stream().map(this::mapToProductDto).toList();
+		enrichWithPresignedUrls(products);
+		return products;
 	}
 
 	public ProductDto getProduct(UUID productId) {
@@ -60,7 +63,9 @@ public class ProductServiceClient {
 			Map.class
 		);
 		Map data = (Map)response.get("data");
-		return mapToProductDto(data);
+		ProductDto product = mapToProductDto(data);
+		enrichWithPresignedUrls(java.util.List.of(product));
+		return product;
 	}
 
 	public List<ScheduleDto> getSchedules(UUID productId) {
@@ -95,13 +100,28 @@ public class ProductServiceClient {
 		return productsByScheduleId;
 	}
 
+	private void enrichWithPresignedUrls(List<ProductDto> products) {
+		List<String> paths = products.stream()
+			.map(ProductDto::getThumbnailPath)
+			.filter(p -> p != null)
+			.distinct()
+			.toList();
+		if (paths.isEmpty()) return;
+		Map<String, String> presignedUrls = fileServiceClient.getPresignedGetUrls(paths);
+		products.forEach(p -> {
+			if (p.getThumbnailPath() != null) {
+				p.setThumbnailPath(presignedUrls.getOrDefault(p.getThumbnailPath(), p.getThumbnailPath()));
+			}
+		});
+	}
+
 	private ProductDto mapToProductDto(Map m) {
 		ProductDto dto = new ProductDto();
 		dto.setId(m.get("id") != null ? UUID.fromString(m.get("id").toString()) : null);
 		dto.setSellerName((String)m.get("sellerName"));
 		dto.setTitle((String)m.get("title"));
 		dto.setDescription((String)m.get("description"));
-		dto.setDescriptionImage((String)m.get("descriptionImage"));
+		dto.setThumbnailPath((String)m.get("thumbnailPath"));
 		dto.setStatusName((String)m.get("statusName"));
 		if (m.get("maxCapacity") != null)
 			dto.setMaxCapacity((int)m.get("maxCapacity"));

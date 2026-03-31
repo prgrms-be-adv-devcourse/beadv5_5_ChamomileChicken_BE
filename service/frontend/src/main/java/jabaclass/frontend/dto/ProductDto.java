@@ -14,7 +14,7 @@ public class ProductDto {
     private String title;
     private int maxCapacity;
     private String description;
-    private String descriptionImage;
+    private String thumbnailPath;
     private BigDecimal price;
     private String statusName;
 }

@@ -133,6 +133,7 @@ public class PageController {
 		@RequestParam(value = "scheduleDt", required = false) List<String> scheduleDts,
 		@RequestParam(value = "startTime", required = false) List<String> startTimes,
 		@RequestParam(value = "endTime", required = false) List<String> endTimes,
+		@RequestParam(value = "imageIds", required = false) List<String> imageIds,
 		HttpSession session,
 		Model model
 	) {
@@ -142,6 +143,7 @@ public class PageController {
 			UserInfoDto userInfo = userServiceClient.getMyInfo(accessToken);
 			request.setSellerId(userInfo.getUserId());
 			request.setStatus("ENABLE");
+			request.setImageIds(imageIds);
 			UUID productId = productServiceClient.createProduct(request, accessToken);
 
 			if (scheduleDts != null) {

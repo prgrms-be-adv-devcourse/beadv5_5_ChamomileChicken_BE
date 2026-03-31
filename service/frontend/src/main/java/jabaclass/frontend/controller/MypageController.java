@@ -88,7 +88,7 @@ public class MypageController {
 			}
 			order.setProductId(product.getId());
 			order.setProductTitle(product.getTitle());
-			order.setProductDescriptionImage(product.getDescriptionImage());
+			order.setProductDescriptionImage(product.getThumbnailPath());
 			order.setProductPrice(product.getPrice());
 		}
 	}
