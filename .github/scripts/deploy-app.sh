@@ -58,6 +58,8 @@ esac
   docker tag $DOCKERHUB_USERNAME/$IMAGE:$IMAGE_TAG $DOCKERHUB_USERNAME/$IMAGE:$LATEST  || true
 
   echo "Restarting container: $CONTAINER"
-  docker compose up -d --force-recreate $CONTAINER
+  docker compose stop $CONTAINER
+  docker compose rm -f $CONTAINER
+  docker compose up -d  $CONTAINER
 
   echo "Done: $SERVICE"
