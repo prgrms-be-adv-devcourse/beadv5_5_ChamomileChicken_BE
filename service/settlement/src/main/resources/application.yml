@@ -15,15 +15,15 @@ spring:
 
 clients:
   payment:
-    base-url: ${PAYMENT_SERVICE_BASE_URL:http://localhost:9001}
+    base-url: ${PAYMENT_SERVICE_HOST:http://localhost:9001}
   order:
-    base-url: ${ORDER_SERVICE_BASE_URL:http://localhost:9005}
+    base-url: ${ORDER_SERVICE_HOST:http://localhost:9005}
   product:
-    base-url: ${PRODUCT_SERVICE_BASE_URL:http://localhost:9004}
+    base-url: ${PRODUCT_SERVICE_HOST:http://localhost:9004}
   user:
-    base-url: ${USER_SERVICE_BASE_URL:http://localhost:9003}
+    base-url: ${USER_SERVICE_HOST:http://localhost:9003}
   transfer:
-    base-url: ${TRANSFER_SERVICE_BASE_URL:http://localhost:9006}
+    base-url: ${TRANSFER_SERVICE_HOST:http://localhost:9006}
 
 jwt:
   secret: ${JWT_SECRET:test-jwt-secret-key-for-local-settlement-module-only}

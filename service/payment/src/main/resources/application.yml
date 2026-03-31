@@ -15,11 +15,11 @@ spring:
 
 order:
   service:
-    url: ${ORDER_SERVICE_URL:http://localhost:9005}
+    url: ${ORDER_SERVICE_HOST:http://localhost:9005}
 
 user:
   service:
-    url: ${USER_SERVICE_URL:http://localhost:9003}
+    url: ${USER_SERVICE_HOST:http://localhost:9003}
 
 toss:
   secret-key: ${TOSS_SECRET_KEY}
