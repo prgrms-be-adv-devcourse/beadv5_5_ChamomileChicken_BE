@@ -53,9 +53,9 @@ public record ProductResponseDto(
 ) {
 
 	public static ProductResponseDto from(Product product, String sellerName) {
-		List<String> imagePaths = product.getDescriptionImages().stream()
-				.map(ProductImageItem::storagePath)
-				.toList();
+		List<ProductImageItem> images = product.getDescriptionImages();
+		List<String> imagePaths = images == null ? List.of()
+				: images.stream().map(ProductImageItem::storagePath).toList();
 
 		return new ProductResponseDto(
 			product.getId(),
@@ -75,9 +75,9 @@ public record ProductResponseDto(
 	}
 
 	public static ProductResponseDto listFrom(Product product, Map<UUID, String> map) {
-		List<String> imagePaths = product.getDescriptionImages().stream()
-				.map(ProductImageItem::storagePath)
-				.toList();
+		List<ProductImageItem> images = product.getDescriptionImages();
+		List<String> imagePaths = images == null ? List.of()
+				: images.stream().map(ProductImageItem::storagePath).toList();
 
 		return new ProductResponseDto(
 				product.getId(),

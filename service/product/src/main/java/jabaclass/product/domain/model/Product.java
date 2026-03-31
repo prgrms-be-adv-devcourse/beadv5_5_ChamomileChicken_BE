@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import lombok.Builder;
 import org.hibernate.annotations.UuidGenerator;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
@@ -56,6 +57,7 @@ public class Product extends EntityBase {
 
 //	Postgres 사용시 주석 해제
 //	@Column(name = "description_path", columnDefinition = "jsonb")
+	@Builder.Default
 	@Column(name = "description_path", columnDefinition = "text")
 	@Convert(converter = ProductImageItemsConverter.class)
 	private List<ProductImageItem> descriptionImages = new ArrayList<>();
