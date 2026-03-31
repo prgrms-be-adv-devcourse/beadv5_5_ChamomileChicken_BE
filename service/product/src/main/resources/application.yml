@@ -2,6 +2,8 @@ server.port: 9004
 spring:
   application:
     name: product
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
 
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
@@ -9,35 +11,6 @@ spring:
       auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-  #  datasource:
-  #    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:backend5}
-  #    username: ${DB_USERNAME:postgres}
-  #    password: ${DB_PASSWORD:postgres}
-  #    driver-class-name: org.postgresql.Driver
-
-  datasource:
-    url: jdbc:h2:tcp://localhost:${H2_TCP_PORT:8082}/~/test
-    driver-class-name: org.h2.Driver
-    username: sa
-    password:
-
-  h2:
-    console:
-      enabled: true
-      path: /h2-console
-
-  jpa:
-    hibernate:
-      ddl-auto: update
-    #    defer-datasource-initialization: true # 테스트 sql 삽입용
-    show-sql: true
-    properties:
-      hibernate:
-        format_sql: true
-
-  sql:
-    init:
-      mode: always
 
   springdoc:
     swagger-ui:
@@ -46,21 +19,7 @@ spring:
       path: /v3/api-docs
       version: OPENAPI_3_0
 
-api:
-  user-host: ${USER_SERVICE_URL:http://localhost:9003}
-
-jwt:
-  secret: ${JWT_SECRET}
-  access-token-validity: 1800000
-  refresh-token-validity: 604800000
-
-internal:
-  file:
-    url: http://localhost:9000
-  api:
-    key: test-internal-key
-
-logging:
-  level:
-    org.hibernate.SQL: debug
-    org.hibernate.type.descriptor.sql.BasicBinder: trace
+  jwt:
+    secret: ${JWT_SECRET}
+    access-token-validity: 1800000
+    refresh-token-validity: 604800000
