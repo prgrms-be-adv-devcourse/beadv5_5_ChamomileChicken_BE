@@ -1,9 +1,9 @@
 api:
-  user-host: http://user-service:9003
+  user-host: ${USER_SERVICE_HOST}
 
 internal:
   file:
-    url: http://file-service:9000
+    url: ${FILE_SERVICE_HOST}
   api:
     key: ${INTERNAL-KEY:test-internal-key}
 

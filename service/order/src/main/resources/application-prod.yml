@@ -15,9 +15,9 @@ spring:
 
 external:
   deposits:
-    base-url: http://user-service:9003
+    base-url: ${USER_SERVICE_HOST}
   products:
-    base-url: http://product-service:9004
+    base-url: ${PRODUCT_SERVICE_HOST}
 
 logging:
   level:
