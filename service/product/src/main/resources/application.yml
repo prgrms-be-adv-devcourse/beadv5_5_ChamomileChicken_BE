@@ -23,3 +23,9 @@ spring:
     secret: ${JWT_SECRET}
     access-token-validity: 1800000
     refresh-token-validity: 604800000
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
