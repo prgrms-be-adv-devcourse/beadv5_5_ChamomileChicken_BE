@@ -1,6 +1,10 @@
 package jabaclass.product.domain.model;
 
+import jabaclass.product.infrastructure.converter.ProductImageItemsConverter;
+import jakarta.persistence.Convert;
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 import org.hibernate.annotations.UuidGenerator;
@@ -26,7 +30,7 @@ import lombok.experimental.SuperBuilder;
 @NoArgsConstructor
 @SuperBuilder
 @EntityListeners(AuditingEntityListener.class)
-@Table(name = "products", schema = "public")
+@Table(name = "products")
 public class Product extends EntityBase {
 
 	@Id
@@ -47,8 +51,14 @@ public class Product extends EntityBase {
 	@Column(columnDefinition = "text")
 	private String description;
 
-	@Column(name = "description_image")
-	private String descriptionImage;
+	@Column(name = "thumbnail_path")
+	private String thumbnailPath;
+
+//	Postgres 사용시 주석 해제
+//	@Column(name = "description_path", columnDefinition = "jsonb")
+	@Column(name = "description_path", columnDefinition = "text")
+	@Convert(converter = ProductImageItemsConverter.class)
+	private List<ProductImageItem> descriptionImages = new ArrayList<>();
 
 	@Column(nullable = false, precision = 15, scale = 2)
 	private BigDecimal price;
@@ -85,12 +95,16 @@ public class Product extends EntityBase {
 		this.price = price;
 	}
 
-	public void changeDescription(String description) {
-		this.description = description;
+	public void changeImages(List<ProductImageItem> images) {
+		if (images.size() > 10) {
+			throw new BusinessException(CommonErrorCode.IMAGE_LIMIT_EXCEEDED);
+		}
+		this.descriptionImages = images;
+		this.thumbnailPath = images.isEmpty() ? null : images.get(0).storagePath();
 	}
 
-	public void changeDescriptionImage(String descriptionImage) {
-		this.descriptionImage = descriptionImage;
+	public void changeDescription(String description) {
+		this.description = description;
 	}
 
 	public void changeStatus(ProductStatus status) {

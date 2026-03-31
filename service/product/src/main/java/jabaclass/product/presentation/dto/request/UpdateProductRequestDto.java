@@ -7,6 +7,8 @@ import jabaclass.product.domain.model.status.ProductStatus;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import java.util.List;
+import java.util.UUID;
 
 @Schema(description = "상품 수정")
 public record UpdateProductRequestDto(
@@ -23,8 +25,9 @@ public record UpdateProductRequestDto(
 	@Schema(description = "설명", example = "상품에 대한 설명입니다.")
 	String description,
 
-	@Schema(description = "설명이미지 ID", example = "550e8400-e29b-41d4-a716-446655440000")
-	String descriptionImage,
+	@Size(max = 10, message = "사진은 최대 10장까지 등록 가능합니다.")
+	@Schema(description = "상품 이미지 file 목록(순서 = 표시 순서, 첫 번째가 썸네)")
+	List<UUID> imageIds,
 
 	@Min(value = 1, message = "가격은 1원 이상이어야 합니다.")
 	@Schema(description = "가격", example = "550000.00")
@@ -32,6 +35,4 @@ public record UpdateProductRequestDto(
 
 	@Schema(description = "상태", example = "ENABLE")
 	ProductStatus status
-) {
-
-}
+) {}

@@ -1,7 +1,9 @@
 package jabaclass.product.presentation.dto.respose;
 
+import jabaclass.product.domain.model.ProductImageItem;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -25,8 +27,11 @@ public record ProductResponseDto(
 	@Schema(description = "설명", example = "상품에 대한 설명입니다.")
 	String description,
 
-	@Schema(description = "설명이미지 ID", example = "550e8400-e29b-41d4-a716-446655440000")
-	String descriptionImage,
+	@Schema(description = "썸네일 경로")
+	String thumbnailPath,
+
+	@Schema(description = "상품 이미지 경로 목록")
+	List<String> imagePaths,
 
 	@Schema(description = "가격", example = "550000.00")
 	BigDecimal price,
@@ -48,13 +53,18 @@ public record ProductResponseDto(
 ) {
 
 	public static ProductResponseDto from(Product product, String sellerName) {
+		List<String> imagePaths = product.getDescriptionImages().stream()
+				.map(ProductImageItem::storagePath)
+				.toList();
+
 		return new ProductResponseDto(
 			product.getId(),
 			sellerName,
 			product.getTitle(),
 			product.getMaxCapacity(),
 			product.getDescription(),
-			product.getDescriptionImage(),
+			product.getThumbnailPath(),
+			imagePaths,
 			product.getPrice(),
 			product.getStatus().getStatusName(),
 			product.getRegId(),
@@ -65,19 +75,24 @@ public record ProductResponseDto(
 	}
 
 	public static ProductResponseDto listFrom(Product product, Map<UUID, String> map) {
+		List<String> imagePaths = product.getDescriptionImages().stream()
+				.map(ProductImageItem::storagePath)
+				.toList();
+
 		return new ProductResponseDto(
-			product.getId(),
-			map.getOrDefault(product.getSellerId(), "사용자 이름이 지정되지 않았습니다."),
-			product.getTitle(),
-			product.getMaxCapacity(),
-			product.getDescription(),
-			product.getDescriptionImage(),
-			product.getPrice(),
-			product.getStatus().getStatusName(),
-			product.getRegId(),
-			product.getRegDt(),
-			product.getModifyId(),
-			product.getModifyDt()
+				product.getId(),
+				map.getOrDefault(product.getSellerId(), "사용자 이름이 지정되지 않았습니다."),
+				product.getTitle(),
+				product.getMaxCapacity(),
+				product.getDescription(),
+				product.getThumbnailPath(),
+				imagePaths,
+				product.getPrice(),
+				product.getStatus().getStatusName(),
+				product.getRegId(),
+				product.getRegDt(),
+				product.getModifyId(),
+				product.getModifyDt()
 		);
 	}
 }
