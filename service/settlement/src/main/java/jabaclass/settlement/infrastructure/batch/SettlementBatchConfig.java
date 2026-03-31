@@ -5,7 +5,6 @@ import java.time.YearMonth;
 
 import org.springframework.batch.core.job.Job;
 import org.springframework.batch.core.job.builder.JobBuilder;
-import org.springframework.batch.core.job.parameters.RunIdIncrementer;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.Step;
 import org.springframework.batch.core.step.builder.StepBuilder;
@@ -29,7 +28,6 @@ public class SettlementBatchConfig {
 	) {
 		return new JobBuilder("settlementTargetLoadJob", jobRepository)
 			.listener(settlementJobExecutionListener)
-			.incrementer(new RunIdIncrementer())
 			.start(settlementTargetLoadStep)
 			.build();
 	}
@@ -65,7 +63,6 @@ public class SettlementBatchConfig {
 	) {
 		return new JobBuilder("settlementCalculateJob", jobRepository)
 			.listener(settlementJobExecutionListener)
-			.incrementer(new RunIdIncrementer())
 			.start(settlementCalculateStep)
 			.build();
 	}
@@ -101,7 +98,6 @@ public class SettlementBatchConfig {
 	) {
 		return new JobBuilder("settlementTransferJob", jobRepository)
 			.listener(settlementJobExecutionListener)
-			.incrementer(new RunIdIncrementer())
 			.start(settlementTransferStep)
 			.build();
 	}

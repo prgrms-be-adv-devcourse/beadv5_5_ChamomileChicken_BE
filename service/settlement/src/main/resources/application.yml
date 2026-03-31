@@ -29,8 +29,10 @@ spring:
     database-platform: org.hibernate.dialect.H2Dialect
 
   batch:
+    job:
+      enabled: false
     jdbc:
-      initialize-schema: always
+      initialize-schema: false
 
 clients:
   payment:
@@ -54,3 +56,15 @@ management:
     web:
       exposure:
         include: health
+
+settlement:
+  batch:
+    load:
+      cron: "${SETTLEMENT_BATCH_LOAD_CRON:0 0 1 * * *}"
+      target-date-offset-days: ${SETTLEMENT_BATCH_LOAD_TARGET_DATE_OFFSET_DAYS:0}
+    calculate:
+      cron: "${SETTLEMENT_BATCH_CALCULATE_CRON:0 0 2 1 * *}"
+      target-month-offset-months: ${SETTLEMENT_BATCH_CALCULATE_TARGET_MONTH_OFFSET_MONTHS:1}
+    transfer:
+      cron: "${SETTLEMENT_BATCH_TRANSFER_CRON:0 0 2 2 * *}"
+      target-month-offset-months: ${SETTLEMENT_BATCH_TRANSFER_TARGET_MONTH_OFFSET_MONTHS:1}
