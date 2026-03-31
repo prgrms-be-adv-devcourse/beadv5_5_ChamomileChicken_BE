@@ -24,15 +24,14 @@ spring:
     hibernate:
       ddl-auto: update
 
-  logging:
-    level:
-      org.hibernate.SQL: DEBUG            # 실제 실행되는 SQL
-      org.hibernate.type.descriptor.sql: TRACE  # 바인딩 파라미터까지
-
-
   springdoc:
     swagger-ui:
       path: /swagger-ui.html
     api-docs:
       path: /v3/api-docs
       version: OPENAPI_3_0
+
+logging:
+  level:
+    org.hibernate.SQL: DEBUG            # 실제 실행되는 SQL
+    org.hibernate.type.descriptor.sql: TRACE  # 바인딩 파라미터까지
