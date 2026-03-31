@@ -85,7 +85,7 @@ public class DepositPaymentService implements DepositPaymentUseCase {
 			// 실패 처리
 			depositPayment.markFailed();
 
-			throw new PaymentException(PaymentErrorCode.DEPOSIT_PAYMENT_CONFIRM_FAILED);
+			throw new PaymentException(PaymentErrorCode.DEPOSIT_PAYMENT_CONFIRM_FAILED, e);
 		}
 
 		return new ConfirmDepositPaymentResponseDto(true);

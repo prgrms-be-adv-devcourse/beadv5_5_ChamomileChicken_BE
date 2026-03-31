@@ -18,4 +18,9 @@ public class PaymentException extends RuntimeException {
 	public HttpStatus getStatus() {
 		return errorCode.getStatus();
 	}
+
+	public PaymentException(PaymentErrorCode errorCode, Throwable cause) {
+		super(errorCode.getMessage(), cause);
+		this.errorCode = errorCode;
+	}
 }

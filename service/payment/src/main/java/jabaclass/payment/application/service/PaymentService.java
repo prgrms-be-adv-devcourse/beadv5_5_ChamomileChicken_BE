@@ -136,7 +136,7 @@ public class PaymentService implements PaymentUseCase {
 					payment.getOrderId(), ex);
 			}
 
-			throw new PaymentException(PaymentErrorCode.PAYMENT_CONFIRM_FAILED);
+			throw new PaymentException(PaymentErrorCode.PAYMENT_CONFIRM_FAILED, e);
 		}
 
 
@@ -151,9 +151,7 @@ public class PaymentService implements PaymentUseCase {
 			.orElseThrow(() -> new PaymentException(PaymentErrorCode.PAYMENT_NOT_FOUND));
 
 		if (!payment.isDone()) {
-			if (!payment.isDone()) {
-				throw new PaymentException(PaymentErrorCode.PAYMENT_NOT_COMPLETED);
-			}
+			throw new PaymentException(PaymentErrorCode.PAYMENT_NOT_COMPLETED);
 		}
 
 		Refund refund = Refund.create(
@@ -193,7 +191,8 @@ public class PaymentService implements PaymentUseCase {
 		} catch (Exception e) {
 			refund.markFailed();
 			log.error("환불 실패. orderId={}, paymentId={}", payment.getOrderId(), payment.getId(), e);
-			throw new PaymentException(PaymentErrorCode.PAYMENT_REFUND_FAILED);
+
+			throw new PaymentException(PaymentErrorCode.PAYMENT_REFUND_FAILED, e);
 		}
 
 		return RefundPaymentResponseDto.from(refund, payment.getOrderId());
