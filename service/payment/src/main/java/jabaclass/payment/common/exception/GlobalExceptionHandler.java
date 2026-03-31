@@ -16,6 +16,12 @@ public class GlobalExceptionHandler {
 
 		PaymentErrorCode errorCode = ex.getErrorCode();
 
+		log.warn("[PaymentException] code={}, message={}, cause={}",
+			errorCode.name(),
+			errorCode.getMessage(),
+			ex.getMessage()
+		);
+
 		return ResponseEntity
 			.status(errorCode.getStatus())
 			.body(ApiResponseDto.fail(
@@ -26,7 +32,9 @@ public class GlobalExceptionHandler {
 
 	@ExceptionHandler(Exception.class)
 	public ResponseEntity<ApiResponseDto<Void>> handleServerError(Exception ex) {
-		log.error("Internal server error occurred", ex);
+
+		log.error("[Unhandled Exception]", ex);
+
 		return ResponseEntity
 			.status(HttpStatus.INTERNAL_SERVER_ERROR)
 			.body(ApiResponseDto.fail(HttpStatus.INTERNAL_SERVER_ERROR, "서버 에러입니다."));
