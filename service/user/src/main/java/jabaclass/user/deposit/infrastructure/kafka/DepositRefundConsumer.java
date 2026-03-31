@@ -6,7 +6,7 @@ import org.springframework.stereotype.Component;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import jabaclass.user.common.kafka.OrderRefundedEvent;
-import jabaclass.user.deposit.application.usecase.RefundDepositUseCase;
+import jabaclass.user.deposit.application.usecase.DepositUseCase;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -15,7 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class DepositRefundConsumer {
 
-	private final RefundDepositUseCase refundDepositUseCase;
+	private final DepositUseCase depositUseCase;
 	private final ObjectMapper objectMapper;
 
 	@KafkaListener(
@@ -29,7 +29,7 @@ public class DepositRefundConsumer {
 			log.info("예치금 복구 이벤트 수신 - orderId: {}, userId: {}, amount: {}",
 				event.orderId(), event.userId(), event.depositAmount());
 
-			refundDepositUseCase.refund(event.userId(), event.depositAmount(), event.orderId());
+			depositUseCase.refund(event.userId(), event.depositAmount(), event.orderId());
 
 		} catch (Exception e) {
 			log.error("예치금 복구 실패 - message: {}, error: {}", message, e.getMessage());

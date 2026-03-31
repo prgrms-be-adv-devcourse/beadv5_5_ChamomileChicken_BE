@@ -1,4 +1,4 @@
-package jabaclass.user.deposit.application.usecase;
+package jabaclass.user.deposit.application.service;
 
 import java.util.List;
 import java.util.UUID;
@@ -17,19 +17,15 @@ import jabaclass.user.deposit.presentation.dto.response.DepositMeResponseDto;
 import jabaclass.user.user.domain.model.User;
 import jabaclass.user.user.domain.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 
-@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class DepositQueryUseCase {
+public class DepositQueryService {
 
 	private final UserRepository userRepository;
 	private final DepositHistoryRepository depositHistoryRepository;
 
-	// 예치금 조회
-	// GET /deposits/me
 	public DepositMeResponseDto findMyDeposit(UUID userId) {
 		User user = userRepository.findById(userId)
 			.orElseThrow(() -> new BusinessException(DepositErrorCode.NOT_FOUND_USER));
@@ -37,15 +33,13 @@ public class DepositQueryUseCase {
 		return new DepositMeResponseDto(user.getId(), user.getDeposit());
 	}
 
-	// 예치금 이력 조회
-	// GET /deposits
 	public DepositHistoryResponseDto findAllDepositHistories(UUID userId) {
 		List<DepositHistoryItemDto> items = depositHistoryRepository.findAllByUserId(userId)
 			.stream()
 			.map(history -> new DepositHistoryItemDto(
 				history.getId(),
 				history.getUser().getId(),
-				history.getPaymentId(),    // 누락된 paymentId 추가
+				history.getPaymentId(),
 				history.getType(),
 				history.getAmount()
 			))
@@ -54,8 +48,6 @@ public class DepositQueryUseCase {
 		return new DepositHistoryResponseDto(items);
 	}
 
-	// 예치금 상세 조회
-	// GET /deposits/{예치금Id}
 	public DepositDetailResponseDto findDepositHistory(UUID depositHistoryId) {
 		DepositHistory history = depositHistoryRepository.findById(depositHistoryId)
 			.orElseThrow(() -> new BusinessException(DepositErrorCode.NOT_FOUND_DEPOSIT_HISTORY));
