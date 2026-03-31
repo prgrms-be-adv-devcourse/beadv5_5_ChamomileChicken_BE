@@ -56,9 +56,10 @@ jobs:
       - name: Build Docker image
         run: |
           docker build \
+            -f ./service/user/Dockerfile \
             -t ${{ secrets.DOCKERHUB_USERNAME }}/chamomile-user:latest \
             -t ${{ secrets.DOCKERHUB_USERNAME }}/chamomile-user:${{ steps.meta.outputs.image_tag }} \
-            ./service/user
+            .
 
       - name: Push Docker image
         run: |
