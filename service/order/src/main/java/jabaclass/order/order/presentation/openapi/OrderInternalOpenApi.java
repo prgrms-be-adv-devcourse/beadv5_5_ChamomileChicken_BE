@@ -1,6 +1,7 @@
 package jabaclass.order.order.presentation.openapi;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -8,7 +9,9 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jabaclass.order.order.presentation.dto.request.OrderBulkReadRequestDto;
 import jabaclass.order.order.presentation.dto.request.UpdateOrderPaymentStatusRequestDto;
+import jabaclass.order.order.presentation.dto.response.OrderSettlementItemResponseDto;
 import jabaclass.order.order.presentation.dto.response.ValidatePaymentAmountResponseDto;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -36,5 +39,12 @@ public interface OrderInternalOpenApi {
     ResponseEntity<Void> updatePaymentStatus(
         @PathVariable UUID orderId,
         @RequestBody UpdateOrderPaymentStatusRequestDto requestDto
+    );
+
+    @Operation(summary = "주문 벌크 조회", description = "Settlement 모듈이 정산 계산에 필요한 주문 정보를 주문 ID 목록으로 조회합니다.")
+    @ApiResponse(responseCode = "200", description = "주문 벌크 조회 성공")
+    @CommonErrorResponses
+    ResponseEntity<List<OrderSettlementItemResponseDto>> getOrdersByIds(
+        @RequestBody OrderBulkReadRequestDto requestDto
     );
 }

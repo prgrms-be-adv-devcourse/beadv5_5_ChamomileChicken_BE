@@ -17,12 +17,16 @@ import jabaclass.user.common.error.BusinessException;
 import jabaclass.user.mail.application.usecase.EmailVerificationUseCase;
 import jabaclass.user.user.application.exception.UserErrorCode;
 import jabaclass.user.user.application.usercase.UserUseCase;
+import jabaclass.user.user.domain.model.SellerSettlementAccount;
 import jabaclass.user.user.domain.model.User;
 import jabaclass.user.user.domain.model.UserRole;
+import jabaclass.user.user.domain.repository.SellerSettlementAccountRepository;
 import jabaclass.user.user.domain.repository.UserRepository;
 import jabaclass.user.user.presentation.dto.request.ChangeMyEmailRequestDto;
 import jabaclass.user.user.presentation.dto.request.RegisterUserRequestDto;
 import jabaclass.user.user.presentation.dto.request.UpdateUserRequestDto;
+import jabaclass.user.user.presentation.dto.response.SellerSettlementAccountResponseDto;
+import jabaclass.user.user.presentation.dto.response.SellerSettlementDetailResponseDto;
 import jabaclass.user.user.presentation.dto.response.UserResponseDto;
 import lombok.RequiredArgsConstructor;
 
@@ -33,6 +37,7 @@ public class UserService implements UserUseCase {
 
 	private final PasswordEncoder passwordEncoder;
 	private final UserRepository userRepository;
+	private final SellerSettlementAccountRepository sellerSettlementAccountRepository;
 	private final EmailVerificationUseCase emailVerificationUseCase;
 
 
@@ -108,6 +113,59 @@ public class UserService implements UserUseCase {
 			.map(userMap::get)
 			.filter(Objects::nonNull)
 			.map(UserResponseDto::from)
+			.toList();
+	}
+
+	@Override
+	public List<SellerSettlementDetailResponseDto> getSellerDetailsByIds(List<UUID> sellerIds) {
+		if (sellerIds == null || sellerIds.isEmpty()) {
+			return List.of();
+		}
+
+		List<UUID> distinctSellerIds = sellerIds.stream()
+			.distinct()
+			.toList();
+
+		Map<UUID, SellerSettlementAccount> accountMap = sellerSettlementAccountRepository.findAllByUserIds(distinctSellerIds)
+			.stream()
+			.collect(Collectors.toMap(SellerSettlementAccount::getUserId, Function.identity()));
+
+		Map<UUID, User> sellerMap = userRepository.findAllByIds(distinctSellerIds).stream()
+			.filter(user -> user.getRole() == UserRole.SELLER)
+			.collect(Collectors.toMap(User::getId, Function.identity()));
+
+		return distinctSellerIds.stream()
+			.map(sellerMap::get)
+			.filter(Objects::nonNull)
+			.map(seller -> {
+				SellerSettlementAccount account = accountMap.get(seller.getId());
+				return new SellerSettlementDetailResponseDto(
+					seller.getId(),
+					seller.getRole().name(),
+					account != null,
+					account != null && account.isActive()
+				);
+			})
+			.toList();
+	}
+
+	@Override
+	public List<SellerSettlementAccountResponseDto> getSellerSettlementAccountsByIds(List<UUID> sellerIds) {
+		if (sellerIds == null || sellerIds.isEmpty()) {
+			return List.of();
+		}
+
+		List<UUID> distinctSellerIds = sellerIds.stream()
+			.distinct()
+			.toList();
+
+		Map<UUID, User> sellerMap = userRepository.findAllByIds(distinctSellerIds).stream()
+			.filter(user -> user.getRole() == UserRole.SELLER)
+			.collect(Collectors.toMap(User::getId, Function.identity()));
+
+		return sellerSettlementAccountRepository.findAllByUserIds(distinctSellerIds).stream()
+			.filter(account -> sellerMap.containsKey(account.getUserId()))
+			.map(SellerSettlementAccountResponseDto::from)
 			.toList();
 	}
 

@@ -6,6 +6,8 @@ import java.util.UUID;
 import jabaclass.user.user.presentation.dto.request.ChangeMyEmailRequestDto;
 import jabaclass.user.user.presentation.dto.request.RegisterUserRequestDto;
 import jabaclass.user.user.presentation.dto.request.UpdateUserRequestDto;
+import jabaclass.user.user.presentation.dto.response.SellerSettlementAccountResponseDto;
+import jabaclass.user.user.presentation.dto.response.SellerSettlementDetailResponseDto;
 import jabaclass.user.user.presentation.dto.response.UserResponseDto;
 
 public interface UserUseCase {
@@ -23,4 +25,8 @@ public interface UserUseCase {
 	void withdraw(UUID userId);
 
 	List<UserResponseDto> getUsersByIds(List<UUID> userIds);
+
+	List<SellerSettlementDetailResponseDto> getSellerDetailsByIds(List<UUID> sellerIds);
+
+	List<SellerSettlementAccountResponseDto> getSellerSettlementAccountsByIds(List<UUID> sellerIds);
 }

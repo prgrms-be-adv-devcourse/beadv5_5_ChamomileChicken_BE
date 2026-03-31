@@ -2,7 +2,11 @@ package jabaclass.order.order.application.service;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import jabaclass.order.common.error.BusinessException;
 import jabaclass.order.order.application.client.DepositClient;
@@ -14,8 +18,10 @@ import jabaclass.order.order.domain.model.PaymentResultStatus;
 import jabaclass.order.order.domain.model.OrderStatus;
 import jabaclass.order.order.domain.repository.OrderRepository;
 import jabaclass.order.order.presentation.dto.request.CreateOrderRequestDto;
+import jabaclass.order.order.presentation.dto.request.OrderBulkReadRequestDto;
 import jabaclass.order.order.presentation.dto.request.UpdateOrderPaymentStatusRequestDto;
 import jabaclass.order.order.presentation.dto.response.CreateOrderResponseDto;
+import jabaclass.order.order.presentation.dto.response.OrderSettlementItemResponseDto;
 import jabaclass.order.order.presentation.dto.response.OrderResponseDto;
 import jabaclass.order.order.infrastructure.client.product.dto.ProductReservationResponseDto;
 import jabaclass.order.order.infrastructure.client.product.dto.ProductReservationStatus;
@@ -135,6 +141,26 @@ public class OrderService implements OrderUseCase {
             .orElseThrow(() -> new BusinessException(OrderErrorCode.ORDER_NOT_FOUND));
 
         order.refund();
+    }
+
+    @Override
+    public List<OrderSettlementItemResponseDto> getOrdersByIds(OrderBulkReadRequestDto requestDto) {
+        if (requestDto == null || requestDto.orderIds() == null || requestDto.orderIds().isEmpty()) {
+            return List.of();
+        }
+
+        List<UUID> distinctOrderIds = requestDto.orderIds().stream()
+            .distinct()
+            .toList();
+
+        Map<UUID, Order> orderMap = orderRepository.findAllByIds(distinctOrderIds).stream()
+            .collect(Collectors.toMap(Order::getId, Function.identity()));
+
+        return distinctOrderIds.stream()
+            .map(orderMap::get)
+            .filter(Objects::nonNull)
+            .map(OrderSettlementItemResponseDto::from)
+            .toList();
     }
 
     private List<Order> getOrdersByCondition(UUID userId, OrderStatus status) {

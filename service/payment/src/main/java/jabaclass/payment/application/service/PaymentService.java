@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import jabaclass.payment.application.port.external.OrderPort;
 import jabaclass.payment.application.port.external.PaymentGatewayPort;
 import jabaclass.payment.application.port.external.UserPort;
+import jabaclass.payment.application.usecase.PaymentSettlementQueryUseCase;
 import jabaclass.payment.application.usecase.PaymentUseCase;
 import jabaclass.payment.common.exception.PaymentErrorCode;
 import jabaclass.payment.common.exception.PaymentException;
@@ -21,16 +22,24 @@ import jabaclass.payment.infrastructure.kafka.PaymentRefundCompletedEventPublish
 import jabaclass.payment.presentation.dto.request.ConfirmPaymentRequestDto;
 import jabaclass.payment.presentation.dto.request.PreparePaymentRequestDto;
 import jabaclass.payment.presentation.dto.request.RefundPaymentRequestDto;
+import jabaclass.payment.presentation.dto.response.PaymentSettlementSliceResponseDto;
+import jabaclass.payment.presentation.dto.response.PaymentSettlementTargetItemResponseDto;
 import jabaclass.payment.presentation.dto.response.PaymentResponseDto;
+import jabaclass.payment.presentation.dto.response.RefundSettlementSliceResponseDto;
 import jabaclass.payment.presentation.dto.response.RefundPaymentResponseDto;
+import jabaclass.payment.presentation.dto.response.RefundSettlementTargetItemResponseDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
+
+import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 @Slf4j
-public class PaymentService implements PaymentUseCase {
+public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUseCase {
 
 	private final PaymentRepository paymentRepository;
 	private final RefundRepository refundRepository;
@@ -215,5 +224,86 @@ public class PaymentService implements PaymentUseCase {
 		}
 
 		return RefundPaymentResponseDto.from(refund, payment.getOrderId());
+	}
+
+	@Override
+	public PaymentSettlementSliceResponseDto getPaymentSettlementTargets(
+		LocalDateTime from,
+		LocalDateTime to,
+		LocalDateTime cursorUpdatedAt,
+		UUID cursorId,
+		int size
+	) {
+		List<PaymentRepository.SettlementPaymentSource> sources = paymentRepository.findSettlementPaymentSources(
+			from,
+			to,
+			cursorUpdatedAt,
+			cursorId,
+			size + 1
+		);
+
+		boolean hasNext = sources.size() > size;
+		List<PaymentRepository.SettlementPaymentSource> page = hasNext ? sources.subList(0, size) : sources;
+
+		LocalDateTime nextCursorUpdatedAt = hasNext ? page.get(page.size() - 1).occurredAt() : null;
+		UUID nextCursorId = hasNext ? page.get(page.size() - 1).paymentId() : null;
+
+		return new PaymentSettlementSliceResponseDto(
+			page.stream()
+				.map(item -> new PaymentSettlementTargetItemResponseDto(
+					item.paymentId(),
+					item.orderId(),
+					item.productId(),
+					item.paymentStatus(),
+					item.totalPaymentAmount(),
+					item.occurredAt(),
+					item.occurredAt()
+				))
+				.toList(),
+			hasNext,
+			nextCursorUpdatedAt,
+			nextCursorId
+		);
+	}
+
+	@Override
+	public RefundSettlementSliceResponseDto getRefundSettlementTargets(
+		LocalDateTime from,
+		LocalDateTime to,
+		LocalDateTime cursorUpdatedAt,
+		UUID cursorId,
+		int size
+	) {
+		List<RefundRepository.SettlementRefundSource> sources = refundRepository.findSettlementRefundSources(
+			from,
+			to,
+			cursorUpdatedAt,
+			cursorId,
+			size + 1
+		);
+
+		boolean hasNext = sources.size() > size;
+		List<RefundRepository.SettlementRefundSource> page = hasNext ? sources.subList(0, size) : sources;
+
+		LocalDateTime nextCursorUpdatedAt = hasNext ? page.get(page.size() - 1).occurredAt() : null;
+		UUID nextCursorId = hasNext ? page.get(page.size() - 1).refundId() : null;
+
+		return new RefundSettlementSliceResponseDto(
+			page.stream()
+				.map(item -> new RefundSettlementTargetItemResponseDto(
+					item.refundId(),
+					item.paymentId(),
+					item.orderId(),
+					item.productId(),
+					item.refundStatus(),
+					item.totalRefundAmount(),
+					item.occurredAt(),
+					item.occurredAt()
+				))
+				.toList(),
+			hasNext,
+			nextCursorUpdatedAt,
+			nextCursorId
+		);
 	}
 }

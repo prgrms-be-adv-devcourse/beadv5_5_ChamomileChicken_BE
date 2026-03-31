@@ -1,5 +1,6 @@
 package jabaclass.product.infrastructure.persistence;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -17,4 +18,6 @@ public interface ProductJpaRepository extends JpaRepository<Product, UUID> {
 	Page<Product> findByStatusAndDeleteDtIsNull(ProductStatus status, Pageable pageable);
 
 	Optional<Product> findByIdAndSellerId(UUID productId, UUID sellerId);
+
+	List<Product> findAllByIdIn(List<UUID> productIds);
 }

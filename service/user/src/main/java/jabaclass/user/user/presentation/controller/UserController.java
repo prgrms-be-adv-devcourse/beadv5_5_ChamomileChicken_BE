@@ -1,6 +1,5 @@
 package jabaclass.user.user.presentation.controller;
 
-import java.util.List;
 import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
@@ -19,7 +18,6 @@ import jabaclass.user.user.presentation.dto.request.ChangeMyEmailRequestDto;
 import jabaclass.user.user.presentation.dto.request.EmailCheckRequestDto;
 import jabaclass.user.user.presentation.dto.request.RegisterUserRequestDto;
 import jabaclass.user.user.presentation.dto.request.UpdateUserRequestDto;
-import jabaclass.user.user.presentation.dto.request.UserBulkReadRequestDto;
 import jabaclass.user.user.presentation.dto.response.EmailCheckResponseDto;
 import jabaclass.user.user.presentation.dto.response.UserResponseDto;
 import jakarta.validation.Valid;
@@ -81,18 +79,9 @@ public class UserController implements UserApi {
 		return ResponseEntity.noContent().build();
 	}
 
-	@PostMapping("/bulk")
-	public ResponseEntity<List<UserResponseDto>> getUsersByIds(
-		@Valid @RequestBody UserBulkReadRequestDto request
-	) {
-		return ResponseEntity
-			.ok(userUseCase.getUsersByIds(request.userIds()));
-	}
-
 	@Override
 	@PostMapping("/me")
 	public ResponseEntity<UserResponseDto> getUserInfo(@RequestBody UUID userId) {
-
 		return ResponseEntity.ok(userUseCase.getMyInfo(userId));
 	}
 

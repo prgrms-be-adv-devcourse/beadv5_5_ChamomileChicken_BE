@@ -1,5 +1,6 @@
 package jabaclass.product.application.usecase;
 
+import java.util.List;
 import java.util.UUID;
 
 import jabaclass.product.domain.model.Product;
@@ -8,6 +9,7 @@ import jabaclass.product.presentation.dto.request.SearchProductRequestDto;
 import jabaclass.product.presentation.dto.request.UpdateProductRequestDto;
 import jabaclass.product.presentation.dto.respose.DeleteProductResposeDto;
 import jabaclass.product.presentation.dto.respose.ProductResponseDto;
+import jabaclass.product.presentation.dto.respose.ProductSettlementItemResponseDto;
 import jabaclass.product.presentation.dto.respose.SearchProductResponseDto;
 
 public interface ProductUseCase {
@@ -32,4 +34,6 @@ public interface ProductUseCase {
 
 	// 해당 상품 보유자인지 확인
 	Product matchProductAndSellerId(UUID productId, UUID sellerId);
+
+	List<ProductSettlementItemResponseDto> getProductsByIds(List<UUID> productIds);
 }
