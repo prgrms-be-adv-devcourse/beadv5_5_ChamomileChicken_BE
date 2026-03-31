@@ -9,6 +9,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
 import jabaclass.payment.application.port.external.UserPort;
+import jabaclass.payment.common.exception.PaymentErrorCode;
+import jabaclass.payment.common.exception.PaymentException;
 import jabaclass.payment.infrastructure.external.user.dto.request.IncreaseDepositRequestDto;
 import lombok.RequiredArgsConstructor;
 
@@ -44,9 +46,7 @@ public class UserClient implements UserPort {
 			);
 
 		if (!response.getStatusCode().is2xxSuccessful()) {
-			throw new IllegalStateException(
-				"유저 예치금 증가 실패. status=" + response.getStatusCode()
-			);
+			throw new PaymentException(PaymentErrorCode.USER_DEPOSIT_INCREASE_FAILED);
 		}
 	}
 
@@ -73,9 +73,7 @@ public class UserClient implements UserPort {
 			);
 
 		if (!response.getStatusCode().is2xxSuccessful()) {
-			throw new IllegalStateException(
-				"유저 예치금 환불 실패. status=" + response.getStatusCode()
-			);
+			throw new PaymentException(PaymentErrorCode.USER_DEPOSIT_REFUND_FAILED);
 		}
 	}
 }

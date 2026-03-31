@@ -9,6 +9,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
 import jabaclass.payment.application.port.external.OrderPort;
+import jabaclass.payment.common.exception.PaymentErrorCode;
+import jabaclass.payment.common.exception.PaymentException;
 import jabaclass.payment.domain.model.PaymentResultStatus;
 import jabaclass.payment.infrastructure.external.order.dto.request.OrderStatusUpdateRequestDto;
 import lombok.RequiredArgsConstructor;
@@ -42,12 +44,12 @@ public class OrderClient implements OrderPort {
 			);
 
 		if (!response.getStatusCode().is2xxSuccessful()) {
-			throw new IllegalStateException("주문 금액이 일치하지 않습니다.");
+			throw new PaymentException(PaymentErrorCode.INVALID_ORDER_AMOUNT);
 		}
 
 		OrderValidationResponse body = response.getBody();
 		if (body == null) {
-			throw new IllegalStateException("Order 검증 응답이 비어있습니다.");
+			throw new PaymentException(PaymentErrorCode.ORDER_RESPONSE_INVALID);
 		}
 
 		return body.valid();
@@ -85,9 +87,7 @@ public class OrderClient implements OrderPort {
 			);
 
 		if (!response.getStatusCode().is2xxSuccessful()) {
-			throw new IllegalStateException(
-				"Order 상태 업데이트 실패. status=" + response.getStatusCode()
-			);
+			throw new PaymentException(PaymentErrorCode.ORDER_UPDATE_FAILED);
 		}
 	}
 

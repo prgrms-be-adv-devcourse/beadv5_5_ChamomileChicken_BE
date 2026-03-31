@@ -2,6 +2,7 @@ package jabaclass.payment.presentation.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jabaclass.payment.common.dto.ApiResponseDto;
 import jabaclass.payment.presentation.dto.request.ConfirmPaymentRequestDto;
 import jabaclass.payment.presentation.dto.request.PreparePaymentRequestDto;
 import jabaclass.payment.presentation.dto.request.RefundPaymentRequestDto;
@@ -21,7 +22,7 @@ public interface PaymentApi {
 			- 총 금액 = paymentAmount + depositAmount
 			"""
 	)
-	ResponseEntity<PaymentResponseDto> preparePayment(
+	ResponseEntity<ApiResponseDto<PaymentResponseDto>> preparePayment(
 		PreparePaymentRequestDto request
 	);
 
@@ -35,7 +36,7 @@ public interface PaymentApi {
             - 주문 상태 업데이트
             """
 	)
-	ResponseEntity<PaymentResponseDto> confirmPayment(
+	ResponseEntity<ApiResponseDto<PaymentResponseDto>> confirmPayment(
 		ConfirmPaymentRequestDto request
 	);
 
@@ -48,7 +49,7 @@ public interface PaymentApi {
 			- 완료 후 payment.refund.completed 이벤트를 발행합니다.
 			"""
 	)
-	ResponseEntity<RefundPaymentResponseDto> refundPayment(
+	ResponseEntity<ApiResponseDto<RefundPaymentResponseDto>> refundPayment(
 		RefundPaymentRequestDto request
 	);
 }
