@@ -30,15 +30,21 @@
         <div>
             <label class="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-3">충전 금액 선택</label>
             <div class="grid grid-cols-3 gap-2 mb-3">
-                <button onclick="setAmount(10000)" class="amount-btn py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg text-sm text-gray-600 dark:text-gray-300 hover:border-gray-900 dark:hover:border-white hover:text-gray-900 dark:hover:text-white transition-colors">1만원</button>
-                <button onclick="setAmount(30000)" class="amount-btn py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg text-sm text-gray-600 dark:text-gray-300 hover:border-gray-900 dark:hover:border-white hover:text-gray-900 dark:hover:text-white transition-colors">3만원</button>
-                <button onclick="setAmount(50000)" class="amount-btn py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg text-sm text-gray-600 dark:text-gray-300 hover:border-gray-900 dark:hover:border-white hover:text-gray-900 dark:hover:text-white transition-colors">5만원</button>
-                <button onclick="setAmount(100000)" class="amount-btn py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg text-sm text-gray-600 dark:text-gray-300 hover:border-gray-900 dark:hover:border-white hover:text-gray-900 dark:hover:text-white transition-colors">10만원</button>
-                <button onclick="setAmount(300000)" class="amount-btn py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg text-sm text-gray-600 dark:text-gray-300 hover:border-gray-900 dark:hover:border-white hover:text-gray-900 dark:hover:text-white transition-colors">30만원</button>
-                <button onclick="setAmount(500000)" class="amount-btn py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg text-sm text-gray-600 dark:text-gray-300 hover:border-gray-900 dark:hover:border-white hover:text-gray-900 dark:hover:text-white transition-colors">50만원</button>
+                <button onclick="addAmount(10000)" class="amount-btn py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg text-sm text-gray-600 dark:text-gray-300 hover:border-gray-900 dark:hover:border-white hover:text-gray-900 dark:hover:text-white transition-colors">+1만원</button>
+                <button onclick="addAmount(30000)" class="amount-btn py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg text-sm text-gray-600 dark:text-gray-300 hover:border-gray-900 dark:hover:border-white hover:text-gray-900 dark:hover:text-white transition-colors">+3만원</button>
+                <button onclick="addAmount(50000)" class="amount-btn py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg text-sm text-gray-600 dark:text-gray-300 hover:border-gray-900 dark:hover:border-white hover:text-gray-900 dark:hover:text-white transition-colors">+5만원</button>
+                <button onclick="addAmount(100000)" class="amount-btn py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg text-sm text-gray-600 dark:text-gray-300 hover:border-gray-900 dark:hover:border-white hover:text-gray-900 dark:hover:text-white transition-colors">+10만원</button>
+                <button onclick="addAmount(300000)" class="amount-btn py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg text-sm text-gray-600 dark:text-gray-300 hover:border-gray-900 dark:hover:border-white hover:text-gray-900 dark:hover:text-white transition-colors">+30만원</button>
+                <button onclick="addAmount(500000)" class="amount-btn py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg text-sm text-gray-600 dark:text-gray-300 hover:border-gray-900 dark:hover:border-white hover:text-gray-900 dark:hover:text-white transition-colors">+50만원</button>
             </div>
-            <input type="number" id="amountInput" placeholder="직접 입력 (원)" min="1000"
-                   class="w-full px-4 py-3 bg-gray-50 dark:bg-[#121212] border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors" />
+            <div class="relative">
+                <input type="number" id="amountInput" placeholder="직접 입력 (원)" min="1000"
+                       class="w-full px-4 py-3 bg-gray-50 dark:bg-[#121212] border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors pr-16" />
+                <button onclick="resetAmount()"
+                        class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">
+                    초기화
+                </button>
+            </div>
         </div>
 
         <button onclick="startPayment()"
@@ -56,8 +62,16 @@
     const userId = /*[[${userId}]]*/ '';
     const tossPayments = TossPayments(tossClientKey);
 
-    function setAmount(value) {
-        document.getElementById('amountInput').value = value;
+    function addAmount(value) {
+        const input = document.getElementById('amountInput');
+        const current = parseInt(input.value) || 0;
+        input.value = current + value;
+        document.getElementById('errorMsg').classList.add('hidden');
+    }
+
+    function resetAmount() {
+        document.getElementById('amountInput').value = '';
+        document.getElementById('errorMsg').classList.add('hidden');
     }
 
     function showError(msg) {
