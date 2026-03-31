@@ -1,5 +1,11 @@
 package jabaclass.payment.application.service;
 
+import java.math.BigDecimal;
+import java.util.UUID;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import jabaclass.payment.application.port.external.OrderPort;
 import jabaclass.payment.application.port.external.PaymentGatewayPort;
 import jabaclass.payment.application.port.external.UserPort;
@@ -10,21 +16,15 @@ import jabaclass.payment.domain.model.Payment;
 import jabaclass.payment.domain.model.Refund;
 import jabaclass.payment.domain.repository.PaymentRepository;
 import jabaclass.payment.domain.repository.RefundRepository;
-import jabaclass.payment.presentation.dto.request.PreparePaymentRequestDto;
+import jabaclass.payment.infrastructure.kafka.PaymentRefundCompletedEvent;
+import jabaclass.payment.infrastructure.kafka.PaymentRefundCompletedEventPublisher;
 import jabaclass.payment.presentation.dto.request.ConfirmPaymentRequestDto;
+import jabaclass.payment.presentation.dto.request.PreparePaymentRequestDto;
 import jabaclass.payment.presentation.dto.request.RefundPaymentRequestDto;
 import jabaclass.payment.presentation.dto.response.PaymentResponseDto;
 import jabaclass.payment.presentation.dto.response.RefundPaymentResponseDto;
-import jabaclass.payment.infrastructure.kafka.PaymentRefundCompletedEvent;
-import jabaclass.payment.infrastructure.kafka.PaymentRefundCompletedEventPublisher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.math.BigDecimal;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -157,7 +157,6 @@ public class PaymentService implements PaymentUseCase {
 			throw new PaymentException(PaymentErrorCode.PAYMENT_CONFIRM_FAILED, e);
 		}
 
-
 		// 결과 반환
 		return PaymentResponseDto.from(payment);
 	}
@@ -199,6 +198,7 @@ public class PaymentService implements PaymentUseCase {
 
 			payment.markCancelled();
 			refund.markCompleted();
+			refundRepository.save(refund);
 
 			refundCompletedEventPublisher.publish(
 				new PaymentRefundCompletedEvent(
@@ -208,6 +208,7 @@ public class PaymentService implements PaymentUseCase {
 			);
 		} catch (Exception e) {
 			refund.markFailed();
+			refundRepository.save(refund);
 			log.error("환불 실패. orderId={}, paymentId={}", payment.getOrderId(), payment.getId(), e);
 
 			throw new PaymentException(PaymentErrorCode.PAYMENT_REFUND_FAILED, e);
