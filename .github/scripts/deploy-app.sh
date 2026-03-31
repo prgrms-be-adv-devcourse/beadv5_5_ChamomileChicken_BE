@@ -4,6 +4,7 @@ set -e
 
 DOCKERHUB_USERNAME="${DOCKERHUB_USERNAME:?DOCKERHUB_USERNAME is required}"
 IMAGE_TAG="${IMAGE_TAG:?IMAGE_TAG is required}"
+SERVICE="${SERVICE:-${1:-}}"
 SERVICE="${SERVICE:?SERVICE is required}"
 LATEST=latest
 
@@ -35,6 +36,10 @@ case $SERVICE in
       IMAGE="chamomile-file"
       CONTAINER="file-service"
       ;;
+  admin)
+      IMAGE="chamomile-admin"
+      CONTAINER="admin-service"
+      ;;
   *)
     echo "Unknown module"
     exit 1
@@ -53,6 +58,8 @@ esac
   docker tag $DOCKERHUB_USERNAME/$IMAGE:$IMAGE_TAG $DOCKERHUB_USERNAME/$IMAGE:$LATEST  || true
 
   echo "Restarting container: $CONTAINER"
-  docker compose up -d --force-recreate always $CONTAINER
+  docker compose stop $CONTAINER
+  docker compose rm -f $CONTAINER
+  docker compose up -d  $CONTAINER
 
   echo "Done: $SERVICE"

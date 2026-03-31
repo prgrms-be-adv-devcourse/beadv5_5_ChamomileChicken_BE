@@ -54,3 +54,9 @@ build/
 out/
 CLAUDE.md
 .claude/
+
+# common local env
+/common.local.env
+
+# service local env
+/service/*/*.local.env

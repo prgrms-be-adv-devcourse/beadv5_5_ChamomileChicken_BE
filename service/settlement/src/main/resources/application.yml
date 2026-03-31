@@ -47,3 +47,4 @@ settlement:
     transfer:
       cron: "${SETTLEMENT_BATCH_TRANSFER_CRON:0 0 2 2 * *}"
       target-month-offset-months: ${SETTLEMENT_BATCH_TRANSFER_TARGET_MONTH_OFFSET_MONTHS:1}
+

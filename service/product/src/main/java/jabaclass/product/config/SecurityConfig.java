@@ -46,6 +46,7 @@ public class SecurityConfig {
 					.permitAll()
 					.requestMatchers("/v3/**")
 					.permitAll()
+					.requestMatchers("/actuator/health").permitAll()
 					.anyRequest().authenticated()
 			)
 			.addFilterBefore(

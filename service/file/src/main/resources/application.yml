@@ -11,3 +11,20 @@ jwt:
   secret: ${JWT_SECRET}
   access-token-validity: 1800000
   refresh-token-validity: 604800000
+
+internal:
+  api:
+    key: ${INTERNAL-KEY:test-internal-key}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs
+    version: OPENAPI_3_0
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
