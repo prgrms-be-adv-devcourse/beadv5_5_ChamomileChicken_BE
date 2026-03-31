@@ -1,5 +1,6 @@
 package jabaclass.frontend.dto;
 
+import java.util.List;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -15,6 +16,7 @@ public class ProductDto {
     private int maxCapacity;
     private String description;
     private String thumbnailPath;
+    private List<String> imagePaths;  // 추가
     private BigDecimal price;
     private String statusName;
 }

@@ -101,32 +101,38 @@ public class ProductServiceClient {
 	}
 
 	private void enrichWithPresignedUrls(List<ProductDto> products) {
-		List<String> paths = products.stream()
-			.map(ProductDto::getThumbnailPath)
-			.filter(p -> p != null)
-			.distinct()
-			.toList();
-		if (paths.isEmpty()) return;
-		Map<String, String> presignedUrls = fileServiceClient.getPresignedGetUrls(paths);
+		List<String> allPaths = new java.util.ArrayList<>();
 		products.forEach(p -> {
-			if (p.getThumbnailPath() != null) {
+			if (p.getThumbnailPath() != null) allPaths.add(p.getThumbnailPath());
+			if (p.getImagePaths() != null) allPaths.addAll(p.getImagePaths());
+		});
+
+		List<String> distinctPaths = allPaths.stream().distinct().toList();
+		if (distinctPaths.isEmpty()) return;
+
+		Map<String, String> presignedUrls = fileServiceClient.getPresignedGetUrls(distinctPaths);
+
+		products.forEach(p -> {
+			if (p.getThumbnailPath() != null)
 				p.setThumbnailPath(presignedUrls.getOrDefault(p.getThumbnailPath(), p.getThumbnailPath()));
-			}
+			if (p.getImagePaths() != null)
+				p.setImagePaths(p.getImagePaths().stream()
+						.map(path -> presignedUrls.getOrDefault(path, path))
+						.toList());
 		});
 	}
 
 	private ProductDto mapToProductDto(Map m) {
 		ProductDto dto = new ProductDto();
 		dto.setId(m.get("id") != null ? UUID.fromString(m.get("id").toString()) : null);
-		dto.setSellerName((String)m.get("sellerName"));
-		dto.setTitle((String)m.get("title"));
-		dto.setDescription((String)m.get("description"));
-		dto.setThumbnailPath((String)m.get("thumbnailPath"));
-		dto.setStatusName((String)m.get("statusName"));
-		if (m.get("maxCapacity") != null)
-			dto.setMaxCapacity((int)m.get("maxCapacity"));
-		if (m.get("price") != null)
-			dto.setPrice(new java.math.BigDecimal(m.get("price").toString()));
+		dto.setSellerName((String) m.get("sellerName"));
+		dto.setTitle((String) m.get("title"));
+		dto.setDescription((String) m.get("description"));
+		dto.setThumbnailPath((String) m.get("thumbnailPath"));
+		dto.setImagePaths(m.get("imagePaths") != null ? (List<String>) m.get("imagePaths") : List.of());
+		dto.setStatusName((String) m.get("statusName"));
+		if (m.get("maxCapacity") != null) dto.setMaxCapacity((int) m.get("maxCapacity"));
+		if (m.get("price") != null) dto.setPrice(new java.math.BigDecimal(m.get("price").toString()));
 		return dto;
 	}
 

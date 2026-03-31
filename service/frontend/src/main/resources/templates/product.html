@@ -25,6 +25,47 @@
         </div>
     </div>
 
+<!--    <div th:if="${not #lists.isEmpty(product.imagePaths)}" class="mb-10">-->
+<!--        <h3 class="text-xl font-bold text-gray-800 dark:text-gray-100 mb-4">상품 이미지</h3>-->
+<!--        <div class="grid grid-cols-2 md:grid-cols-3 gap-3">-->
+<!--            <div th:each="imgUrl : ${product.imagePaths}"-->
+<!--                 class="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-800 aspect-square">-->
+<!--                <img th:src="${imgUrl}"-->
+<!--                     alt="상품 이미지"-->
+<!--                     class="w-full h-full object-cover" />-->
+<!--            </div>-->
+<!--        </div>-->
+<!--    </div>-->
+
+    <!-- 상품 이미지 -->
+    <div th:if="${not #lists.isEmpty(product.imagePaths)}" class="mb-10">
+        <h3 class="text-xl font-bold text-gray-800 dark:text-gray-100 mb-4">상품 이미지</h3>
+        <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+            <div th:each="imgUrl : ${product.imagePaths}"
+                 class="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-800 aspect-square cursor-pointer"
+                 th:data-img-url="${imgUrl}"
+                 onclick="openLightbox(this.dataset.imgUrl)">
+                <img th:src="${imgUrl}"
+                     alt="상품 이미지"
+                     class="w-full h-full object-cover hover:scale-105 transition-transform duration-200" />
+            </div>
+        </div>
+    </div>
+
+    <!-- 라이트박스 -->
+    <div id="lightbox" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
+         onclick="closeLightbox(event)">
+        <button onclick="closeLightbox()"
+                class="absolute top-4 right-4 text-white hover:text-gray-300 transition-colors z-10">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+        </button>
+        <img id="lightbox-img" src="" alt="확대 이미지"
+             class="max-w-3xl max-h-[80vh] w-full object-contain rounded-xl shadow-2xl"
+             onclick="event.stopPropagation()" />
+    </div>
+
     <h3 class="text-xl font-bold text-gray-800 dark:text-gray-100 mb-6">예약 가능 일정</h3>
 
     <div class="bg-white dark:bg-[#1e1e1e] rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-800 shadow-lg" th:if="${not #lists.isEmpty(schedules)}">
@@ -133,6 +174,26 @@
     document.getElementById('modal-order-form').addEventListener('submit', function () {
         document.getElementById('modal-deposit-amount').value =
             document.getElementById('modal-deposit-input').value || '0';
+    });
+
+    function openLightbox(url) {
+        document.getElementById('lightbox-img').src = url;
+        document.getElementById('lightbox').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeLightbox(event) {
+        if (event && event.target !== document.getElementById('lightbox')) return;
+        document.getElementById('lightbox').classList.add('hidden');
+        document.body.style.overflow = '';
+    }
+
+    // ESC 키로도 닫히게
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            document.getElementById('lightbox').classList.add('hidden');
+            document.body.style.overflow = '';
+        }
     });
 </script>
 
