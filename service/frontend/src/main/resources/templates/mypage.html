@@ -160,7 +160,7 @@
                     <form th:if="${order.status == 'PAID'}"
                           th:action="@{/payment/refund}"
                           method="post"
-                          onsubmit="return confirm('이 주문을 환불하시겠습니까?');">
+                          onsubmit="return handleRefund(this);">
                         <input type="hidden" name="orderId" th:value="${order.id}" />
                         <button type="submit"
                                 class="px-3 py-2 bg-red-500 hover:bg-red-600 text-white font-bold rounded-lg text-xs w-full transition-colors">
@@ -173,6 +173,19 @@
     </div>
 
 </div>
+
+<script>
+    function handleRefund(form) {
+        if (!confirm('이 주문을 환불하시겠습니까?')) return false;
+
+        const btn = form.querySelector('button[type="submit"]');
+        btn.disabled = true;
+        btn.textContent = '처리 중...';
+        btn.classList.remove('bg-red-500', 'hover:bg-red-600');
+        btn.classList.add('bg-gray-400', 'cursor-not-allowed');
+        return true;
+    }
+</script>
 
 </body>
 </html>
