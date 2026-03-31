@@ -1,40 +1,28 @@
 name: CD File Service
 
 on:
-  # 수동 실행 가능
   workflow_dispatch:
-
-  # dev 브랜치에 push 되었을 때 실행
   push:
     branches:
       - dev
     paths:
-      # file 서비스 코드가 바뀌었을 때
       - 'service/file/**'
-
-      # common 모듈이 바뀌었을 때
       - 'common/**'
-
-      # 루트 빌드 설정이 바뀌었을 때
       - 'build.gradle'
       - 'settings.gradle'
       - 'gradle/**'
       - 'gradlew'
-
-      # 이 workflow 파일 자체가 바뀌었을 때
       - '.github/workflows/cd-file.yml'
+      - '.github/scripts/**'
 
 permissions:
-  # checkout에 필요한 최소 권한
   contents: read
 
 jobs:
   build-and-push:
-    # GitHub가 제공하는 호스티드 러너에서 실행
     runs-on: ubuntu-latest
 
     outputs:
-      # 다음 deploy job에서 사용할 이미지 태그를 전달
       image_tag: ${{ steps.meta.outputs.image_tag }}
 
     steps:
@@ -78,10 +66,7 @@ jobs:
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/chamomile-file:${{ steps.meta.outputs.image_tag }}
 
   deploy:
-    # build-and-push job이 성공해야만 deploy 실행
     needs: build-and-push
-
-    # EC2 안에 설치된 self-hosted runner에서 실행
     runs-on: [self-hosted, ec2, docker]
 
     steps:
@@ -101,7 +86,7 @@ jobs:
 
       - name: Copy deploy script to EC2 deploy directory
         run: |
-          cp /home/ubuntu/apps/repo/deploy/scripts/deploy-app.sh /home/ubuntu/apps/deploy/scripts/deploy-app.sh
+          cp /home/ubuntu/apps/repo/.github/scripts/deploy-app.sh /home/ubuntu/apps/deploy/scripts/deploy-app.sh
           chmod +x /home/ubuntu/apps/deploy/scripts/deploy-app.sh
 
       - name: Create common.env

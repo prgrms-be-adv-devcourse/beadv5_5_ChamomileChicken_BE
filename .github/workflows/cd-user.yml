@@ -13,6 +13,7 @@ on:
       - 'gradle/**'
       - 'gradlew'
       - '.github/workflows/cd-user.yml'
+      - '.github/scripts/**'
 
 permissions:
   contents: read
@@ -85,7 +86,7 @@ jobs:
 
       - name: Copy deploy script to EC2 deploy directory
         run: |
-          cp /home/ubuntu/apps/repo/deploy/scripts/deploy-app.sh /home/ubuntu/apps/deploy/scripts/deploy-app.sh
+          cp /home/ubuntu/apps/repo/.github/scripts/deploy-app.sh /home/ubuntu/apps/deploy/scripts/deploy-app.sh
           chmod +x /home/ubuntu/apps/deploy/scripts/deploy-app.sh
 
       - name: Create common.env
