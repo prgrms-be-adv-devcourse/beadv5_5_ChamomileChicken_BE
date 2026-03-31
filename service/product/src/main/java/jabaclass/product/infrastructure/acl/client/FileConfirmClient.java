@@ -46,7 +46,13 @@ public class FileConfirmClient {
                     entity,
                     FileConfirmBulkApiResponse.class
             );
-            return response.getBody().data();
+
+            FileConfirmBulkApiResponse body = response.getBody();
+            if (body == null || body.data() == null) {
+                throw new BusinessException(CommonErrorCode.FILE_CONFIRM_FAIL);
+            }
+            return body.data();
+
         } catch (HttpClientErrorException.NotFound e) {
             throw new BusinessException(CommonErrorCode.FILE_NOT_FOUND);
         } catch (HttpClientErrorException e) {

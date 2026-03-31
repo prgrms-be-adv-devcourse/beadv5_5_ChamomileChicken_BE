@@ -52,11 +52,10 @@ public class ProductService implements ProductUseCase {
 		// seller 룰을 확인
 		UserResponseDto seller = validateAndGetSeller();
 
-		List<ProductImageItem> images = new ArrayList<>();
+		List<ProductImageItem> images = List.of();
 		if (requestDto.imageIds() != null && !requestDto.imageIds().isEmpty()) {
 			List<FileConfirmResponse> confirmed =
 					fileConfirmClient.confirmBulk(requestDto.imageIds());
-
 			images = confirmed.stream()
 					.map(r -> new ProductImageItem(r.fileId(), r.storagePath()))
 					.toList();
@@ -96,11 +95,14 @@ public class ProductService implements ProductUseCase {
 
 		// 이미지 수정 — null이면 기존 이미지 유지
 		if (requestDto.imageIds() != null) {
-			List<FileConfirmResponse> confirmed =
-					fileConfirmClient.confirmBulk(requestDto.imageIds());
-			List<ProductImageItem> images = confirmed.stream()
-					.map(r -> new ProductImageItem(r.fileId(), r.storagePath()))
-					.toList();
+			List<ProductImageItem> images = List.of();
+			if (!requestDto.imageIds().isEmpty()) {
+				List<FileConfirmResponse> confirmed =
+						fileConfirmClient.confirmBulk(requestDto.imageIds());
+				images = confirmed.stream()
+						.map(r -> new ProductImageItem(r.fileId(), r.storagePath()))
+						.toList();
+			}
 			product.changeImages(images);
 		}
 

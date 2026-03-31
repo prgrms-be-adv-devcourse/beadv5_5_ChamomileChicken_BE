@@ -1,7 +1,7 @@
 package jabaclass.product.infrastructure.acl.client;
 
 public record FileConfirmApiResponse(
-        int status,
+        String status,
         String message,
         FileConfirmResponse data
 ) {}
