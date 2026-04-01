@@ -1,4 +1,4 @@
-name: CD Payment Service
+name: CD Frontend Service
 
 on:
   workflow_dispatch:
@@ -6,14 +6,14 @@ on:
     branches:
       - dev
     paths:
-      - 'service/payment/**'
+      - 'service/frontend/**'
       - 'service/build.gradle'
       - 'common/**'
       - 'build.gradle'
       - 'settings.gradle'
       - 'gradle/**'
       - 'gradlew'
-      - '.github/workflows/cd-payment.yml'
+      - '.github/workflows/cd-frontend.yml'
       - '.github/scripts/**'
 
 permissions:
@@ -39,8 +39,8 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x ./gradlew
 
-      - name: Build payment bootJar
-        run: ./gradlew :service:payment:clean :service:payment:bootJar --no-daemon
+      - name: Build frontend bootJar
+        run: ./gradlew :service:frontend:clean :service:frontend:bootJar --no-daemon
 
       - name: Set image tag
         id: meta
@@ -57,14 +57,14 @@ jobs:
       - name: Build Docker image
         run: |
           docker build \
-            -t ${{ secrets.DOCKERHUB_USERNAME }}/chamomile-payment:latest \
-            -t ${{ secrets.DOCKERHUB_USERNAME }}/chamomile-payment:${{ steps.meta.outputs.image_tag }} \
-            ./service/payment
+            -t ${{ secrets.DOCKERHUB_USERNAME }}/chamomile-frontend:latest \
+            -t ${{ secrets.DOCKERHUB_USERNAME }}/chamomile-frontend:${{ steps.meta.outputs.image_tag }} \
+            ./service/frontend
 
       - name: Push Docker image
         run: |
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/chamomile-payment:latest
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/chamomile-payment:${{ steps.meta.outputs.image_tag }}
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/chamomile-frontend:latest
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/chamomile-frontend:${{ steps.meta.outputs.image_tag }}
 
   deploy:
     needs: build-and-push
@@ -96,10 +96,10 @@ jobs:
           ${{ secrets.COMMON_ENV }}
           EOF
 
-      - name: Create payment.env
+      - name: Create frontend.env
         run: |
-          cat > /home/ubuntu/apps/deploy/env/payment.env <<EOF
-          ${{ secrets.PAYMENT_ENV }}
+          cat > /home/ubuntu/apps/deploy/env/frontend.env <<EOF
+          ${{ secrets.FRONTEND_ENV }}
           EOF
 
       - name: Docker Hub login on EC2
@@ -108,12 +108,12 @@ jobs:
             -u "${{ secrets.DOCKERHUB_USERNAME }}" \
             --password-stdin
 
-      - name: Deploy payment service
+      - name: Deploy frontend service
         env:
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
         run: |
-          /home/ubuntu/apps/deploy/scripts/deploy-app.sh payment
+          /home/ubuntu/apps/deploy/scripts/deploy-app.sh frontend
 
       - name: Load common env
         run: |
@@ -129,13 +129,13 @@ jobs:
           docker ps -a
           echo "===== docker compose ps ====="
           cd /home/ubuntu/apps/data/service && docker compose ps || true
-          echo "===== payment-service logs ====="
-          docker logs payment-service --tail 200 || true
+          echo "===== frontend-service logs ====="
+          docker logs frontend-service --tail 200 || true
 
       - name: Health check
         run: |
           for i in {1..10}; do
-            if curl --fail --silent --show-error --max-time 5 "http://localhost:9001/actuator/health"; then
+            if curl --fail --silent --show-error --max-time 5 "http://localhost:9006/login"; then
               echo "Health check passed"
               exit 0
             fi
@@ -143,5 +143,5 @@ jobs:
             sleep 5
           done
           echo "Health check failed"
-          docker logs payment-service --tail 200 || true
+          docker logs frontend-service --tail 200 || true
           exit 1
