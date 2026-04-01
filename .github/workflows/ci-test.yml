@@ -19,6 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       common: ${{ steps.filter.outputs.common }}
+      frontend: ${{ steps.filter.outputs.frontend }}
       admin: ${{ steps.filter.outputs.admin }}
       user: ${{ steps.filter.outputs.user }}
       order: ${{ steps.filter.outputs.order }}
@@ -50,6 +51,10 @@ jobs:
             # admin 모듈 변경
             admin:
               - 'service/admin/**'
+
+            # frontend 모듈 변경
+            frontend:
+              - 'service/frontend/**'
 
             # user 모듈 변경
             user:
@@ -109,6 +114,7 @@ jobs:
     # 실제 테스트 대상(common/admin/user/...) 변경이 있으면 실행
     if: ${{ needs.detect-changes.outputs.docs_only != 'true' || (
       needs.detect-changes.outputs.common == 'true' ||
+      needs.detect-changes.outputs.frontend == 'true' ||
       needs.detect-changes.outputs.admin == 'true' ||
       needs.detect-changes.outputs.user == 'true' ||
       needs.detect-changes.outputs.order == 'true' ||
@@ -152,6 +158,10 @@ jobs:
           # 변경된 서비스 모듈만 골라서 테스트 task 추가
           if [[ "${{ needs.detect-changes.outputs.admin }}" == "true" ]]; then
             TASKS="$TASKS :service:admin:test"
+          fi
+
+          if [[ "${{ needs.detect-changes.outputs.frontend }}" == "true" ]]; then
+            TASKS="$TASKS :service:frontend:test"
           fi
 
           if [[ "${{ needs.detect-changes.outputs.user }}" == "true" ]]; then
