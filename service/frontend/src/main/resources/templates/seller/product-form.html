@@ -194,6 +194,10 @@
         `;
 
             div.addEventListener('dragstart', (e) => {
+                if (uploading) {
+                    e.preventDefault();
+                    return;
+                }
                 dragSrcEl = div;
                 e.dataTransfer.effectAllowed = 'move';
                 setTimeout(() => div.classList.add('opacity-40'), 0);
@@ -207,9 +211,8 @@
             div.addEventListener('dragover', (e) => {
                 e.preventDefault();
                 e.dataTransfer.dropEffect = 'move';
-                document.querySelectorAll('#imagePreviewList > div').forEach(el => {
-                    el.classList.remove('border-2', 'border-blue-400');
-                });
+            });
+            div.addEventListener('dragenter', () => {
                 div.classList.add('border-2', 'border-blue-400');
             });
             div.addEventListener('dragleave', () => {
