@@ -121,6 +121,7 @@
 
     const uploadedFileIds = [];
     let uploading = false;
+    let dragSrcEl = null;
 
     async function handleFileSelect(event) {
         const files = Array.from(event.target.files);
@@ -142,7 +143,7 @@
                 const fileId = await uploadFile(file);
                 uploadedFileIds.push(fileId);
                 addPreview(file, fileId);
-                addHiddenInput(fileId);
+                syncHiddenInputs();
                 setStatus(`이미지 업로드 중... (${i + 1}/${toUpload.length})`, 'loading');
             } catch (e) {
                 setStatus(`"${file.name}" 업로드 실패: ${e.message}`, 'error');
@@ -181,14 +182,58 @@
         reader.onload = (e) => {
             const list = document.getElementById('imagePreviewList');
             const div = document.createElement('div');
-            div.className = 'relative group';
+            div.className = 'relative group cursor-grab active:cursor-grabbing select-none';
             div.dataset.fileId = fileId;
+            div.draggable = true;
             div.innerHTML = `
-                <img src="${e.target.result}" class="w-full h-20 object-cover rounded-lg border border-gray-200 dark:border-gray-700" />
-                <button type="button" onclick="removeImage('${fileId}')"
-                    class="absolute top-1 right-1 bg-black bg-opacity-60 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">×</button>
-            `;
+            <img src="${e.target.result}"
+                 class="w-full h-20 object-cover rounded-lg border border-gray-200 dark:border-gray-700 pointer-events-none" />
+            <button type="button" onclick="removeImage('${fileId}')"
+                class="absolute top-1 right-1 bg-black bg-opacity-60 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">×</button>
+            <div class="order-badge absolute bottom-1 left-1 text-white text-xs px-1.5 py-0.5 rounded font-medium bg-black bg-opacity-60"></div>
+        `;
+
+            div.addEventListener('dragstart', (e) => {
+                dragSrcEl = div;
+                e.dataTransfer.effectAllowed = 'move';
+                setTimeout(() => div.classList.add('opacity-40'), 0);
+            });
+            div.addEventListener('dragend', () => {
+                div.classList.remove('opacity-40');
+                document.querySelectorAll('#imagePreviewList > div').forEach(el => {
+                    el.classList.remove('border-2', 'border-blue-400');
+                });
+            });
+            div.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                document.querySelectorAll('#imagePreviewList > div').forEach(el => {
+                    el.classList.remove('border-2', 'border-blue-400');
+                });
+                div.classList.add('border-2', 'border-blue-400');
+            });
+            div.addEventListener('dragleave', () => {
+                div.classList.remove('border-2', 'border-blue-400');
+            });
+            div.addEventListener('drop', (e) => {
+                e.preventDefault();
+                if (dragSrcEl && dragSrcEl !== div) {
+                    const list = document.getElementById('imagePreviewList');
+                    const items = [...list.children];
+                    const srcIdx = items.indexOf(dragSrcEl);
+                    const dstIdx = items.indexOf(div);
+                    if (srcIdx < dstIdx) {
+                        list.insertBefore(dragSrcEl, div.nextSibling);
+                    } else {
+                        list.insertBefore(dragSrcEl, div);
+                    }
+                    syncFileIds();
+                    updateOrderBadges();
+                }
+            });
+
             list.appendChild(div);
+            updateOrderBadges();
         };
         reader.readAsDataURL(file);
     }
@@ -197,16 +242,47 @@
         const idx = uploadedFileIds.indexOf(fileId);
         if (idx > -1) uploadedFileIds.splice(idx, 1);
         document.querySelector(`[data-file-id="${fileId}"]`)?.remove();
-        document.querySelector(`input[value="${fileId}"]`)?.remove();
+        syncHiddenInputs();
+        updateOrderBadges();
         setStatus(uploadedFileIds.length > 0 ? `${uploadedFileIds.length}장 업로드됨` : '', 'ok');
     }
 
-    function addHiddenInput(fileId) {
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = 'imageIds';
-        input.value = fileId;
-        document.getElementById('imageIdInputs').appendChild(input);
+    // DOM 순서 기준으로 uploadedFileIds 와 hidden inputs 동기화
+    function syncFileIds() {
+        const list = document.getElementById('imagePreviewList');
+        uploadedFileIds.length = 0;
+        [...list.children].forEach(item => uploadedFileIds.push(item.dataset.fileId));
+        syncHiddenInputs();
+    }
+
+    function syncHiddenInputs() {
+        const container = document.getElementById('imageIdInputs');
+        container.innerHTML = '';
+        uploadedFileIds.forEach(id => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'imageIds';
+            input.value = id;
+            container.appendChild(input);
+        });
+    }
+
+    // 첫 번째 이미지는 '썸네일', 나머지는 순서 번호 표시
+    function updateOrderBadges() {
+        const list = document.getElementById('imagePreviewList');
+        [...list.children].forEach((item, idx) => {
+            const badge = item.querySelector('.order-badge');
+            if (!badge) return;
+            if (idx === 0) {
+                badge.textContent = '썸네일';
+                badge.classList.add('bg-blue-500', 'bg-opacity-90');
+                badge.classList.remove('bg-black', 'bg-opacity-60');
+            } else {
+                badge.textContent = idx + 1;
+                badge.classList.add('bg-black', 'bg-opacity-60');
+                badge.classList.remove('bg-blue-500', 'bg-opacity-90');
+            }
+        });
     }
 
     function setStatus(msg, type) {
