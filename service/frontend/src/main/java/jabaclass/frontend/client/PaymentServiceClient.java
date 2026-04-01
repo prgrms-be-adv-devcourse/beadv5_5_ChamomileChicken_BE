@@ -68,7 +68,8 @@ public class PaymentServiceClient {
             entity,
             Map.class
         );
-        return UUID.fromString(response.getBody().get("depositPaymentsId").toString());
+        Map<String, Object> data = (Map<String, Object>) response.getBody().get("data");
+        return UUID.fromString(data.get("depositPaymentsId").toString());
     }
 
     public void confirmDepositPayment(UUID depositPaymentsId, String paymentKey, int amount, String accessToken) {
