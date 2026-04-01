@@ -92,15 +92,11 @@ jobs:
 
       - name: Create common.env
         run: |
-          cat > /home/ubuntu/apps/deploy/env/common.env <<EOF
-          ${{ secrets.COMMON_ENV }}
-          EOF
+          printf '%s' '${{ secrets.COMMON_ENV }}' > /home/ubuntu/apps/deploy/env/common.env
 
       - name: Create product.env
         run: |
-          cat > /home/ubuntu/apps/deploy/env/product.env <<EOF
-          ${{ secrets.PRODUCT_ENV }}
-          EOF
+          printf '%s' '${{ secrets.PRODUCT_ENV }}' > /home/ubuntu/apps/deploy/env/product.env
 
       - name: Docker Hub login on EC2
         run: |

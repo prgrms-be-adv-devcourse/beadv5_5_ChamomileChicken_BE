@@ -18,7 +18,7 @@ case $SERVICE in
     ;;
   frontend)
     IMAGE="chamomile-frontend"
-    CONTAINER="frontend"
+    CONTAINER="frontend-service"
     ;;
   product)
     IMAGE="chamomile-product"
