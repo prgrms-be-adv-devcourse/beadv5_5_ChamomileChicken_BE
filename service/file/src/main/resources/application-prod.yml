@@ -1,3 +1,10 @@
+api:
+  user-host: ${FILE_SERVICE_HOST:http://localhost:9000}
+
+internal:
+  api:
+    key: ${INTERNAL_KEY:test-internal-key}
+
 spring:
   datasource:
     url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:backend5}
@@ -12,6 +19,15 @@ spring:
     properties:
       hibernate:
         format_sql: false
+
+  cloud:
+    aws:
+      s3:
+        bucket: ${S3_BUCKET_NAME}
+        presigned-url-expiration: 5
+      region:
+        static: ap-northeast-2
+      # credentials는 application-local.yml 또는 환경변수로 관리
 
 logging:
   level:
