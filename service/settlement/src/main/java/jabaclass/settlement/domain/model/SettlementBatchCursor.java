@@ -7,8 +7,13 @@ import java.util.UUID;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
+@Getter
 @Entity
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(name = "settlement_batch_cursor")
 public class SettlementBatchCursor extends BaseEntity {
 
@@ -23,9 +28,6 @@ public class SettlementBatchCursor extends BaseEntity {
 
 	@Column(name = "last_synced_id")
 	private UUID lastSyncedId;
-
-	protected SettlementBatchCursor() {
-	}
 
 	public SettlementBatchCursor(
 		String cursorType,
@@ -65,18 +67,6 @@ public class SettlementBatchCursor extends BaseEntity {
 		if (lastSyncedAt == null) {
 			throw new IllegalArgumentException("마지막 동기화 시각은 null일 수 없습니다.");
 		}
-	}
-
-	public String getCursorType() {
-		return cursorType;
-	}
-
-	public LocalDateTime getLastSyncedAt() {
-		return lastSyncedAt;
-	}
-
-	public UUID getLastSyncedId() {
-		return lastSyncedId;
 	}
 
 	@Override

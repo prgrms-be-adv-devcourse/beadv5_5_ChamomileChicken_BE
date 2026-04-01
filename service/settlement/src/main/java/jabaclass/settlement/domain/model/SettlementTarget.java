@@ -10,10 +10,13 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
+import lombok.AccessLevel;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Getter
 @Entity
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(name = "settlement_targets")
 public class SettlementTarget extends BaseEntity {
 
@@ -78,9 +81,6 @@ public class SettlementTarget extends BaseEntity {
 
 	@Column(name = "occurred_at", nullable = false)
 	private LocalDateTime occurredAt;
-
-	protected SettlementTarget() {
-	}
 
 	public SettlementTarget(
 		String settlementMonth,
@@ -286,70 +286,6 @@ public class SettlementTarget extends BaseEntity {
 				throw new IllegalArgumentException("환불 정산 대상은 refundId가 필요합니다.");
 			}
 		}
-	}
-
-	public String getSettlementMonth() {
-		return settlementMonth;
-	}
-
-	public UUID getSellerId() {
-		return sellerId;
-	}
-
-	public UUID getOrderId() {
-		return orderId;
-	}
-
-	public UUID getPaymentId() {
-		return paymentId;
-	}
-
-	public UUID getRefundId() {
-		return refundId;
-	}
-
-	public UUID getProductId() {
-		return productId;
-	}
-
-	public UUID getProductScheduleId() {
-		return productScheduleId;
-	}
-
-	public UUID getBuyerId() {
-		return buyerId;
-	}
-
-	public UUID getParticipantUserId() {
-		return participantUserId;
-	}
-
-	public SettlementTargetType getTargetType() {
-		return targetType;
-	}
-
-	public String getSourceStatus() {
-		return sourceStatus;
-	}
-
-	public Integer getQuantity() {
-		return quantity;
-	}
-
-	public BigDecimal getUnitPrice() {
-		return unitPrice;
-	}
-
-	public BigDecimal getGrossAmount() {
-		return grossAmount;
-	}
-
-	public BigDecimal getSettlementAmount() {
-		return settlementAmount;
-	}
-
-	public LocalDateTime getOccurredAt() {
-		return occurredAt;
 	}
 
 	@Override

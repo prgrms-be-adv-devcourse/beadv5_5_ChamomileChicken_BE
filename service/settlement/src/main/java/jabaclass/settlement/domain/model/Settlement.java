@@ -10,10 +10,13 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
+import lombok.AccessLevel;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Getter
 @Entity
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(name = "settlements")
 public class Settlement extends BaseEntity {
 
@@ -48,9 +51,6 @@ public class Settlement extends BaseEntity {
 
 	@Column(name = "fail_reason", length = 500)
 	private String failReason;
-
-	protected Settlement() {
-	}
 
 	public Settlement(
 		UUID sellerId,
@@ -144,42 +144,6 @@ public class Settlement extends BaseEntity {
 		if (status == null) {
 			throw new IllegalArgumentException("정산 상태는 null일 수 없습니다.");
 		}
-	}
-
-	public UUID getSellerId() {
-		return sellerId;
-	}
-
-	public String getSettlementMonth() {
-		return settlementMonth;
-	}
-
-	public BigDecimal getOriginalAmount() {
-		return originalAmount;
-	}
-
-	public BigDecimal getFeeAmount() {
-		return feeAmount;
-	}
-
-	public BigDecimal getFeeRate() {
-		return feeRate;
-	}
-
-	public BigDecimal getSettlementAmount() {
-		return settlementAmount;
-	}
-
-	public SettlementStatus getStatus() {
-		return status;
-	}
-
-	public LocalDateTime getTransferredAt() {
-		return transferredAt;
-	}
-
-	public String getFailReason() {
-		return failReason;
 	}
 
 	@Override
