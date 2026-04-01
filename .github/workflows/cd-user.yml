@@ -122,6 +122,16 @@ jobs:
           set +a
           echo "APP_HOST=$APP_HOST" >> $GITHUB_ENV
 
+      - name: Debug deploy state
+        run: |
+          echo "APP_HOST=[$APP_HOST]"
+          echo "===== docker ps -a ====="
+          docker ps -a
+          echo "===== docker compose ps ====="
+          cd /home/ubuntu/apps/data/service && docker compose ps || true
+          echo "===== user-service logs ====="
+          docker logs user-service --tail 200 || true
+
       - name: Health check
         run: |
           for i in {1..10}; do
