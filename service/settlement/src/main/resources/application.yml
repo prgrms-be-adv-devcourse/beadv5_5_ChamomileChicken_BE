@@ -23,7 +23,7 @@ clients:
   user:
     base-url: ${USER_SERVICE_HOST:http://localhost:9003}
   transfer:
-    base-url: ${TRANSFER_SERVICE_HOST:http://localhost:9006}
+    base-url: ${TRANSFER_SERVICE_HOST:http://localhost:9010}
 
 jwt:
   secret: ${JWT_SECRET:test-jwt-secret-key-for-local-settlement-module-only}
