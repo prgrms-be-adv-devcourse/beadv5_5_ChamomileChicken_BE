@@ -8,19 +8,20 @@ spring:
     cache: false
 
 services:
-  user-url: ${USER_SERVICE_URL:http://localhost:9003}
-  product-url: ${PRODUCT_SERVICE_URL:http://localhost:9004}
-  order-url: ${ORDER_SERVICE_URL:http://localhost:9005}
-  payment-url: ${PAYMENT_SERVICE_URL:http://localhost:9001}
-  file-url: ${FILE_SERVICE_URL:http://localhost:9000}
+  user-url: ${USER_SERVICE_HOST:http://localhost:9003}
+  product-url: ${PRODUCT_SERVICE_HOST:http://localhost:9004}
+  order-url: ${ORDER_SERVICE_HOST:http://localhost:9005}
+  payment-url: ${PAYMENT_SERVICE_HOST:http://localhost:9001}
+  file-url: ${FILE_SERVICE_HOST:http://localhost:9000}
 
 internal:
   api:
-    key: ${INTERNAL_API_KEY:test-internal-key}
+    key: ${INTERNAL_KEY:test-internal-key}
 
 toss:
   client-key: ${TOSS_CLIENT_KEY:test_ck_yL0qZ4G1VOj211Mwom2v3oWb2MQY}
-  success-url: ${TOSS_SUCCESS_URL:http://localhost:9006/payment/success}
+  success-url:
+    ${TOSS_SUCCESS_URL:http://localhost:9006/payment/success}:
   fail-url: ${TOSS_FAIL_URL:http://localhost:9006/payment/fail}
   deposit-success-url: ${TOSS_DEPOSIT_SUCCESS_URL:http://localhost:9006/deposit/success}
   deposit-fail-url: ${TOSS_DEPOSIT_FAIL_URL:http://localhost:9006/deposit/fail}
