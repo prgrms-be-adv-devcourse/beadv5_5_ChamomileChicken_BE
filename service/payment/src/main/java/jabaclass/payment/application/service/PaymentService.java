@@ -1,6 +1,8 @@
 package jabaclass.payment.application.service;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
@@ -22,18 +24,14 @@ import jabaclass.payment.infrastructure.kafka.PaymentRefundCompletedEventPublish
 import jabaclass.payment.presentation.dto.request.ConfirmPaymentRequestDto;
 import jabaclass.payment.presentation.dto.request.PreparePaymentRequestDto;
 import jabaclass.payment.presentation.dto.request.RefundPaymentRequestDto;
+import jabaclass.payment.presentation.dto.response.PaymentResponseDto;
 import jabaclass.payment.presentation.dto.response.PaymentSettlementSliceResponseDto;
 import jabaclass.payment.presentation.dto.response.PaymentSettlementTargetItemResponseDto;
-import jabaclass.payment.presentation.dto.response.PaymentResponseDto;
-import jabaclass.payment.presentation.dto.response.RefundSettlementSliceResponseDto;
 import jabaclass.payment.presentation.dto.response.RefundPaymentResponseDto;
+import jabaclass.payment.presentation.dto.response.RefundSettlementSliceResponseDto;
 import jabaclass.payment.presentation.dto.response.RefundSettlementTargetItemResponseDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-
-
-import java.time.LocalDateTime;
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -50,9 +48,9 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 
 	@Override
 	@Transactional
-	public PaymentResponseDto create(UUID userId,PreparePaymentRequestDto request) {
+	public PaymentResponseDto create(PreparePaymentRequestDto request) {
 		Payment payment = Payment.create(
-			userId,
+			request.userId(),
 			request.productId(),
 			request.orderId(),
 			request.productUserId(),

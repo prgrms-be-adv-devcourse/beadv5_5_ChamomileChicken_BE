@@ -1,13 +1,14 @@
 package jabaclass.payment.presentation.dto.request;
 
-import jabaclass.payment.domain.model.PaymentMethod;
-
 import java.math.BigDecimal;
 import java.util.UUID;
+
+import jabaclass.payment.domain.model.PaymentMethod;
 
 public record PreparePaymentRequestDto(
 	UUID productId,
 	UUID orderId,
+	UUID userId,
 	UUID productUserId,
 	PaymentMethod paymentMethod,
 	BigDecimal paymentAmount,
