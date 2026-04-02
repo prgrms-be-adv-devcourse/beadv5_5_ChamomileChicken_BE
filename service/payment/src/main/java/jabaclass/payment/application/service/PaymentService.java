@@ -50,9 +50,9 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 
 	@Override
 	@Transactional
-	public PaymentResponseDto create(PreparePaymentRequestDto request) {
+	public PaymentResponseDto create(UUID userId,PreparePaymentRequestDto request) {
 		Payment payment = Payment.create(
-			request.userId(),
+			userId,
 			request.productId(),
 			request.orderId(),
 			request.productUserId(),
