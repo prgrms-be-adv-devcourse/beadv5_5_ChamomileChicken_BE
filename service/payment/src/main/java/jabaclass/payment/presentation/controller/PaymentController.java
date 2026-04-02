@@ -1,5 +1,8 @@
 package jabaclass.payment.presentation.controller;
 
+import java.util.UUID;
+
+import jabaclass.auth.util.SecurityUtil;
 import jabaclass.payment.application.usecase.PaymentUseCase;
 import jabaclass.payment.common.dto.ApiResponseDto;
 import jabaclass.payment.presentation.dto.request.ConfirmPaymentRequestDto;
@@ -24,7 +27,9 @@ public class PaymentController implements PaymentApi {
 	@Override
 	@PostMapping("/api/v1/payments/prepare")
 	public ResponseEntity<ApiResponseDto<PaymentResponseDto>> preparePayment(@RequestBody PreparePaymentRequestDto request) {
-		PaymentResponseDto response = paymentUseCase.create(request);
+		UUID userId = SecurityUtil.getCurrentUserId();
+
+		PaymentResponseDto response = paymentUseCase.create(userId, request);
 
 		return ResponseEntity.status(HttpStatus.CREATED)
 			.body(ApiResponseDto.success(

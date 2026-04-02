@@ -74,12 +74,16 @@ public class PageController {
 			if (accessToken != null) {
 				try {
 					UserInfoDto userInfo = userServiceClient.getMyInfo(accessToken);
-					depositBalance = userInfo.getDeposit();
+					BigDecimal deposit = userInfo.getDeposit();
+					BigDecimal price = product.getPrice();
+					depositBalance = price.compareTo(deposit) == 1 ? deposit : price;
 				} catch (Exception e) {
 					log.warn("예치금 잔액 조회 실패: {}", e.getMessage());
 				}
 			}
 			model.addAttribute("depositBalance", depositBalance);
+			model.addAttribute("price", product.getPrice());
+			model.addAttribute("maxCapacity", product.getMaxCapacity());
 			return "product";
 		} catch (Exception e) {
 			log.error("상품 상세 조회 실패: {}", e.getMessage());
