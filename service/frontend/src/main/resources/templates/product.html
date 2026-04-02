@@ -111,7 +111,26 @@
             <p id="modal-schedule-time" class="text-sm text-gray-600 dark:text-gray-300"></p>
         </div>
 
+        <!-- 추가 부분 -->
         <div class="mb-6">
+            <div class="flex items-center justify-between mb-3">
+                <span class="text-sm text-gray-500 dark:text-gray-400">주문 가격</span>
+                <span class="font-bold text-blue-600 dark:text-blue-400" id="modal-maxCapacity-balance"
+                      th:data-price="${price}"
+                      th:text="'₩' + ${#numbers.formatDecimal(price, 0, 'COMMA', 0, 'POINT')}">₩0</span>
+            </div>
+            <div class="flex items-center justify-between mb-3">
+                <label class="block text-sm text-gray-500 dark:text-gray-400 mb-1">수량</label>
+                <input type="number" id="modal-maxCapacity-input" min="1"
+                       th:max="${maxCapacity}"
+                       value="1"
+                       oninput="updatePrice()"
+                       style="width: 25%;"
+                       class="w-full border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 bg-white dark:bg-[#121212] text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                       placeholder="0"/>
+            </div>
+            <!-- /추가 부분 -->
+
             <div class="flex items-center justify-between mb-3">
                 <span class="text-sm text-gray-500 dark:text-gray-400">보유 예치금</span>
                 <span class="font-bold text-blue-600 dark:text-blue-400" id="modal-deposit-balance"
@@ -122,15 +141,16 @@
                    th:max="${depositBalance}"
                    value="0"
                    class="w-full border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 bg-white dark:bg-[#121212] text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                   placeholder="0" />
+                   placeholder="0"/>
             <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">0 입력 시 전액 카드로 결제됩니다.</p>
         </div>
 
         <form id="modal-order-form" action="/orders" method="post">
-            <input type="hidden" name="productId" id="modal-product-id" />
-            <input type="hidden" name="scheduleId" id="modal-schedule-id" />
-            <input type="hidden" name="quantity" value="1" />
-            <input type="hidden" name="depositAmount" id="modal-deposit-amount" value="0" />
+            <input type="hidden" name="productId" id="modal-product-id"/>
+            <input type="hidden" name="scheduleId" id="modal-schedule-id"/>
+            <!-- 추가 부분 -->
+            <input type="hidden" name="quantity" id="quantity" value="1"/>
+            <input type="hidden" name="depositAmount" id="modal-deposit-amount" value="0"/>
             <div class="flex gap-3">
                 <button type="button" onclick="closeOrderModal()"
                         class="flex-1 py-3 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 font-medium rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition">
@@ -152,7 +172,25 @@
         document.getElementById('modal-schedule-date').textContent = btn.dataset.scheduleDate;
         document.getElementById('modal-schedule-time').textContent = btn.dataset.startTime + ' ~ ' + btn.dataset.endTime;
         document.getElementById('modal-deposit-input').value = '0';
+        // 추가 부분
+        document.getElementById('modal-maxCapacity-input').value = 1;
         document.getElementById('orderModal').classList.remove('hidden');
+    }
+
+    // 추가 부분
+    function updatePrice() {
+        const input = document.getElementById('modal-maxCapacity-input');
+        const balance = document.getElementById('modal-maxCapacity-balance');
+
+        const count = parseInt(input.value) || 0;
+        const price = parseInt(balance.dataset.price) || 0;
+
+        const total = count * price;
+
+        // 숫자 포맷 (콤마)
+        const formatted = total.toLocaleString();
+
+        balance.innerText = '₩' + formatted;
     }
 
     function closeOrderModal() {
@@ -162,7 +200,10 @@
     document.getElementById('modal-order-form').addEventListener('submit', function () {
         document.getElementById('modal-deposit-amount').value =
             document.getElementById('modal-deposit-input').value || '0';
+        document.getElementById('quantity').value =
+            document.getElementById('modal-maxCapacity-input').value || 1;
     });
+
 
     function openLightbox(url) {
         document.getElementById('lightbox-img').src = url;
@@ -176,6 +217,8 @@
         document.body.style.overflow = '';
     }
 
+
+
     // ESC 키로도 닫히게
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
@@ -187,3 +230,4 @@
 
 </body>
 </html>
+
