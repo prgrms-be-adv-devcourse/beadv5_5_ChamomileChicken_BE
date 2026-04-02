@@ -48,13 +48,22 @@ public class PaymentRepositoryAdapter implements PaymentRepository {
 		UUID cursorId,
 		int size
 	) {
-		return paymentJpaRepository.findSettlementPaymentSources(
-			from,
-			to,
-			cursorOccurredAt,
-			cursorId,
-			PageRequest.of(0, size)
-		).stream()
+		List<PaymentJpaRepository.SettlementPaymentSourceProjection> sources =
+			(cursorOccurredAt == null || cursorId == null)
+				? paymentJpaRepository.findSettlementPaymentSourcesWithoutCursor(
+					from,
+					to,
+					PageRequest.of(0, size)
+				)
+				: paymentJpaRepository.findSettlementPaymentSourcesWithCursor(
+					from,
+					to,
+					cursorOccurredAt,
+					cursorId,
+					PageRequest.of(0, size)
+				);
+
+		return sources.stream()
 			.map(it -> new PaymentRepository.SettlementPaymentSource(
 				it.getPaymentId(),
 				it.getOrderId(),

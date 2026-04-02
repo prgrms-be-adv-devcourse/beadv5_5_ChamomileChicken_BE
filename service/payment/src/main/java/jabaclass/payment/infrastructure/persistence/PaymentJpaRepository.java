@@ -32,6 +32,26 @@ public interface PaymentJpaRepository extends JpaRepository<Payment, UUID> {
 		where p.paidAt is not null
 			and p.paidAt >= :from
 			and p.paidAt <= :to
+		order by p.paidAt asc, p.id asc
+		""")
+	List<SettlementPaymentSourceProjection> findSettlementPaymentSourcesWithoutCursor(
+		LocalDateTime from,
+		LocalDateTime to,
+		Pageable pageable
+	);
+
+	@Query("""
+		select
+			p.id as paymentId,
+			p.orderId as orderId,
+			p.productId as productId,
+			'PAID' as paymentStatus,
+			p.totalAmount as totalPaymentAmount,
+			p.paidAt as occurredAt
+		from Payment p
+		where p.paidAt is not null
+			and p.paidAt >= :from
+			and p.paidAt <= :to
 			and (
 				:cursorOccurredAt is null
 				or p.paidAt > :cursorOccurredAt
@@ -39,7 +59,7 @@ public interface PaymentJpaRepository extends JpaRepository<Payment, UUID> {
 			)
 		order by p.paidAt asc, p.id asc
 		""")
-	List<SettlementPaymentSourceProjection> findSettlementPaymentSources(
+	List<SettlementPaymentSourceProjection> findSettlementPaymentSourcesWithCursor(
 		LocalDateTime from,
 		LocalDateTime to,
 		LocalDateTime cursorOccurredAt,

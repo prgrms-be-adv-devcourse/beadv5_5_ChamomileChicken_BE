@@ -26,6 +26,29 @@ public interface RefundJpaRepository extends JpaRepository<Refund, UUID> {
 			and r.processedAt is not null
 			and r.processedAt >= :from
 			and r.processedAt <= :to
+		order by r.processedAt asc, r.id asc
+		""")
+	java.util.List<SettlementRefundSourceProjection> findSettlementRefundSourcesWithoutCursor(
+		LocalDateTime from,
+		LocalDateTime to,
+		Pageable pageable
+	);
+
+	@Query("""
+		select
+			r.id as refundId,
+			r.paymentId as paymentId,
+			p.orderId as orderId,
+			p.productId as productId,
+			r.status as refundStatus,
+			r.totalRefundAmount as totalRefundAmount,
+			r.processedAt as occurredAt
+		from Refund r
+		join Payment p on p.id = r.paymentId
+		where r.status = jabaclass.payment.domain.model.RefundStatus.COMPLETED
+			and r.processedAt is not null
+			and r.processedAt >= :from
+			and r.processedAt <= :to
 			and (
 				:cursorOccurredAt is null
 				or r.processedAt > :cursorOccurredAt
@@ -33,7 +56,7 @@ public interface RefundJpaRepository extends JpaRepository<Refund, UUID> {
 			)
 		order by r.processedAt asc, r.id asc
 		""")
-	java.util.List<SettlementRefundSourceProjection> findSettlementRefundSources(
+	java.util.List<SettlementRefundSourceProjection> findSettlementRefundSourcesWithCursor(
 		LocalDateTime from,
 		LocalDateTime to,
 		LocalDateTime cursorOccurredAt,

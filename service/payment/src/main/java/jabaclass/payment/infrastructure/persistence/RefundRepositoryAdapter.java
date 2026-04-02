@@ -30,13 +30,22 @@ public class RefundRepositoryAdapter implements RefundRepository {
 		UUID cursorId,
 		int size
 	) {
-		return refundJpaRepository.findSettlementRefundSources(
-			from,
-			to,
-			cursorOccurredAt,
-			cursorId,
-			PageRequest.of(0, size)
-		).stream()
+		List<RefundJpaRepository.SettlementRefundSourceProjection> sources =
+			(cursorOccurredAt == null || cursorId == null)
+				? refundJpaRepository.findSettlementRefundSourcesWithoutCursor(
+					from,
+					to,
+					PageRequest.of(0, size)
+				)
+				: refundJpaRepository.findSettlementRefundSourcesWithCursor(
+					from,
+					to,
+					cursorOccurredAt,
+					cursorId,
+					PageRequest.of(0, size)
+				);
+
+		return sources.stream()
 			.map(it -> new RefundRepository.SettlementRefundSource(
 				it.getRefundId(),
 				it.getPaymentId(),
