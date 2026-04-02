@@ -50,8 +50,7 @@ public interface RefundJpaRepository extends JpaRepository<Refund, UUID> {
 			and r.processedAt >= :from
 			and r.processedAt <= :to
 			and (
-				:cursorOccurredAt is null
-				or r.processedAt > :cursorOccurredAt
+				r.processedAt > :cursorOccurredAt
 				or (r.processedAt = :cursorOccurredAt and r.id > :cursorId)
 			)
 		order by r.processedAt asc, r.id asc
