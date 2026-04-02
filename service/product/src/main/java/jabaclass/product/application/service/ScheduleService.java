@@ -192,7 +192,7 @@ public class ScheduleService implements ScheduleUseCase {
 		Product product = productUseCase.findByIdOrThrow(schedule.getProductId());
 
 		UUID puserId = saved == null ? null : saved.id();
-		log.info(puserId + "");
+
 		return OrderResponseDto.from(product, requestDto.quantity(), status, puserId);
 	}
 

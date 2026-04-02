@@ -1,6 +1,5 @@
 package jabaclass.product.presentation.dto.respose;
 
-import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.UUID;
 
@@ -22,13 +21,7 @@ public record ProductUserResponseDto(
 	int guestCount,
 
 	@Schema(description = "예약 상태", example = "구매 대기")
-	String statusName,
-
-	@Schema(description = "등록자 ID", example = "22222222-2222-2222-2222-222222222222")
-	UUID regId,
-
-	@Schema(description = "등록일시", example = "2026-03-04T18:10:00")
-	LocalDateTime regDt
+	String statusName
 
 ) {
 	public static ProductUserResponseDto from(ProductUser user, String name) {
@@ -37,9 +30,7 @@ public record ProductUserResponseDto(
 			user.getProductScheduleId(),
 			name,
 			user.getGuestCount(),
-			user.getStatus().getStatusName(),
-			user.getRegId(),
-			user.getRegDt()
+			user.getStatus().getStatusName()
 		);
 	}
 
@@ -49,9 +40,7 @@ public record ProductUserResponseDto(
 			user.getProductScheduleId(),
 			map.getOrDefault(user.getUserId(), "사용자 이름이 지정되지 않았습니다."),
 			user.getGuestCount(),
-			user.getStatus().getStatusName(),
-			user.getRegId(),
-			user.getRegDt()
+			user.getStatus().getStatusName()
 		);
 	}
 

@@ -13,7 +13,7 @@ public enum CommonErrorCode {
 	//404 NOT_FOUND 잘못된 리소스 접근
 	PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 상품 ID 입니다."),
 	// 404 판매자 없음
-	SELLER_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 판매자 입니다."),
+	SELLER_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 유저 입니다."),
 	// 403 판매자 권한이 없음
 	NOT_SELLER(HttpStatus.FORBIDDEN, "판매자가 아닙니다."),
 	// 404 룰 이름이 바뀐 경우

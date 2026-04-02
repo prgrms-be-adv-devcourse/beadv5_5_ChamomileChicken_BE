@@ -24,7 +24,7 @@ import lombok.experimental.SuperBuilder;
 @SuperBuilder
 @EntityListeners(AuditingEntityListener.class)
 @Table(name = "products_users", schema = "public")
-public class ProductUser extends EntityBase {
+public class ProductUser {
 
 	@Id
 	@UuidGenerator
