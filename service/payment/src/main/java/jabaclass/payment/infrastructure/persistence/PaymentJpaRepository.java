@@ -53,8 +53,7 @@ public interface PaymentJpaRepository extends JpaRepository<Payment, UUID> {
 			and p.paidAt >= :from
 			and p.paidAt <= :to
 			and (
-				:cursorOccurredAt is null
-				or p.paidAt > :cursorOccurredAt
+				p.paidAt > :cursorOccurredAt
 				or (p.paidAt = :cursorOccurredAt and p.id > :cursorId)
 			)
 		order by p.paidAt asc, p.id asc
