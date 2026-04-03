@@ -12,9 +12,7 @@ spring:
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
 
 jwt:
-  secret: ${JWT_SECRET:abcdefghijklmnopqrstuvwxyz123456}
-  access-token-validity: 3600000
-  refresh-token-validity: 604800000
+  secret: ${JWT_SECRET}
 
 management:
   endpoints:

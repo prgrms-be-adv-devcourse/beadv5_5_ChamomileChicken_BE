@@ -9,5 +9,14 @@
     <script>tailwind.config={darkMode:'class'}</script>
     <script th:src="@{/js/theme.js}"></script>
     <style>body{font-family:'Pretendard',sans-serif;}</style>
+    <script>
+        // CSRF 토큰을 XSRF-TOKEN 쿠키에서 읽어 fetch() 헤더에 포함시키는 헬퍼
+        function getCsrfHeaders() {
+            const cookie = document.cookie.split(';').map(c => c.trim());
+            const xsrf = cookie.find(c => c.startsWith('XSRF-TOKEN='));
+            if (!xsrf) return {};
+            return { 'X-XSRF-TOKEN': decodeURIComponent(xsrf.split('=')[1]) };
+        }
+    </script>
 </head>
 </html>
