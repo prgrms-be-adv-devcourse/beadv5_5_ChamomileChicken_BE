@@ -317,9 +317,7 @@ class ScheduleTest {
 			SCHEDULE_ID,
 			"user",
 			3,
-			OrderStatus.PENDING.getStatusName(),
-			USER_ID,
-			null
+			OrderStatus.PENDING.getStatusName()
 		);
 		given(scheduleRepository.findByIdAndDeleteDtIsNull(SCHEDULE_ID)).willReturn(Optional.of(schedule));
 		given(productUserUseCase.innserUserList(SCHEDULE_ID)).willReturn(List.of(paidUser));

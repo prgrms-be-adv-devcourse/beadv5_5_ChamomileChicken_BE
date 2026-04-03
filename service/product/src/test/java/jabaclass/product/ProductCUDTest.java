@@ -199,7 +199,7 @@ class ProductCUDTest {
 
 		assertThatThrownBy(() -> productService.create(request))
 			.isInstanceOf(BusinessException.class)
-			.hasMessage("존재하지 않는 판매자 입니다.");
+			.hasMessage("존재하지 않는 유저 입니다.");
 	}
 
 	@Test
