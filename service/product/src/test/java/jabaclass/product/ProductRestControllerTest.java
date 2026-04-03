@@ -162,9 +162,7 @@ class ProductRestControllerTest {
 				SCHEDULE_ID,
 				"사용자",
 				2,
-				OrderStatus.PAID.getStatusName(),
-				SELLER_ID,
-				LocalDateTime.now()
+				OrderStatus.PAID.getStatusName()
 			)
 		);
 		given(productUserUseCase.getUser(SCHEDULE_ID)).willReturn(response);
