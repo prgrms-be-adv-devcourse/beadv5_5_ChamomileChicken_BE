@@ -5,6 +5,7 @@ import jabaclass.file.common.dto.ApiResponseDto;
 import jabaclass.file.infrastructure.s3.S3Uploader;
 import jabaclass.file.presentation.dto.response.FileConfirmResponse;
 import jabaclass.file.presentation.dto.response.PresignedUrlResponse;
+import io.swagger.v3.oas.annotations.Hidden;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/internal/files")
 @RequiredArgsConstructor
+@Hidden
 public class InternalFileController {
 
     private final ValidateFileUseCase validateFileUseCase;

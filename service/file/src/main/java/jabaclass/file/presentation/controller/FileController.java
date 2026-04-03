@@ -21,12 +21,13 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/v1/files")
 @RequiredArgsConstructor
-public class FileController {
+public class FileController implements FileApi {
 
     private final RequestUploadUseCase requestUploadUseCase;
     private final CompleteUploadUseCase completeUploadUseCase;
 
-    @PostMapping("/upload-request")
+	@PostMapping("/upload-request")
+	@Override
     public ResponseEntity<ApiResponseDto<UploadResponseDto>> requestUpload(
             @Valid @RequestBody UploadRequestDto request) {
         UUID userId = SecurityUtil.getCurrentUserId();
@@ -36,7 +37,8 @@ public class FileController {
                         requestUploadUseCase.requestUpload(userId, request)));
     }
 
-    @PatchMapping("/{fileId}/complete")
+	@PatchMapping("/{fileId}/complete")
+	@Override
     public ResponseEntity<ApiResponseDto<Void>> completeUpload(
             @PathVariable UUID fileId) {
         completeUploadUseCase.completeUpload(fileId);
