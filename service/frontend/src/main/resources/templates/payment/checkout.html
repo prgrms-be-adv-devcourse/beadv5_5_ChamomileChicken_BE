@@ -72,7 +72,7 @@
     async function startDepositPayment() {
         const res = await fetch('/payment/prepare', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
+            headers: {'Content-Type': 'application/json', ...getCsrfHeaders()},
             body: JSON.stringify({
                 userId: buyerId,
                 orderId: orderId,
@@ -96,7 +96,7 @@
     async function startPayment() {
         const res = await fetch('/payment/prepare', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
+            headers: {'Content-Type': 'application/json', ...getCsrfHeaders()},
             body: JSON.stringify({
                 userId: buyerId,
                 orderId: orderId,

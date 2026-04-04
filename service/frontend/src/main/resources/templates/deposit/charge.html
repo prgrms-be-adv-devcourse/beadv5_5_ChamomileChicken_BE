@@ -85,7 +85,7 @@
         if (!amount || amount < 1000) { showError('충전 금액은 최소 1,000원 이상이어야 합니다.'); return; }
         const res = await fetch('/deposit/prepare', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...getCsrfHeaders() },
             body: JSON.stringify({ userId, amount })
         });
         const data = await res.json().catch(() => ({}));

@@ -159,7 +159,7 @@
     async function uploadFile(file) {
         const res = await fetch('/api/files/upload-request', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...getCsrfHeaders() },
             body: JSON.stringify({ originalName: file.name })
         });
         if (!res.ok) throw new Error('업로드 URL 발급 실패');
@@ -171,7 +171,7 @@
         });
         if (!s3Res.ok) throw new Error('S3 업로드 실패');
 
-        const completeRes = await fetch(`/api/files/${data.fileId}/complete`, { method: 'PATCH' });
+        const completeRes = await fetch(`/api/files/${data.fileId}/complete`, { method: 'PATCH', headers: { ...getCsrfHeaders() } });
         if (!completeRes.ok) throw new Error('업로드 확정 실패');
 
         return data.fileId;

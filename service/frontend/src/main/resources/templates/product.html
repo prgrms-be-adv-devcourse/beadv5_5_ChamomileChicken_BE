@@ -145,7 +145,7 @@
             <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">0 입력 시 전액 카드로 결제됩니다.</p>
         </div>
 
-        <form id="modal-order-form" action="/orders" method="post">
+        <form id="modal-order-form" th:action="@{/orders}" method="post">
             <input type="hidden" name="productId" id="modal-product-id"/>
             <input type="hidden" name="scheduleId" id="modal-schedule-id"/>
             <!-- 추가 부분 -->

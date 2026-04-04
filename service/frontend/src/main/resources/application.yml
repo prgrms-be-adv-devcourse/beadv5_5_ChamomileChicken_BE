@@ -1,5 +1,11 @@
 server:
   port: 9006
+  servlet:
+    session:
+      timeout: 60m          # 비활성 60분 후 세션 만료 (accessToken 30분 + 여유분)
+      cookie:
+        http-only: true     # JS에서 세션 쿠키 직접 접근 차단
+        same-site: strict   # 크로스 사이트 요청에 쿠키 미포함
 
 spring:
   application:
@@ -17,6 +23,10 @@ services:
 internal:
   api:
     key: ${INTERNAL_KEY:test-internal-key}
+
+logging:
+  level:
+    jabaclass.frontend.config.TokenRefreshInterceptor: DEBUG
 
 toss:
   client-key: ${TOSS_CLIENT_KEY:test_ck_yL0qZ4G1VOj211Mwom2v3oWb2MQY}
