@@ -44,8 +44,9 @@ public class TokenRefreshInterceptor implements ClientHttpRequestInterceptor {
         }
 
         response.close();
-        String oldToken = (String) httpServletRequest.getSession(false) != null
-                ? (String) httpServletRequest.getSession(false).getAttribute("accessToken") : "none";
+        HttpSession currentSession = httpServletRequest.getSession(false);
+        String oldToken = currentSession != null
+                ? (String) currentSession.getAttribute("accessToken") : "none";
         log.debug("401 감지 — 토큰 재발급 시도 [uri={}, oldToken={}...]",
                 request.getURI(), oldToken != null && oldToken.length() > 10 ? oldToken.substring(0, 10) : oldToken);
 
