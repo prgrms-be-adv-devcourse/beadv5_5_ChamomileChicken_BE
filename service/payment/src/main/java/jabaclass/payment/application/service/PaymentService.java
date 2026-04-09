@@ -10,7 +10,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import jabaclass.payment.application.port.external.OrderPort;
 import jabaclass.payment.application.port.external.PaymentGatewayPort;
-import jabaclass.payment.application.port.external.UserPort;
 import jabaclass.payment.application.usecase.PaymentSettlementQueryUseCase;
 import jabaclass.payment.application.usecase.PaymentUseCase;
 import jabaclass.payment.common.exception.PaymentErrorCode;
@@ -19,6 +18,8 @@ import jabaclass.payment.domain.model.Payment;
 import jabaclass.payment.domain.model.Refund;
 import jabaclass.payment.domain.repository.PaymentRepository;
 import jabaclass.payment.domain.repository.RefundRepository;
+import jabaclass.payment.infrastructure.kafka.PaymentCompletedEvent;
+import jabaclass.payment.infrastructure.kafka.PaymentCompletedEventPublisher;
 import jabaclass.payment.infrastructure.kafka.PaymentRefundCompletedEvent;
 import jabaclass.payment.infrastructure.kafka.PaymentRefundCompletedEventPublisher;
 import jabaclass.payment.presentation.dto.request.ConfirmPaymentRequestDto;
@@ -43,8 +44,8 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 	private final RefundRepository refundRepository;
 	private final PaymentGatewayPort paymentGatewayPort;
 	private final OrderPort orderPort;
-	private final UserPort userPort;
 	private final PaymentRefundCompletedEventPublisher refundCompletedEventPublisher;
+	private final PaymentCompletedEventPublisher paymentCompletedEventPublisher;
 
 	@Override
 	@Transactional
@@ -65,16 +66,12 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 
 			payment.markDone("DEPOSIT_ONLY");
 
-			try {
-				orderPort.updatePaymentStatus(
+			paymentCompletedEventPublisher.publish(
+				new PaymentCompletedEvent(
 					payment.getOrderId(),
-					payment.getId(),
-					payment.getDepositAmount().intValue(),
-					"PAID"
-				);
-			} catch (Exception ex) {
-				log.error("Order 상태 업데이트 실패 (deposit only)", ex);
-			}
+					payment.getId()
+				)
+			);
 		}
 
 		Payment savedPayment = paymentRepository.save(payment);
@@ -128,17 +125,12 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 			// Payment 상태 변경
 			payment.markDone(request.paymentKey());
 
-			try {
-				orderPort.updatePaymentStatus(
+			paymentCompletedEventPublisher.publish(
+				new PaymentCompletedEvent(
 					payment.getOrderId(),
-					payment.getId(),
-					payment.getDepositAmount().intValue(),
-					"PAID"
-				);
-			} catch (Exception ex) {
-				log.error("Order 상태 업데이트 실패 (PAID). orderId={}",
-					payment.getOrderId(), ex);
-			}
+					payment.getId()
+				)
+			);
 
 		} catch (Exception e) {
 
@@ -168,7 +160,7 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 		return PaymentResponseDto.from(payment);
 	}
 
-	@Override
+	/*@Override
 	@Transactional
 	public RefundPaymentResponseDto refund(RefundPaymentRequestDto request) {
 		Payment payment = paymentRepository.findByOrderId(request.orderId())
@@ -222,7 +214,7 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 		}
 
 		return RefundPaymentResponseDto.from(refund, payment.getOrderId());
-	}
+	}*/
 
 	@Override
 	public PaymentSettlementSliceResponseDto getPaymentSettlementTargets(

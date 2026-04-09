@@ -12,6 +12,6 @@ public interface PaymentUseCase {
 
 	PaymentResponseDto confirm(ConfirmPaymentRequestDto request);
 
-	RefundPaymentResponseDto refund(RefundPaymentRequestDto request);
+	// RefundPaymentResponseDto refund(RefundPaymentRequestDto request);
 
 }
