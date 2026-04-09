@@ -20,6 +20,8 @@ import jabaclass.payment.domain.repository.PaymentRepository;
 import jabaclass.payment.domain.repository.RefundRepository;
 import jabaclass.payment.infrastructure.kafka.PaymentCompletedEvent;
 import jabaclass.payment.infrastructure.kafka.PaymentCompletedEventPublisher;
+import jabaclass.payment.infrastructure.kafka.PaymentFailedEvent;
+import jabaclass.payment.infrastructure.kafka.PaymentFailedEventPublisher;
 import jabaclass.payment.infrastructure.kafka.PaymentRefundCompletedEvent;
 import jabaclass.payment.infrastructure.kafka.PaymentRefundCompletedEventPublisher;
 import jabaclass.payment.presentation.dto.request.ConfirmPaymentRequestDto;
@@ -46,6 +48,7 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 	private final OrderPort orderPort;
 	private final PaymentRefundCompletedEventPublisher refundCompletedEventPublisher;
 	private final PaymentCompletedEventPublisher paymentCompletedEventPublisher;
+	private final PaymentFailedEventPublisher paymentFailedEventPublisher;
 
 	@Override
 	@Transactional
@@ -140,18 +143,12 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 			// Payment 실패 처리
 			payment.markFailed();
 
-			try {
-				// Order 실패 상태 반영 (보조 처리)
-				orderPort.updatePaymentStatus(
+			paymentFailedEventPublisher.publish(
+				new PaymentFailedEvent(
 					payment.getOrderId(),
-					payment.getId(),
-					payment.getDepositAmount().intValue(),
-					"FAILED"
-				);
-			} catch (Exception ex) {
-				log.error("Order 상태 업데이트 실패 (FAILED). orderId={}",
-					payment.getOrderId(), ex);
-			}
+					payment.getId()
+				)
+			);
 
 			throw new PaymentException(PaymentErrorCode.PAYMENT_CONFIRM_FAILED, e);
 		}
