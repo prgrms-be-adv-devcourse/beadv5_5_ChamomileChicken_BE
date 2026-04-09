@@ -10,7 +10,7 @@ description = 'api-gateway'
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(21)  // 다른 서비스와 맞춤
+        languageVersion = JavaLanguageVersion.of(21)
     }
 }
 
@@ -40,6 +40,10 @@ dependencies {
     testCompileOnly 'org.projectlombok:lombok'
     testAnnotationProcessor 'org.projectlombok:lombok'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    if (org.gradle.internal.os.OperatingSystem.current().isMacOsX()) {
+        runtimeOnly "io.netty:netty-resolver-dns-native-macos:4.1.104.Final:osx-aarch_64"
+    }
 }
 
 dependencyManagement {

@@ -2,7 +2,7 @@ package jabaclass.apigateway.config;
 
 import java.util.List;
 
-import org.springframework.beans.factory.annotation.Value;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.cors.CorsConfiguration;
@@ -10,16 +10,16 @@ import org.springframework.web.cors.reactive.CorsWebFilter;
 import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
 
 @Configuration
+@RequiredArgsConstructor
 public class CorsConfig {
 
-	@Value("${cors.allowed-origins}")
-	private List<String> allowedOrigins;
+    private final CorsProperties corsProperties;
 
 	@Bean
 	public CorsWebFilter corsWebFilter() {
 		CorsConfiguration config = new CorsConfiguration();
 
-		config.setAllowedOrigins(allowedOrigins);
+		config.setAllowedOrigins(corsProperties.getAllowedOrigins());
 		config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
 		config.setAllowedHeaders(List.of("*"));
 		config.setAllowCredentials(true);
