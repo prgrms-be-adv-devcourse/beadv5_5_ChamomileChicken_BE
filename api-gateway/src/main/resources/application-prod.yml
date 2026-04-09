@@ -20,6 +20,6 @@ jwt:
 
 logging:
   level:
-    root: INFO
-    jabaclass.apigateway: DEBUG
-    org.springframework.cloud.gateway: DEBUG
+    root: WARN
+    jabaclass.apigateway: INFO
+    org.springframework.cloud.gateway: WARN
