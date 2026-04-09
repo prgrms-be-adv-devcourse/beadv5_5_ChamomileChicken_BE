@@ -17,12 +17,13 @@ public class JwtProvider {
 
     private static final String CLAIM_USER_ID = "userId";
     private static final String CLAIM_TYPE = "type";
+    private static final int MIN_SECRET_LENGTH = 32;
 
     private final Key key;
 
     public JwtProvider(JwtProperties properties) {
-        if (properties.getSecret().length() < 32) {
-            throw new IllegalArgumentException("JWT secret은 최소 32자 이상이어야 합니다.");
+        if (properties.getSecret().length() < MIN_SECRET_LENGTH) {
+            throw new IllegalArgumentException("JWT secret은 최소 \" + MIN_SECRET_LENGTH + \"자 이상이어야 합니다.");
         }
         this.key = Keys.hmacShaKeyFor(properties.getSecret().getBytes(StandardCharsets.UTF_8));
     }
