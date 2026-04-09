@@ -37,6 +37,10 @@ public class ExpirePaymentService implements ExpirePaymentUseCase {
 
 		for (Payment payment : expiredTargets) {
 			try {
+				if (payment.getStatus() != PaymentStatus.READY) {
+					continue;
+				}
+
 				payment.expire();
 
 				paymentExpiredEventPublisher.publish(

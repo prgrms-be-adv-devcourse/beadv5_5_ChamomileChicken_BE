@@ -71,8 +71,8 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 
 			paymentCompletedEventPublisher.publish(
 				new PaymentCompletedEvent(
-					payment.getOrderId(),
-					payment.getId()
+					payment.getId(),
+					payment.getOrderId()
 				)
 			);
 		}
@@ -130,8 +130,8 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 
 			paymentCompletedEventPublisher.publish(
 				new PaymentCompletedEvent(
-					payment.getOrderId(),
-					payment.getId()
+					payment.getId(),
+					payment.getOrderId()
 				)
 			);
 
@@ -145,8 +145,8 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 
 			paymentFailedEventPublisher.publish(
 				new PaymentFailedEvent(
-					payment.getOrderId(),
-					payment.getId()
+					payment.getId(),
+					payment.getOrderId()
 				)
 			);
 
