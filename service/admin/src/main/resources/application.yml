@@ -1,4 +1,4 @@
-server.port: 9008
+server.port: 9007
 spring:
   application:
     name: admin
