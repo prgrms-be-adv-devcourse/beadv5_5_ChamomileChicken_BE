@@ -12,31 +12,31 @@ public class RouteConfig {
 	public RouteLocator customRouteLocator(RouteLocatorBuilder builder) {
 		return builder.routes()
 			// File Service
-			.route("file-service", r -> r.path("/api/v1/files/**")
+			.route("file", r -> r.path("/api/v1/files/**")
 				.uri("http://localhost:9000"))
 
 			// Payment Service
-			.route("payment-service", r -> r.path("/api/v1/payments/**")
+			.route("payment", r -> r.path("/api/v1/payments/**")
 				.uri("http://localhost:9001"))
 
 			// Settlement Service
-			.route("settlement-service", r -> r.path("/api/v1/settlements/**")
+			.route("settlement", r -> r.path("/api/v1/settlements/**")
 				.uri("http://localhost:9002"))
 
 			// User Service
-			.route("user-service", r -> r.path("/api/v1/auth/**", "/api/v1/users/**")
+			.route("user", r -> r.path("/api/v1/auth/**", "/api/v1/users/**")
 				.uri("http://localhost:9003"))
 
 			// Product Service
-			.route("product-service", r -> r.path("/api/v1/products/**")
+			.route("product", r -> r.path("/api/v1/products/**")
 				.uri("http://localhost:9004"))
 
 			// Order Service
-			.route("order-service", r -> r.path("/api/v1/orders/**")
+			.route("order", r -> r.path("/api/v1/orders/**")
 				.uri("http://localhost:9005"))
 
 			// Admin Service
-			.route("admin-service", r -> r.path("/api/v1/admins/**")
+			.route("admin", r -> r.path("/api/v1/admins/**")
 				.uri("http://localhost:9007"))
 
 			.build();
