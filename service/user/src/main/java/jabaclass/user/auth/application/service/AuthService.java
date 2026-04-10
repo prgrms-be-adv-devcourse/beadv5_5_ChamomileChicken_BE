@@ -1,6 +1,18 @@
 package jabaclass.user.auth.application.service;
 
+import java.time.Duration;
+import java.util.UUID;
+
 import io.jsonwebtoken.Claims;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import jabaclass.auth.jwt.JwtProvider;
 import jabaclass.user.auth.application.exception.AuthErrorCode;
 import jabaclass.user.auth.application.exception.AuthException;
@@ -9,21 +21,9 @@ import jabaclass.user.auth.application.usecase.LogoutUseCase;
 import jabaclass.user.auth.application.usecase.ReissueUseCase;
 import jabaclass.user.auth.infrastructure.jwt.TokenProvider;
 import jabaclass.user.auth.presentation.dto.request.LoginRequestDto;
-import jabaclass.user.auth.presentation.dto.response.TokenResponseDto;
 import jabaclass.user.auth.presentation.dto.response.TokenResult;
 import jabaclass.user.user.domain.model.User;
 import jabaclass.user.user.domain.repository.UserRepository;
-
-import java.time.Duration;
-import java.util.UUID;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-
-import org.antlr.v4.runtime.Token;
-import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor

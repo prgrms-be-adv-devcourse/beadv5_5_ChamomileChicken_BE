@@ -1,11 +1,10 @@
 package jabaclass.user.auth.presentation.controller;
 
-import jabaclass.user.auth.presentation.dto.response.TokenResult;
-import lombok.RequiredArgsConstructor;
-
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+
+import lombok.RequiredArgsConstructor;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
@@ -18,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import jabaclass.user.auth.presentation.dto.response.TokenResult;
 import jabaclass.user.auth.presentation.dto.response.TokenResponseDto;
 import jabaclass.user.auth.application.exception.AuthErrorCode;
 import jabaclass.user.auth.application.exception.AuthException;
