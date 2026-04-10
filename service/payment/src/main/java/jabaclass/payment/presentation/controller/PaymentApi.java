@@ -49,7 +49,7 @@ public interface PaymentApi {
 			- 완료 후 payment.refund.completed 이벤트를 발행합니다.
 			"""
 	)
-	ResponseEntity<ApiResponseDto<RefundPaymentResponseDto>> refundPayment(
+	ResponseEntity<ApiResponseDto<Void>> refundPayment(
 		RefundPaymentRequestDto request
 	);
 }

@@ -54,13 +54,16 @@ public class PaymentController implements PaymentApi {
 
 	@Override
 	@PostMapping("/api/v1/refunds")
-	public ResponseEntity<ApiResponseDto<RefundPaymentResponseDto>> refundPayment(
+	public ResponseEntity<ApiResponseDto<Void>> refundPayment(
 		@RequestBody RefundPaymentRequestDto request) {
-		return ResponseEntity.ok(
+
+		paymentUseCase.refund(request);
+
+		return ResponseEntity.status(HttpStatus.ACCEPTED).body(
 			ApiResponseDto.success(
-				HttpStatus.OK,
-				"환불 성공",
-				paymentUseCase.refund(request)
+				HttpStatus.ACCEPTED,
+				"환불 요청이 접수되었습니다.",
+				null
 			)
 		);
 	}

@@ -22,15 +22,14 @@ import jabaclass.payment.infrastructure.kafka.PaymentCompletedEvent;
 import jabaclass.payment.infrastructure.kafka.PaymentCompletedEventPublisher;
 import jabaclass.payment.infrastructure.kafka.PaymentFailedEvent;
 import jabaclass.payment.infrastructure.kafka.PaymentFailedEventPublisher;
-import jabaclass.payment.infrastructure.kafka.PaymentRefundCompletedEvent;
-import jabaclass.payment.infrastructure.kafka.PaymentRefundCompletedEventPublisher;
+import jabaclass.payment.infrastructure.kafka.PaymentRefundedEventPublisher;
+import jabaclass.payment.infrastructure.kafka.PaymentRefundedEvent;
 import jabaclass.payment.presentation.dto.request.ConfirmPaymentRequestDto;
 import jabaclass.payment.presentation.dto.request.PreparePaymentRequestDto;
 import jabaclass.payment.presentation.dto.request.RefundPaymentRequestDto;
 import jabaclass.payment.presentation.dto.response.PaymentResponseDto;
 import jabaclass.payment.presentation.dto.response.PaymentSettlementSliceResponseDto;
 import jabaclass.payment.presentation.dto.response.PaymentSettlementTargetItemResponseDto;
-import jabaclass.payment.presentation.dto.response.RefundPaymentResponseDto;
 import jabaclass.payment.presentation.dto.response.RefundSettlementSliceResponseDto;
 import jabaclass.payment.presentation.dto.response.RefundSettlementTargetItemResponseDto;
 import lombok.RequiredArgsConstructor;
@@ -46,7 +45,7 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 	private final RefundRepository refundRepository;
 	private final PaymentGatewayPort paymentGatewayPort;
 	private final OrderPort orderPort;
-	private final PaymentRefundCompletedEventPublisher refundCompletedEventPublisher;
+	private final PaymentRefundedEventPublisher paymentRefundedEventPublisher;
 	private final PaymentCompletedEventPublisher paymentCompletedEventPublisher;
 	private final PaymentFailedEventPublisher paymentFailedEventPublisher;
 
@@ -157,9 +156,9 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 		return PaymentResponseDto.from(payment);
 	}
 
-	/*@Override
+	@Override
 	@Transactional
-	public RefundPaymentResponseDto refund(RefundPaymentRequestDto request) {
+	public void refund(RefundPaymentRequestDto request) {
 		Payment payment = paymentRepository.findByOrderId(request.orderId())
 			.orElseThrow(() -> new PaymentException(PaymentErrorCode.PAYMENT_NOT_FOUND));
 
@@ -184,22 +183,14 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 				);
 			}
 
-			if (payment.getDepositAmount().signum() > 0) { // 예치금 금액이 있으면 User 서비스에 환불 호출
-				userPort.refundDeposit(
-					payment.getUserId(),
-					payment.getDepositAmount(),
-					payment.getId()
-				);
-			}
-
 			payment.markCancelled();
 			refund.markCompleted();
 			refundRepository.save(refund);
 
-			refundCompletedEventPublisher.publish(
-				new PaymentRefundCompletedEvent(
-					payment.getOrderId(),
-					payment.getProductUserId()
+			paymentRefundedEventPublisher.publish(
+				new PaymentRefundedEvent(
+					payment.getId(),
+					payment.getOrderId()
 				)
 			);
 		} catch (Exception e) {
@@ -209,9 +200,7 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 
 			throw new PaymentException(PaymentErrorCode.PAYMENT_REFUND_FAILED, e);
 		}
-
-		return RefundPaymentResponseDto.from(refund, payment.getOrderId());
-	}*/
+	}
 
 	@Override
 	public PaymentSettlementSliceResponseDto getPaymentSettlementTargets(
