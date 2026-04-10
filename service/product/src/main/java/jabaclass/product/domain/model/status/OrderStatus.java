@@ -5,9 +5,10 @@ import java.util.Arrays;
 public enum OrderStatus {
 	PENDING("주문/결제 대기"),
 	PAID("결제 완료"),
-	CANCELLED("주문 취소"),
+	EXPIRED("만료"),
 	REFUNDED("환불 완료"),
-	FAILED("실패");
+	RESTORING("재고 복구 중"),
+	CANCELLED("재고 복구 실패");
 
 	private final String statusName;
 

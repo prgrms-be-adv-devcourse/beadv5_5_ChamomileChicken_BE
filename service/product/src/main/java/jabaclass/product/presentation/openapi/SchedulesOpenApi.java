@@ -57,13 +57,13 @@ public interface SchedulesOpenApi {
 	@CommonErrorResponses
 	ResponseEntity<OrderResponseDto> schedulesReservations(OrderRequestDto requestDto);
 
-	@Operation(summary = "상품 일정 재고 상태 변경", description = "상품 일정의 재고 상태를 변경 합니다.")
+/*	@Operation(summary = "상품 일정 재고 상태 변경", description = "상품 일정의 재고 상태를 변경 합니다.")
 	@ApiResponse(
 		responseCode = "200",
 		description = "재고 추가 성공"
 	)
 	@CommonErrorResponses
-	void schedulesVerification(OrderRequestDto requestDto);
+	void schedulesVerification(OrderRequestDto requestDto);*/
 
 	@Operation(summary = "상품 일정 삭제", description = "상품 일정을 삭제 합니다.")
 	@ApiResponse(
