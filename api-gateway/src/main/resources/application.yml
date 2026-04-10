@@ -1,11 +1,11 @@
 server:
-  port: 8080 # Gateway 서비스 포트
+  port: 8080
 
 spring:
   application:
     name: api-gateway
 
-  # Redis 설정 (Issue #3 블랙리스트 확인용)
+  # Redis 설정
   data:
     redis:
       host: localhost

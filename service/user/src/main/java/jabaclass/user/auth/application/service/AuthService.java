@@ -16,14 +16,16 @@ import jabaclass.user.user.domain.repository.UserRepository;
 import java.time.Duration;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
-import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AuthService implements LoginUseCase, LogoutUseCase, ReissueUseCase {
 
     private final UserRepository userRepository;
@@ -31,8 +33,8 @@ public class AuthService implements LoginUseCase, LogoutUseCase, ReissueUseCase 
     private final TokenProvider tokenProvider;
     private final JwtProvider jwtProvider;
 
-    private static final String BLACKLIST_PREFIX = "blackList:";
-    private final RedisTemplate<Object, Object> redisTemplate;
+    private static final String BLACKLIST_PREFIX = "blacklist:";
+    private final StringRedisTemplate redisTemplate;
 
     @Override
     @Transactional
@@ -94,11 +96,14 @@ public class AuthService implements LoginUseCase, LogoutUseCase, ReissueUseCase 
         long remainingMillis = claims.getExpiration().getTime() - System.currentTimeMillis();
 
         if (remainingMillis > 0) {
+            log.info("[AUTH] Blacklist 등록. key={}, ttl={}ms", BLACKLIST_PREFIX + accessToken, remainingMillis);
             redisTemplate.opsForValue().set(
                 BLACKLIST_PREFIX + accessToken,
                 "logout",
                 Duration.ofMillis(remainingMillis)
             );
+        } else {
+            log.warn("[AUTH] 토큰 이미 만료. remainingMillis={}", remainingMillis);
         }
 
         user.updateRefreshToken(null);

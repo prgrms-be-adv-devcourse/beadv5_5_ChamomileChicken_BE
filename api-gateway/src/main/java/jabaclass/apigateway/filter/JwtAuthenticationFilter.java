@@ -18,6 +18,7 @@ import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
 import org.springframework.core.io.buffer.DataBuffer;
+import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.server.reactive.ServerHttpResponse;
@@ -38,6 +39,9 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
     private final JwtProvider jwtProvider;
     private final JwtTokenResolver tokenResolver;
     private final ObjectMapper objectMapper;
+    private final ReactiveStringRedisTemplate redisTemplate;
+
+    private static final String BLACKLIST_PREFIX = "blacklist:";
 
     private record WhiteListEntry(HttpMethod method, String pattern) {}
 
@@ -46,7 +50,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         new WhiteListEntry(HttpMethod.POST,  "/api/v1/auth/login"),
         new WhiteListEntry(HttpMethod.POST,  "/api/v1/auth/reissue"),
         new WhiteListEntry(HttpMethod.POST,  "/api/v1/users/register"),
-        new WhiteListEntry(HttpMethod.POST,   "/api/v1/users/email-check"),
+        new WhiteListEntry(HttpMethod.POST,  "/api/v1/users/email-check"),
         new WhiteListEntry(HttpMethod.POST,  "/api/v1/email/**"),
         new WhiteListEntry(HttpMethod.GET,   "/api/v1/products/**")
     );
@@ -58,7 +62,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         String path = exchange.getRequest().getURI().getPath();
         HttpMethod httpMethod = exchange.getRequest().getMethod();
 
-        log.debug("[GATEWAY] Request: {} {}", httpMethod, path);
+        log.info("[GATEWAY] Request: {} {}", httpMethod, path);
 
         if (httpMethod == null) {
             log.warn("[GATEWAY] Unknown HTTP method for path: {}", path);
@@ -77,6 +81,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
             return onError(exchange, JwtErrorCode.EMPTY_TOKEN);
         }
 
+        // 성공 시 비동기 Redis 블랙리스트 조회로 연결
         try {
             Claims claims = jwtProvider.parseClaims(token);
 
@@ -84,15 +89,22 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
                 return onError(exchange, JwtErrorCode.INVALID_TOKEN);
             }
 
-            UUID userId = jwtProvider.getUserId(claims);
+            return redisTemplate.hasKey(BLACKLIST_PREFIX + token)
+                .flatMap(isBlacklisted -> {
+                    if (isBlacklisted) {
+                        log.warn("[GATEWAY] Blacklisted token. Path: {} {}", httpMethod, path);
+                        return onError(exchange, JwtErrorCode.INVALID_TOKEN);
+                    }
 
-            log.info("[GATEWAY] User authenticated. Path: {} {}, UserId: {}", httpMethod, path, userId);
+                    UUID userId = jwtProvider.getUserId(claims);
+                    log.info("[GATEWAY] User authenticated. Path: {} {}, UserId: {}", httpMethod, path, userId);
 
-            ServerWebExchange mutatedExchange = exchange.mutate()
-                .request(r -> r.header("X-User-Id", userId.toString()))
-                .build();
+                    ServerWebExchange mutatedExchange = exchange.mutate()
+                        .request(r -> r.header("X-User-Id", userId.toString()))
+                        .build();
 
-            return chain.filter(mutatedExchange);
+                    return chain.filter(mutatedExchange);
+                });
 
         } catch (JwtAuthException e) {
             log.error("[GATEWAY] Auth Exception: {} {} - {}", httpMethod, path, e.getErrorCode().getMessage());
@@ -102,7 +114,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
     @Override
     public int getOrder() {
-        return -1; // 모든 Gateway 필터보다 먼저 실행
+        return -1;
     }
 
     private boolean isWhitelisted(String path, HttpMethod method) {
@@ -123,7 +135,6 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
             DataBuffer buffer = response.bufferFactory().wrap(bytes);
             return response.writeWith(Mono.just(buffer));
         } catch (JsonProcessingException e) {
-            // 정상적인 상황에서는 발생하지 않음
             log.error("[GATEWAY] Failed to serialize error response", e);
             return response.setComplete();
         }
