@@ -1,8 +1,8 @@
 package jabaclass.user.auth.application.usecase;
 
-import jabaclass.user.auth.presentation.dto.response.LoginResponseDto;
+import jabaclass.user.auth.presentation.dto.response.TokenResult;
 
 public interface ReissueUseCase {
 
-    LoginResponseDto reissue(String refreshToken);
+    TokenResult reissue(String refreshToken);
 }

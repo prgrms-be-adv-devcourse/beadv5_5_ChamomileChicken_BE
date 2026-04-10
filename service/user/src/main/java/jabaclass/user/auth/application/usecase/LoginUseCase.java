@@ -1,9 +1,10 @@
 package jabaclass.user.auth.application.usecase;
 
 import jabaclass.user.auth.presentation.dto.request.LoginRequestDto;
-import jabaclass.user.auth.presentation.dto.response.LoginResponseDto;
+import jabaclass.user.auth.presentation.dto.response.TokenResponseDto;
+import jabaclass.user.auth.presentation.dto.response.TokenResult;
 
 public interface LoginUseCase {
 
-    LoginResponseDto login(LoginRequestDto request);
+    TokenResult login(LoginRequestDto request);
 }

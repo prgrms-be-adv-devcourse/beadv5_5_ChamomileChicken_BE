@@ -1,5 +1,6 @@
 package jabaclass.user.auth.presentation.controller;
 
+import jabaclass.user.auth.presentation.dto.response.TokenResult;
 import lombok.RequiredArgsConstructor;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -17,7 +18,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import jabaclass.user.auth.presentation.dto.response.LoginResponseDto;
+import jabaclass.user.auth.presentation.dto.response.TokenResponseDto;
 import jabaclass.user.auth.application.exception.AuthErrorCode;
 import jabaclass.user.auth.application.exception.AuthException;
 import jabaclass.user.auth.application.usecase.LoginUseCase;
@@ -43,17 +44,22 @@ public class AuthController {
     private boolean cookieSecure;
 
     @PostMapping("/login")
-    public ResponseEntity<ApiResponseDto<LoginResponseDto>> login(
+    public ResponseEntity<ApiResponseDto<TokenResponseDto>> login(
         @Valid @RequestBody LoginRequestDto request,
         HttpServletResponse response) {
 
-        LoginResponseDto result = loginUseCase.login(request);
+        TokenResult result = loginUseCase.login(request);
 
         response.addHeader(HttpHeaders.SET_COOKIE,
-            buildRefreshTokenCookie(result.getRefreshToken(), refreshTokenValidity / 1000).toString());
+            buildRefreshTokenCookie(result.getRefreshToken(),
+                refreshTokenValidity / 1000).toString());
 
-        return ResponseEntity.ok(ApiResponseDto.success(HttpStatus.OK, "로그인 성공", result));
+        return ResponseEntity.ok(ApiResponseDto.success(HttpStatus.OK,
+            "로그인 성공",
+            new TokenResponseDto(result.getAccessToken(),
+                result.getRole())));
     }
+
 
     @PostMapping("/logout")
     public ResponseEntity<ApiResponseDto<Void>> logout(
@@ -71,7 +77,7 @@ public class AuthController {
     }
 
     @PostMapping("/reissue")
-    public ResponseEntity<ApiResponseDto<LoginResponseDto>> reissue(
+    public ResponseEntity<ApiResponseDto<TokenResult>> reissue(
         @CookieValue(name = "refresh_token", required = false) String refreshToken,
         HttpServletResponse response) {
 
@@ -79,7 +85,7 @@ public class AuthController {
             throw new AuthException(AuthErrorCode.INVALID_REFRESH_TOKEN);
         }
 
-        LoginResponseDto result = reissueUseCase.reissue(refreshToken);
+        TokenResult result = reissueUseCase.reissue(refreshToken);
 
         response.addHeader(HttpHeaders.SET_COOKIE,
             buildRefreshTokenCookie(result.getRefreshToken(), refreshTokenValidity / 1000).toString());

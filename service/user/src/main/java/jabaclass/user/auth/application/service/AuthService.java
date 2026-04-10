@@ -9,7 +9,8 @@ import jabaclass.user.auth.application.usecase.LogoutUseCase;
 import jabaclass.user.auth.application.usecase.ReissueUseCase;
 import jabaclass.user.auth.infrastructure.jwt.TokenProvider;
 import jabaclass.user.auth.presentation.dto.request.LoginRequestDto;
-import jabaclass.user.auth.presentation.dto.response.LoginResponseDto;
+import jabaclass.user.auth.presentation.dto.response.TokenResponseDto;
+import jabaclass.user.auth.presentation.dto.response.TokenResult;
 import jabaclass.user.user.domain.model.User;
 import jabaclass.user.user.domain.repository.UserRepository;
 
@@ -18,6 +19,7 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import org.antlr.v4.runtime.Token;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -39,7 +41,7 @@ public class AuthService implements LoginUseCase, LogoutUseCase, ReissueUseCase 
 
     @Override
     @Transactional
-    public LoginResponseDto login(LoginRequestDto request) {
+    public TokenResult login(LoginRequestDto request) {
 
         User user = userRepository.findByEmailWithLock(request.getEmail())
                 .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
@@ -53,12 +55,12 @@ public class AuthService implements LoginUseCase, LogoutUseCase, ReissueUseCase 
 
         user.updateRefreshToken(refreshToken);
 
-        return new LoginResponseDto(accessToken, refreshToken, user.getRole().name());
+        return new TokenResult(accessToken, refreshToken, user.getRole().name());
     }
 
     @Override
     @Transactional
-    public LoginResponseDto reissue(String refreshToken) {
+    public TokenResult reissue(String refreshToken) {
         Claims claims = jwtProvider.parseClaims(refreshToken);
 
         if (!jwtProvider.isRefreshToken(claims)) {
@@ -83,7 +85,7 @@ public class AuthService implements LoginUseCase, LogoutUseCase, ReissueUseCase 
 
         user.updateRefreshToken(newRefreshToken);
 
-        return new LoginResponseDto(newAccessToken, newRefreshToken, user.getRole().name());
+        return new TokenResult(newAccessToken, newRefreshToken, user.getRole().name());
     }
 
     @Override
