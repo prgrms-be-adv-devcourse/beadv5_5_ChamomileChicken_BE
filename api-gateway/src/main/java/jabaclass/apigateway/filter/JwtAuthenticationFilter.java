@@ -104,6 +104,10 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
                         .build();
 
                     return chain.filter(mutatedExchange);
+                })
+                .onErrorResume(e -> {
+                    log.error("[GATEWAY] Redis error: {}", e.getMessage());
+                    return onError(exchange, JwtErrorCode.INVALID_TOKEN);
                 });
 
         } catch (JwtAuthException e) {
