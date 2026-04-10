@@ -2,8 +2,8 @@ package jabaclass.payment.infrastructure.kafka;
 
 import java.util.UUID;
 
-public record PaymentRefundCompletedEvent(
-	UUID orderId,
-	UUID productUserId
+public record PaymentRefundedEvent(
+	UUID paymentId,
+	UUID orderId
 ) {
 }

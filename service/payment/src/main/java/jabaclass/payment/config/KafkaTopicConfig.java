@@ -5,14 +5,36 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.config.TopicBuilder;
 
-import jabaclass.payment.infrastructure.kafka.PaymentRefundCompletedEventPublisher;
-
 @Configuration
 public class KafkaTopicConfig {
 
 	@Bean
-	public NewTopic paymentRefundCompletedTopic() {
-		return TopicBuilder.name(PaymentRefundCompletedEventPublisher.TOPIC)
+	public NewTopic paymentCompleted() {
+		return TopicBuilder.name("payment-completed")
+			.partitions(3)
+			.replicas(1)
+			.build();
+	}
+
+	@Bean
+	public NewTopic paymentFailed() {
+		return TopicBuilder.name("payment-failed")
+			.partitions(3)
+			.replicas(1)
+			.build();
+	}
+
+	@Bean
+	public NewTopic paymentExpired() {
+		return TopicBuilder.name("payment-expired")
+			.partitions(3)
+			.replicas(1)
+			.build();
+	}
+
+	@Bean
+	public NewTopic paymentRefunded() {
+		return TopicBuilder.name("payment-refunded")
 			.partitions(3)
 			.replicas(1)
 			.build();

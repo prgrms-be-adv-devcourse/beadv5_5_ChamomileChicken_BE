@@ -7,14 +7,14 @@ import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
-public class PaymentRefundCompletedEventPublisher {
+public class PaymentRefundedEventPublisher {
 
-	public static final String TOPIC = "payment.refund.completed";
+	public static final String TOPIC = "payment.refunded";
 
 	private final KafkaTemplate<String, String> kafkaTemplate;
 	private final ObjectMapper objectMapper;
 
-	public void publish(PaymentRefundCompletedEvent event) {
+	public void publish(PaymentRefundedEvent event) {
 		try {
 			String payload = objectMapper.writeValueAsString(event);
 			kafkaTemplate.send(TOPIC, event.orderId().toString(), payload);
