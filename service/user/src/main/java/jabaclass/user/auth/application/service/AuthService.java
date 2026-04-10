@@ -87,8 +87,15 @@ public class AuthService implements LoginUseCase, LogoutUseCase, ReissueUseCase 
             throw new AuthException(AuthErrorCode.REFRESH_TOKEN_MISMATCH);
         }
 
-        String newAccessToken = tokenProvider.generateAccessToken(userId, UserRole.valueOf(role));
-        String newRefreshToken = tokenProvider.generateRefreshToken(userId, UserRole.valueOf(role));
+        UserRole userRole;
+        try {
+            userRole = UserRole.valueOf(role);
+        } catch (IllegalArgumentException e) {
+            throw new AuthException(AuthErrorCode.INVALID_TOKEN);
+        }
+
+        String newAccessToken = tokenProvider.generateAccessToken(userId, userRole);
+        String newRefreshToken = tokenProvider.generateRefreshToken(userId, userRole);
 
         redisTemplate.opsForValue().set("refresh:" + userId, newRefreshToken,
             Duration.ofMillis(refreshTokenValidity));
