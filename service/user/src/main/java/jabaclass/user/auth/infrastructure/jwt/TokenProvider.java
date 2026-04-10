@@ -13,12 +13,14 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import jabaclass.auth.jwt.TokenType;
+import jabaclass.user.user.domain.model.UserRole;
 
 @Component
 public class TokenProvider {
 
     private static final String CLAIM_USER_ID = "userId";
     private static final String CLAIM_TYPE = "type";
+    private static final String CLAIM_ROLE = "role";
 
     private final Key key;
     private final long accessTokenValidity;
@@ -37,19 +39,20 @@ public class TokenProvider {
         this.refreshTokenValidity = refreshTokenValidity;
     }
 
-    public String generateAccessToken(UUID userId) {
-        return generate(userId, accessTokenValidity, TokenType.ACCESS);
+    public String generateAccessToken(UUID userId, UserRole role) {
+        return generate(userId, role.name(), accessTokenValidity, TokenType.ACCESS);
     }
 
-    public String generateRefreshToken(UUID userId) {
-        return generate(userId, refreshTokenValidity, TokenType.REFRESH);
+    public String generateRefreshToken(UUID userId, UserRole role) {
+        return generate(userId, role.name(),  refreshTokenValidity, TokenType.REFRESH);
     }
 
-    private String generate(UUID userId, long validity, TokenType tokenType) {
+    private String generate(UUID userId, String role, long validity, TokenType tokenType) {
         Date now = new Date();
         return Jwts.builder()
                 .claim(CLAIM_USER_ID, userId.toString())
                 .claim(CLAIM_TYPE, tokenType.name())
+                .claim(CLAIM_ROLE, role)
                 .setIssuedAt(now)
                 .setExpiration(new Date(now.getTime() + validity))
                 .signWith(key, SignatureAlgorithm.HS256)

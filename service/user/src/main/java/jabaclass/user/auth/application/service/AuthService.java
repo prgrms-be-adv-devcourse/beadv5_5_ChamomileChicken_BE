@@ -8,11 +8,13 @@ import io.jsonwebtoken.Claims;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import jabaclass.user.user.domain.model.UserRole;
 import jabaclass.auth.jwt.JwtProvider;
 import jabaclass.user.auth.application.exception.AuthErrorCode;
 import jabaclass.user.auth.application.exception.AuthException;
@@ -34,10 +36,12 @@ public class AuthService implements LoginUseCase, LogoutUseCase, ReissueUseCase 
     private final PasswordEncoder passwordEncoder;
     private final TokenProvider tokenProvider;
     private final JwtProvider jwtProvider;
-    private final AuthTransactionService authTransactionService;
 
     private static final String BLACKLIST_PREFIX = "blacklist:";
     private final StringRedisTemplate redisTemplate;
+
+    @Value("${jwt.refresh-token-validity}")
+    private long refreshTokenValidity;
 
     @Override
     @Transactional
@@ -50,16 +54,19 @@ public class AuthService implements LoginUseCase, LogoutUseCase, ReissueUseCase 
             throw new AuthException(AuthErrorCode.INVALID_PASSWORD);
         }
 
-        String accessToken = tokenProvider.generateAccessToken(user.getId());
-        String refreshToken = tokenProvider.generateRefreshToken(user.getId());
+        String accessToken = tokenProvider.generateAccessToken(user.getId(), user.getRole());
+        String refreshToken = tokenProvider.generateRefreshToken(user.getId(), user.getRole());
 
-        user.updateRefreshToken(refreshToken);
+        redisTemplate.opsForValue().set(
+            "refresh:" + user.getId(),
+            refreshToken,
+            Duration.ofMillis(refreshTokenValidity)
+        );
 
-        return new TokenResult(accessToken, refreshToken, user.getRole().name());
+        return new TokenResult(accessToken, refreshToken);
     }
 
     @Override
-    @Transactional
     public TokenResult reissue(String refreshToken) {
         Claims claims = jwtProvider.parseClaims(refreshToken);
 
@@ -68,29 +75,30 @@ public class AuthService implements LoginUseCase, LogoutUseCase, ReissueUseCase 
         }
 
         UUID userId = jwtProvider.getUserId(claims);
+        String role = jwtProvider.getRole(claims);
 
-        User user = userRepository.findById(userId)
-            .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
+        String stored = redisTemplate.opsForValue().get("refresh:" + userId);
 
-        if (user.getRefreshToken() == null) {
+        if (stored == null) {
             throw new AuthException(AuthErrorCode.ALREADY_LOGGED_OUT);
         }
 
-        if (!user.getRefreshToken().equals(refreshToken)) {
+        if (!stored.equals(refreshToken)) {
             throw new AuthException(AuthErrorCode.REFRESH_TOKEN_MISMATCH);
         }
 
-        String newAccessToken = tokenProvider.generateAccessToken(userId);
-        String newRefreshToken = tokenProvider.generateRefreshToken(userId);
+        String newAccessToken = tokenProvider.generateAccessToken(userId, UserRole.valueOf(role));
+        String newRefreshToken = tokenProvider.generateRefreshToken(userId, UserRole.valueOf(role));
 
-        user.updateRefreshToken(newRefreshToken);
+        redisTemplate.opsForValue().set("refresh:" + userId, newRefreshToken,
+            Duration.ofMillis(refreshTokenValidity));
 
-        return new TokenResult(newAccessToken, newRefreshToken, user.getRole().name());
+        return new TokenResult(newAccessToken, newRefreshToken);
     }
 
     @Override
     public void logout(UUID userId, String accessToken) {
-        authTransactionService.clearRefreshToken(userId);
+        redisTemplate.delete("refresh:" + userId);
 
         try {
             Claims claims = jwtProvider.parseClaims(accessToken);

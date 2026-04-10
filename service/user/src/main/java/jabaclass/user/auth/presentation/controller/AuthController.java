@@ -56,8 +56,7 @@ public class AuthController {
 
         return ResponseEntity.ok(ApiResponseDto.success(HttpStatus.OK,
             "로그인 성공",
-            new TokenResponseDto(result.getAccessToken(),
-                result.getRole())));
+            new TokenResponseDto(result.getAccessToken())));
     }
 
 
@@ -77,7 +76,7 @@ public class AuthController {
     }
 
     @PostMapping("/reissue")
-    public ResponseEntity<ApiResponseDto<TokenResult>> reissue(
+    public ResponseEntity<ApiResponseDto<TokenResponseDto>> reissue(
         @CookieValue(name = "refresh_token", required = false) String refreshToken,
         HttpServletResponse response) {
 
@@ -90,7 +89,8 @@ public class AuthController {
         response.addHeader(HttpHeaders.SET_COOKIE,
             buildRefreshTokenCookie(result.getRefreshToken(), refreshTokenValidity / 1000).toString());
 
-        return ResponseEntity.ok(ApiResponseDto.success(HttpStatus.OK, "토큰 재발급 성공", result));
+        return ResponseEntity.ok(ApiResponseDto.success(HttpStatus.OK, "토큰 재발급 성공",
+            new TokenResponseDto(result.getAccessToken())));
     }
 
     private ResponseCookie buildRefreshTokenCookie(String value, long maxAgeSeconds) {
