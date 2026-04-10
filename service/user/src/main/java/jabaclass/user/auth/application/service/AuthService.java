@@ -9,12 +9,15 @@ import jabaclass.user.auth.application.usecase.LogoutUseCase;
 import jabaclass.user.auth.application.usecase.ReissueUseCase;
 import jabaclass.user.auth.infrastructure.jwt.TokenProvider;
 import jabaclass.user.auth.presentation.dto.request.LoginRequestDto;
-import jabaclass.user.auth.presentation.dto.request.ReissueRequestDto;
 import jabaclass.user.auth.presentation.dto.response.LoginResponseDto;
 import jabaclass.user.user.domain.model.User;
 import jabaclass.user.user.domain.repository.UserRepository;
+
+import java.time.Duration;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +30,9 @@ public class AuthService implements LoginUseCase, LogoutUseCase, ReissueUseCase 
     private final PasswordEncoder passwordEncoder;
     private final TokenProvider tokenProvider;
     private final JwtProvider jwtProvider;
+
+    private static final String BLACKLIST_PREFIX = "blackList:";
+    private final RedisTemplate<Object, Object> redisTemplate;
 
     @Override
     @Transactional
@@ -49,9 +55,8 @@ public class AuthService implements LoginUseCase, LogoutUseCase, ReissueUseCase 
 
     @Override
     @Transactional
-    public LoginResponseDto reissue(ReissueRequestDto request) {
-
-        Claims claims = jwtProvider.parseClaims(request.getRefreshToken());
+    public LoginResponseDto reissue(String refreshToken) {
+        Claims claims = jwtProvider.parseClaims(refreshToken);
 
         if (!jwtProvider.isRefreshToken(claims)) {
             throw new AuthException(AuthErrorCode.INVALID_REFRESH_TOKEN);
@@ -60,13 +65,13 @@ public class AuthService implements LoginUseCase, LogoutUseCase, ReissueUseCase 
         UUID userId = jwtProvider.getUserId(claims);
 
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
+            .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
 
         if (user.getRefreshToken() == null) {
             throw new AuthException(AuthErrorCode.ALREADY_LOGGED_OUT);
         }
 
-        if (!user.getRefreshToken().equals(request.getRefreshToken())) {
+        if (!user.getRefreshToken().equals(refreshToken)) {
             throw new AuthException(AuthErrorCode.REFRESH_TOKEN_MISMATCH);
         }
 
@@ -80,10 +85,21 @@ public class AuthService implements LoginUseCase, LogoutUseCase, ReissueUseCase 
 
     @Override
     @Transactional
-    public void logout(UUID userId) {
+    public void logout(UUID userId, String accessToken) {
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
+
+        Claims claims = jwtProvider.parseClaims(accessToken);
+        long remainingMillis = claims.getExpiration().getTime() - System.currentTimeMillis();
+
+        if (remainingMillis > 0) {
+            redisTemplate.opsForValue().set(
+                BLACKLIST_PREFIX + accessToken,
+                "logout",
+                Duration.ofMillis(remainingMillis)
+            );
+        }
 
         user.updateRefreshToken(null);
     }
