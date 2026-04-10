@@ -16,9 +16,9 @@ case $SERVICE in
     IMAGE="chamomile-user"
     CONTAINER="user-service"
     ;;
-  frontend)
-    IMAGE="chamomile-frontend"
-    CONTAINER="frontend-service"
+  api-gateway)
+    IMAGE="chamomile-api-gateway"
+    CONTAINER="api-gateway-service"
     ;;
   product)
     IMAGE="chamomile-product"

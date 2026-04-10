@@ -1,0 +1,134 @@
+#name: CD API Gateway
+#
+#on:
+#  workflow_dispatch:
+#  push:
+#    branches:
+#      - dev
+#    paths:
+#      - 'api-gateway/**'
+#      - 'build.gradle'
+#      - 'settings.gradle'
+#      - 'gradle/**'
+#      - 'gradlew'
+#      - '.github/workflows/cd-api-gateway.yml'
+#      - '.github/scripts/**'
+#
+#permissions:
+#  contents: read
+#
+#jobs:
+#  build-and-push:
+#    runs-on: ubuntu-latest
+#
+#    outputs:
+#      image_tag: ${{ steps.meta.outputs.image_tag }}
+#
+#    steps:
+#      - name: Checkout
+#        uses: actions/checkout@v4
+#
+#      - name: Set up JDK 21
+#        uses: actions/setup-java@v4
+#        with:
+#          distribution: temurin
+#          java-version: 21
+#
+#      - name: Grant execute permission for gradlew
+#        run: chmod +x ./gradlew
+#
+#      - name: Build api-gateway bootJar
+#        run: ./gradlew :api-gateway:clean :api-gateway:bootJar --no-daemon
+#
+#      - name: Set image tag
+#        id: meta
+#        run: |
+#          IMAGE_TAG=${GITHUB_SHA::7}
+#          echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
+#
+#      - name: Log in to Docker Hub
+#        uses: docker/login-action@v3
+#        with:
+#          username: ${{ secrets.DOCKERHUB_USERNAME }}
+#          password: ${{ secrets.DOCKERHUB_TOKEN }}
+#
+#      - name: Build Docker image
+#        run: |
+#          docker build \
+#            -t ${{ secrets.DOCKERHUB_USERNAME }}/chamomile-api-gateway:latest \
+#            -t ${{ secrets.DOCKERHUB_USERNAME }}/chamomile-api-gateway:${{ steps.meta.outputs.image_tag }} \
+#            ./api-gateway
+#
+#      - name: Push Docker image
+#        run: |
+#          docker push ${{ secrets.DOCKERHUB_USERNAME }}/chamomile-api-gateway:latest
+#          docker push ${{ secrets.DOCKERHUB_USERNAME }}/chamomile-api-gateway:${{ steps.meta.outputs.image_tag }}
+#
+#  deploy:
+#    needs: build-and-push
+#    runs-on: [self-hosted, ec2, docker]
+#
+#    steps:
+#      - name: Checkout
+#        uses: actions/checkout@v4
+#
+#      - name: Prepare directories
+#        run: |
+#          mkdir -p /home/ubuntu/apps/repo
+#          mkdir -p /home/ubuntu/apps/deploy/env
+#          mkdir -p /home/ubuntu/apps/deploy/scripts
+#          mkdir -p /home/ubuntu/apps/data
+#
+#      - name: Sync repository to fixed path
+#        run: |
+#          rsync -av --delete ./ /home/ubuntu/apps/repo/
+#
+#      - name: Copy deploy script to EC2 deploy directory
+#        run: |
+#          cp /home/ubuntu/apps/repo/.github/scripts/deploy-app.sh /home/ubuntu/apps/deploy/scripts/deploy-app.sh
+#          chmod +x /home/ubuntu/apps/deploy/scripts/deploy-app.sh
+#
+#      - name: Create common.env
+#        run: |
+#          printf '%s' '${{ secrets.COMMON_ENV }}' > /home/ubuntu/apps/deploy/env/common.env
+#
+#      - name: Create api-gateway.env
+#        run: |
+#          printf '%s' '${{ secrets.API_GATEWAY_ENV }}' > /home/ubuntu/apps/deploy/env/api-gateway.env
+#
+#      - name: Docker Hub login on EC2
+#        run: |
+#          echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login \
+#            -u "${{ secrets.DOCKERHUB_USERNAME }}" \
+#            --password-stdin
+#
+#      - name: Deploy api-gateway service
+#        env:
+#          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+#          IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
+#        run: |
+#          /home/ubuntu/apps/deploy/scripts/deploy-app.sh api-gateway
+#
+#      - name: Debug deploy state
+#        run: |
+#          echo "===== docker ps -a ====="
+#          docker ps -a
+#          echo "===== docker compose ps ====="
+#          cd /home/ubuntu/apps/data/service && docker compose ps || true
+#          echo "===== api-gateway-service logs ====="
+#          docker logs api-gateway-service --tail 200 || true
+#
+#      - name: Health check
+#        run: |
+#          for i in {1..10}; do
+#            STATUS_CODE=$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' --max-time 5 "http://localhost:8080/" || echo "000")
+#            if [[ "$STATUS_CODE" != "000" && "$STATUS_CODE" -lt 500 ]]; then
+#              echo "Health check passed with status $STATUS_CODE"
+#              exit 0
+#            fi
+#            echo "Retrying... status=$STATUS_CODE"
+#            sleep 5
+#          done
+#          echo "Health check failed"
+#          docker logs api-gateway-service --tail 200 || true
+#          exit 1
