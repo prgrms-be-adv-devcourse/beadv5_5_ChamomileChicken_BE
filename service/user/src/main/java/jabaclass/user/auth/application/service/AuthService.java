@@ -32,6 +32,7 @@ public class AuthService implements LoginUseCase, LogoutUseCase, ReissueUseCase 
     private final PasswordEncoder passwordEncoder;
     private final TokenProvider tokenProvider;
     private final JwtProvider jwtProvider;
+    private final AuthTransactionService authTransactionService;
 
     private static final String BLACKLIST_PREFIX = "blacklist:";
     private final StringRedisTemplate redisTemplate;
@@ -88,10 +89,6 @@ public class AuthService implements LoginUseCase, LogoutUseCase, ReissueUseCase 
     @Override
     @Transactional
     public void logout(UUID userId, String accessToken) {
-
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
-
         Claims claims = jwtProvider.parseClaims(accessToken);
         long remainingMillis = claims.getExpiration().getTime() - System.currentTimeMillis();
 
@@ -106,6 +103,6 @@ public class AuthService implements LoginUseCase, LogoutUseCase, ReissueUseCase 
             log.warn("[AUTH] 토큰 이미 만료. remainingMillis={}", remainingMillis);
         }
 
-        user.updateRefreshToken(null);
+        authTransactionService.clearRefreshToken(userId);
     }
 }
