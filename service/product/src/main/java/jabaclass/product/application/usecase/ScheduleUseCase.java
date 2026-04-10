@@ -3,12 +3,17 @@ package jabaclass.product.application.usecase;
 import java.util.List;
 import java.util.UUID;
 
+import org.springframework.data.repository.query.Param;
+
+import jabaclass.product.domain.model.Schedule;
+import jabaclass.product.domain.model.status.OrderStatus;
 import jabaclass.product.presentation.dto.request.CreateScheduleRequestDto;
 import jabaclass.product.presentation.dto.request.OrderRequestDto;
 import jabaclass.product.presentation.dto.request.UpdateScheduleRequestDto;
 import jabaclass.product.presentation.dto.respose.AvailabilityScheduleResponseDto;
 import jabaclass.product.presentation.dto.respose.DeleteScheduleResposeDto;
 import jabaclass.product.presentation.dto.respose.OrderResponseDto;
+import jabaclass.product.presentation.dto.respose.OrderValid;
 import jabaclass.product.presentation.dto.respose.SchedulesResponseDto;
 
 public interface ScheduleUseCase {
@@ -28,12 +33,21 @@ public interface ScheduleUseCase {
 	// 스케줄 검증 및 재고 차감
 	OrderResponseDto verification(OrderRequestDto requestDto);
 
-	// 스케줄 상태 값 변경
-	void restoringInventory(OrderRequestDto requestDto);
+	// 스케줄 상태 값 변경 2026-04-09 수정
+	OrderValid restoringInventory(UUID productUserId, OrderStatus orderStatus);
 
 	// 스케줄 예약 상태 검색
 	AvailabilityScheduleResponseDto availabilitySchedule(UUID scheduleId);
 
 	void refundReservation(UUID productUserId);
+
+	// 2026-04-09 멱등성 체크 및 선점
+	int claimRestore(UUID productUserId, OrderStatus restoringStatus);
+
+	// 2026-04-09 재고 복구
+	int restoreCapacity(UUID scheduleId, int quantity, int capacity);
+
+	// 2026-04-09 Kafka용 schedule 검색
+	Schedule findByProductUserId(@Param("productUserId") UUID productUserId);
 
 }

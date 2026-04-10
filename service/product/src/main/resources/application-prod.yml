@@ -5,8 +5,7 @@ internal:
   file:
     url: ${FILE_SERVICE_HOST}
   api:
-    key: ${INTERNAL-KEY:test-internal-key}
-
+    key: ${INTERNAL_KEY:test-internal-key}
 
 
 spring:

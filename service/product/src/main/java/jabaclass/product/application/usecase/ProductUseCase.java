@@ -36,4 +36,5 @@ public interface ProductUseCase {
 	Product matchProductAndSellerId(UUID productId, UUID sellerId);
 
 	List<ProductSettlementItemResponseDto> getProductsByIds(List<UUID> productIds);
+	
 }
