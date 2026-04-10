@@ -39,6 +39,9 @@ public class AuthController {
     @Value("${jwt.refresh-token-validity}")
     private long refreshTokenValidity;
 
+    @Value("${cookie.secure}")
+    private boolean cookieSecure;
+
     @PostMapping("/login")
     public ResponseEntity<ApiResponseDto<LoginResponseDto>> login(
         @Valid @RequestBody LoginRequestDto request,
@@ -87,7 +90,7 @@ public class AuthController {
     private ResponseCookie buildRefreshTokenCookie(String value, long maxAgeSeconds) {
         return ResponseCookie.from("refresh_token", value)
             .httpOnly(true)
-            .secure(false)          // 로컬 개발용. 프로덕션은 true
+            .secure(cookieSecure)
             .sameSite("Strict")
             .path("/api/v1/auth")
             .maxAge(maxAgeSeconds)

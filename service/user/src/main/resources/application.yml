@@ -21,6 +21,9 @@ jwt:
   access-token-validity: 1800000
   refresh-token-validity: 604800000
 
+cookie:
+  secure: false
+
 payment:
   service:
     url: http://localhost:9001
