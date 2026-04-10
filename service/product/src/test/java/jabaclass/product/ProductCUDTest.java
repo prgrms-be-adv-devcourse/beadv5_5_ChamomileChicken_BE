@@ -26,6 +26,7 @@ import jabaclass.product.application.service.ProductService;
 import jabaclass.product.domain.model.Product;
 import jabaclass.product.domain.model.status.ProductStatus;
 import jabaclass.product.domain.repository.ProductRepository;
+import jabaclass.product.domain.repository.ProductSearchRepository;
 import jabaclass.product.infrastructure.acl.dto.response.UserResponseDto;
 import jabaclass.product.infrastructure.event.dto.ProductEventResponseDto;
 import jabaclass.product.presentation.dto.request.CreateProductRequestDto;
@@ -45,6 +46,9 @@ class ProductCUDTest {
 
 	@Mock
 	private ProductRepository productRepository;
+
+	@Mock
+	private ProductSearchRepository productSearchRepository;
 
 	@Mock
 	private SellerRepository sellerRepository;

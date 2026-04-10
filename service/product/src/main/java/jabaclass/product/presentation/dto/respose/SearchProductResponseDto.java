@@ -6,6 +6,7 @@ import org.springframework.data.domain.Page;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jabaclass.product.domain.model.Product;
+import jabaclass.product.infrastructure.elasticsearch.ProductDocument;
 
 @Schema(description = "검색 상품 응답")
 public record SearchProductResponseDto(
@@ -26,6 +27,15 @@ public record SearchProductResponseDto(
 			product.getTotalElements(),
 			product.getTotalPages(),
 			product.getNumber(),
+			content
+		);
+	}
+
+	public static SearchProductResponseDto fromEs(Page<ProductDocument> page, List<ProductResponseDto> content) {
+		return new SearchProductResponseDto(
+			page.getTotalElements(),
+			page.getTotalPages(),
+			page.getNumber(),
 			content
 		);
 	}

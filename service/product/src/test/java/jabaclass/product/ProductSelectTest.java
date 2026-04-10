@@ -28,7 +28,9 @@ import jabaclass.product.application.service.ProductService;
 import jabaclass.product.domain.model.Product;
 import jabaclass.product.domain.model.status.ProductStatus;
 import jabaclass.product.domain.repository.ProductRepository;
+import jabaclass.product.domain.repository.ProductSearchRepository;
 import jabaclass.product.infrastructure.acl.dto.response.UserResponseDto;
+import jabaclass.product.infrastructure.elasticsearch.ProductDocument;
 import jabaclass.product.presentation.dto.request.SearchProductRequestDto;
 import jabaclass.product.presentation.dto.respose.ProductResponseDto;
 import jabaclass.product.presentation.dto.respose.SearchProductResponseDto;
@@ -41,6 +43,9 @@ public class ProductSelectTest {
 
 	@Mock
 	private ProductRepository productRepository;
+
+	@Mock
+	private ProductSearchRepository productSearchRepository;
 
 	@Mock
 	private SellerRepository sellerRepository;
@@ -90,17 +95,32 @@ public class ProductSelectTest {
 			10,
 			ProductStatus.ENABLE
 		);
-		Pageable pageable = PageRequest.of(request.thisPage(), request.pageSize());
-		Page<Product> page = new PageImpl<>(List.of(product1, product2));
-		// given
-		given(productRepository.findByStatusAndDeleteDtIsNull(any(), any(Pageable.class)))
-			.willReturn(page);
 
-		// 존재하는 판매자
-		given(sellerRepository.findSellerList(anyList()))
-			.willReturn(Optional.of(List.of(
-				new UserResponseDto(SELLER_ID, "판매자1", "SELLER")
-			)));
+		ProductDocument doc1 = ProductDocument.builder()
+			.id(UUID.randomUUID().toString())
+			.sellerId(SELLER_ID.toString())
+			.sellerName("판매자1")
+			.title("상품A")
+			.description("테스트1")
+			.status("ENABLE")
+			.price(PRICE)
+			.maxCapacity(10)
+			.deleted(false)
+			.build();
+		ProductDocument doc2 = ProductDocument.builder()
+			.id(UUID.randomUUID().toString())
+			.sellerId(SELLER_ID.toString())
+			.sellerName("판매자1")
+			.title("상품B")
+			.description("테스트2")
+			.status("ENABLE")
+			.price(PRICE)
+			.maxCapacity(3)
+			.deleted(false)
+			.build();
+
+		Page<ProductDocument> esPage = new PageImpl<>(List.of(doc1, doc2));
+		given(productSearchRepository.findAllEnabled(any(Pageable.class))).willReturn(esPage);
 
 		// when
 		SearchProductResponseDto result = productService.searchAll(request);
@@ -108,7 +128,9 @@ public class ProductSelectTest {
 		// then
 		assertThat(result.content()).extracting(ProductResponseDto::title)
 			.containsExactly("상품A", "상품B");
-		then(productRepository).should().findByStatusAndDeleteDtIsNull(any(), any());
+		assertThat(result.totalCount()).isEqualTo(2);
+		then(productSearchRepository).should().findAllEnabled(any(Pageable.class));
+		then(productRepository).shouldHaveNoInteractions();
 	}
 
 	@Test

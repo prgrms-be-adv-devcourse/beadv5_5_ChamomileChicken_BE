@@ -51,4 +51,9 @@ public class ProductRepositoryAdapter implements ProductRepository {
 		return productJpaRepository.findAllByIdIn(productIds);
 	}
 
+	@Override
+	public List<Product> findAllByDeleteDtIsNull() {
+		return productJpaRepository.findAllByDeleteDtIsNull();
+	}
+
 }

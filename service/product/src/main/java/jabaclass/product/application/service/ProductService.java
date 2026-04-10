@@ -3,7 +3,6 @@ package jabaclass.product.application.service;
 import jabaclass.product.domain.model.ProductImageItem;
 import jabaclass.product.infrastructure.acl.client.FileConfirmClient;
 import jabaclass.product.infrastructure.acl.client.FileConfirmResponse;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -24,6 +23,8 @@ import jabaclass.product.common.exception.CommonErrorCode;
 import jabaclass.product.domain.model.Product;
 import jabaclass.product.domain.model.status.ProductStatus;
 import jabaclass.product.domain.repository.ProductRepository;
+import jabaclass.product.domain.repository.ProductSearchRepository;
+import jabaclass.product.infrastructure.elasticsearch.ProductDocument;
 import jabaclass.product.infrastructure.acl.dto.SellerRole;
 import jabaclass.product.infrastructure.acl.dto.response.UserResponseDto;
 import jabaclass.product.infrastructure.event.dto.ProductEventResponseDto;
@@ -43,6 +44,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class ProductService implements ProductUseCase {
 	private final ProductRepository productRepository;
+	private final ProductSearchRepository productSearchRepository;
 	private final SellerRepository sellerRepository;
 	private final ApplicationEventPublisher publisher;
 	private final AuditorAwareService auditorAwareService;
@@ -76,6 +78,7 @@ public class ProductService implements ProductUseCase {
 
 		Product saved = productRepository.save(product);
 		publisher.publishEvent(new ProductEventResponseDto(saved.getId()));
+		productSearchRepository.save(ProductDocument.from(saved, seller.name()));
 		return ProductResponseDto.from(saved, seller.name());
 	}
 
@@ -108,6 +111,7 @@ public class ProductService implements ProductUseCase {
 			product.changeImages(images);
 		}
 
+		productSearchRepository.save(ProductDocument.from(product, seller.name()));
 		return ProductResponseDto.from(product, seller.name());
 	}
 
@@ -124,58 +128,28 @@ public class ProductService implements ProductUseCase {
 
 		product.changeStatus(ProductStatus.DISABLE);
 		product.changeDelete();
+		productSearchRepository.deleteById(productId.toString());
 
 		return DeleteProductResposeDto.from(productId, ProductStatus.DISABLE);
 	}
 
 	@Override
 	public SearchProductResponseDto searchAll(SearchProductRequestDto requestDto) {
-
-		// 페이징 설정
 		Pageable pageable = PageRequest.of(requestDto.thisPage(), requestDto.pageSize());
 
-		List<Product> products = new ArrayList<>();
-		// = new PageImpl<>(products)
-		Page<Product> page;
-
-		// 페이징 및 키워드를 조건으로 가져온 상품 리스트
+		Page<ProductDocument> page;
 		if (requestDto.title() == null || requestDto.title().isBlank()) {
-			page = productRepository.findByStatusAndDeleteDtIsNull(requestDto.status(), pageable);
+			page = productSearchRepository.findAllEnabled(pageable);
 		} else {
-			page = productRepository.findByStatusAndTitleContainingAndDeleteDtIsNull(requestDto.status(),
-				requestDto.title(),
-				pageable);
+			page = productSearchRepository.searchByKeyword(requestDto.title(), pageable);
 		}
 
-		// 검색해온 상품의 user uuid를 List에 담는 작업
-		List<UUID> uuidList = page.getContent()
-			.stream()
-			.map(Product::getSellerId)
-			.distinct()
+		// ES 문서에 sellerName이 비정규화되어 있어 user 서비스 추가 호출 불필요
+		List<ProductResponseDto> content = page.getContent().stream()
+			.map(ProductResponseDto::from)
 			.toList();
 
-		// seller List 가져오기
-		List<UserResponseDto> sellerList = sellerRepository.findSellerList(uuidList)
-			.orElseThrow(() -> new BusinessException(CommonErrorCode.SELLER_NOT_FOUND));
-
-		// seller를 map으로 변환
-		Map<UUID, String> sellerMap =
-			sellerList.stream()
-				.collect(Collectors.toMap(
-						UserResponseDto::userId,
-						UserResponseDto::name
-					)
-				);
-
-		// sellerId를 가져온 기준으로 sellerNmae set
-		List<ProductResponseDto> resultPro = page.getContent().stream()
-			.map(p -> ProductResponseDto.listFrom(
-				p,
-				sellerMap
-			))
-			.toList();
-
-		return SearchProductResponseDto.from(page, resultPro);
+		return SearchProductResponseDto.fromEs(page, content);
 	}
 
 	@Override
@@ -219,6 +193,32 @@ public class ProductService implements ProductUseCase {
 			.filter(Objects::nonNull)
 			.map(ProductSettlementItemResponseDto::from)
 			.toList();
+	}
+
+	@Override
+	public int migrateToEs() {
+		List<Product> products = productRepository.findAllByDeleteDtIsNull();
+		if (products.isEmpty()) {
+			return 0;
+		}
+
+		List<UUID> sellerIds = products.stream()
+			.map(Product::getSellerId)
+			.distinct()
+			.toList();
+
+		Map<UUID, String> sellerNameMap = sellerRepository.findSellerList(sellerIds)
+			.map(list -> list.stream()
+				.collect(Collectors.toMap(UserResponseDto::userId, UserResponseDto::name)))
+			.orElse(Map.of());
+
+		List<ProductDocument> documents = products.stream()
+			.map(p -> ProductDocument.from(p, sellerNameMap.getOrDefault(p.getSellerId(), "")))
+			.toList();
+
+		productSearchRepository.saveAll(documents);
+		log.info("ES 마이그레이션 완료: {}건", documents.size());
+		return documents.size();
 	}
 
 	// 로그인 계정 여부

@@ -1,0 +1,28 @@
+{
+  "analysis": {
+    "tokenizer": {
+      "nori_mixed": {
+        "type": "nori_tokenizer",
+        "decompound_mode": "mixed"
+      }
+    },
+    "filter": {
+      "nori_stop": {
+        "type": "nori_part_of_speech",
+        "stoptags": [
+          "JKS", "JKC", "JKG", "JKO", "JKB", "JKV", "JKQ", "JX", "JC",
+          "EC", "EF", "EP", "ETN", "ETM",
+          "VX",
+          "XPN", "XSA", "XSN", "XSV"
+        ]
+      }
+    },
+    "analyzer": {
+      "nori": {
+        "type": "custom",
+        "tokenizer": "nori_mixed",
+        "filter": ["nori_stop", "lowercase"]
+      }
+    }
+  }
+}

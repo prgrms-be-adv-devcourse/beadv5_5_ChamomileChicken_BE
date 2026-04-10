@@ -36,4 +36,7 @@ public interface ProductUseCase {
 	Product matchProductAndSellerId(UUID productId, UUID sellerId);
 
 	List<ProductSettlementItemResponseDto> getProductsByIds(List<UUID> productIds);
+
+	// PostgreSQL → ES 초기 마이그레이션
+	int migrateToEs();
 }

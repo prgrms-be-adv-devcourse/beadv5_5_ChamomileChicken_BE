@@ -9,6 +9,7 @@ import java.util.UUID;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jabaclass.product.domain.model.Product;
+import jabaclass.product.infrastructure.elasticsearch.ProductDocument;
 
 @Schema(description = "상품 응답")
 public record ProductResponseDto(
@@ -71,6 +72,24 @@ public record ProductResponseDto(
 			product.getRegDt(),
 			product.getModifyId(),
 			product.getModifyDt()
+		);
+	}
+
+	public static ProductResponseDto from(ProductDocument document) {
+		return new ProductResponseDto(
+			UUID.fromString(document.getId()),
+			document.getSellerName(),
+			document.getTitle(),
+			document.getMaxCapacity(),
+			document.getDescription(),
+			document.getThumbnailPath(),
+			List.of(),
+			document.getPrice(),
+			document.getStatus(),
+			null,
+			document.getRegDt(),
+			null,
+			null
 		);
 	}
 
