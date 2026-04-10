@@ -18,7 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class ExpirePaymentService implements ExpirePaymentUseCase {
 
-	private static final long EXPIRE_HOURS = 1L;
+	private static final long EXPIRE_MINUTES = 10L;
 
 	private final PaymentRepository paymentRepository;
 	private final PaymentExpiredEventPublisher paymentExpiredEventPublisher;
@@ -26,7 +26,7 @@ public class ExpirePaymentService implements ExpirePaymentUseCase {
 	@Override
 	@Transactional
 	public void execute() {
-		LocalDateTime threshold = LocalDateTime.now().minusHours(EXPIRE_HOURS);
+		LocalDateTime threshold = LocalDateTime.now().minusMinutes(EXPIRE_MINUTES);
 
 		List<Payment> expiredTargets = paymentRepository.findByStatusAndCreatedAtBefore(
 			PaymentStatus.READY,
@@ -37,10 +37,6 @@ public class ExpirePaymentService implements ExpirePaymentUseCase {
 
 		for (Payment payment : expiredTargets) {
 			try {
-				if (payment.getStatus() != PaymentStatus.READY) {
-					continue;
-				}
-
 				payment.expire();
 
 				paymentExpiredEventPublisher.publish(
