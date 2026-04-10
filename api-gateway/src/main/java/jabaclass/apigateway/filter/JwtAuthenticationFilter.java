@@ -46,7 +46,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         new WhiteListEntry(HttpMethod.POST,  "/api/v1/auth/login"),
         new WhiteListEntry(HttpMethod.POST,  "/api/v1/auth/reissue"),
         new WhiteListEntry(HttpMethod.POST,  "/api/v1/users/register"),
-        new WhiteListEntry(HttpMethod.GET,   "/api/v1/users/email-check"),
+        new WhiteListEntry(HttpMethod.POST,   "/api/v1/users/email-check"),
         new WhiteListEntry(HttpMethod.POST,  "/api/v1/email/**"),
         new WhiteListEntry(HttpMethod.GET,   "/api/v1/products/**")
     );

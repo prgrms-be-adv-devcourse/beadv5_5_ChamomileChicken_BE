@@ -24,7 +24,7 @@ public class JwtProvider {
 
     public JwtProvider(JwtProperties properties) {
         if (properties.getSecret().length() < MIN_SECRET_LENGTH) {
-            throw new IllegalArgumentException("JWT secret은 최소 \" + MIN_SECRET_LENGTH + \"자 이상이어야 합니다.");
+            throw new IllegalArgumentException("JWT secret은 최소 " + MIN_SECRET_LENGTH + "자 이상이어야 합니다.");
         }
         this.key = Keys.hmacShaKeyFor(properties.getSecret().getBytes(StandardCharsets.UTF_8));
     }
