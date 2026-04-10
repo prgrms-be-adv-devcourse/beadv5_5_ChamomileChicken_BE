@@ -87,22 +87,25 @@ public class AuthService implements LoginUseCase, LogoutUseCase, ReissueUseCase 
     }
 
     @Override
-    @Transactional
     public void logout(UUID userId, String accessToken) {
-        Claims claims = jwtProvider.parseClaims(accessToken);
-        long remainingMillis = claims.getExpiration().getTime() - System.currentTimeMillis();
-
-        if (remainingMillis > 0) {
-            log.info("[AUTH] Blacklist 등록. key={}, ttl={}ms", BLACKLIST_PREFIX + accessToken, remainingMillis);
-            redisTemplate.opsForValue().set(
-                BLACKLIST_PREFIX + accessToken,
-                "logout",
-                Duration.ofMillis(remainingMillis)
-            );
-        } else {
-            log.warn("[AUTH] 토큰 이미 만료. remainingMillis={}", remainingMillis);
-        }
-
         authTransactionService.clearRefreshToken(userId);
+
+        try {
+            Claims claims = jwtProvider.parseClaims(accessToken);
+            long remainingMillis = claims.getExpiration().getTime() - System.currentTimeMillis();
+
+            if (remainingMillis > 0) {
+                log.info("[AUTH] Blacklist 등록. key={}, ttl={}ms", BLACKLIST_PREFIX + accessToken, remainingMillis);
+                redisTemplate.opsForValue().set(
+                    BLACKLIST_PREFIX + accessToken,
+                    "logout",
+                    Duration.ofMillis(remainingMillis)
+                );
+            } else {
+                log.warn("[AUTH] 토큰 이미 만료. remainingMillis={}", remainingMillis);
+            }
+        } catch (Exception e) {
+            log.warn("[AUTH] 액세스 토큰 파싱 실패, 블랙리스트 미등록. reason={}", e.getMessage());
+        }
     }
 }
