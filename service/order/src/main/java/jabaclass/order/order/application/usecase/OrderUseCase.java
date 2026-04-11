@@ -29,5 +29,7 @@ public interface OrderUseCase {
 
     void refund(UUID orderId);
 
+    void pay(UUID orderId);
+
     List<OrderSettlementItemResponseDto> getOrdersByIds(OrderBulkReadRequestDto requestDto);
 }

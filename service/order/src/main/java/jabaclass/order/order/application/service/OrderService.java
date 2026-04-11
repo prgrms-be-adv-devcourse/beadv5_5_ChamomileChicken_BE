@@ -14,7 +14,6 @@ import jabaclass.order.order.application.client.ProductClient;
 import jabaclass.order.order.application.exception.OrderErrorCode;
 import jabaclass.order.order.application.usecase.OrderUseCase;
 import jabaclass.order.order.domain.model.Order;
-import jabaclass.order.order.domain.model.PaymentResultStatus;
 import jabaclass.order.order.domain.model.OrderStatus;
 import jabaclass.order.order.domain.repository.OrderRepository;
 import jabaclass.order.order.presentation.dto.request.CreateOrderRequestDto;
@@ -58,35 +57,6 @@ public class OrderService implements OrderUseCase {
 
         return CreateOrderResponseDto.of(savedOrder, requestDto.productId(), requestDto.depositAmount());
     }
-
-    // html 테스트용
-    /*@Override
-    @Transactional
-    public CreateOrderResponseDto create(UUID userId, CreateOrderRequestDto requestDto) {
-
-        validateCreateRequest(requestDto);
-        validateDeposit(userId, requestDto.depositAmount());
-
-        // ⭐ 상품 검증 제거 (임시)
-        // ProductReservationResponseDto reservation = validateAndReserveProduct(requestDto);
-
-        // ⭐ 임시 금액
-        BigDecimal totalAmount = BigDecimal.valueOf(10000);
-
-        validateDepositAmount(requestDto.depositAmount(), totalAmount);
-
-        Order order = Order.create(
-            requestDto.productScheduleId(),
-            userId,
-            UUID.randomUUID(),
-            requestDto.quantity(),
-            totalAmount
-        );
-
-        Order savedOrder = orderRepository.save(order);
-
-        return CreateOrderResponseDto.of(savedOrder, requestDto.productId(), requestDto.depositAmount());
-    }*/
 
     @Override
     public OrderResponseDto getById(UUID orderId) {
@@ -141,6 +111,15 @@ public class OrderService implements OrderUseCase {
             .orElseThrow(() -> new BusinessException(OrderErrorCode.ORDER_NOT_FOUND));
 
         order.refund();
+    }
+
+    @Override
+    @Transactional
+    public void pay(UUID orderId) {
+        Order order = orderRepository.findById(orderId)
+            .orElseThrow(() -> new BusinessException(OrderErrorCode.ORDER_NOT_FOUND));
+
+        order.pay();
     }
 
     @Override
