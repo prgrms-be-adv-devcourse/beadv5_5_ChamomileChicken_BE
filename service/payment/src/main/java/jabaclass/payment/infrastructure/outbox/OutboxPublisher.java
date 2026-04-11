@@ -16,17 +16,17 @@ public class OutboxPublisher {
 	private final OutboxRepository outboxRepository;
 	private final KafkaTemplate<String, String> kafkaTemplate;
 
-	@Scheduled(fixedDelay = 1000)
+	@Scheduled(fixedDelay = 1000) // 1초마다 실행
 	@Transactional
 	public void publish() {
 
-		List<OutboxEvent> events = outboxRepository.findByStatus(OutboxStatus.PENDING);
+		List<OutboxEvent> events = outboxRepository.findByStatus(OutboxStatus.PENDING); // PENDING 상태의 이벤트를 조회하여 Kafka로 전송
 
 		for (OutboxEvent event : events) {
 			try {
 
 				if (event.isRetryExceeded()) {
-					event.markFailed(); // DLQ
+					event.markFailed(); // retry 횟수 초과 시 FAILED(DLQ) 처리
 					continue;
 				}
 
@@ -34,10 +34,10 @@ public class OutboxPublisher {
 
 				kafkaTemplate.send(topic, event.getPayload());
 
-				event.markPublished();
+				event.markPublished(); // 성공 시 PUBLISHED 상태로 변경
 
 			} catch (Exception e) {
-				event.increaseRetry();
+				event.increaseRetry(); // 실패 시 retryCount 증가
 			}
 		}
 	}

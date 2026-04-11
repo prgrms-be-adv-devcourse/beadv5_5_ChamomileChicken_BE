@@ -52,6 +52,8 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 	@Override
 	@Transactional
 	public PaymentResponseDto create(PreparePaymentRequestDto request) {
+
+		// Payment 생성
 		Payment payment = Payment.create(
 			request.userId(),
 			request.productId(),
@@ -62,9 +64,8 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 			request.depositAmount()
 		);
 
+		// 예치금 100% 결제인 경우 → PG 호출 없이 바로 완료 처리
 		if (payment.getPaymentAmount().compareTo(BigDecimal.ZERO) == 0) {
-
-			log.info("예치금 100% 결제 - 즉시 완료 처리 orderId={}", payment.getOrderId());
 
 			payment.markDone("DEPOSIT_ONLY");
 
@@ -92,12 +93,12 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 		Payment payment = paymentRepository.findByOrderId(orderId)
 			.orElseThrow(() -> new PaymentException(PaymentErrorCode.PAYMENT_NOT_FOUND));
 
-		// 멱등성 체크
+		// 멱등성 처리: 이미 완료된 결제는 다시 처리하지 않음
 		if (payment.isDone()) {
 			return PaymentResponseDto.from(payment);
 		}
 
-		// Order 금액 검증
+		// Order 서비스에 금액 검증 요청
 		boolean valid = orderPort.validateOrder(
 			payment.getOrderId(),
 			payment.getTotalAmount().intValue()
@@ -113,14 +114,14 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 		}
 
 		try {
-			// PG 승인
+			// 외부 PG 승인 요청
 			paymentGatewayPort.confirm(
 				request.paymentKey(),
 				payment.getOrderId().toString(),
 				request.amount()
 			);
 
-			// Payment 상태 변경
+			// 결제 성공 처리
 			payment.markDone(request.paymentKey());
 
 			outboxRepository.save(
@@ -134,7 +135,7 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 
 		} catch (Exception e) {
 
-			// Payment 실패 처리
+			// 결제 실패 처리
 			payment.markFailed();
 
 			outboxRepository.save(
@@ -156,9 +157,12 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 	@Override
 	@Transactional
 	public void refund(RefundPaymentRequestDto request) {
+
+		// Payment 조회
 		Payment payment = paymentRepository.findByOrderId(request.orderId())
 			.orElseThrow(() -> new PaymentException(PaymentErrorCode.PAYMENT_NOT_FOUND));
 
+		// 완료된 결제만 환불 가능
 		if (!payment.isDone()) {
 			throw new PaymentException(PaymentErrorCode.PAYMENT_NOT_COMPLETED);
 		}
@@ -172,13 +176,15 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 		refundRepository.save(refund);
 
 		try {
-			if (payment.getPaymentAmount().signum() > 0) { // 결제수단 금액이 있으면 Toss 환불 호출
+			// 실제 결제 금액이 있는 경우 PG 환불 호출
+			if (payment.getPaymentAmount().signum() > 0) {
 				paymentGatewayPort.refund(
 					payment.getPaymentKey(),
 					payment.getPaymentAmount().intValue()
 				);
 			}
 
+			// 상태 변경
 			payment.markCancelled();
 			refund.markCompleted();
 			refundRepository.save(refund);
@@ -193,11 +199,22 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 			);
 
 		} catch (Exception e) {
+			// 환불 실패 처리
 			refund.markFailed();
 			refundRepository.save(refund);
-			log.error("환불 실패. orderId={}, paymentId={}", payment.getOrderId(), payment.getId(), e);
 
 			throw new PaymentException(PaymentErrorCode.PAYMENT_REFUND_FAILED, e);
+		}
+	}
+
+	// Outbox payload 직렬화
+	// - 이벤트 객체 → JSON 문자열로 변환
+	// - Kafka 전송 시 payload로 사용됨
+	private String toJson(Object obj) {
+		try {
+			return objectMapper.writeValueAsString(obj);
+		} catch (Exception e) {
+			throw new RuntimeException("Outbox 직렬화 실패", e);
 		}
 	}
 
@@ -280,13 +297,5 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 			nextCursorUpdatedAt,
 			nextCursorId
 		);
-	}
-
-	private String toJson(Object obj) {
-		try {
-			return objectMapper.writeValueAsString(obj);
-		} catch (Exception e) {
-			throw new RuntimeException("Outbox 직렬화 실패", e);
-		}
 	}
 }
