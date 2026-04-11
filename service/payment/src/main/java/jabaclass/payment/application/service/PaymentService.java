@@ -90,9 +90,6 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 		Payment payment = paymentRepository.findByOrderId(orderId)
 			.orElseThrow(() -> new PaymentException(PaymentErrorCode.PAYMENT_NOT_FOUND));
 
-		log.info("[confirm] validate 호출 전 orderId={}, requestAmount={}, totalAmount={}",
-			payment.getOrderId(), request.amount(), payment.getTotalAmount());
-
 		// 멱등성 체크
 		if (payment.isDone()) {
 			return PaymentResponseDto.from(payment);
@@ -104,9 +101,6 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 			payment.getTotalAmount().intValue()
 		);
 		if (!valid) {
-			log.warn("Order 금액 검증 실패. orderId={}, totalAmount={}, requestAmount={}",
-				payment.getOrderId(), payment.getTotalAmount(), request.amount());
-
 			throw new PaymentException(PaymentErrorCode.INVALID_ORDER_AMOUNT);
 		}
 
@@ -135,9 +129,6 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 			);
 
 		} catch (Exception e) {
-
-			log.error("결제 승인 실패. paymentId={}, orderId={}",
-				payment.getId(), payment.getOrderId(), e);
 
 			// Payment 실패 처리
 			payment.markFailed();
@@ -173,7 +164,6 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 			payment.getDepositAmount()
 		);
 		refundRepository.save(refund);
-		refund.markProcessing();
 
 		try {
 			if (payment.getPaymentAmount().signum() > 0) { // 결제수단 금액이 있으면 Toss 환불 호출

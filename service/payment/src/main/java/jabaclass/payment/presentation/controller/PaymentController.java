@@ -17,7 +17,7 @@ import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/v1/payments/")
+@RequestMapping("/api/v1/payments")
 public class PaymentController implements PaymentApi {
 
 	private final PaymentUseCase paymentUseCase;
