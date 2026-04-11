@@ -133,6 +133,7 @@ public class ProductService implements ProductUseCase {
 		return DeleteProductResposeDto.from(productId, ProductStatus.DISABLE);
 	}
 
+	// es 추가
 	@Override
 	public SearchProductResponseDto searchAll(SearchProductRequestDto requestDto) {
 		Pageable pageable = PageRequest.of(requestDto.thisPage(), requestDto.pageSize());
