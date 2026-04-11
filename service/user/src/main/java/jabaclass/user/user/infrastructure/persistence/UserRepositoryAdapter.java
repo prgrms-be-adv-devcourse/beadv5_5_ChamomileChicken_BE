@@ -52,7 +52,7 @@ public class UserRepositoryAdapter implements UserRepository {
 	}
 
 	@Override
-	public Optional<User> findByEmailWithLock(String email) {
-		return userJpaRepository.findByEmailWithLock(email);
+	public Optional<User> findByEmail(String email) {
+		return userJpaRepository.findByEmail(email);
 	}
 }

@@ -27,6 +27,7 @@ import jabaclass.user.auth.presentation.dto.response.TokenResult;
 import jabaclass.user.user.domain.model.User;
 import jabaclass.user.user.domain.repository.UserRepository;
 
+@Transactional(readOnly = true)
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -44,14 +45,13 @@ public class AuthService implements LoginUseCase, LogoutUseCase, ReissueUseCase 
     private long refreshTokenValidity;
 
     @Override
-    @Transactional
     public TokenResult login(LoginRequestDto request) {
 
-        User user = userRepository.findByEmailWithLock(request.getEmail())
+        User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            throw new AuthException(AuthErrorCode.INVALID_PASSWORD);
+            throw new AuthException(AuthErrorCode.USER_NOT_FOUND);
         }
 
         String accessToken = tokenProvider.generateAccessToken(user.getId(), user.getRole());

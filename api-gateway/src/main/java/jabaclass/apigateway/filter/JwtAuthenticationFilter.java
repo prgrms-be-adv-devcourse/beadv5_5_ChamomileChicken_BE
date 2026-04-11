@@ -62,15 +62,12 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         String path = exchange.getRequest().getURI().getPath();
         HttpMethod httpMethod = exchange.getRequest().getMethod();
 
-        log.debug("[GATEWAY] Request: {} {}", httpMethod, path);
-
         if (httpMethod == null) {
             log.warn("[GATEWAY] Unknown HTTP method for path: {}", path);
             return onError(exchange, JwtErrorCode.INVALID_TOKEN);
         }
 
         if (isWhitelisted(path, httpMethod)) {
-            log.info("[GATEWAY] White-listed path: {} {}", httpMethod, path);
             return chain.filter(exchange);
         }
 
