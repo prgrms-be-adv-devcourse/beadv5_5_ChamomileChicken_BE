@@ -10,7 +10,7 @@ public class KafkaTopicConfig {
 
 	@Bean
 	public NewTopic paymentCompleted() {
-		return TopicBuilder.name("payment-completed")
+		return TopicBuilder.name("payment.completed")
 			.partitions(3)
 			.replicas(1)
 			.build();
@@ -18,7 +18,7 @@ public class KafkaTopicConfig {
 
 	@Bean
 	public NewTopic paymentFailed() {
-		return TopicBuilder.name("payment-failed")
+		return TopicBuilder.name("payment.failed")
 			.partitions(3)
 			.replicas(1)
 			.build();
@@ -26,7 +26,7 @@ public class KafkaTopicConfig {
 
 	@Bean
 	public NewTopic paymentExpired() {
-		return TopicBuilder.name("payment-expired")
+		return TopicBuilder.name("payment.expired")
 			.partitions(3)
 			.replicas(1)
 			.build();
@@ -34,7 +34,7 @@ public class KafkaTopicConfig {
 
 	@Bean
 	public NewTopic paymentRefunded() {
-		return TopicBuilder.name("payment-refunded")
+		return TopicBuilder.name("payment.refunded")
 			.partitions(3)
 			.replicas(1)
 			.build();
