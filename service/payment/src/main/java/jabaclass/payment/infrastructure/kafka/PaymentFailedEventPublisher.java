@@ -1,3 +1,4 @@
+/*
 package jabaclass.payment.infrastructure.kafka;
 
 import org.springframework.kafka.core.KafkaTemplate;
@@ -25,3 +26,4 @@ public class PaymentFailedEventPublisher {
 		}
 	}
 }
+*/

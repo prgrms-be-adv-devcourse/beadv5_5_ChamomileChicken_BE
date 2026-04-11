@@ -19,11 +19,11 @@ import jabaclass.payment.domain.model.Refund;
 import jabaclass.payment.domain.repository.PaymentRepository;
 import jabaclass.payment.domain.repository.RefundRepository;
 import jabaclass.payment.infrastructure.kafka.PaymentCompletedEvent;
-import jabaclass.payment.infrastructure.kafka.PaymentCompletedEventPublisher;
 import jabaclass.payment.infrastructure.kafka.PaymentFailedEvent;
-import jabaclass.payment.infrastructure.kafka.PaymentFailedEventPublisher;
-import jabaclass.payment.infrastructure.kafka.PaymentRefundedEventPublisher;
 import jabaclass.payment.infrastructure.kafka.PaymentRefundedEvent;
+import jabaclass.payment.infrastructure.outbox.EventType;
+import jabaclass.payment.infrastructure.outbox.OutboxEvent;
+import jabaclass.payment.infrastructure.outbox.OutboxRepository;
 import jabaclass.payment.presentation.dto.request.ConfirmPaymentRequestDto;
 import jabaclass.payment.presentation.dto.request.PreparePaymentRequestDto;
 import jabaclass.payment.presentation.dto.request.RefundPaymentRequestDto;
@@ -34,6 +34,7 @@ import jabaclass.payment.presentation.dto.response.RefundSettlementSliceResponse
 import jabaclass.payment.presentation.dto.response.RefundSettlementTargetItemResponseDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Service
 @RequiredArgsConstructor
@@ -45,9 +46,8 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 	private final RefundRepository refundRepository;
 	private final PaymentGatewayPort paymentGatewayPort;
 	private final OrderPort orderPort;
-	private final PaymentRefundedEventPublisher paymentRefundedEventPublisher;
-	private final PaymentCompletedEventPublisher paymentCompletedEventPublisher;
-	private final PaymentFailedEventPublisher paymentFailedEventPublisher;
+	private final OutboxRepository outboxRepository;
+	private final ObjectMapper objectMapper;
 
 	@Override
 	@Transactional
@@ -68,12 +68,14 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 
 			payment.markDone("DEPOSIT_ONLY");
 
-			paymentCompletedEventPublisher.publish(
-				new PaymentCompletedEvent(
-					payment.getId(),
-					payment.getOrderId()
-				)
+			OutboxEvent event = OutboxEvent.create(
+				"PAYMENT",
+				payment.getId().toString(),
+				EventType.PAYMENT_COMPLETED,
+				toJson(new PaymentCompletedEvent(payment.getId(), payment.getOrderId()))
 			);
+
+			outboxRepository.save(event);
 		}
 
 		Payment savedPayment = paymentRepository.save(payment);
@@ -121,10 +123,12 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 			// Payment 상태 변경
 			payment.markDone(request.paymentKey());
 
-			paymentCompletedEventPublisher.publish(
-				new PaymentCompletedEvent(
-					payment.getId(),
-					payment.getOrderId()
+			outboxRepository.save(
+				OutboxEvent.create(
+					"PAYMENT",
+					payment.getId().toString(),
+					EventType.PAYMENT_COMPLETED,
+					toJson(new PaymentCompletedEvent(payment.getId(), payment.getOrderId()))
 				)
 			);
 
@@ -133,10 +137,12 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 			// Payment 실패 처리
 			payment.markFailed();
 
-			paymentFailedEventPublisher.publish(
-				new PaymentFailedEvent(
-					payment.getId(),
-					payment.getOrderId()
+			outboxRepository.save(
+				OutboxEvent.create(
+					"PAYMENT",
+					payment.getId().toString(),
+					EventType.PAYMENT_FAILED,
+					toJson(new PaymentFailedEvent(payment.getId(), payment.getOrderId()))
 				)
 			);
 
@@ -177,12 +183,15 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 			refund.markCompleted();
 			refundRepository.save(refund);
 
-			paymentRefundedEventPublisher.publish(
-				new PaymentRefundedEvent(
-					payment.getId(),
-					payment.getOrderId()
+			outboxRepository.save(
+				OutboxEvent.create(
+					"PAYMENT",
+					payment.getId().toString(),
+					EventType.PAYMENT_REFUNDED,
+					toJson(new PaymentRefundedEvent(payment.getId(), payment.getOrderId()))
 				)
 			);
+
 		} catch (Exception e) {
 			refund.markFailed();
 			refundRepository.save(refund);
@@ -271,5 +280,13 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 			nextCursorUpdatedAt,
 			nextCursorId
 		);
+	}
+
+	private String toJson(Object obj) {
+		try {
+			return objectMapper.writeValueAsString(obj);
+		} catch (Exception e) {
+			throw new RuntimeException("Outbox 직렬화 실패", e);
+		}
 	}
 }

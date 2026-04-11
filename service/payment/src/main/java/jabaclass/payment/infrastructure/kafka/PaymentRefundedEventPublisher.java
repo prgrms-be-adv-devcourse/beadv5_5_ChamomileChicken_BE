@@ -1,3 +1,4 @@
+/*
 package jabaclass.payment.infrastructure.kafka;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -23,3 +24,4 @@ public class PaymentRefundedEventPublisher {
 		}
 	}
 }
+*/

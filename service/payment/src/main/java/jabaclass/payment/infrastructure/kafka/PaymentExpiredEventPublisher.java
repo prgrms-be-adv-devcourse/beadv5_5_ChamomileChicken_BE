@@ -1,3 +1,4 @@
+/*
 package jabaclass.payment.infrastructure.kafka;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -22,4 +23,4 @@ public class PaymentExpiredEventPublisher {
 			throw new RuntimeException("결제 만료 이벤트 발행 실패", e);
 		}
 	}
-}
+}*/
