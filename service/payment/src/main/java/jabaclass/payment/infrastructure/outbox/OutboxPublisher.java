@@ -20,10 +20,16 @@ public class OutboxPublisher {
 	@Transactional
 	public void publish() {
 
-		List<OutboxEvent> events = outboxRepository.findByPublishedFalse();
+		List<OutboxEvent> events = outboxRepository.findByStatus(OutboxStatus.PENDING);
 
 		for (OutboxEvent event : events) {
 			try {
+
+				if (event.isRetryExceeded()) {
+					event.markFailed(); // DLQ
+					continue;
+				}
+
 				String topic = event.getEventType().getTopic();
 
 				kafkaTemplate.send(topic, event.getPayload());
@@ -31,7 +37,7 @@ public class OutboxPublisher {
 				event.markPublished();
 
 			} catch (Exception e) {
-				// 실패 → 다음에 재시도
+				event.increaseRetry();
 			}
 		}
 	}

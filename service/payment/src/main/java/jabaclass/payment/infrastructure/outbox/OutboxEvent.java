@@ -1,9 +1,12 @@
 package jabaclass.payment.infrastructure.outbox;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 import jabaclass.payment.domain.model.BaseEntity;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
@@ -24,7 +27,11 @@ public class OutboxEvent extends BaseEntity {
 	@Lob
 	private String payload;
 
-	private boolean published;
+	@Enumerated(EnumType.STRING)
+	private OutboxStatus status;
+
+	private int retryCount;
+	private LocalDateTime lastAttemptAt;
 
 	protected OutboxEvent() {}
 
@@ -40,11 +47,25 @@ public class OutboxEvent extends BaseEntity {
 		event.aggregateId = aggregateId;
 		event.eventType = eventType;
 		event.payload = payload;
-		event.published = false;
+		event.status = OutboxStatus.PENDING;
+		event.retryCount = 0;
 		return event;
 	}
 
 	public void markPublished() {
-		this.published = true;
+		this.status = OutboxStatus.PUBLISHED;
+	}
+
+	public void markFailed() {
+		this.status = OutboxStatus.FAILED;
+	}
+
+	public void increaseRetry() {
+		this.retryCount++;
+		this.lastAttemptAt = LocalDateTime.now();
+	}
+
+	public boolean isRetryExceeded() {
+		return this.retryCount >= 5;
 	}
 }
