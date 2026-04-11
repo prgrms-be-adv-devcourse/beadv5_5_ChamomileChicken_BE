@@ -18,6 +18,7 @@ public class JwtProvider {
 
     private static final String CLAIM_USER_ID = "userId";
     private static final String CLAIM_TYPE = "type";
+    private static final String CLAIM_ROLE = "role";
 
     private final Key key;
 
@@ -57,6 +58,11 @@ public class JwtProvider {
     // filter에서 parseClaims 중복 호출 방지용
     public boolean isAccessToken(Claims claims) {
         return TokenType.ACCESS.name().equals(claims.get(CLAIM_TYPE, String.class));
+    }
+
+    // Claims에 Role 추가
+    public String getRole(Claims claims) {
+        return claims.get(CLAIM_ROLE, String.class);
     }
 
     public Claims parseClaims(String token) {
