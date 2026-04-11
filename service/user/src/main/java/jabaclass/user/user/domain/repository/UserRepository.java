@@ -23,6 +23,4 @@ public interface UserRepository {
 	List<User> findAllByIds(List<UUID> userIds);
 
 	Optional<User> findByEmail(String email);
-
-	Optional<User> findByEmailWithLock(String email);
 }
