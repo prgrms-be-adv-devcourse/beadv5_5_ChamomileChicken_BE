@@ -7,8 +7,6 @@ import jabaclass.payment.presentation.dto.request.ConfirmPaymentRequestDto;
 import jabaclass.payment.presentation.dto.request.PreparePaymentRequestDto;
 import jabaclass.payment.presentation.dto.request.RefundPaymentRequestDto;
 import jabaclass.payment.presentation.dto.response.PaymentResponseDto;
-import jabaclass.payment.presentation.dto.response.RefundPaymentResponseDto;
-
 import org.springframework.http.ResponseEntity;
 
 @Tag(name = "Payment", description = "결제 API")
