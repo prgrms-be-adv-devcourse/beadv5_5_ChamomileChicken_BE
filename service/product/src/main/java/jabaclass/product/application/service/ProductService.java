@@ -198,28 +198,44 @@ public class ProductService implements ProductUseCase {
 
 	@Override
 	public int migrateToEs() {
-		List<Product> products = productRepository.findAllByDeleteDtIsNull();
-		if (products.isEmpty()) {
-			return 0;
+		final int BATCH_SIZE = 100;
+		int pageNum = 0;
+		int totalIndexed = 0;
+
+		while (true) {
+			Pageable pageable = PageRequest.of(pageNum, BATCH_SIZE);
+			Page<Product> page = productRepository.findAllByDeleteDtIsNull(pageable);
+
+			if (page.isEmpty()) {
+				break;
+			}
+
+			List<UUID> sellerIds = page.getContent().stream()
+				.map(Product::getSellerId)
+				.distinct()
+				.toList();
+
+			Map<UUID, String> sellerNameMap = sellerRepository.findSellerList(sellerIds)
+				.map(list -> list.stream()
+					.collect(Collectors.toMap(UserResponseDto::userId, UserResponseDto::name)))
+				.orElse(Map.of());
+
+			List<ProductDocument> documents = page.getContent().stream()
+				.map(p -> ProductDocument.from(p, sellerNameMap.getOrDefault(p.getSellerId(), "")))
+				.toList();
+
+			productSearchRepository.saveAll(documents);
+			totalIndexed += documents.size();
+			log.debug("ES 마이그레이션 진행 중: {}페이지, 누적 {}건", pageNum, totalIndexed);
+
+			if (page.isLast()) {
+				break;
+			}
+			pageNum++;
 		}
 
-		List<UUID> sellerIds = products.stream()
-			.map(Product::getSellerId)
-			.distinct()
-			.toList();
-
-		Map<UUID, String> sellerNameMap = sellerRepository.findSellerList(sellerIds)
-			.map(list -> list.stream()
-				.collect(Collectors.toMap(UserResponseDto::userId, UserResponseDto::name)))
-			.orElse(Map.of());
-
-		List<ProductDocument> documents = products.stream()
-			.map(p -> ProductDocument.from(p, sellerNameMap.getOrDefault(p.getSellerId(), "")))
-			.toList();
-
-		productSearchRepository.saveAll(documents);
-		log.info("ES 마이그레이션 완료: {}건", documents.size());
-		return documents.size();
+		log.info("ES 마이그레이션 완료: 총 {}건", totalIndexed);
+		return totalIndexed;
 	}
 
 	// 로그인 계정 여부
