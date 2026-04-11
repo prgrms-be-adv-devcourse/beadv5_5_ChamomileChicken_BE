@@ -3,14 +3,15 @@
 ## 배경 및 목적
 
 데브코스 파이널 프로젝트 요구사항으로 Elasticsearch 도입이 포함되어 있다.
-현재 상품 검색은 PostgreSQL JPA 쿼리(`LIKE %keyword%`)로 구현되어 있으며, 다음 한계가 있다.
+기존 상품 검색은 PostgreSQL JPA 쿼리(`LIKE %keyword%`)로 구현되어 있었으며, 다음 한계가 있었다.
 
-| 항목 | 현재 (JPA LIKE) | 목표 (Elasticsearch) |
+| 항목 | 기존 (JPA LIKE) | 현재 (Elasticsearch) |
 |------|----------------|----------------------|
 | 검색 방식 | `title` 컬럼 부분 일치만 지원 | `title` + `description` 전문 검색 |
 | 한국어 지원 | 형태소 분석 없음 ("노트북"으로 "노트북 거치대" 검색 불가) | nori 형태소 분석기 적용 |
 | 성능 | Full table scan (LIKE 앞 와일드카드) | 역인덱스 기반 빠른 검색 |
 | 확장성 | 컬럼 추가 시 쿼리 전체 수정 필요 | 필드 추가만으로 검색 범위 확장 가능 |
+| user 서비스 호출 | 검색마다 sellerName 조회를 위해 REST 호출 | sellerName 비정규화로 호출 제거 |
 
 ---
 
@@ -23,19 +24,16 @@
 - `status` — `ENABLE` / `DISABLE`
 - `thisPage`, `pageSize` — 페이징
 
-**현재 흐름:**
+**현재 흐름 (ES 도입 후):**
 
 ```
 ProductRestController
   → ProductUseCase.searchAll()
     → ProductService.searchAll()
-      → ProductJpaRepository.findByStatusAndTitleContainingAndDeleteDtIsNull()  ← 여기를 ES로 교체
-      → SellerRepository.findSellerList()  (user 서비스 REST 호출)
-      → SearchProductResponseDto 반환
+      → [keyword 없음] ProductSearchRepository.findAllEnabled()   ← ES 전체 조회
+      → [keyword 있음] ProductSearchRepository.searchByKeyword()  ← ES 키워드 검색
+      → SearchProductResponseDto 반환 (user 서비스 호출 없음)
 ```
-
-**현재 Product 엔티티 주요 필드:**
-- `id` (UUID), `sellerId` (UUID), `title`, `description`, `price`, `status`, `deleteDt`
 
 ---
 
@@ -65,16 +63,36 @@ ProductRestController
 ```json
 {
   "analysis": {
+    "tokenizer": {
+      "nori_mixed": {
+        "type": "nori_tokenizer",
+        "decompound_mode": "mixed"
+      }
+    },
+    "filter": {
+      "nori_stop": {
+        "type": "nori_part_of_speech",
+        "stoptags": [
+          "JKS", "JKC", "JKG", "JKO", "JKB", "JKV", "JKQ", "JX", "JC",
+          "EC", "EF", "EP", "ETN", "ETM",
+          "VX",
+          "XPN", "XSA", "XSN", "XSV"
+        ]
+      }
+    },
     "analyzer": {
       "nori": {
         "type": "custom",
-        "tokenizer": "nori_tokenizer",
-        "filter": ["lowercase"]
+        "tokenizer": "nori_mixed",
+        "filter": ["nori_stop", "lowercase"]
       }
     }
   }
 }
 ```
+
+- `decompound_mode: mixed` — 복합어를 원형과 분리형 모두 색인 (예: "공방클래스" → "공방", "클래스", "공방클래스")
+- `nori_stop` — 조사, 어미, 접사 등 불용어 제거로 검색 정확도 향상
 
 ---
 
@@ -88,75 +106,58 @@ domain/repository/
 
 infrastructure/elasticsearch/
   ProductDocument.java                  ← ES 인덱스 문서
-  ProductElasticsearchRepository.java   ← Spring Data Elasticsearch 인터페이스
-  ProductSearchRepositoryAdapter.java   ← ProductSearchRepository 구현체
+  ProductSearchRepositoryAdapter.java   ← ElasticsearchOperations 기반 구현체
 
 resources/elasticsearch/
   product-settings.json                 ← nori 분석기 인덱스 설정
 ```
 
+> Spring Data Elasticsearch 인터페이스(`ElasticsearchRepository`) 대신 `ElasticsearchOperations`를 직접 사용한다.
+> `CriteriaQuery` or() 체이닝의 우선순위 버그를 피하기 위해 `searchByKeyword`는 `NativeQuery` bool 쿼리로 구현했다.
+
 **`ProductService`에서의 의존 관계:**
 
 ```java
 // 검색 시
-ProductSearchRepository.searchByKeyword(keyword, pageable)   // ES 조회
-ProductSearchRepository.findAllEnabled(pageable)             // ES 조회
+ProductSearchRepository.searchByKeyword(keyword, pageable)   // ES 키워드 검색
+ProductSearchRepository.findAllEnabled(pageable)             // ES 전체 조회
 
-// CRUD 시 (동기화)
-ProductSearchRepository.save(ProductDocument.from(product))  // ES 색인
-ProductSearchRepository.deleteById(id)                       // ES 삭제
+// CRUD 시 (RDB-ES 동기화)
+ProductSearchRepository.save(ProductDocument.from(product, sellerName))  // 등록/수정 시 색인
+ProductSearchRepository.deleteById(productId)                             // 삭제 시 ES 문서 제거
 ```
 
 ---
 
-## 구현 계획
+## 초기 마이그레이션
 
-### Phase 1 — 기반 구조 (완료)
-- [x] `ProductDocument` 클래스 생성 (ES 인덱스 매핑)
-- [x] `ProductSearchRepository` 도메인 인터페이스 정의
-- [x] `ProductElasticsearchRepository` Spring Data ES 인터페이스
-- [x] `ProductSearchRepositoryAdapter` 어댑터 구현
-- [x] nori 분석기 설정 파일 (`product-settings.json`)
+ES 도입 이전에 PostgreSQL에 이미 존재하는 상품 데이터를 ES에 일괄 색인하기 위한 엔드포인트를 제공한다.
 
-### Phase 2 — 서비스 연동
-- [ ] `build.gradle`에 `spring-boot-starter-data-elasticsearch` 추가
-- [x] `application-dev.yml`에 ES 연결 설정 추가 (`spring.elasticsearch.uris`)
-- [x] `ProductService.searchAll()` — ES 검색으로 교체 (user 서비스 REST 호출 제거)
-- [x] `ProductService.create()` — 상품 등록 시 ES 색인
-- [x] `ProductService.update()` — 상품 수정 시 ES 업데이트
-- [x] `ProductService.delete()` — 상품 삭제 시 ES 문서 삭제
-- [x] `ProductResponseDto.from(ProductDocument)` 팩토리 메서드 추가
-- [x] `SearchProductResponseDto.fromEs()` 오버로드 추가
+**엔드포인트:** `POST /api/v1/products/es-migrate`
 
-### Phase 3 — 인프라
-- [x] `docker-compose.yml`에 Elasticsearch 8.17.0 컨테이너 추가
-- [ ] 기존 PostgreSQL 데이터 → ES 초기 마이그레이션 (배치 또는 API)
+- 인증 없이 호출 가능 (internal 엔드포인트, `SecurityConfig`에서 `permitAll` 처리)
+- 삭제되지 않은 전체 상품을 ES에 벌크 색인 후 색인 건수 반환
+- **일회성 작업** — ES 컨테이너 최초 구동 후 한 번만 호출
 
-### Phase 4 — 테스트
-- [x] 기존 `ProductCUDTest` — `ProductSearchRepository` Mock 추가 후 통과
-- [x] 기존 `ProductSelectTest` — `전체_상품_조회` ES 기반으로 재작성 후 통과
-- [x] 신규 `ProductSearchTest` — ES 검색 5개 케이스 (키워드 유무, sellerName 포함, 빈 결과, 페이징)
-
----
-
-## application.yml 추가 설정 (예정)
-
-```yaml
-spring:
-  elasticsearch:
-    uris: http://localhost:9200
-    # 인증이 필요한 경우
-    # username: elastic
-    # password: ${ES_PASSWORD}
+```json
+// 응답 예시
+{ "indexed": 42 }
 ```
 
 ---
 
-## docker-compose 추가 예정
+## 인프라 설정
+
+### docker-compose.yml
 
 ```yaml
 elasticsearch:
-  image: elasticsearch:8.17.0
+  build:
+    context: .
+    dockerfile_inline: |
+      FROM elasticsearch:9.0.3
+      RUN bin/elasticsearch-plugin install --batch analysis-nori
+  container_name: elasticsearch
   environment:
     - discovery.type=single-node
     - xpack.security.enabled=false
@@ -165,12 +166,48 @@ elasticsearch:
     - "9200:9200"
   volumes:
     - es_data:/usr/share/elasticsearch/data
-
-volumes:
-  es_data:
 ```
 
+> nori 플러그인은 ES 9.x 기본 이미지에 포함되어 있지 않아 `dockerfile_inline`으로 빌드 시 설치한다.
 > `xpack.security.enabled=false` — 로컬 개발 환경 전용. 프로덕션에서는 TLS + 인증 필수.
+
+### application-dev.yml
+
+```yaml
+spring:
+  elasticsearch:
+    uris: ${ES_URIS:http://localhost:9200}
+```
+
+---
+
+## 구현 완료 체크리스트
+
+### 기반 구조
+- [x] `ProductDocument` 클래스 생성 (ES 인덱스 매핑)
+- [x] `ProductSearchRepository` 도메인 인터페이스 정의
+- [x] `ProductSearchRepositoryAdapter` — `ElasticsearchOperations` 기반 구현
+- [x] nori 분석기 설정 파일 (`product-settings.json`)
+
+### 서비스 연동
+- [x] `build.gradle`에 `spring-boot-starter-data-elasticsearch` 추가
+- [x] `application-dev.yml`에 ES 연결 설정 추가
+- [x] `ProductService.searchAll()` — ES 검색으로 교체 (user 서비스 REST 호출 제거)
+- [x] `ProductService.create()` — 상품 등록 시 ES 색인
+- [x] `ProductService.update()` — 상품 수정 시 ES 업데이트
+- [x] `ProductService.delete()` — 상품 삭제 시 ES 문서 삭제
+- [x] `ProductResponseDto.from(ProductDocument)` 팩토리 메서드 추가
+- [x] `SearchProductResponseDto.fromEs()` 오버로드 추가
+- [x] `SecurityConfig` — es-migrate 엔드포인트 permitAll 추가
+
+### 인프라
+- [x] `docker-compose.yml`에 Elasticsearch 9.0.3 컨테이너 추가 (nori 플러그인 포함)
+- [x] 기존 PostgreSQL 데이터 → ES 초기 마이그레이션 API (`POST /api/v1/products/es-migrate`)
+
+### 테스트
+- [x] 기존 `ProductCUDTest` — `ProductSearchRepository` Mock 추가 후 통과
+- [x] 기존 `ProductSelectTest` — `전체_상품_조회` ES 기반으로 재작성 후 통과
+- [x] 신규 `ProductSearchTest` — ES 검색 5개 케이스 (키워드 유무, sellerName 포함, 빈 결과, 페이징)
 
 ---
 
@@ -178,11 +215,9 @@ volumes:
 
 ### 데이터 정합성
 - PostgreSQL이 원본(source of truth), ES는 검색용 읽기 복제본
-- 서비스 장애 시 ES 색인 실패가 DB 트랜잭션에 영향을 주지 않도록 ES 저장 실패는 로그만 남기고 예외를 삼키는 방향 검토 필요
-
-### 한국어 nori 플러그인
-- Elasticsearch 8.x 이상에서는 `nori` 플러그인이 기본 포함되어 있음
-- 도커 이미지 사용 시 별도 설치 불필요
+- 현재 구현은 동기 방식 — DB 저장 후 즉시 ES 색인 시도
+- ES 색인 실패 시 DB 트랜잭션은 이미 커밋된 상태이므로 불일치 발생 가능
+- 실서비스 수준이라면 `@TransactionalEventListener(AFTER_COMMIT)` 또는 Kafka 기반 비동기 색인 검토 필요
 
 ### 검색 범위 확장 가능성
 - 현재: `title` + `description`
