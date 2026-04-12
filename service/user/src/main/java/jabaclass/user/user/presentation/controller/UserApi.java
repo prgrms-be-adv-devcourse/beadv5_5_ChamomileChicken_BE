@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jabaclass.user.common.apidocs.ApiErrorSpec;
 import jabaclass.user.common.apidocs.ApiErrorSpecs;
+import jabaclass.user.common.auth.CurrentUser;
 import jabaclass.user.mail.application.exception.MailErrorCode;
 import jabaclass.user.user.application.exception.UserErrorCode;
 import jabaclass.user.user.presentation.dto.request.ChangeMyEmailRequestDto;
@@ -90,7 +91,9 @@ public interface UserApi {
 			summary = "사용자를 찾을 수 없습니다"
 		)
 	})
-	ResponseEntity<UserResponseDto> getMyInfo();
+	ResponseEntity<UserResponseDto> getMyInfo(
+		@CurrentUser UUID userId
+	);
 
 	@Operation(
 		summary = "내 정보 수정",

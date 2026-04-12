@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import jabaclass.auth.util.SecurityUtil;
+import jabaclass.user.common.auth.CurrentUser;
 import jabaclass.user.user.application.usercase.UserUseCase;
 import jabaclass.user.user.presentation.dto.request.ChangeMyEmailRequestDto;
 import jabaclass.user.user.presentation.dto.request.EmailCheckRequestDto;
@@ -48,33 +48,33 @@ public class UserController implements UserApi {
 
 	@GetMapping("/me")
 	public ResponseEntity<UserResponseDto> getMyInfo(
+		@CurrentUser UUID userId
 	) {
-		UUID userId = SecurityUtil.getCurrentUserId();
 		return ResponseEntity.ok(userUseCase.getMyInfo(userId));
 	}
 
 	@PutMapping("/me")
 	public ResponseEntity<Void> updateMyInfo(
+		@CurrentUser UUID userId,
 		@Valid @RequestBody UpdateUserRequestDto request
 	) {
-		UUID userId = SecurityUtil.getCurrentUserId();
 		userUseCase.updateMyInfo(userId, request);
 		return ResponseEntity.noContent().build();
 	}
 
 	@PutMapping("/me/email")
 	public ResponseEntity<Void> changeEmail(
+		@CurrentUser UUID userId,
 		@Valid @RequestBody ChangeMyEmailRequestDto request
 	) {
-		UUID userId = SecurityUtil.getCurrentUserId();
 		userUseCase.changeEmail(userId, request);
 		return ResponseEntity.noContent().build();
 	}
 
 	@DeleteMapping("/me")
 	public ResponseEntity<Void> withdraw(
+		@CurrentUser UUID userId
 	) {
-		UUID userId = SecurityUtil.getCurrentUserId();
 		userUseCase.withdraw(userId);
 		return ResponseEntity.noContent().build();
 	}
@@ -84,5 +84,4 @@ public class UserController implements UserApi {
 	public ResponseEntity<UserResponseDto> getUserInfo(@RequestBody UUID userId) {
 		return ResponseEntity.ok(userUseCase.getMyInfo(userId));
 	}
-
 }

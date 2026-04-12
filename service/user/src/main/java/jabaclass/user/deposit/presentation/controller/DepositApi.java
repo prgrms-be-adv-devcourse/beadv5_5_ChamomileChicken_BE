@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jabaclass.user.common.apidocs.ApiErrorSpec;
 import jabaclass.user.common.apidocs.ApiErrorSpecs;
+import jabaclass.user.common.auth.CurrentUser;
 import jabaclass.user.deposit.domain.exception.DepositErrorCode;
 import jabaclass.user.deposit.presentation.dto.request.IncreaseDepositRequestDto;
 import jabaclass.user.deposit.presentation.dto.response.DepositDetailResponseDto;
@@ -27,7 +28,7 @@ public interface DepositApi {
 	)
 	@SecurityRequirement(name = "bearerAuth")
 	ResponseEntity<DepositHistoryResponseDto> findAllDepositHistories(
-		@AuthenticationPrincipal UUID userId
+		@CurrentUser UUID userId
 	);
 
 	@Operation(
@@ -43,7 +44,7 @@ public interface DepositApi {
 		)
 	})
 	ResponseEntity<DepositMeResponseDto> findMyDeposit(
-		@AuthenticationPrincipal UUID userId
+		@CurrentUser UUID userId
 	);
 
 	@Operation(
