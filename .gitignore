@@ -60,3 +60,6 @@ CLAUDE.md
 
 # service local env
 /service/*/*.local.env
+
+CLAUDE.md
+GEMINI.md
