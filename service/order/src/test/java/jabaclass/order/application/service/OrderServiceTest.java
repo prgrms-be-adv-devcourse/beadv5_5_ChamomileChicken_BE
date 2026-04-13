@@ -6,8 +6,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 import jabaclass.order.common.error.BusinessException;
-import jabaclass.order.application.port.out.DepositPort;
-import jabaclass.order.application.port.out.ProductPort;
+import jabaclass.order.application.port.external.DepositPort;
+import jabaclass.order.application.port.external.ProductPort;
 import jabaclass.order.domain.model.Order;
 import jabaclass.order.domain.model.PaymentResultStatus;
 import jabaclass.order.domain.model.OrderStatus;
