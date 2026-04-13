@@ -2,6 +2,7 @@ package jabaclass.user.auth.presentation.controller;
 
 import java.util.UUID;
 
+import jabaclass.user.common.auth.CurrentUser;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -28,7 +29,6 @@ import jabaclass.user.auth.application.usecase.LogoutUseCase;
 import jabaclass.user.auth.application.usecase.ReissueUseCase;
 import jabaclass.user.auth.presentation.dto.request.LoginRequestDto;
 import jabaclass.user.common.dto.ApiResponseDto;
-import jabaclass.user.common.auth.CurrentUser;
 
 @RestController
 @RequestMapping("/api/v1/auth")

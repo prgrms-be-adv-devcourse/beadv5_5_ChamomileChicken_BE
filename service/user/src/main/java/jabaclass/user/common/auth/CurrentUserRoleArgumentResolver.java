@@ -1,6 +1,6 @@
 package jabaclass.user.common.auth;
 
-import java.util.UUID;
+import jakarta.servlet.http.HttpServletRequest;
 
 import org.springframework.core.MethodParameter;
 import org.springframework.stereotype.Component;
@@ -9,17 +9,15 @@ import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
 
-import jakarta.servlet.http.HttpServletRequest;
-
 @Component
-public class CurrentUserArgumentResolver implements HandlerMethodArgumentResolver{
+public class CurrentUserRoleArgumentResolver implements HandlerMethodArgumentResolver {
 
-	private static final String USER_ID_HEADER = "X-User-Id";
+	private static final String USER_ROLE_HEADER = "X-User-Role";
 
 	@Override
 	public boolean supportsParameter(MethodParameter parameter) {
-		return parameter.hasParameterAnnotation(CurrentUser.class)
-			&& parameter.getParameterType().equals(UUID.class);
+		return parameter.hasParameterAnnotation(CurrentUserRole.class)
+			&& parameter.getParameterType().equals(String.class);
 	}
 
 	@Override
@@ -32,10 +30,13 @@ public class CurrentUserArgumentResolver implements HandlerMethodArgumentResolve
 		if (request == null) {
 			throw new IllegalStateException("HttpServletRequest를 가져올 수 없습니다.");
 		}
-		String userId = request.getHeader(USER_ID_HEADER);
-		if (userId == null || userId.isBlank()) {
-			throw new IllegalArgumentException("X-User-Id 헤더가 없습니다. Gateway를 통한 요청인지 확인하세요.");
+
+		String role = request.getHeader(USER_ROLE_HEADER);
+
+		if (role == null || role.isBlank()) {
+			throw new IllegalArgumentException("X-User-Role 헤더가 없습니다. Gateway를 통한 요청인지 확인하세요.");
 		}
-		return UUID.fromString(userId);
+
+		return role;
 	}
 }

@@ -19,6 +19,7 @@ public class JwtProvider {
     private static final String CLAIM_USER_ID = "userId";
     private static final String CLAIM_TYPE = "type";
     private static final int MIN_SECRET_LENGTH = 32;
+    private static final String CLAIM_ROLE = "role";
 
     private final Key key;
 
@@ -35,6 +36,10 @@ public class JwtProvider {
 
     public boolean isAccessToken(Claims claims) {
         return TokenType.ACCESS.name().equals(claims.get(CLAIM_TYPE, String.class));
+    }
+
+    public String getRole(Claims claims) {
+        return claims.get(Claim_ROLE, String.class);
     }
 
     public Claims parseClaims(String token) {

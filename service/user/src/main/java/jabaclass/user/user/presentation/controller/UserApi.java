@@ -111,6 +111,7 @@ public interface UserApi {
 		)
 	})
 	ResponseEntity<Void> updateMyInfo(
+		@CurrentUser UUID userId,
 		@Valid @RequestBody UpdateUserRequestDto request
 	);
 
@@ -151,6 +152,7 @@ public interface UserApi {
 		)
 	})
 	ResponseEntity<Void> changeEmail(
+		@CurrentUser UUID userId,
 		@Valid @RequestBody ChangeMyEmailRequestDto request
 	);
 
@@ -169,7 +171,9 @@ public interface UserApi {
 			summary = "사용자를 찾을 수 없습니다"
 		)
 	})
-	ResponseEntity<Void> withdraw();
+	ResponseEntity<Void> withdraw(
+		@CurrentUser UUID userId
+	);
 
 	@Operation(
 		summary = "내부 사용자 단건 조회",
