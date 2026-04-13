@@ -2,7 +2,6 @@ package jabaclass.product.domain.model;
 
 import java.util.UUID;
 
-import org.hibernate.annotations.UuidGenerator;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import jabaclass.product.domain.model.status.OrderStatus;
@@ -11,7 +10,6 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.Getter;
@@ -24,12 +22,7 @@ import lombok.experimental.SuperBuilder;
 @SuperBuilder
 @EntityListeners(AuditingEntityListener.class)
 @Table(name = "products_users", schema = "public")
-public class ProductUser {
-
-	@Id
-	@UuidGenerator
-	@Column(name = "id", updatable = false, nullable = false)
-	private UUID id;
+public class ProductUser extends EntityBase {
 
 	@Column(name = "product_schedule_id", nullable = false)
 	private UUID productScheduleId;

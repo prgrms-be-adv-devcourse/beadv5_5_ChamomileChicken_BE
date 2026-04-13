@@ -30,7 +30,7 @@ public record AvailabilityScheduleResponseDto(
 		return new AvailabilityScheduleResponseDto(
 			schedule.getId(),
 			schedule.getStatus(),
-			schedule.getMaxCapacity(),
+			schedule.getCapacity(),
 			reservedCount,
 			remainingCount
 		);

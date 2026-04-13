@@ -83,7 +83,7 @@ public class ScheduleService implements ScheduleUseCase {
 			.startTime(startTime)
 			.endTime(endTime)
 			.status(requestDto.status())
-			.maxCapacity(product.getMaxCapacity())
+			.capacity(product.getMaxCapacity())
 			.build();
 
 		Schedule saved = scheduleRepository.save(save);
@@ -169,7 +169,7 @@ public class ScheduleService implements ScheduleUseCase {
 		int quantity = requestDto.quantity();
 
 		// 예약 가능 인원수
-		int remainingCapacity = calculateRemainingCapacity(requestDto.productScheduleId(), schedule.getMaxCapacity());
+		int remainingCapacity = calculateRemainingCapacity(requestDto.productScheduleId(), schedule.getCapacity());
 
 		// DB 값 < 받아온 값
 		if (quantity > remainingCapacity) { // 예약이 안 되는 경우
@@ -228,7 +228,7 @@ public class ScheduleService implements ScheduleUseCase {
 			.mapToInt(p -> p.getGuestCount())
 			.sum();
 
-		int remainingCount = schedule.getMaxCapacity() - reservedCount;
+		int remainingCount = schedule.getCapacity() - reservedCount;
 
 		return AvailabilityScheduleResponseDto.from(schedule, reservedCount, remainingCount);
 	}
@@ -262,7 +262,7 @@ public class ScheduleService implements ScheduleUseCase {
 	}
 
 	private void refreshScheduleStatus(Schedule schedule) {
-		int remainingCapacity = calculateRemainingCapacity(schedule.getId(), schedule.getMaxCapacity());
+		int remainingCapacity = calculateRemainingCapacity(schedule.getId(), schedule.getCapacity());
 
 		if (remainingCapacity <= 0) {
 			schedule.changeStatus(ReservedStatus.FULL);
