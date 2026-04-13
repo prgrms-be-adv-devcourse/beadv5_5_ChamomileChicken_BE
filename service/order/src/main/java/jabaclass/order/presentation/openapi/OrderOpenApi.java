@@ -14,7 +14,7 @@ import jabaclass.order.presentation.dto.request.CreateOrderRequestDto;
 import jabaclass.order.presentation.dto.response.CreateOrderResponseDto;
 import jabaclass.order.presentation.dto.response.OrderResponseDto;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import jabaclass.order.common.auth.CurrentUser;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -30,7 +30,7 @@ public interface OrderOpenApi {
     )
     @CommonErrorResponses
     ResponseEntity<CreateOrderResponseDto> create(
-        @Parameter(hidden = true) @AuthenticationPrincipal UUID userId,
+        @Parameter(hidden = true) @CurrentUser UUID userId,
         @RequestBody CreateOrderRequestDto requestDto
     );
 
@@ -41,7 +41,7 @@ public interface OrderOpenApi {
         content = @Content(schema = @Schema(implementation = OrderResponseDto.class))
     )
     @CommonErrorResponses
-    ResponseEntity<OrderResponseDto> getById(@AuthenticationPrincipal UUID userId, @PathVariable UUID orderId);
+    ResponseEntity<OrderResponseDto> getById(@CurrentUser UUID userId, @PathVariable UUID orderId);
 
     @Operation(summary = "내 주문 목록 조회", description = "로그인한 사용자의 주문 목록을 조회합니다.")
     @ApiResponse(
@@ -51,7 +51,7 @@ public interface OrderOpenApi {
     )
     @CommonErrorResponses
     ResponseEntity<List<OrderResponseDto>> getOrders(
-        @Parameter(hidden = true) @AuthenticationPrincipal UUID userId,
+        @Parameter(hidden = true) @CurrentUser UUID userId,
         @RequestParam(required = false) OrderStatus status
     );
 

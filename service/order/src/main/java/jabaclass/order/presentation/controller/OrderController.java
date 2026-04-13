@@ -13,7 +13,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import jabaclass.order.common.auth.CurrentUser;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -34,7 +34,7 @@ public class OrderController implements OrderOpenApi {
     @Override
     @PostMapping
     public ResponseEntity<CreateOrderResponseDto> create(
-        @AuthenticationPrincipal UUID userId,
+        @CurrentUser UUID userId,
         @Valid @RequestBody CreateOrderRequestDto requestDto
     ) {
         CreateOrderResponseDto responseDto = orderUseCase.create(userId, requestDto);
@@ -56,7 +56,7 @@ public class OrderController implements OrderOpenApi {
 
     @Override
     @GetMapping("/{orderId}")
-    public ResponseEntity<OrderResponseDto> getById(@AuthenticationPrincipal UUID userId,
+    public ResponseEntity<OrderResponseDto> getById(@CurrentUser UUID userId,
 			@PathVariable UUID orderId) {
         OrderResponseDto responseDto = orderUseCase.getById(orderId);
 
@@ -66,7 +66,7 @@ public class OrderController implements OrderOpenApi {
     @Override
     @GetMapping
     public ResponseEntity<List<OrderResponseDto>> getOrders(
-        @AuthenticationPrincipal UUID userId,
+        @CurrentUser UUID userId,
         @RequestParam(required = false) OrderStatus status
     ) {
         List<OrderResponseDto> responseDto = orderUseCase.getOrders(userId, status);
