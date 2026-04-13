@@ -66,20 +66,21 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 
 		// 예치금 100% 결제인 경우 → PG 호출 없이 바로 완료 처리
 		if (payment.getPaymentAmount().compareTo(BigDecimal.ZERO) == 0) {
-
 			payment.markDone("DEPOSIT_ONLY");
+		}
 
+		Payment savedPayment = paymentRepository.save(payment);
+
+		if (savedPayment.getPaymentAmount().compareTo(BigDecimal.ZERO) == 0) {
 			OutboxEvent event = OutboxEvent.create(
 				"PAYMENT",
-				payment.getId().toString(),
+				savedPayment.getId().toString(),
 				EventType.PAYMENT_COMPLETED,
-				toJson(new PaymentCompletedEvent(payment.getId(), payment.getOrderId()))
+				toJson(new PaymentCompletedEvent(savedPayment.getId(), savedPayment.getOrderId()))
 			);
 
 			outboxRepository.save(event);
 		}
-
-		Payment savedPayment = paymentRepository.save(payment);
 
 		return PaymentResponseDto.from(savedPayment);
 	}
