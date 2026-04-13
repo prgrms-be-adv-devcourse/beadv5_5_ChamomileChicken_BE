@@ -1,8 +1,10 @@
 package jabaclass.product.infrastructure.elasticsearch;
 
 import jabaclass.product.domain.model.Product;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.elasticsearch.annotations.Document;
 import org.springframework.data.elasticsearch.annotations.Field;
@@ -14,6 +16,8 @@ import java.time.LocalDateTime;
 
 @Getter
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 @Document(indexName = "products")
 @Setting(settingPath = "elasticsearch/product-settings.json")
 public class ProductDocument {

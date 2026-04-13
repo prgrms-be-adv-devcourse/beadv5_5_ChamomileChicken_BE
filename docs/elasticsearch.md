@@ -122,10 +122,33 @@ resources/elasticsearch/
 ProductSearchRepository.searchByKeyword(keyword, pageable)   // ES 키워드 검색
 ProductSearchRepository.findAllEnabled(pageable)             // ES 전체 조회
 
-// CRUD 시 (RDB-ES 동기화)
-ProductSearchRepository.save(ProductDocument.from(product, sellerName))  // 등록/수정 시 색인
-ProductSearchRepository.deleteById(productId)                             // 삭제 시 ES 문서 제거
+// CRUD 시 (RDB-ES 동기화) — Kafka 비동기 색인
+// ProductService는 Kafka에 이벤트만 발행하고 ES 색인은 Consumer에서 처리
+publisher.publishEvent(ProductEsSaveEvent)    // 등록/수정 시 이벤트 발행
+publisher.publishEvent(ProductEsDeleteEvent) // 삭제 시 이벤트 발행
 ```
+
+**Kafka 기반 ES 색인 흐름:**
+
+```
+[ProductService - create/update]
+  DB 저장 완료 (트랜잭션 커밋)
+  → Kafka 발행: ProductDocument 전체 (id, title, sellerName 등)
+
+[ProductService - delete]
+  DB 소프트 삭제 완료 (트랜잭션 커밋)
+  → Kafka 발행: { productId, operation: DELETE }
+
+[ProductEsKafkaConsumer]
+  메시지 수신
+  → save: productSearchRepository.save(document)
+  → delete: productSearchRepository.deleteById(productId)
+```
+
+> **메시지 페이로드 전략:** `ProductDocument` 전체를 Kafka 메시지에 담는다.
+> ProductService는 create/update 시점에 이미 product + sellerName을 보유하고 있으므로
+> Consumer에서 DB / user 서비스 재조회 없이 바로 ES 색인 가능.
+> PostgreSQL이 source of truth이므로 ES 색인 실패 시 `migrateToEs`로 복구 가능.
 
 ---
 
@@ -193,12 +216,18 @@ spring:
 - [x] `build.gradle`에 `spring-boot-starter-data-elasticsearch` 추가
 - [x] `application-dev.yml`에 ES 연결 설정 추가
 - [x] `ProductService.searchAll()` — ES 검색으로 교체 (user 서비스 REST 호출 제거)
-- [x] `ProductService.create()` — 상품 등록 시 ES 색인
-- [x] `ProductService.update()` — 상품 수정 시 ES 업데이트
-- [x] `ProductService.delete()` — 상품 삭제 시 ES 문서 삭제
 - [x] `ProductResponseDto.from(ProductDocument)` 팩토리 메서드 추가
 - [x] `SearchProductResponseDto.fromEs()` 오버로드 추가
 - [x] `SecurityConfig` — es-migrate 엔드포인트 permitAll 추가
+
+### Kafka 기반 ES 색인 (비동기 Dual Write)
+- [ ] `ProductEsSaveEvent` — `ProductDocument` 전체를 담는 이벤트 DTO
+- [ ] `ProductEsDeleteEvent` — `productId`를 담는 삭제 이벤트 DTO
+- [ ] `ProductService.create()` — ES 직접 색인 제거 → `ProductEsSaveEvent` Kafka 발행
+- [ ] `ProductService.update()` — ES 직접 색인 제거 → `ProductEsSaveEvent` Kafka 발행
+- [ ] `ProductService.delete()` — ES 직접 삭제 제거 → `ProductEsDeleteEvent` Kafka 발행
+- [ ] `ProductEsKafkaConsumer` — 이벤트 수신 후 `ProductSearchRepository` 색인/삭제 처리
+- [ ] Kafka 토픽 설정 (`product-es-index` 등) 추가
 
 ### 인프라
 - [x] `docker-compose.yml`에 Elasticsearch 9.0.3 컨테이너 추가 (nori 플러그인 포함)
@@ -215,9 +244,11 @@ spring:
 
 ### 데이터 정합성
 - PostgreSQL이 원본(source of truth), ES는 검색용 읽기 복제본
-- 현재 구현은 동기 방식 — DB 저장 후 즉시 ES 색인 시도
-- ES 색인 실패 시 DB 트랜잭션은 이미 커밋된 상태이므로 불일치 발생 가능
-- 실서비스 수준이라면 `@TransactionalEventListener(AFTER_COMMIT)` 또는 Kafka 기반 비동기 색인 검토 필요
+- Kafka 비동기 색인 방식으로 전환 — DB 트랜잭션과 ES 색인을 분리
+  - DB 커밋 후 Kafka 메시지 발행 → Consumer가 ES 색인 처리
+  - ES 색인 실패 시 Kafka `FixedBackOff` 재시도 (1s 간격, 3회)
+  - Consumer 재시작 시 오프셋 기반 복구 가능
+- ES 장애 시 `migrateToEs` API로 전체 재색인 가능
 
 ### 검색 범위 확장 가능성
 - 현재: `title` + `description`

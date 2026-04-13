@@ -27,6 +27,8 @@ import jabaclass.product.domain.repository.ProductSearchRepository;
 import jabaclass.product.infrastructure.elasticsearch.ProductDocument;
 import jabaclass.product.infrastructure.acl.dto.SellerRole;
 import jabaclass.product.infrastructure.acl.dto.response.UserResponseDto;
+import jabaclass.product.infrastructure.event.dto.ProductEsDeleteEvent;
+import jabaclass.product.infrastructure.event.dto.ProductEsSaveEvent;
 import jabaclass.product.infrastructure.event.dto.ProductEventResponseDto;
 import jabaclass.product.presentation.dto.request.CreateProductRequestDto;
 import jabaclass.product.presentation.dto.request.SearchProductRequestDto;
@@ -78,7 +80,7 @@ public class ProductService implements ProductUseCase {
 
 		Product saved = productRepository.save(product);
 		publisher.publishEvent(new ProductEventResponseDto(saved.getId()));
-		productSearchRepository.save(ProductDocument.from(saved, seller.name()));
+		publisher.publishEvent(new ProductEsSaveEvent(ProductDocument.from(saved, seller.name())));
 		return ProductResponseDto.from(saved, seller.name());
 	}
 
@@ -111,7 +113,7 @@ public class ProductService implements ProductUseCase {
 			product.changeImages(images);
 		}
 
-		productSearchRepository.save(ProductDocument.from(product, seller.name()));
+		publisher.publishEvent(new ProductEsSaveEvent(ProductDocument.from(product, seller.name())));
 		return ProductResponseDto.from(product, seller.name());
 	}
 
@@ -128,7 +130,7 @@ public class ProductService implements ProductUseCase {
 
 		product.changeStatus(ProductStatus.DISABLE);
 		product.changeDelete();
-		productSearchRepository.deleteById(productId.toString());
+		publisher.publishEvent(new ProductEsDeleteEvent(productId.toString()));
 
 		return DeleteProductResposeDto.from(productId, ProductStatus.DISABLE);
 	}
