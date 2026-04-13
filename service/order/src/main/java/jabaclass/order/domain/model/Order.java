@@ -1,0 +1,156 @@
+package jabaclass.order.domain.model;
+
+import jabaclass.order.application.exception.OrderErrorCode;
+import jabaclass.order.common.error.BusinessException;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import lombok.Getter;
+
+import java.math.BigDecimal;
+import java.util.Objects;
+import java.util.UUID;
+
+@Entity
+@Table(name = "orders")
+@Getter
+public class Order {
+
+	@Id
+	@Column(name = "id", nullable = false, updatable = false)
+	private UUID id;
+
+	@Column(name = "product_schedule_id", nullable = false)
+	private UUID productScheduleId;
+
+	@Column(name = "user_id", nullable = false)
+	private UUID userId;
+
+	@Column(name = "product_user_id")
+	private UUID productUserId;
+
+	@Column(name = "quantity", nullable = false)
+	private Integer quantity;
+
+	@Column(name = "price", nullable = false, precision = 10, scale = 2)
+	private BigDecimal price;
+
+	@Column(name = "deposit_amount", nullable = false, precision = 10, scale = 2)
+	private BigDecimal depositAmount;
+
+	@Enumerated(EnumType.STRING)
+	@Column(name = "status", nullable = false, length = 20)
+	private OrderStatus status;
+
+	protected Order() {
+	}
+
+	private Order(
+		UUID id,
+		UUID productScheduleId,
+		UUID userId,
+		UUID productUserId,
+		Integer quantity,
+		BigDecimal price,
+		BigDecimal depositAmount,
+		OrderStatus status
+	) {
+		this.id = id;
+		this.productScheduleId = productScheduleId;
+		this.userId = userId;
+		this.productUserId = productUserId;
+		this.quantity = quantity;
+		this.price = price;
+		this.depositAmount = depositAmount;
+		this.status = status;
+	}
+
+	public static Order create(
+		UUID productScheduleId,
+		UUID userId,
+		UUID productUserId,
+		Integer quantity,
+		BigDecimal price,
+		BigDecimal depositAmount
+	) {
+		validateQuantity(quantity);
+		validateProductUserId(productUserId);
+		validatePrice(price);
+		validateDepositAmount(depositAmount);
+
+		return new Order(
+			UUID.randomUUID(),
+			productScheduleId,
+			userId,
+			productUserId,
+			quantity,
+			price,
+			depositAmount,
+			OrderStatus.PENDING
+		);
+	}
+
+	public boolean isOwnedBy(UUID userId) {
+		return this.userId.equals(userId);
+	}
+
+	public void pay() {
+		if (this.status != OrderStatus.PENDING) {
+			throw new BusinessException(OrderErrorCode.ORDER_PAY_NOT_ALLOWED);
+		}
+		this.status = OrderStatus.PAID;
+	}
+
+	public void failPayment() {
+		if (this.status != OrderStatus.PENDING) {
+			throw new BusinessException(OrderErrorCode.ORDER_FAIL_PAYMENT_NOT_ALLOWED);
+		}
+		this.status = OrderStatus.FAILED;
+	}
+
+	public void refund() {
+		this.status = OrderStatus.REFUNDED;
+	}
+
+	public boolean isPaymentAmountValid(BigDecimal amount) {
+		if (Objects.isNull(amount)) {
+			return false;
+		}
+
+		return price.compareTo(amount) == 0;
+	}
+
+	private static void validateQuantity(Integer quantity) {
+		if (Objects.isNull(quantity) || quantity <= 0) {
+			throw new BusinessException(OrderErrorCode.ORDER_QUANTITY_INVALID);
+		}
+	}
+
+	private static void validateProductUserId(UUID productUserId) {
+		if (Objects.isNull(productUserId)) {
+			throw new BusinessException(OrderErrorCode.ORDER_PRODUCT_USER_ID_REQUIRED);
+		}
+	}
+
+	private static void validatePrice(BigDecimal price) {
+		if (Objects.isNull(price) || price.signum() < 0) {
+			throw new BusinessException(OrderErrorCode.ORDER_PRICE_INVALID);
+		}
+	}
+
+	private static void validateDepositAmount(BigDecimal depositAmount) {
+		if (Objects.isNull(depositAmount) || depositAmount.signum() < 0) {
+			throw new BusinessException(OrderErrorCode.ORDER_DEPOSIT_AMOUNT_INVALID);
+		}
+	}
+
+	public void expire() {
+		if (this.status != OrderStatus.PENDING) {
+			throw new BusinessException(OrderErrorCode.ORDER_EXPIRE_NOT_ALLOWED);
+		}
+		this.status = OrderStatus.EXPIRED;
+	}
+}

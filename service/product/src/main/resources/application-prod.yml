@@ -5,11 +5,13 @@ internal:
   file:
     url: ${FILE_SERVICE_HOST}
   api:
-    key: ${INTERNAL-KEY:test-internal-key}
-
+    key: ${INTERNAL_KEY:test-internal-key}
 
 
 spring:
+  elasticsearch:
+    uris: ${ES_URIS:http://localhost:9200}
+
   datasource:
     url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:backend5}
     username: ${POSTGRES_USER:postgres}

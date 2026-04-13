@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import jabaclass.product.domain.model.Schedule;
+import jabaclass.product.domain.model.status.ReservationStatus;
 import jabaclass.product.domain.repository.ScheduleRepository;
 import lombok.RequiredArgsConstructor;
 
@@ -51,5 +52,30 @@ public class ScheduleRepositoryAdapter implements ScheduleRepository {
 	@Override
 	public List<Schedule> findByProductIdAndDeleteDtIsNull(UUID productId) {
 		return scheduleJpaRepository.findByProductIdAndDeleteDtIsNull(productId);
+	}
+
+	@Override
+	public int verification(int quantity, UUID scheduleId) {
+		return scheduleJpaRepository.verification(quantity, scheduleId);
+	}
+
+	@Override
+	public int updateStatus(UUID productUserId, ReservationStatus status) {
+		return scheduleJpaRepository.updateStatus(productUserId, status);
+	}
+
+	@Override
+	public int claimRestore(UUID productUserId, ReservationStatus restoringStatus) {
+		return scheduleJpaRepository.claimRestore(productUserId, restoringStatus);
+	}
+
+	@Override
+	public int restoreCapacity(UUID scheduleId, int quantity, int capacity) {
+		return scheduleJpaRepository.restoreCapacity(scheduleId, quantity, capacity);
+	}
+
+	@Override
+	public Optional<Schedule> findByProductUserId(UUID productUserId) {
+		return scheduleJpaRepository.findByProductUserId(productUserId);
 	}
 }

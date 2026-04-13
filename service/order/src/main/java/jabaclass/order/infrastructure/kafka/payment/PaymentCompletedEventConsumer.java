@@ -1,0 +1,44 @@
+package jabaclass.order.infrastructure.kafka.payment;
+
+import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.stereotype.Component;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import jabaclass.order.application.port.internal.OrderUseCase;
+import jabaclass.order.domain.model.PaymentResultStatus;
+import jabaclass.order.infrastructure.kafka.payment.dto.PaymentCompletedEvent;
+import jabaclass.order.presentation.dto.request.UpdateOrderPaymentStatusRequestDto;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
+@Component
+@RequiredArgsConstructor
+public class PaymentCompletedEventConsumer {
+
+	public static final String TOPIC = "payment.completed";
+
+	private final OrderUseCase orderUseCase;
+	private final ObjectMapper objectMapper;
+
+	@KafkaListener(
+		topics = TOPIC,
+		groupId = "order-service"
+	)
+	public void consume(String message) {
+		try {
+			PaymentCompletedEvent event = objectMapper.readValue(message, PaymentCompletedEvent.class);
+
+			orderUseCase.updatePaymentStatus(
+				event.orderId(),
+				new UpdateOrderPaymentStatusRequestDto(PaymentResultStatus.SUCCESS)
+			);
+
+			log.info("payment.completed 이벤트 처리 완료. orderId={}", event.orderId());
+		} catch (Exception e) {
+			log.error("payment.completed 처리 실패. message={}", message, e);
+			throw new RuntimeException("결제 완료 이벤트 처리 실패", e);
+		}
+	}
+}

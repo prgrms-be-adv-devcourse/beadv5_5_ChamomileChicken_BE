@@ -11,8 +11,11 @@ on:
       - review_requested
       - review_request_removed
 
-  push:
+  pull_request_review:
     branches: ["dev"]
+    types:
+      - submitted
+      - dismissed
 
 permissions:
   contents: read
@@ -27,8 +30,11 @@ jobs:
         uses: actions/github-script@v8
         with:
           script: |
-            if (context.eventName !== "pull_request") {
-              core.info("Not a pull_request event. Skipping.");
+            if (
+              context.eventName !== "pull_request" &&
+              context.eventName !== "pull_request_review"
+            ) {
+              core.info(`Unsupported event: ${context.eventName}. Skipping.`);
               return;
             }
 
@@ -36,6 +42,7 @@ jobs:
             const owner = context.repo.owner;
             const repo = context.repo.repo;
             const pull_number = pr.number;
+            const prAuthor = pr.user?.login;
 
             const files = await github.paginate(
               github.rest.pulls.listFiles,
@@ -72,21 +79,21 @@ jobs:
               }
             );
 
-            const latestStateByUser = new Map();
+            const approvers = [...new Set(
+              reviews
+                .filter(review => review.state === "APPROVED")
+                .map(review => review.user?.login)
+                .filter(Boolean)
+                .filter(login => login !== prAuthor)
+            )];
 
-            for (const review of reviews) {
-              if (!review.user?.login) continue;
-              latestStateByUser.set(review.user.login, review.state);
-            }
-
-            const approvers = [...latestStateByUser.entries()]
-              .filter(([_, state]) => state === "APPROVED")
-              .map(([login]) => login);
-
-            core.info(`Approvers: ${approvers.join(", ")}`);
+            core.info(`Approvers: ${approvers.join(", ") || "none"}`);
 
             if (approvers.length < 1) {
               core.setFailed(
                 `Code change PR requires at least 1 approval. Current approvals: ${approvers.length}`
               );
+              return;
             }
+
+            core.info("Approval requirement satisfied.");
