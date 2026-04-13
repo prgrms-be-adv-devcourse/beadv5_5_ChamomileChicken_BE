@@ -26,7 +26,10 @@ import jabaclass.product.application.service.ProductService;
 import jabaclass.product.domain.model.Product;
 import jabaclass.product.domain.model.status.ProductStatus;
 import jabaclass.product.domain.repository.ProductRepository;
+import jabaclass.product.domain.repository.ProductSearchRepository;
 import jabaclass.product.infrastructure.acl.dto.response.UserResponseDto;
+import jabaclass.product.infrastructure.event.dto.ProductEsDeleteEvent;
+import jabaclass.product.infrastructure.event.dto.ProductEsSaveEvent;
 import jabaclass.product.infrastructure.event.dto.ProductEventResponseDto;
 import jabaclass.product.presentation.dto.request.CreateProductRequestDto;
 import jabaclass.product.presentation.dto.request.UpdateProductRequestDto;
@@ -45,6 +48,9 @@ class ProductCUDTest {
 
 	@Mock
 	private ProductRepository productRepository;
+
+	@Mock
+	private ProductSearchRepository productSearchRepository;
 
 	@Mock
 	private SellerRepository sellerRepository;
@@ -109,6 +115,7 @@ class ProductCUDTest {
 		assertThat(saved.price()).isEqualByComparingTo(PRICE);
 		then(productRepository).should().save(any(Product.class));
 		then(publisher).should().publishEvent(any(ProductEventResponseDto.class));
+		then(publisher).should().publishEvent(any(ProductEsSaveEvent.class));
 	}
 
 	@Test
@@ -243,6 +250,7 @@ class ProductCUDTest {
 
 		assertThat(updated.title()).isEqualTo("수정상품");
 		assertThat(updated.price()).isEqualByComparingTo(request.price());
+		then(publisher).should().publishEvent(any(ProductEsSaveEvent.class));
 	}
 
 	@Test
@@ -278,6 +286,7 @@ class ProductCUDTest {
 
 		assertThat(product.getDeleteDt()).isNotNull();
 		assertThat(product.getStatus()).isEqualTo(ProductStatus.DISABLE);
+		then(publisher).should().publishEvent(any(ProductEsDeleteEvent.class));
 	}
 
 	@Test
