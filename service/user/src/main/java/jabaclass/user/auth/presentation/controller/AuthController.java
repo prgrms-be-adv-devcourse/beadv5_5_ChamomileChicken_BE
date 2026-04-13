@@ -1,5 +1,8 @@
 package jabaclass.user.auth.presentation.controller;
 
+import java.util.UUID;
+
+import jabaclass.user.common.auth.CurrentUser;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -26,7 +29,6 @@ import jabaclass.user.auth.application.usecase.LogoutUseCase;
 import jabaclass.user.auth.application.usecase.ReissueUseCase;
 import jabaclass.user.auth.presentation.dto.request.LoginRequestDto;
 import jabaclass.user.common.dto.ApiResponseDto;
-import jabaclass.auth.util.SecurityUtil;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -62,11 +64,12 @@ public class AuthController {
 
     @PostMapping("/logout")
     public ResponseEntity<ApiResponseDto<Void>> logout(
+        @CurrentUser UUID userId,
         HttpServletRequest request,
         HttpServletResponse response) {
 
         String accessToken = extractAccessToken(request);
-        logoutUseCase.logout(SecurityUtil.getCurrentUserId(), accessToken);
+        logoutUseCase.logout(userId, accessToken);
 
         // Cookie 만료 처리
         response.addHeader(HttpHeaders.SET_COOKIE,

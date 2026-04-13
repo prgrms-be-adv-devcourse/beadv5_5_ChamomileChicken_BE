@@ -2,8 +2,10 @@ package jabaclass.user.deposit.presentation.controller;
 
 import java.util.UUID;
 
+import jabaclass.user.common.auth.CurrentUser;
+import lombok.RequiredArgsConstructor;
+
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -16,7 +18,6 @@ import jabaclass.user.deposit.presentation.dto.request.IncreaseDepositRequestDto
 import jabaclass.user.deposit.presentation.dto.response.DepositDetailResponseDto;
 import jabaclass.user.deposit.presentation.dto.response.DepositHistoryResponseDto;
 import jabaclass.user.deposit.presentation.dto.response.DepositMeResponseDto;
-import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequiredArgsConstructor
@@ -28,7 +29,7 @@ public class DepositController implements DepositApi {
 	@Override
 	@GetMapping
 	public ResponseEntity<DepositHistoryResponseDto> findAllDepositHistories(
-		@AuthenticationPrincipal UUID userId
+		@CurrentUser UUID userId
 	) {
 		return ResponseEntity.ok(depositUseCase.findAllDepositHistories(userId));
 	}
@@ -36,7 +37,7 @@ public class DepositController implements DepositApi {
 	@Override
 	@GetMapping("/me")
 	public ResponseEntity<DepositMeResponseDto> findMyDeposit(
-		@AuthenticationPrincipal UUID userId
+		@CurrentUser UUID userId
 	) {
 		return ResponseEntity.ok(depositUseCase.findMyDeposit(userId));
 	}
