@@ -28,4 +28,7 @@ public interface ProductRepository {
 	Optional<Product> findByIdAndSellerId(UUID productId, UUID sellerId);
 
 	List<Product> findAllByIds(List<UUID> productIds);
+
+	// ES 초기 마이그레이션용 — 삭제되지 않은 전체 상품 배치 조회
+	Page<Product> findAllByDeleteDtIsNull(Pageable pageable);
 }

@@ -17,6 +17,9 @@ on:
       - submitted
       - dismissed
 
+  push:
+    branches: ["dev"]
+
 permissions:
   contents: read
   pull-requests: read
@@ -35,6 +38,11 @@ jobs:
               context.eventName !== "pull_request_review"
             ) {
               core.info(`Unsupported event: ${context.eventName}. Skipping.`);
+              return;
+            }
+
+            if (context.eventName !== "pull_request") {
+              core.info("Not a pull_request event. Skipping.");
               return;
             }
 
@@ -79,6 +87,8 @@ jobs:
               }
             );
 
+            const latestStateByUser = new Map();
+
             core.info("=== Reviews ===");
             for (const review of reviews) {
               core.info(
@@ -86,6 +96,9 @@ jobs:
               );
             }
 
+            const approvers = [...latestStateByUser.entries()]
+              .filter(([_, state]) => state === "APPROVED")
+              .map(([login]) => login);
             const approvers = [...new Set(
               reviews
                 .filter(review => review.state === "APPROVED")
