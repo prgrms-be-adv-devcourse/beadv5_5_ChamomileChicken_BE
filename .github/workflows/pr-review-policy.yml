@@ -2,9 +2,7 @@ name: PR Review Policy
 
 on:
   pull_request:
-    # dev 브랜치 대상으로 올라오는 PR에서만 실행
     branches: ["dev"]
-    # PR 생성/수정/재오픈/리뷰어 변경 시 다시 검사
     types:
       - opened
       - synchronize
@@ -13,7 +11,9 @@ on:
       - review_requested
       - review_request_removed
 
-# 이 워크플로가 PR 파일 목록 / 리뷰 목록을 읽을 수 있도록 권한 부여
+  push:
+    branches: ["dev"]
+
 permissions:
   contents: read
   pull-requests: read
@@ -27,15 +27,16 @@ jobs:
         uses: actions/github-script@v8
         with:
           script: |
-            // 현재 PR 정보
+            if (context.eventName !== "pull_request") {
+              core.info("Not a pull_request event. Skipping.");
+              return;
+            }
+
             const pr = context.payload.pull_request;
             const owner = context.repo.owner;
             const repo = context.repo.repo;
             const pull_number = pr.number;
 
-            // ------------------------------------------------------------
-            // 1. PR에서 변경된 파일 목록 조회
-            // ------------------------------------------------------------
             const files = await github.paginate(
               github.rest.pulls.listFiles,
               {
@@ -50,33 +51,17 @@ jobs:
 
             core.info(`Changed files: ${changedFiles.join(", ")}`);
 
-            // ------------------------------------------------------------
-            // 2. docs-only PR 인지 판별
-            // ------------------------------------------------------------
-            // 아래 조건을 모두 만족하면 docs-only 로 간주
-            // - 변경 파일이 1개 이상 있음
-            // - 모든 파일이 docs/ 경로이거나 .md 파일임
-            //
-            // 예:
-            // - docs/guide.md            -> docs-only
-            // - README.md                -> docs-only
-            // - docs/guide.md + a.md     -> docs-only
-            // - docs/guide.md + service/user/A.java -> docs-only 아님
             const isDocsOnly =
               changedFiles.length > 0 &&
               changedFiles.every(path =>
                 path.startsWith("docs/") || path.endsWith(".md")
               );
 
-            // docs-only PR이면 승인 없이 바로 통과
             if (isDocsOnly) {
               core.info("Docs-only PR detected. Approval not required.");
               return;
             }
 
-            // ------------------------------------------------------------
-            // 3. 코드 변경이 있는 경우, PR 리뷰 목록 조회
-            // ------------------------------------------------------------
             const reviews = await github.paginate(
               github.rest.pulls.listReviews,
               {
@@ -87,15 +72,6 @@ jobs:
               }
             );
 
-            // ------------------------------------------------------------
-            // 4. 사용자별 '최신 리뷰 상태'만 반영
-            // ------------------------------------------------------------
-            // GitHub 리뷰는 같은 사람이 여러 번 남길 수 있어서
-            // 마지막 상태만 기준으로 봐야 함
-            //
-            // 예:
-            // - alice: COMMENTED -> APPROVED  => 최종 APPROVED
-            // - bob: APPROVED -> CHANGES_REQUESTED => 최종 CHANGES_REQUESTED
             const latestStateByUser = new Map();
 
             for (const review of reviews) {
@@ -103,17 +79,12 @@ jobs:
               latestStateByUser.set(review.user.login, review.state);
             }
 
-            // 최종 상태가 APPROVED 인 사람만 승인자로 집계
             const approvers = [...latestStateByUser.entries()]
               .filter(([_, state]) => state === "APPROVED")
               .map(([login]) => login);
 
             core.info(`Approvers: ${approvers.join(", ")}`);
 
-            // ------------------------------------------------------------
-            // 5. 코드 변경 PR은 승인 1명 이상 필요
-            // ------------------------------------------------------------
-            // docs-only 가 아닌 경우에는 최소 1명 승인 필요
             if (approvers.length < 1) {
               core.setFailed(
                 `Code change PR requires at least 1 approval. Current approvals: ${approvers.length}`
