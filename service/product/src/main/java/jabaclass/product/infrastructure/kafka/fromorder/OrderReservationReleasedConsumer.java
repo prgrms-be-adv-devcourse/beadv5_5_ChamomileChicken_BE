@@ -6,6 +6,7 @@ import org.springframework.stereotype.Component;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import jabaclass.product.application.usecase.ScheduleUseCase;
+import jabaclass.product.domain.model.status.ReservationStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -28,9 +29,9 @@ public class OrderReservationReleasedConsumer {
 			OrderReservationReleasedEvent event =
 				objectMapper.readValue(message, OrderReservationReleasedEvent.class);
 
-			scheduleUseCase.releaseReservation(event.productUserId());
-			// 아래 서비스를 확인해주세요.
-			//	scheduleUseCase.restoringInventory(event.productUserId(), status);
+			//	scheduleUseCase.releaseReservation(event.productUserId());
+			// 아래 서비스를 확인해주세요. 예약 해제 기준으로 했습니다.
+			scheduleUseCase.restoringInventory(event.productUserId(), ReservationStatus.RELEASED);
 
 			log.info("order.reservation.released 처리 완료. productUserId={}", event.productUserId());
 		} catch (Exception e) {
