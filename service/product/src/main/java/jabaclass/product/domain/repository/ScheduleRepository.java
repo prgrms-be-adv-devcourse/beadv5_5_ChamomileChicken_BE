@@ -9,7 +9,7 @@ import java.util.UUID;
 import org.springframework.data.repository.query.Param;
 
 import jabaclass.product.domain.model.Schedule;
-import jabaclass.product.domain.model.status.OrderStatus;
+import jabaclass.product.domain.model.status.ReservationStatus;
 
 public interface ScheduleRepository {
 
@@ -39,12 +39,12 @@ public interface ScheduleRepository {
 
 	// 2026-04-09 상태값 변경
 	int updateStatus(@Param("productUserId") UUID productUserId,
-		@Param("status") OrderStatus status);
+		@Param("status") ReservationStatus status);
 
 	// 2026-04-09 멱등성 체크 및 선점
 	int claimRestore(
 		@Param("productUserId") UUID productUserId,
-		@Param("restoringStatus") OrderStatus restoringStatus
+		@Param("restoringStatus") ReservationStatus restoringStatus
 	);
 
 	// 2026-04-09 재고 복구

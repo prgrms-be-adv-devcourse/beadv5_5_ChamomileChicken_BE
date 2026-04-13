@@ -6,7 +6,7 @@ import java.util.UUID;
 import org.springframework.data.repository.query.Param;
 
 import jabaclass.product.domain.model.Schedule;
-import jabaclass.product.domain.model.status.OrderStatus;
+import jabaclass.product.domain.model.status.ReservationStatus;
 import jabaclass.product.presentation.dto.request.CreateScheduleRequestDto;
 import jabaclass.product.presentation.dto.request.OrderRequestDto;
 import jabaclass.product.presentation.dto.request.UpdateScheduleRequestDto;
@@ -34,15 +34,19 @@ public interface ScheduleUseCase {
 	OrderResponseDto verification(OrderRequestDto requestDto);
 
 	// 스케줄 상태 값 변경 2026-04-09 수정
-	OrderValid restoringInventory(UUID productUserId, OrderStatus orderStatus);
+	OrderValid restoringInventory(UUID productUserId, ReservationStatus orderStatus);
 
 	// 스케줄 예약 상태 검색
 	AvailabilityScheduleResponseDto availabilitySchedule(UUID scheduleId);
 
+	void confirmReservation(UUID productUserId);
+
+	void releaseReservation(UUID productUserId);
+
 	void refundReservation(UUID productUserId);
 
 	// 2026-04-09 멱등성 체크 및 선점
-	int claimRestore(UUID productUserId, OrderStatus restoringStatus);
+	int claimRestore(UUID productUserId, ReservationStatus restoringStatus);
 
 	// 2026-04-09 재고 복구
 	int restoreCapacity(UUID scheduleId, int quantity, int capacity);

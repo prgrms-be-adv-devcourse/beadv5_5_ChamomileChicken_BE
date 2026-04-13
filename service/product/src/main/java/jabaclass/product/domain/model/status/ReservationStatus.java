@@ -2,17 +2,15 @@ package jabaclass.product.domain.model.status;
 
 import java.util.Arrays;
 
-public enum OrderStatus {
-	PENDING("주문/결제 대기"),
-	PAID("결제 완료"),
-	EXPIRED("만료"),
-	REFUNDED("환불 완료"),
-	RESTORING("재고 복구 중"),
-	CANCELLED("재고 복구 실패");
+public enum ReservationStatus {
+	RESERVED("예약 보류"),
+	CONFIRMED("예약 확정"),
+	RELEASED("예약 해제"),
+	REFUNDED("환불 완료");
 
 	private final String statusName;
 
-	OrderStatus(String statusName) {
+	ReservationStatus(String statusName) {
 		this.statusName = statusName;
 	}
 
@@ -20,7 +18,7 @@ public enum OrderStatus {
 		return this.statusName;
 	}
 
-	public static OrderStatus fromDescription(String statusName) {
+	public static ReservationStatus fromDescription(String statusName) {
 		return Arrays.stream(values())
 			.filter(status -> status.statusName.equals(statusName))
 			.findFirst()

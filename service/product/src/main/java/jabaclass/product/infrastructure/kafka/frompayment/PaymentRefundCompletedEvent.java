@@ -1,10 +1,8 @@
-package jabaclass.product.infrastructure.kafka;
+package jabaclass.product.infrastructure.kafka.frompayment;
 
 import java.util.UUID;
 
-// 2026-04-09 수정
 public record PaymentRefundCompletedEvent(
-	PaymentStatus status,
 	UUID productUserId
 ) {
 }

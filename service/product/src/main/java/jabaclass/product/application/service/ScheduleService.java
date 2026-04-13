@@ -17,7 +17,7 @@ import jabaclass.product.common.exception.CommonErrorCode;
 import jabaclass.product.domain.model.Product;
 import jabaclass.product.domain.model.ProductUser;
 import jabaclass.product.domain.model.Schedule;
-import jabaclass.product.domain.model.status.OrderStatus;
+import jabaclass.product.domain.model.status.ReservationStatus;
 import jabaclass.product.domain.model.status.ReservedStatus;
 import jabaclass.product.domain.repository.ScheduleRepository;
 import jabaclass.product.infrastructure.acl.dto.SellerRole;
@@ -187,7 +187,7 @@ public class ScheduleService implements ScheduleUseCase {
 				requestDto.productScheduleId(),
 				requestDto.userId(),
 				quantity,
-				OrderStatus.PENDING
+				ReservationStatus.RESERVED
 			);
 			saved = productUserUseCase.create(dto);
 		}
@@ -200,7 +200,7 @@ public class ScheduleService implements ScheduleUseCase {
 	// 2026-04-09 수정 => 상태값 수정
 	@Override
 	@Transactional
-	public OrderValid restoringInventory(UUID productUserId, OrderStatus orderStatus) {
+	public OrderValid restoringInventory(UUID productUserId, ReservationStatus orderStatus) {
 		ProductUser user = productUserUseCase.innerFindById(productUserId);
 		findByIdOrThrow(user.getProductScheduleId());
 
@@ -215,16 +215,65 @@ public class ScheduleService implements ScheduleUseCase {
 
 	@Override
 	@Transactional
-	public void refundReservation(UUID productUserId) {
+	public void confirmReservation(UUID productUserId) {
 		ProductUser user = productUserUseCase.innerFindById(productUserId);
-		Schedule schedule = findByIdOrThrow(user.getProductScheduleId());
+		if (user.getStatus() == ReservationStatus.CONFIRMED) {
+			return;
+		}
 
-		user.changeStatus(OrderStatus.REFUNDED);
+		user.changeStatus(ReservationStatus.CONFIRMED);
+	}
+
+	@Override
+	@Transactional
+	public void releaseReservation(UUID productUserId) {
+		ProductUser user = productUserUseCase.innerFindById(productUserId);
+		if (user.getStatus() == ReservationStatus.RELEASED || user.getStatus() == ReservationStatus.REFUNDED) {
+			return;
+		}
+
+		Schedule schedule = findByIdOrThrow(user.getProductScheduleId());
+		Product product = productUseCase.findByIdOrThrow(schedule.getProductId());
+
+		int restored = scheduleRepository.restoreCapacity(
+			schedule.getId(),
+			user.getGuestCount(),
+			product.getMaxCapacity()
+		);
+		if (restored == 0) {
+			throw new RuntimeException("재고 복구 실패");
+		}
+
+		user.changeStatus(ReservationStatus.RELEASED);
 		refreshScheduleStatus(schedule);
 	}
 
 	@Override
-	public int claimRestore(UUID productUserId, OrderStatus restoringStatus) {
+	@Transactional
+	public void refundReservation(UUID productUserId) {
+		ProductUser user = productUserUseCase.innerFindById(productUserId);
+		if (user.getStatus() == ReservationStatus.REFUNDED) {
+			return;
+		}
+
+		Schedule schedule = findByIdOrThrow(user.getProductScheduleId());
+		Product product = productUseCase.findByIdOrThrow(schedule.getProductId());
+
+		int restored = scheduleRepository.restoreCapacity(
+			schedule.getId(),
+			user.getGuestCount(),
+			product.getMaxCapacity()
+		);
+		if (restored == 0) {
+			throw new RuntimeException("재고 복구 실패");
+		}
+
+		user.changeStatus(ReservationStatus.REFUNDED);
+		refreshScheduleStatus(schedule);
+	}
+
+	@Override
+	public int claimRestore(UUID productUserId, ReservationStatus restoringStatus) {
 		return scheduleRepository.claimRestore(productUserId, restoringStatus);
 	}
 
@@ -246,7 +295,8 @@ public class ScheduleService implements ScheduleUseCase {
 		// 해당 스케줄 예약자 수 확인
 		List<ProductUser> list = productUserUseCase.innserUserList(schedule.getId());
 		int reservedCount = list.stream()
-			.filter(l -> OrderStatus.PAID.equals(l.getStatus()))
+			.filter(l -> ReservationStatus.CONFIRMED.equals(l.getStatus())
+				|| ReservationStatus.RESERVED.equals(l.getStatus()))
 			.mapToInt(p -> p.getGuestCount())
 			.sum();
 
@@ -298,8 +348,8 @@ public class ScheduleService implements ScheduleUseCase {
 
 	private int calculateRemainingCapacity(UUID scheduleId, int maxCapacity) {
 		int reservedCount = productUserUseCase.innserUserList(scheduleId).stream()
-			.filter(productUser -> productUser.getStatus() == OrderStatus.PAID
-				|| productUser.getStatus() == OrderStatus.PENDING)
+			.filter(productUser -> productUser.getStatus() == ReservationStatus.CONFIRMED
+				|| productUser.getStatus() == ReservationStatus.RESERVED)
 			.mapToInt(ProductUser::getGuestCount)
 			.sum();
 

@@ -13,7 +13,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import jabaclass.product.domain.model.Schedule;
-import jabaclass.product.domain.model.status.OrderStatus;
+import jabaclass.product.domain.model.status.ReservationStatus;
 import jakarta.persistence.LockModeType;
 
 public interface ScheduleJpaRepository extends JpaRepository<Schedule, UUID> {
@@ -73,7 +73,7 @@ public interface ScheduleJpaRepository extends JpaRepository<Schedule, UUID> {
 	@Modifying
 	@Query("update ProductUser u set u.status = :status where u.id = :productUserId")
 	int updateStatus(@Param("productUserId") UUID productUserId,
-		@Param("status") OrderStatus status);
+		@Param("status") ReservationStatus status);
 
 	// 2026-04-09 멱등성 체크 및 선점
 	@Modifying
@@ -85,7 +85,7 @@ public interface ScheduleJpaRepository extends JpaRepository<Schedule, UUID> {
 		""")
 	int claimRestore(
 		@Param("productUserId") UUID productUserId,
-		@Param("restoringStatus") OrderStatus restoringStatus
+		@Param("restoringStatus") ReservationStatus restoringStatus
 	);
 
 	// 2026-04-09 재고 복구
