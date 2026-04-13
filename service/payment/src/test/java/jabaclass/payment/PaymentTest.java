@@ -1,208 +1,264 @@
 package jabaclass.payment;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import static org.mockito.Mockito.lenient;
 
 import jabaclass.payment.application.port.external.OrderPort;
 import jabaclass.payment.application.port.external.PaymentGatewayPort;
+import jabaclass.payment.application.service.PaymentService;
+import jabaclass.payment.common.exception.PaymentErrorCode;
 import jabaclass.payment.common.exception.PaymentException;
 import jabaclass.payment.domain.model.Payment;
+import jabaclass.payment.domain.model.PaymentMethod;
+import jabaclass.payment.domain.model.PaymentStatus;
 import jabaclass.payment.domain.repository.PaymentRepository;
-import jabaclass.payment.infrastructure.kafka.PaymentCompletedEventPublisher;
-import jabaclass.payment.infrastructure.kafka.PaymentFailedEventPublisher;
+import jabaclass.payment.domain.repository.RefundRepository;
+import jabaclass.payment.infrastructure.outbox.EventType;
+import jabaclass.payment.infrastructure.outbox.OutboxEvent;
+import jabaclass.payment.infrastructure.outbox.OutboxRepository;
 import jabaclass.payment.presentation.dto.request.ConfirmPaymentRequestDto;
 import jabaclass.payment.presentation.dto.request.PreparePaymentRequestDto;
-import jabaclass.payment.application.service.PaymentService;
+import jabaclass.payment.presentation.dto.response.PaymentResponseDto;
 
 @ExtendWith(MockitoExtension.class)
-public class PaymentTest {
+class PaymentTest {
 
 	@Mock
 	private PaymentRepository paymentRepository;
 
 	@Mock
-	private PaymentCompletedEventPublisher paymentCompletedEventPublisher;
+	private RefundRepository refundRepository;
 
 	@Mock
-	private PaymentFailedEventPublisher paymentFailedEventPublisher;
+	private PaymentGatewayPort paymentGatewayPort;
 
 	@Mock
 	private OrderPort orderPort;
 
 	@Mock
-	private PaymentGatewayPort paymentGatewayPort;
+	private OutboxRepository outboxRepository;
 
-	@InjectMocks
 	private PaymentService paymentService;
 
-	@Test
-	void create_예치금100퍼면_즉시완료_이벤트발행() {
-		// given
-		PreparePaymentRequestDto request = mock(PreparePaymentRequestDto.class);
+	@BeforeEach
+	void setUp() {
+		paymentService = new PaymentService(
+			paymentRepository,
+			refundRepository,
+			paymentGatewayPort,
+			orderPort,
+			outboxRepository,
+			new ObjectMapper()
+		);
 
-		when(request.userId()).thenReturn(UUID.randomUUID());
-		when(request.productId()).thenReturn(UUID.randomUUID());
-		when(request.orderId()).thenReturn(UUID.randomUUID());
-		when(request.productUserId()).thenReturn(UUID.randomUUID());
-		when(request.paymentMethod()).thenReturn(null);
-		when(request.paymentAmount()).thenReturn(BigDecimal.ZERO);
-		when(request.depositAmount()).thenReturn(BigDecimal.valueOf(10000));
-
-		when(paymentRepository.save(any()))
+		lenient().when(paymentRepository.save(any(Payment.class)))
 			.thenAnswer(invocation -> invocation.getArgument(0));
-
-		// when
-		paymentService.create(request);
-
-		// then
-		verify(paymentCompletedEventPublisher).publish(any());
-	}
-
-	@Test
-	void create_일반결제면_이벤트발행안함() {
-		// given
-		PreparePaymentRequestDto request = mock(PreparePaymentRequestDto.class);
-
-		when(request.userId()).thenReturn(UUID.randomUUID());
-		when(request.productId()).thenReturn(UUID.randomUUID());
-		when(request.orderId()).thenReturn(UUID.randomUUID());
-		when(request.productUserId()).thenReturn(UUID.randomUUID());
-		when(request.paymentMethod()).thenReturn(null);
-		when(request.paymentAmount()).thenReturn(BigDecimal.valueOf(10000));
-		when(request.depositAmount()).thenReturn(BigDecimal.ZERO);
-
-		when(paymentRepository.save(any()))
+		lenient().when(outboxRepository.save(any(OutboxEvent.class)))
 			.thenAnswer(invocation -> invocation.getArgument(0));
-
-		// when
-		paymentService.create(request);
-
-		// then
-		verify(paymentCompletedEventPublisher, never()).publish(any());
 	}
 
 	@Test
-	void confirm_성공하면_이벤트발행() {
-		// given
-		UUID orderId = UUID.randomUUID();
+	void create_예치금전액결제면_즉시완료_아웃박스저장() {
+		PreparePaymentRequestDto request = prepareRequest(BigDecimal.ZERO, BigDecimal.valueOf(10000));
+		UUID paymentId = UUID.randomUUID();
+		when(paymentRepository.save(any(Payment.class)))
+			.thenAnswer(invocation -> {
+				Payment payment = invocation.getArgument(0);
+				ReflectionTestUtils.setField(payment, "id", paymentId);
+				return payment;
+			});
 
-		Payment payment = mock(Payment.class);
+		PaymentResponseDto response = paymentService.create(request);
 
-		when(paymentRepository.findByOrderId(orderId))
-			.thenReturn(Optional.of(payment));
+		ArgumentCaptor<Payment> paymentCaptor = ArgumentCaptor.forClass(Payment.class);
+		verify(paymentRepository).save(paymentCaptor.capture());
+		Payment savedPayment = paymentCaptor.getValue();
 
-		when(payment.isDone()).thenReturn(false);
-		when(payment.getOrderId()).thenReturn(orderId);
-		when(payment.getTotalAmount()).thenReturn(BigDecimal.valueOf(10000));
-		when(payment.getPaymentAmount()).thenReturn(BigDecimal.valueOf(10000));
-		when(payment.getId()).thenReturn(UUID.randomUUID());
+		assertTrue(savedPayment.isDone());
+		assertEquals(PaymentStatus.PAID, savedPayment.getStatus());
+		assertEquals("DEPOSIT_ONLY", savedPayment.getPaymentKey());
+		assertEquals(paymentId, response.paymentId());
+		assertEquals(BigDecimal.valueOf(10000), response.totalAmount());
 
-		when(orderPort.validateOrder(orderId, 10000))
-			.thenReturn(true);
-
-		ConfirmPaymentRequestDto request =
-			new ConfirmPaymentRequestDto(orderId, "key", 10000);
-
-		// when
-		paymentService.confirm(request);
-
-		// then
-		verify(paymentGatewayPort).confirm(any(), any(), anyInt());
-		verify(payment).markDone("key");
-		verify(paymentCompletedEventPublisher).publish(any());
+		ArgumentCaptor<OutboxEvent> outboxCaptor = ArgumentCaptor.forClass(OutboxEvent.class);
+		verify(outboxRepository).save(outboxCaptor.capture());
+		assertEquals(EventType.PAYMENT_COMPLETED, outboxCaptor.getValue().getEventType());
 	}
 
 	@Test
-	void confirm_이미완료면_아무것도안함() {
-		// given
+	void create_일반결제면_준비상태로저장_아웃박스미생성() {
+		PreparePaymentRequestDto request = prepareRequest(BigDecimal.valueOf(7000), BigDecimal.valueOf(3000));
+		UUID paymentId = UUID.randomUUID();
+		when(paymentRepository.save(any(Payment.class)))
+			.thenAnswer(invocation -> {
+				Payment payment = invocation.getArgument(0);
+				ReflectionTestUtils.setField(payment, "id", paymentId);
+				return payment;
+			});
+
+		PaymentResponseDto response = paymentService.create(request);
+
+		ArgumentCaptor<Payment> paymentCaptor = ArgumentCaptor.forClass(Payment.class);
+		verify(paymentRepository).save(paymentCaptor.capture());
+		Payment savedPayment = paymentCaptor.getValue();
+
+		assertFalse(savedPayment.isDone());
+		assertEquals(PaymentStatus.READY, savedPayment.getStatus());
+		assertEquals(paymentId, response.paymentId());
+		assertEquals(BigDecimal.valueOf(10000), response.totalAmount());
+		verify(outboxRepository, never()).save(any(OutboxEvent.class));
+	}
+
+	@Test
+	void confirm_이미완료된결제면_기존결과반환_외부호출없음() {
 		UUID orderId = UUID.randomUUID();
+		Payment payment = createPayment(orderId, BigDecimal.valueOf(10000), BigDecimal.ZERO);
+		assignPaymentId(payment);
+		payment.markDone("existing-key");
 
-		Payment payment = mock(Payment.class);
+		when(paymentRepository.findByOrderId(orderId)).thenReturn(Optional.of(payment));
 
-		when(paymentRepository.findByOrderId(orderId))
-			.thenReturn(Optional.of(payment));
+		PaymentResponseDto response = paymentService.confirm(
+			new ConfirmPaymentRequestDto(orderId, "ignored-key", 10000)
+		);
 
-		when(payment.isDone()).thenReturn(true);
-
-		ConfirmPaymentRequestDto request =
-			new ConfirmPaymentRequestDto(orderId, "key", 10000);
-
-		// when
-		paymentService.confirm(request);
-
-		// then
+		assertEquals(payment.getOrderId(), response.orderId());
+		verify(orderPort, never()).validateOrder(any(), anyInt());
 		verify(paymentGatewayPort, never()).confirm(any(), any(), anyInt());
-		verify(paymentCompletedEventPublisher, never()).publish(any());
+		verify(outboxRepository, never()).save(any(OutboxEvent.class));
 	}
 
 	@Test
-	void confirm_Order검증실패() {
-		// given
+	void confirm_주문금액검증실패면_예외() {
 		UUID orderId = UUID.randomUUID();
+		Payment payment = createPayment(orderId, BigDecimal.valueOf(10000), BigDecimal.ZERO);
+		assignPaymentId(payment);
+		when(paymentRepository.findByOrderId(orderId)).thenReturn(Optional.of(payment));
+		when(orderPort.validateOrder(orderId, 10000)).thenReturn(false);
 
-		Payment payment = mock(Payment.class);
+		PaymentException exception = assertThrows(
+			PaymentException.class,
+			() -> paymentService.confirm(new ConfirmPaymentRequestDto(orderId, "pay-key", 10000))
+		);
 
-		when(paymentRepository.findByOrderId(orderId))
-			.thenReturn(Optional.of(payment));
-
-		when(payment.isDone()).thenReturn(false);
-		when(payment.getOrderId()).thenReturn(orderId);
-		when(payment.getTotalAmount()).thenReturn(BigDecimal.valueOf(10000));
-
-		when(orderPort.validateOrder(orderId, 10000))
-			.thenReturn(false);
-
-		ConfirmPaymentRequestDto request =
-			new ConfirmPaymentRequestDto(orderId, "key", 10000);
-
-		// when & then
-		assertThrows(PaymentException.class,
-			() -> paymentService.confirm(request));
+		assertEquals(PaymentErrorCode.INVALID_ORDER_AMOUNT, exception.getErrorCode());
+		verify(paymentGatewayPort, never()).confirm(any(), any(), anyInt());
+		verify(outboxRepository, never()).save(any(OutboxEvent.class));
 	}
 
 	@Test
-	void confirm_PG실패시_failed이벤트발행() {
-		// given
+	void confirm_결제금액불일치면_예외() {
 		UUID orderId = UUID.randomUUID();
+		Payment payment = createPayment(orderId, BigDecimal.valueOf(10000), BigDecimal.ZERO);
+		assignPaymentId(payment);
+		when(paymentRepository.findByOrderId(orderId)).thenReturn(Optional.of(payment));
+		when(orderPort.validateOrder(orderId, 10000)).thenReturn(true);
 
-		Payment payment = mock(Payment.class);
+		PaymentException exception = assertThrows(
+			PaymentException.class,
+			() -> paymentService.confirm(new ConfirmPaymentRequestDto(orderId, "pay-key", 9000))
+		);
 
-		when(paymentRepository.findByOrderId(orderId))
-			.thenReturn(Optional.of(payment));
-
-		when(payment.isDone()).thenReturn(false);
-		when(payment.getOrderId()).thenReturn(orderId);
-		when(payment.getTotalAmount()).thenReturn(BigDecimal.valueOf(10000));
-		when(payment.getPaymentAmount()).thenReturn(BigDecimal.valueOf(10000));
-		when(payment.getId()).thenReturn(UUID.randomUUID());
-
-		when(orderPort.validateOrder(orderId, 10000))
-			.thenReturn(true);
-
-		doThrow(new RuntimeException())
-			.when(paymentGatewayPort).confirm(any(), any(), anyInt());
-
-		ConfirmPaymentRequestDto request =
-			new ConfirmPaymentRequestDto(orderId, "key", 10000);
-
-		// when
-		assertThrows(PaymentException.class,
-			() -> paymentService.confirm(request));
-
-		// then
-		verify(payment).markFailed();
-		verify(paymentFailedEventPublisher).publish(any());
+		assertEquals(PaymentErrorCode.INVALID_PAYMENT_AMOUNT, exception.getErrorCode());
+		verify(paymentGatewayPort, never()).confirm(any(), any(), anyInt());
+		verify(outboxRepository, never()).save(any(OutboxEvent.class));
 	}
 
+	@Test
+	void confirm_성공하면_결제완료와_완료아웃박스저장() {
+		UUID orderId = UUID.randomUUID();
+		Payment payment = createPayment(orderId, BigDecimal.valueOf(10000), BigDecimal.ZERO);
+		assignPaymentId(payment);
+		when(paymentRepository.findByOrderId(orderId)).thenReturn(Optional.of(payment));
+		when(orderPort.validateOrder(orderId, 10000)).thenReturn(true);
 
+		PaymentResponseDto response = paymentService.confirm(
+			new ConfirmPaymentRequestDto(orderId, "pay-key", 10000)
+		);
+
+		assertTrue(payment.isDone());
+		assertEquals(PaymentStatus.PAID, payment.getStatus());
+		assertEquals("pay-key", payment.getPaymentKey());
+		assertEquals(orderId, response.orderId());
+
+		verify(paymentGatewayPort).confirm("pay-key", orderId.toString(), 10000);
+
+		ArgumentCaptor<OutboxEvent> outboxCaptor = ArgumentCaptor.forClass(OutboxEvent.class);
+		verify(outboxRepository).save(outboxCaptor.capture());
+		assertEquals(EventType.PAYMENT_COMPLETED, outboxCaptor.getValue().getEventType());
+	}
+
+	@Test
+	void confirm_PG승인실패면_결제실패와_실패아웃박스저장() {
+		UUID orderId = UUID.randomUUID();
+		Payment payment = createPayment(orderId, BigDecimal.valueOf(10000), BigDecimal.ZERO);
+		assignPaymentId(payment);
+		when(paymentRepository.findByOrderId(orderId)).thenReturn(Optional.of(payment));
+		when(orderPort.validateOrder(orderId, 10000)).thenReturn(true);
+		doThrow(new RuntimeException("pg error"))
+			.when(paymentGatewayPort).confirm("pay-key", orderId.toString(), 10000);
+
+		PaymentException exception = assertThrows(
+			PaymentException.class,
+			() -> paymentService.confirm(new ConfirmPaymentRequestDto(orderId, "pay-key", 10000))
+		);
+
+		assertEquals(PaymentErrorCode.PAYMENT_CONFIRM_FAILED, exception.getErrorCode());
+		assertEquals(PaymentStatus.FAILED, payment.getStatus());
+
+		ArgumentCaptor<OutboxEvent> outboxCaptor = ArgumentCaptor.forClass(OutboxEvent.class);
+		verify(outboxRepository).save(outboxCaptor.capture());
+		assertEquals(EventType.PAYMENT_FAILED, outboxCaptor.getValue().getEventType());
+	}
+
+	private PreparePaymentRequestDto prepareRequest(BigDecimal paymentAmount, BigDecimal depositAmount) {
+		return new PreparePaymentRequestDto(
+			UUID.randomUUID(),
+			UUID.randomUUID(),
+			UUID.randomUUID(),
+			UUID.randomUUID(),
+			PaymentMethod.TOSS,
+			paymentAmount,
+			depositAmount
+		);
+	}
+
+	private Payment createPayment(UUID orderId, BigDecimal paymentAmount, BigDecimal depositAmount) {
+		return Payment.create(
+			UUID.randomUUID(),
+			UUID.randomUUID(),
+			orderId,
+			UUID.randomUUID(),
+			PaymentMethod.TOSS,
+			paymentAmount,
+			depositAmount
+		);
+	}
+
+	private void assignPaymentId(Payment payment) {
+		ReflectionTestUtils.setField(payment, "id", UUID.randomUUID());
+	}
 }
