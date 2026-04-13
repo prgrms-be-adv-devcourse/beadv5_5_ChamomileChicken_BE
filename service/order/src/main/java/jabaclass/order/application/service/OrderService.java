@@ -9,10 +9,10 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import jabaclass.order.common.error.BusinessException;
-import jabaclass.order.application.port.out.DepositPort;
-import jabaclass.order.application.port.out.ProductPort;
+import jabaclass.order.application.port.external.DepositPort;
+import jabaclass.order.application.port.external.ProductPort;
 import jabaclass.order.application.exception.OrderErrorCode;
-import jabaclass.order.application.port.in.OrderUseCase;
+import jabaclass.order.application.port.internal.OrderUseCase;
 import jabaclass.order.domain.model.Order;
 import jabaclass.order.domain.model.OrderStatus;
 import jabaclass.order.domain.repository.OrderRepository;

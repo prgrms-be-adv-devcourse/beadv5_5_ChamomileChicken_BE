@@ -3,7 +3,7 @@ package jabaclass.order.presentation.controller;
 import java.util.List;
 import java.util.UUID;
 
-import jabaclass.order.application.port.in.OrderUseCase;
+import jabaclass.order.application.port.internal.OrderUseCase;
 import jabaclass.order.domain.model.OrderStatus;
 import jabaclass.order.presentation.dto.request.CreateOrderRequestDto;
 import jabaclass.order.presentation.dto.response.CreateOrderResponseDto;

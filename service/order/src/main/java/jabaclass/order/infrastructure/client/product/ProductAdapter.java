@@ -7,7 +7,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
-import jabaclass.order.application.port.out.ProductPort;
+import jabaclass.order.application.port.external.ProductPort;
 import jabaclass.order.infrastructure.client.product.dto.ProductReservationRequestDto;
 import jabaclass.order.infrastructure.client.product.dto.ProductReservationResponseDto;
 import lombok.RequiredArgsConstructor;

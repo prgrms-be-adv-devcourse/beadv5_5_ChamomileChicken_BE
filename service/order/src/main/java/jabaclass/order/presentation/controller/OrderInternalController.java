@@ -4,7 +4,7 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
-import jabaclass.order.application.port.in.OrderUseCase;
+import jabaclass.order.application.port.internal.OrderUseCase;
 import jabaclass.order.presentation.dto.request.OrderBulkReadRequestDto;
 import jabaclass.order.presentation.dto.request.UpdateOrderPaymentStatusRequestDto;
 import jabaclass.order.presentation.dto.response.OrderSettlementItemResponseDto;

@@ -1,4 +1,4 @@
-package jabaclass.order.application.port.in;
+package jabaclass.order.application.port.internal;
 
 
 import java.util.List;

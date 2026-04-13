@@ -5,7 +5,7 @@ import org.springframework.stereotype.Component;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import jabaclass.order.application.port.in.OrderUseCase;
+import jabaclass.order.application.port.internal.OrderUseCase;
 import jabaclass.order.infrastructure.kafka.payment.dto.PaymentRefundCompletedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

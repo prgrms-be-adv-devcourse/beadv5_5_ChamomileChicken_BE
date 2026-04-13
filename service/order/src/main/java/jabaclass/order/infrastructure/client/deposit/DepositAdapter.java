@@ -1,6 +1,6 @@
 package jabaclass.order.infrastructure.client.deposit;
 
-import jabaclass.order.application.port.out.DepositPort;
+import jabaclass.order.application.port.external.DepositPort;
 import jabaclass.order.infrastructure.client.deposit.dto.DepositValidateResponseDto;
 import jabaclass.order.infrastructure.client.deposit.dto.DepositUseRequestDto;
 import lombok.RequiredArgsConstructor;
