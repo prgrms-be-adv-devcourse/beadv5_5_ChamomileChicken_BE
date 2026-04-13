@@ -32,7 +32,7 @@ public class CurrentUserArgumentResolver implements HandlerMethodArgumentResolve
 
 		HttpServletRequest request = webRequest.getNativeRequest(HttpServletRequest.class);
 		if (request == null) {
-			throw new IllegalStateException("HttpServletRequest를 가져올 수 없습니다.");
+			throw new AuthException(AuthErrorCode.INVALID_REQUEST);
 		}
 		String userId = request.getHeader(USER_ID_HEADER);
 		if (userId == null || userId.isBlank()) {

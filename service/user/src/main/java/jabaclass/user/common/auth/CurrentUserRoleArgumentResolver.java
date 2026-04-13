@@ -1,5 +1,7 @@
 package jabaclass.user.common.auth;
 
+import jabaclass.user.auth.application.exception.AuthErrorCode;
+import jabaclass.user.auth.application.exception.AuthException;
 import jakarta.servlet.http.HttpServletRequest;
 
 import org.springframework.core.MethodParameter;
@@ -28,13 +30,13 @@ public class CurrentUserRoleArgumentResolver implements HandlerMethodArgumentRes
 
 		HttpServletRequest request = webRequest.getNativeRequest(HttpServletRequest.class);
 		if (request == null) {
-			throw new IllegalStateException("HttpServletRequest를 가져올 수 없습니다.");
+			throw new AuthException(AuthErrorCode.INVALID_REQUEST);
 		}
 
 		String role = request.getHeader(USER_ROLE_HEADER);
 
 		if (role == null || role.isBlank()) {
-			throw new IllegalArgumentException("X-User-Role 헤더가 없습니다. Gateway를 통한 요청인지 확인하세요.");
+			throw new AuthException(AuthErrorCode.INVALID_REQUEST);
 		}
 
 		return role;
