@@ -5,7 +5,6 @@ import java.time.LocalTime;
 import java.util.List;
 import java.util.UUID;
 
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,7 +17,7 @@ import jabaclass.product.common.exception.CommonErrorCode;
 import jabaclass.product.domain.model.Product;
 import jabaclass.product.domain.model.ProductUser;
 import jabaclass.product.domain.model.Schedule;
-import jabaclass.product.domain.model.status.OrderStatus;
+import jabaclass.product.domain.model.status.ReservationStatus;
 import jabaclass.product.domain.model.status.ReservedStatus;
 import jabaclass.product.domain.repository.ScheduleRepository;
 import jabaclass.product.infrastructure.acl.dto.SellerRole;
@@ -30,6 +29,7 @@ import jabaclass.product.presentation.dto.request.UpdateScheduleRequestDto;
 import jabaclass.product.presentation.dto.respose.AvailabilityScheduleResponseDto;
 import jabaclass.product.presentation.dto.respose.DeleteScheduleResposeDto;
 import jabaclass.product.presentation.dto.respose.OrderResponseDto;
+import jabaclass.product.presentation.dto.respose.OrderValid;
 import jabaclass.product.presentation.dto.respose.ProductUserResponseDto;
 import jabaclass.product.presentation.dto.respose.SchedulesResponseDto;
 import lombok.RequiredArgsConstructor;
@@ -44,7 +44,6 @@ public class ScheduleService implements ScheduleUseCase {
 	private final ScheduleRepository scheduleRepository;
 	private final ProductUseCase productUseCase;
 	private final SellerRepository sellerRepository;
-	private final ApplicationEventPublisher publisher;
 	private final AuditorAwareService auditorAwareService;
 	private final ProductUserUseCase productUserUseCase;
 
@@ -159,51 +158,93 @@ public class ScheduleService implements ScheduleUseCase {
 	}
 
 	// 상품 검증 -> 예약 가능 상태 return
+	// 2026-04-09 수정
 	@Override
 	@Transactional
 	public OrderResponseDto verification(OrderRequestDto requestDto) {
+		// 스케줄 검색
 		Schedule schedule = findByIdOrThrow(requestDto.productScheduleId());
+		// 상품 검색
+		Product product = productUseCase.findByIdOrThrow(schedule.getProductId());
+
+		// 가격 검증 => 실패의 경우
+		if (!product.getPrice().equals(requestDto.price())) {
+			return OrderResponseDto.from(product, requestDto.quantity(), OrderValid.PRICE_MISMATCH, null);
+		}
+
 		// 스케줄에 예약 가능 인원과 받아온 인원에 대한 체크
 		ProductUserResponseDto saved = null;
-		boolean status = true;
 		int quantity = requestDto.quantity();
 
-		// 예약 가능 인원수
-		int remainingCapacity = calculateRemainingCapacity(requestDto.productScheduleId(), schedule.getMaxCapacity());
+		// 예약 검증 및 재고 차감/재고가 0일 경우 상태값 변경
+		int count = scheduleRepository.verification(quantity, schedule.getId());
 
-		// DB 값 < 받아온 값
-		if (quantity > remainingCapacity) { // 예약이 안 되는 경우
-			status = false;
-		} else {
+		// count 0일경우 실패, 1일경우 성공
+		if (count == 0) { // 실패
+			return OrderResponseDto.from(product, requestDto.quantity(), OrderValid.OUT_OF_STOCK, null);
+		} else { // 성공
 			CreateProductUserRequestDto dto = new CreateProductUserRequestDto(
 				requestDto.productScheduleId(),
 				requestDto.userId(),
 				quantity,
-				requestDto.status()
+				ReservationStatus.RESERVED
 			);
 			saved = productUserUseCase.create(dto);
-
-			// 재고가 끝일 경우
-			int count = remainingCapacity - saved.guestCount();
-			if (count == 0)
-				schedule.changeStatus(ReservedStatus.FULL);
 		}
-
-		Product product = productUseCase.findByIdOrThrow(schedule.getProductId());
 
 		UUID puserId = saved == null ? null : saved.id();
 
-		return OrderResponseDto.from(product, requestDto.quantity(), status, puserId);
+		return OrderResponseDto.from(product, requestDto.quantity(), OrderValid.OK, puserId);
 	}
 
-	// 재고 수정
+	// 2026-04-09 수정 => 상태값 수정
 	@Override
 	@Transactional
-	public void restoringInventory(OrderRequestDto requestDto) {
-		ProductUser user = productUserUseCase.innerFindById(requestDto.productUserId());
-		Schedule schedule = findByIdOrThrow(user.getProductScheduleId());
+	public OrderValid restoringInventory(UUID productUserId, ReservationStatus orderStatus) {
+		ProductUser user = productUserUseCase.innerFindById(productUserId);
+		findByIdOrThrow(user.getProductScheduleId());
 
-		user.changeStatus(requestDto.status());
+		OrderValid result = null;
+		int count = scheduleRepository.updateStatus(user.getId(), orderStatus);
+		if (count == 0)
+			result = OrderValid.MODI_FAIL;
+		else
+			result = OrderValid.OK;
+		return result;
+	}
+
+	@Override
+	@Transactional
+	public void confirmReservation(UUID productUserId) {
+		ProductUser user = productUserUseCase.innerFindById(productUserId);
+		if (user.getStatus() == ReservationStatus.CONFIRMED) {
+			return;
+		}
+
+		user.changeStatus(ReservationStatus.CONFIRMED);
+	}
+
+	@Override
+	@Transactional
+	public void releaseReservation(UUID productUserId) {
+		ProductUser user = productUserUseCase.innerFindById(productUserId);
+		if (user.getStatus() == ReservationStatus.RELEASED || user.getStatus() == ReservationStatus.REFUNDED) {
+			return;
+		}
+
+		Schedule schedule = findByIdOrThrow(user.getProductScheduleId());
+		Product product = productUseCase.findByIdOrThrow(schedule.getProductId());
+
+		int restored = scheduleRepository.restoreCapacity(
+			schedule.getId(),
+			user.getGuestCount(),
+			product.getMaxCapacity()
+		);
+		if (restored == 0) {
+			throw new RuntimeException("재고 복구 실패");
+		}
+
+		user.changeStatus(ReservationStatus.RELEASED);
 		refreshScheduleStatus(schedule);
 	}
 
@@ -211,10 +252,40 @@ public class ScheduleService implements ScheduleUseCase {
 	@Transactional
 	public void refundReservation(UUID productUserId) {
 		ProductUser user = productUserUseCase.innerFindById(productUserId);
-		Schedule schedule = findByIdOrThrow(user.getProductScheduleId());
+		if (user.getStatus() == ReservationStatus.REFUNDED) {
+			return;
+		}
 
-		user.changeStatus(OrderStatus.REFUNDED);
+		Schedule schedule = findByIdOrThrow(user.getProductScheduleId());
+		Product product = productUseCase.findByIdOrThrow(schedule.getProductId());
+
+		int restored = scheduleRepository.restoreCapacity(
+			schedule.getId(),
+			user.getGuestCount(),
+			product.getMaxCapacity()
+		);
+		if (restored == 0) {
+			throw new RuntimeException("재고 복구 실패");
+		}
+
+		user.changeStatus(ReservationStatus.REFUNDED);
 		refreshScheduleStatus(schedule);
+	}
+
+	@Override
+	public int claimRestore(UUID productUserId, ReservationStatus restoringStatus) {
+		return scheduleRepository.claimRestore(productUserId, restoringStatus);
+	}
+
+	@Override
+	public int restoreCapacity(UUID scheduleId, int quantity, int capacity) {
+		return scheduleRepository.restoreCapacity(scheduleId, quantity, capacity);
+	}
+
+	@Override
+	public Schedule findByProductUserId(UUID productUserId) {
+		return scheduleRepository.findByProductUserId(productUserId)
+			.orElseThrow(() -> new BusinessException(CommonErrorCode.SCHDULES_NOT_FOUND));
 	}
 
 	@Override
@@ -224,7 +295,8 @@ public class ScheduleService implements ScheduleUseCase {
 		// 해당 스케줄 예약자 수 확인
 		List<ProductUser> list = productUserUseCase.innserUserList(schedule.getId());
 		int reservedCount = list.stream()
-			.filter(l -> OrderStatus.PAID.equals(l.getStatus()))
+			.filter(l -> ReservationStatus.CONFIRMED.equals(l.getStatus())
+				|| ReservationStatus.RESERVED.equals(l.getStatus()))
 			.mapToInt(p -> p.getGuestCount())
 			.sum();
 
@@ -276,8 +348,8 @@ public class ScheduleService implements ScheduleUseCase {
 
 	private int calculateRemainingCapacity(UUID scheduleId, int maxCapacity) {
 		int reservedCount = productUserUseCase.innserUserList(scheduleId).stream()
-			.filter(productUser -> productUser.getStatus() == OrderStatus.PAID
-				|| productUser.getStatus() == OrderStatus.PENDING)
+			.filter(productUser -> productUser.getStatus() == ReservationStatus.CONFIRMED
+				|| productUser.getStatus() == ReservationStatus.RESERVED)
 			.mapToInt(ProductUser::getGuestCount)
 			.sum();
 

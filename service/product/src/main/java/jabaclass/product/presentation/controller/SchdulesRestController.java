@@ -71,11 +71,11 @@ public class SchdulesRestController implements SchedulesOpenApi {
 		return ResponseEntity.ok().body(response);
 	}
 
-	@Override
+	/*@Override
 	@PostMapping("/reservations/status")
 	public void schedulesVerification(@RequestBody OrderRequestDto requestDto) {
 		scheduleUseCase.restoringInventory(requestDto);
-	}
+	}*/
 
 	@Override
 	@DeleteMapping("/{productId}/schedules/{scheduleId}")

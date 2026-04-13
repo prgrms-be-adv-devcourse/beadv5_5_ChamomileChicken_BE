@@ -14,13 +14,13 @@ public record OrderResponseDto(
 	@Schema(description = "예약 인원", example = "2")
 	int quantity,
 
-	@Schema(description = "상품 예약 가능 여부", example = "true")
-	boolean valid,
+	@Schema(description = "검증 결과", example = "PRICE_MISMATCH")
+	OrderValid valid,
 
 	@Schema(description = "예약자 테이블 Id", example = "550e8400-e29b-41d4-a716-446655440000")
 	UUID productUserId
 ) {
-	public static OrderResponseDto from(Product product, int quantity, boolean valid, UUID id) {
+	public static OrderResponseDto from(Product product, int quantity, OrderValid valid, UUID id) {
 		return new OrderResponseDto(
 			product.getPrice(),
 			quantity,
