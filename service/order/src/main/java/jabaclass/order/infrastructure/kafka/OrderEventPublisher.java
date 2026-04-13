@@ -1,5 +1,6 @@
 package jabaclass.order.infrastructure.kafka;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
 import jabaclass.order.domain.model.Order;
@@ -29,18 +30,18 @@ public class OrderEventPublisher {
 		reservationReleasedEventPublisher.publish(new OrderReservationReleasedEvent(productUserId));
 	}
 
-	public void publishDepositRefundRequested(Order order) {
-		if (order.getDepositAmount().signum() == 0) {
+	public void publishDepositRefundRequested(Order order, BigDecimal depositAmount) {
+		if (depositAmount == null || depositAmount.signum() == 0) {
 			return;
 		}
 		depositRefundRequestedEventPublisher.publish(
-			new DepositRefundRequestedEvent(order.getId(), order.getUserId(), order.getDepositAmount())
+			new DepositRefundRequestedEvent(order.getId(), order.getUserId(), depositAmount)
 		);
 	}
 
-	public void publishOrderExpired(Order order) {
+	public void publishOrderExpired(Order order, BigDecimal depositAmount) {
 		orderExpiredEventPublisher.publish(
-			new OrderExpiredEvent(order.getId(), order.getUserId(), order.getDepositAmount())
+			new OrderExpiredEvent(order.getId(), order.getUserId(), depositAmount)
 		);
 	}
 }

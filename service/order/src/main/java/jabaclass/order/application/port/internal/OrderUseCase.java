@@ -25,7 +25,7 @@ public interface OrderUseCase {
 
     void updatePaymentStatus(UUID orderId, UpdateOrderPaymentStatusRequestDto requestDto);
 
-    void expireOrder(UUID orderId);
+    void expireOrder(UUID orderId, BigDecimal depositAmount);
 
     void refund(UUID orderId);
 
