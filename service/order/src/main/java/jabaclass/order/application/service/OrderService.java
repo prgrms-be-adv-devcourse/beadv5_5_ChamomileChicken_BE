@@ -151,6 +151,9 @@ public class OrderService implements OrderUseCase {
     }
 
     private void onPaymentFailed(Order order) {
+        if (order.getStatus() == OrderStatus.FAILED || order.getStatus() == OrderStatus.EXPIRED) {
+            return;
+        }
         order.failPayment();
         eventPublisher.publishReservationReleased(requireProductUserId(order));
         eventPublisher.publishDepositRefundRequested(order);

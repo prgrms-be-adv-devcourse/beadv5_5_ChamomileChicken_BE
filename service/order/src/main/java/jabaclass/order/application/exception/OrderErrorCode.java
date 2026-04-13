@@ -19,7 +19,9 @@ public enum OrderErrorCode implements ErrorCode {
     ORDER_DEPOSIT_AMOUNT_INVALID(HttpStatus.BAD_REQUEST, "예치금 사용 금액은 0 이상이어야 합니다."),
     ORDER_DEPOSIT_AMOUNT_EXCEEDS_PRICE(HttpStatus.BAD_REQUEST, "예치금 사용 금액은 주문 가격보다 클 수 없습니다."),
     ORDER_PRODUCT_PRICE_INVALID(HttpStatus.BAD_REQUEST, "상품 가격은 0 이상이어야 합니다."),
-    ORDER_EXPIRE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "PENDING 상태만 만료 가능합니다.");
+    ORDER_EXPIRE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "PENDING 상태만 만료 가능합니다."),
+    ORDER_PAY_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "PENDING 상태만 결제 완료 처리할 수 있습니다."),
+    ORDER_FAIL_PAYMENT_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "PENDING 상태만 결제 실패 처리할 수 있습니다.");
 
     private final HttpStatus status;
     private final String message;

@@ -98,10 +98,16 @@ public class Order {
 	}
 
 	public void pay() {
+		if (this.status != OrderStatus.PENDING) {
+			throw new BusinessException(OrderErrorCode.ORDER_PAY_NOT_ALLOWED);
+		}
 		this.status = OrderStatus.PAID;
 	}
 
 	public void failPayment() {
+		if (this.status != OrderStatus.PENDING) {
+			throw new BusinessException(OrderErrorCode.ORDER_FAIL_PAYMENT_NOT_ALLOWED);
+		}
 		this.status = OrderStatus.FAILED;
 	}
 
