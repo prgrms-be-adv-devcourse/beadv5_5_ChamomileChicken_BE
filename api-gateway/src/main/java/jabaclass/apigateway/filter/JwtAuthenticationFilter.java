@@ -98,10 +98,12 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
                     log.info("[GATEWAY] User authenticated. Path: {} {}, UserId: {}", httpMethod, path, userId);
 
                     ServerWebExchange mutatedExchange = exchange.mutate()
-                        .request(r ->
-                            r.header("X-User-Id", userId.toString())
-                             .header("X-User-Role", role)
-                        )
+                        .request(r -> {
+                            r.header("X-User-Id", userId.toString());
+                            if (role != null) {
+                                r.header("X-User-Role", role);
+                            }
+                        })
                         .build();
 
                     return chain.filter(mutatedExchange);
