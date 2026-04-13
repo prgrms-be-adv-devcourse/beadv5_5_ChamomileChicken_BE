@@ -15,7 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class PaymentFailedConsumer {
+public class PaymentFailedEventConsumer {
 
 	public static final String TOPIC = "payment.failed";
 

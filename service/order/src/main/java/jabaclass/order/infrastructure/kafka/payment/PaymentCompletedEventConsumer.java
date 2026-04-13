@@ -15,7 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class PaymentCompletedConsumer {
+public class PaymentCompletedEventConsumer {
 
 	public static final String TOPIC = "payment.completed";
 

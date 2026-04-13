@@ -1,9 +1,9 @@
 package jabaclass.order.common.config;
 
 import jabaclass.order.infrastructure.kafka.OrderExpiredEventPublisher;
-import jabaclass.order.infrastructure.kafka.payment.PaymentCompletedConsumer;
-import jabaclass.order.infrastructure.kafka.payment.PaymentFailedConsumer;
-import jabaclass.order.infrastructure.kafka.payment.PaymentRefundCompletedConsumer;
+import jabaclass.order.infrastructure.kafka.payment.PaymentCompletedEventConsumer;
+import jabaclass.order.infrastructure.kafka.payment.PaymentFailedEventConsumer;
+import jabaclass.order.infrastructure.kafka.payment.PaymentRefundCompletedEventConsumer;
 import jabaclass.order.infrastructure.kafka.product.OrderReservationConfirmedEventPublisher;
 import jabaclass.order.infrastructure.kafka.product.OrderReservationReleasedEventPublisher;
 import jabaclass.order.infrastructure.kafka.user.DepositRefundRequestedEventPublisher;
@@ -17,7 +17,7 @@ public class KafkaTopicConfig {
 
 	@Bean
 	public NewTopic paymentCompletedTopic() {
-		return TopicBuilder.name(PaymentCompletedConsumer.TOPIC)
+		return TopicBuilder.name(PaymentCompletedEventConsumer.TOPIC)
 			.partitions(3)
 			.replicas(1)
 			.build();
@@ -25,7 +25,7 @@ public class KafkaTopicConfig {
 
 	@Bean
 	public NewTopic paymentFailedTopic() {
-		return TopicBuilder.name(PaymentFailedConsumer.TOPIC)
+		return TopicBuilder.name(PaymentFailedEventConsumer.TOPIC)
 			.partitions(3)
 			.replicas(1)
 			.build();
@@ -33,7 +33,7 @@ public class KafkaTopicConfig {
 
 	@Bean
 	public NewTopic paymentRefundCompletedTopic() {
-		return TopicBuilder.name(PaymentRefundCompletedConsumer.TOPIC)
+		return TopicBuilder.name(PaymentRefundCompletedEventConsumer.TOPIC)
 			.partitions(3)
 			.replicas(1)
 			.build();
