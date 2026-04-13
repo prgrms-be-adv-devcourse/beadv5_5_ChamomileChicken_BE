@@ -9,6 +9,8 @@ import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
 
+import jabaclass.user.auth.application.exception.AuthErrorCode;
+import jabaclass.user.auth.application.exception.AuthException;
 import jakarta.servlet.http.HttpServletRequest;
 
 @Component
@@ -34,7 +36,7 @@ public class CurrentUserArgumentResolver implements HandlerMethodArgumentResolve
 		}
 		String userId = request.getHeader(USER_ID_HEADER);
 		if (userId == null || userId.isBlank()) {
-			throw new IllegalArgumentException("X-User-Id 헤더가 없습니다. Gateway를 통한 요청인지 확인하세요.");
+			throw new AuthException(AuthErrorCode.INVALID_REQUEST);
 		}
 		return UUID.fromString(userId);
 	}
