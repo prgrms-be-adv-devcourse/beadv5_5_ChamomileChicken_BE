@@ -39,7 +39,7 @@ public class JwtProvider {
     }
 
     public String getRole(Claims claims) {
-        return claims.get(Claim_ROLE, String.class);
+        return claims.get(CLAIM_ROLE, String.class);
     }
 
     public Claims parseClaims(String token) {
