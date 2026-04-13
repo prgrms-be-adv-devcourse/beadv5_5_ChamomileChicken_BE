@@ -1,0 +1,17 @@
+package jabaclass.order.infrastructure.persistence;
+
+import jabaclass.order.domain.model.Order;
+import jabaclass.order.domain.model.OrderStatus;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
+import java.util.UUID;
+
+public interface OrderJpaRepository extends JpaRepository<Order, UUID> {
+
+    List<Order> findAllByIdIn(List<UUID> orderIds);
+
+    List<Order> findAllByUserId(UUID userId);
+
+    List<Order> findAllByUserIdAndStatus(UUID userId, OrderStatus status);
+}

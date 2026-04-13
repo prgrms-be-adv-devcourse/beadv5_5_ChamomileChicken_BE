@@ -22,8 +22,8 @@ import org.springframework.http.ResponseEntity;
 
 import jabaclass.product.application.usecase.ScheduleUseCase;
 import jabaclass.product.common.exception.ApiResponseDto;
-import jabaclass.product.domain.model.status.OrderStatus;
 import jabaclass.product.domain.model.status.ReservedStatus;
+import jabaclass.product.presentation.dto.respose.OrderValid;
 import jabaclass.product.presentation.controller.SchdulesRestController;
 import jabaclass.product.presentation.dto.request.CreateScheduleRequestDto;
 import jabaclass.product.presentation.dto.request.OrderRequestDto;
@@ -115,8 +115,8 @@ class SchdulesRestControllerTest {
 
 	@Test
 	void 예약_검증_요청이_들어오면_유스케이스를_호출한다() {
-		OrderRequestDto request = new OrderRequestDto(SCHEDULE_ID, USER_ID, OrderStatus.PENDING, 2, null);
-		OrderResponseDto response = new OrderResponseDto(new BigDecimal("10000"), 2, true, PRODUCT_USER_ID);
+		OrderRequestDto request = new OrderRequestDto(SCHEDULE_ID, USER_ID, 2, new BigDecimal("10000"));
+		OrderResponseDto response = new OrderResponseDto(new BigDecimal("10000"), 2, OrderValid.OK, PRODUCT_USER_ID);
 		given(scheduleUseCase.verification(request)).willReturn(response);
 
 		ResponseEntity<OrderResponseDto> result = schdulesRestController.schedulesReservations(request);
@@ -124,15 +124,6 @@ class SchdulesRestControllerTest {
 		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
 		assertThat(result.getBody()).isEqualTo(response);
 		then(scheduleUseCase).should().verification(request);
-	}
-
-	@Test
-	void 재고_복원_요청이_들어오면_유스케이스를_호출한다() {
-		OrderRequestDto request = new OrderRequestDto(SCHEDULE_ID, USER_ID, OrderStatus.REFUNDED, 2, PRODUCT_USER_ID);
-
-		schdulesRestController.schedulesVerification(request);
-
-		then(scheduleUseCase).should().restoringInventory(request);
 	}
 
 	@Test

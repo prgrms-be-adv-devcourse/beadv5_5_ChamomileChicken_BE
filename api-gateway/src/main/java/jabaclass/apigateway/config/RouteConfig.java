@@ -25,7 +25,7 @@ public class RouteConfig {
 
 			// User Service
 			.route("user", r -> r.path("/api/v1/auth/**", "/api/v1/users/**",
-					"/api/v1/email/**")
+					"/api/v1/email/**", "/api/v1/deposits/**")
 				.uri("http://localhost:9003"))
 
 			// Product Service
