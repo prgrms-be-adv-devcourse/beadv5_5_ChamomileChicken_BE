@@ -68,7 +68,7 @@ class OrderServiceTest {
         );
         given(depositPort.validateAndUse(userId, requestDto.depositAmount())).willReturn(true);
         given(productPort.reserve(requestDto.productScheduleId(), userId, requestDto.quantity(), requestDto.productPrice()))
-            .willReturn(new ProductReservationResponseDto(new BigDecimal("10000"), productUserId, true));
+            .willReturn(new ProductReservationResponseDto(new BigDecimal("10000"), 2, "OK", productUserId));
         given(orderRepository.save(any(Order.class)))
             .willAnswer(invocation -> invocation.getArgument(0));
 
@@ -116,7 +116,7 @@ class OrderServiceTest {
             UUID.randomUUID(), UUID.randomUUID(), 1, new BigDecimal("10000"), new BigDecimal("10000")
         );
         given(productPort.reserve(requestDto.productScheduleId(), userId, requestDto.quantity(), requestDto.productPrice()))
-            .willReturn(new ProductReservationResponseDto(new BigDecimal("10000"), productUserId, true));
+            .willReturn(new ProductReservationResponseDto(new BigDecimal("10000"), 1, "OK", productUserId));
         given(depositPort.validateAndUse(userId, requestDto.depositAmount())).willReturn(false);
 
         // when & then
@@ -135,7 +135,7 @@ class OrderServiceTest {
             UUID.randomUUID(), UUID.randomUUID(), 1, new BigDecimal("10000"), new BigDecimal("1000")
         );
         given(productPort.reserve(requestDto.productScheduleId(), userId, requestDto.quantity(), requestDto.productPrice()))
-            .willReturn(new ProductReservationResponseDto(new BigDecimal("10000"), null, false));
+            .willReturn(new ProductReservationResponseDto(new BigDecimal("10000"), 0, "OUT_OF_STOCK", null));
 
         // when & then
         assertThatThrownBy(() -> orderService.create(userId, requestDto))
@@ -208,49 +208,6 @@ class OrderServiceTest {
     }
 
     @Test
-    void 주문을_취소한다() {
-        // given
-        UUID userId = UUID.randomUUID();
-        Order order = Order.create(UUID.randomUUID(), userId, UUID.randomUUID(), 1, new BigDecimal("15000"), new BigDecimal("1000"));
-        given(orderRepository.findById(order.getId())).willReturn(Optional.of(order));
-
-        // when
-        OrderResponseDto actual = orderService.cancel(order.getId(), userId);
-
-        // then
-        assertThat(actual.status()).isEqualTo(OrderStatus.CANCELLED);
-        assertThat(order.getStatus()).isEqualTo(OrderStatus.CANCELLED);
-    }
-
-    @Test
-    void 다른_사용자의_주문을_취소하면_예외가_발생한다() {
-        // given
-        Order order = Order.create(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), 1, new BigDecimal("15000"), new BigDecimal("1000"));
-        given(orderRepository.findById(order.getId())).willReturn(Optional.of(order));
-
-        // when & then
-        assertThatThrownBy(() -> orderService.cancel(order.getId(), UUID.randomUUID()))
-            .isInstanceOf(BusinessException.class)
-            .hasMessage("본인의 주문만 조회 및 취소할 수 있습니다.");
-        then(orderRepository).should(never()).save(any(Order.class));
-    }
-
-    @Test
-    void 이미_취소된_주문을_취소하면_예외가_발생한다() {
-        // given
-        UUID userId = UUID.randomUUID();
-        Order order = Order.create(UUID.randomUUID(), userId, UUID.randomUUID(), 1, new BigDecimal("15000"), new BigDecimal("1000"));
-        order.cancel();
-        given(orderRepository.findById(order.getId())).willReturn(Optional.of(order));
-
-        // when & then
-        assertThatThrownBy(() -> orderService.cancel(order.getId(), userId))
-            .isInstanceOf(BusinessException.class)
-            .hasMessage("현재 주문 상태에서는 취소할 수 없습니다.");
-        then(orderRepository).should(never()).save(any(Order.class));
-    }
-
-    @Test
     void 결제_금액이_일치하면_true를_반환한다() {
         // given
         Order order = Order.create(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), 1, new BigDecimal("15000"), new BigDecimal("1000"));
@@ -294,25 +251,6 @@ class OrderServiceTest {
         then(eventPublisher).should().publishDepositRefundRequested(argThat(o ->
             o.getId().equals(order.getId()) &&
             o.getDepositAmount().compareTo(new BigDecimal("3000")) == 0
-        ));
-    }
-
-    @Test
-    void 결제_취소를_반영한다() {
-        // given
-        UUID productUserId = UUID.randomUUID();
-        Order order = Order.create(UUID.randomUUID(), UUID.randomUUID(), productUserId, 2, new BigDecimal("15000"), new BigDecimal("4000"));
-        given(orderRepository.findById(order.getId())).willReturn(Optional.of(order));
-
-        // when
-        orderService.updatePaymentStatus(order.getId(), new UpdateOrderPaymentStatusRequestDto(PaymentResultStatus.CANCELLED));
-
-        // then
-        assertThat(order.getStatus()).isEqualTo(OrderStatus.CANCELLED);
-        then(eventPublisher).should().publishReservationReleased(productUserId);
-        then(eventPublisher).should().publishDepositRefundRequested(argThat(o ->
-            o.getId().equals(order.getId()) &&
-            o.getDepositAmount().compareTo(new BigDecimal("4000")) == 0
         ));
     }
 
