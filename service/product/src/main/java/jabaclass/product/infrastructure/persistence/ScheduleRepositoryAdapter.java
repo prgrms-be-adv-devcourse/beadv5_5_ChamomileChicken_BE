@@ -60,22 +60,23 @@ public class ScheduleRepositoryAdapter implements ScheduleRepository {
 	}
 
 	@Override
-	public int updateStatus(UUID productUserId, ReservationStatus status) {
-		return scheduleJpaRepository.updateStatus(productUserId, status);
+	public int updateStatus(UUID productUserId, ReservationStatus status, List<ReservationStatus> conditionStatus) {
+		return scheduleJpaRepository.updateStatus(productUserId, status, conditionStatus);
 	}
 
 	@Override
-	public int claimRestore(UUID productUserId, ReservationStatus restoringStatus) {
-		return scheduleJpaRepository.claimRestore(productUserId, restoringStatus);
+	public int claimRestore(UUID productUserId) {
+		return scheduleJpaRepository.claimRestore(productUserId);
 	}
 
 	@Override
-	public int restoreCapacity(UUID scheduleId, int quantity, int capacity) {
-		return scheduleJpaRepository.restoreCapacity(scheduleId, quantity, capacity);
+	public int restoreCapacity(UUID scheduleId, int quantity, int maxCapacity) {
+		return scheduleJpaRepository.restoreCapacity(scheduleId, quantity, maxCapacity);
 	}
 
 	@Override
-	public Optional<Schedule> findByProductUserId(UUID productUserId) {
-		return scheduleJpaRepository.findByProductUserId(productUserId);
+	public int restoreStatus(UUID productUserId) {
+		return scheduleJpaRepository.restoreStatus(productUserId);
 	}
+
 }

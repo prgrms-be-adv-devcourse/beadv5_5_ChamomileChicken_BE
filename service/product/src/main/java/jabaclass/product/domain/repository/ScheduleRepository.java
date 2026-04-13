@@ -39,22 +39,23 @@ public interface ScheduleRepository {
 
 	// 2026-04-09 상태값 변경
 	int updateStatus(@Param("productUserId") UUID productUserId,
-		@Param("status") ReservationStatus status);
+		@Param("status") ReservationStatus status,
+		@Param("conditionStatus") List<ReservationStatus> conditionStatus);
 
 	// 2026-04-09 멱등성 체크 및 선점
 	int claimRestore(
-		@Param("productUserId") UUID productUserId,
-		@Param("restoringStatus") ReservationStatus restoringStatus
+		@Param("productUserId") UUID productUserId
 	);
 
 	// 2026-04-09 재고 복구
 	int restoreCapacity(
 		@Param("scheduleId") UUID scheduleId,
 		@Param("quantity") int quantity,
-		@Param("capacity") int capacity
+		@Param("maxCapacity") int maxCapacity
 	);
 
-	// 2026-04-09 예약자 테이블 id로 스케쥴 검색
-	Optional<Schedule> findByProductUserId(@Param("productUserId") UUID productUserId);
-
+	// 2026-04-13 재고 복구 과정에서 실패 시 복구 선점 해제
+	int restoreStatus(
+		@Param("productUserId") UUID productUserId
+	);
 }

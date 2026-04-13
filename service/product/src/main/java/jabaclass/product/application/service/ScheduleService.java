@@ -18,7 +18,7 @@ import jabaclass.product.common.exception.CommonErrorCode;
 import jabaclass.product.domain.model.Product;
 import jabaclass.product.domain.model.ProductUser;
 import jabaclass.product.domain.model.Schedule;
-import jabaclass.product.domain.model.status.OrderStatus;
+import jabaclass.product.domain.model.status.ReservationStatus;
 import jabaclass.product.domain.model.status.ReservedStatus;
 import jabaclass.product.domain.repository.ScheduleRepository;
 import jabaclass.product.infrastructure.acl.dto.SellerRole;
@@ -30,6 +30,7 @@ import jabaclass.product.presentation.dto.request.UpdateScheduleRequestDto;
 import jabaclass.product.presentation.dto.respose.AvailabilityScheduleResponseDto;
 import jabaclass.product.presentation.dto.respose.DeleteScheduleResposeDto;
 import jabaclass.product.presentation.dto.respose.OrderResponseDto;
+import jabaclass.product.presentation.dto.respose.OrderValid;
 import jabaclass.product.presentation.dto.respose.ProductUserResponseDto;
 import jabaclass.product.presentation.dto.respose.SchedulesResponseDto;
 import lombok.RequiredArgsConstructor;
@@ -158,7 +159,7 @@ public class ScheduleService implements ScheduleUseCase {
 			.toList();
 	}
 
-	// 상품 검증 -> 예약 가능 상태 return
+	// 상품 검증 -> 예약 가능 상태 return => api 호출
 	// 2026-04-09 수정
 	@Override
 	@Transactional
@@ -175,12 +176,10 @@ public class ScheduleService implements ScheduleUseCase {
 
 		// 스케줄에 예약 가능 인원과 받아온 인원에 대한 체크
 		ProductUserResponseDto saved = null;
-		int quantity = requestDto.quantity();
 
 		// 예약 가능 인원수
-		int remainingCapacity = calculateRemainingCapacity(requestDto.productScheduleId(), schedule.getCapacity());
 		// 예약 검증 및 재고 차감/재고가 0일 경우 상태값 변경
-		int count = scheduleRepository.verification(quantity, schedule.getId());
+		int count = scheduleRepository.verification(requestDto.quantity(), schedule.getId());
 
 		// count 0일경우 실패, 1일경우 성공
 		if (count == 0) { // 실패
@@ -189,7 +188,7 @@ public class ScheduleService implements ScheduleUseCase {
 			CreateProductUserRequestDto dto = new CreateProductUserRequestDto(
 				requestDto.productScheduleId(),
 				requestDto.userId(),
-				quantity,
+				requestDto.quantity(),
 				ReservationStatus.RESERVED
 			);
 			saved = productUserUseCase.create(dto);
@@ -200,23 +199,66 @@ public class ScheduleService implements ScheduleUseCase {
 		return OrderResponseDto.from(product, requestDto.quantity(), OrderValid.OK, puserId);
 	}
 
-	// 2026-04-09 수정 => 상태값 수정
+	// 2026-04-09 결제 성공 시 상태값 수정 => kafka
+	@Override
+	@Transactional
+	public OrderValid reservationCompleted(UUID productUserId) {
+		// 예약자 존재 여부 확인 => 없을 경우 예외
+		ProductUser user = productUserUseCase.innerFindById(productUserId);
+		// 스게줄 존재 확인 => 없을 경우 예외
+		findByIdOrThrow(user.getProductScheduleId());
+
+		int count = scheduleRepository.updateStatus(user.getId(), ReservationStatus.CONFIRMED,
+			List.of(ReservationStatus.RESERVED));
+		if (count == 0)
+			return OrderValid.MODI_FAIL;
+		else
+			return OrderValid.OK;
+	}
+
+	// 2026-04-09 결제 실패/취소/환불 시 재고 복구  및 상태값 변경 => kafka
 	@Override
 	@Transactional
 	public OrderValid restoringInventory(UUID productUserId, ReservationStatus orderStatus) {
-		ProductUser user = productUserUseCase.innerFindById(productUserId);
-		findByIdOrThrow(user.getProductScheduleId());
+		// 예약자 존재 여부 확인 및 재고 적용 상태로값 수정
+		// 0일경우 재고 복구 x, 1일 경우 복구
+		// 예약 대기 or 예약 확정일 경우에만 진행
+		int claim = scheduleRepository.claimRestore(productUserId);
 
-		OrderValid result = null;
-		int count = scheduleRepository.updateStatus(user.getId(), orderStatus);
-		if (count == 0)
-			result = OrderValid.MODI_FAIL;
-		else
-			result = OrderValid.OK;
-		return result;
+		// 복구 가능한 예약자가 없으면 실패
+		// 복구 중일 경우 실패
+		if (claim == 0) {
+			return OrderValid.MODI_FAIL;
+		}
+
+		ProductUser user = productUserUseCase.innerFindById(productUserId);
+
+		// 스게줄 존재 확인 => 없을 경우 예외
+		Schedule schedule = findByIdOrThrow(user.getProductScheduleId());
+		Product product = productUseCase.findByIdOrThrow(schedule.getProductId());
+
+		// 복구는 예약 대기 or 예약 확정일 경우에만 이루어 질 수 있음
+		// 재고 복구
+		int inventory = scheduleRepository.restoreCapacity(user.getProductScheduleId(), user.getGuestCount(),
+			product.getMaxCapacity());
+		// 복구 실패
+		if (inventory == 0) { // 재고 복구 상태값 원복
+			scheduleRepository.restoreStatus(user.getId());
+			return OrderValid.MODI_FAIL;
+		}
+
+		// 상태값 변경
+		// 예약 보류, 예약 확정일 경우 및 재고 복구 중일 경우에 수정
+		int count = scheduleRepository.updateStatus(user.getId(), orderStatus
+			, List.of(ReservationStatus.RESERVED, ReservationStatus.CONFIRMED));
+		if (count == 0) {
+			scheduleRepository.restoreStatus(user.getId());
+			return OrderValid.MODI_FAIL;
+		} else
+			return OrderValid.OK;
 	}
 
-	@Override
+/*	@Override
 	@Transactional
 	public void confirmReservation(UUID productUserId) {
 		ProductUser user = productUserUseCase.innerFindById(productUserId);
@@ -225,9 +267,9 @@ public class ScheduleService implements ScheduleUseCase {
 		}
 
 		user.changeStatus(ReservationStatus.CONFIRMED);
-	}
+	}*/
 
-	@Override
+/*	@Override
 	@Transactional
 	public void releaseReservation(UUID productUserId) {
 		ProductUser user = productUserUseCase.innerFindById(productUserId);
@@ -248,10 +290,10 @@ public class ScheduleService implements ScheduleUseCase {
 		}
 
 		user.changeStatus(ReservationStatus.RELEASED);
-		refreshScheduleStatus(schedule);
-	}
+		//	refreshScheduleStatus(schedule);
+	}*/
 
-	@Override
+/*	@Override
 	@Transactional
 	public void refundReservation(UUID productUserId) {
 		ProductUser user = productUserUseCase.innerFindById(productUserId);
@@ -272,13 +314,8 @@ public class ScheduleService implements ScheduleUseCase {
 		}
 
 		user.changeStatus(ReservationStatus.REFUNDED);
-		refreshScheduleStatus(schedule);
-	}
-
-	@Override
-	public int claimRestore(UUID productUserId, ReservationStatus restoringStatus) {
-		return scheduleRepository.claimRestore(productUserId, restoringStatus);
-	}
+		//	refreshScheduleStatus(schedule);
+	}*/
 
 	@Override
 	public int restoreCapacity(UUID scheduleId, int quantity, int capacity) {
@@ -286,26 +323,13 @@ public class ScheduleService implements ScheduleUseCase {
 	}
 
 	@Override
-	public Schedule findByProductUserId(UUID productUserId) {
-		return scheduleRepository.findByProductUserId(productUserId)
-			.orElseThrow(() -> new BusinessException(CommonErrorCode.SCHDULES_NOT_FOUND));
-	}
-
-	@Override
 	public AvailabilityScheduleResponseDto availabilitySchedule(UUID scheduleId) {
 		Schedule schedule = findByIdOrThrow(scheduleId);
+		Product product = productUseCase.findByIdOrThrow(schedule.getProductId());
+		// 총 예약 완료 인원 수
+		int reservedCount = product.getMaxCapacity() - schedule.getCapacity();
 
-		// 해당 스케줄 예약자 수 확인
-		List<ProductUser> list = productUserUseCase.innserUserList(schedule.getId());
-		int reservedCount = list.stream()
-			.filter(l -> ReservationStatus.CONFIRMED.equals(l.getStatus())
-				|| ReservationStatus.RESERVED.equals(l.getStatus()))
-			.mapToInt(p -> p.getGuestCount())
-			.sum();
-
-		int remainingCount = schedule.getMaxCapacity() - reservedCount;
-
-		return AvailabilityScheduleResponseDto.from(schedule, reservedCount, remainingCount);
+		return AvailabilityScheduleResponseDto.from(schedule, product.getMaxCapacity(), reservedCount);
 	}
 
 	// 상품 일자 존재 여부/단일 상품 일자 검색
@@ -334,29 +358,6 @@ public class ScheduleService implements ScheduleUseCase {
 		if (!start.isBefore(end)) {
 			throw new BusinessException(CommonErrorCode.INVALID_TIME_RANGE);
 		}
-	}
-
-	private void refreshScheduleStatus(Schedule schedule) {
-		int remainingCapacity = calculateRemainingCapacity(schedule.getId(), schedule.getMaxCapacity());
-
-		if (remainingCapacity <= 0) {
-			schedule.changeStatus(ReservedStatus.FULL);
-			return;
-		}
-
-		if (schedule.getStatus() == ReservedStatus.FULL) {
-			schedule.changeStatus(ReservedStatus.AVAILABLE);
-		}
-	}
-
-	private int calculateRemainingCapacity(UUID scheduleId, int maxCapacity) {
-		int reservedCount = productUserUseCase.innserUserList(scheduleId).stream()
-			.filter(productUser -> productUser.getStatus() == ReservationStatus.CONFIRMED
-				|| productUser.getStatus() == ReservationStatus.RESERVED)
-			.mapToInt(ProductUser::getGuestCount)
-			.sum();
-
-		return maxCapacity - reservedCount;
 	}
 
 	private UserResponseDto validateAndGetSeller() {

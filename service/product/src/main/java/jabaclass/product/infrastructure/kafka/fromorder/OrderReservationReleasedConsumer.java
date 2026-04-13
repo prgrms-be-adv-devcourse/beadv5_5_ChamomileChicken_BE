@@ -29,6 +29,8 @@ public class OrderReservationReleasedConsumer {
 				objectMapper.readValue(message, OrderReservationReleasedEvent.class);
 
 			scheduleUseCase.releaseReservation(event.productUserId());
+			// 아래 서비스를 확인해주세요.
+			//	scheduleUseCase.restoringInventory(event.productUserId(), status);
 
 			log.info("order.reservation.released 처리 완료. productUserId={}", event.productUserId());
 		} catch (Exception e) {

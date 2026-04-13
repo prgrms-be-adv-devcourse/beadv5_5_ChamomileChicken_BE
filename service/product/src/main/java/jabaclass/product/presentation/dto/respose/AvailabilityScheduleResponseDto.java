@@ -26,13 +26,13 @@ public record AvailabilityScheduleResponseDto(
 
 ) {
 
-	public static AvailabilityScheduleResponseDto from(Schedule schedule, int reservedCount, int remainingCount) {
+	public static AvailabilityScheduleResponseDto from(Schedule schedule, int maxCapacity, int reservedCount) {
 		return new AvailabilityScheduleResponseDto(
 			schedule.getId(),
 			schedule.getStatus(),
-			schedule.getCapacity(),
+			maxCapacity,
 			reservedCount,
-			remainingCount
+			schedule.getCapacity()
 		);
 	}
 }

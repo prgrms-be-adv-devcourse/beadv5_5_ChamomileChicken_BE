@@ -71,12 +71,6 @@ public class SchdulesRestController implements SchedulesOpenApi {
 		return ResponseEntity.ok().body(response);
 	}
 
-	/*@Override
-	@PostMapping("/reservations/status")
-	public void schedulesVerification(@RequestBody OrderRequestDto requestDto) {
-		scheduleUseCase.restoringInventory(requestDto);
-	}*/
-
 	@Override
 	@DeleteMapping("/{productId}/schedules/{scheduleId}")
 	public ResponseEntity<ApiResponseDto<DeleteScheduleResposeDto>> schedulesDelete(@PathVariable UUID productId,

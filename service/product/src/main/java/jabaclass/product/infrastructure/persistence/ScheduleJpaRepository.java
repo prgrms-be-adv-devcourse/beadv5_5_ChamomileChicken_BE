@@ -57,57 +57,68 @@ public interface ScheduleJpaRepository extends JpaRepository<Schedule, UUID> {
 	Optional<Schedule> findByIdAndDeleteDtIsNull(UUID schedulesId);
 
 	// 2026-04-09 추가, 재고 검증 및 재고 차감, 상태값 변경
+	@Modifying
 	@Query("""
 			UPDATE Schedule s
-		 		SET s.maxCapacity = s.maxCapacity - :quantity,
+		 		SET s.capacity = s.capacity - :quantity,
 		     		s.status = CASE
-		         WHEN s.maxCapacity - :quantity = 0 THEN 'FULL'
+		         WHEN s.capacity - :quantity = 0 THEN 'FULL'
 		         ELSE s.status
 		     	END
 		 		WHERE s.id = :scheduleId
-		   	AND s.maxCapacity >= :quantity
+		   	AND s.capacity >= :quantity
 		""")
 	int verification(@Param("quantity") int quantity, @Param("scheduleId") UUID scheduleId);
 
 	// 2026-04-09 상태값 변경
 	@Modifying
-	@Query("update ProductUser u set u.status = :status where u.id = :productUserId")
+	@Query("""
+			update ProductUser u set u.status = :status
+			where u.id = :productUserId 
+					and u.status in :conditionStatus
+		""")
 	int updateStatus(@Param("productUserId") UUID productUserId,
-		@Param("status") ReservationStatus status);
+		@Param("status") ReservationStatus status,
+		@Param("conditionStatus") List<ReservationStatus> conditionStatus
+	);
 
-	// 2026-04-09 멱등성 체크 및 선점
+	// 2026-04-16 멱등성 체크 및 선점
 	@Modifying
 	@Query("""
 		   UPDATE ProductUser pu
-		      SET pu.status = :restoringStatus
+		      SET pu.restoreStatus = 1
 		    WHERE pu.id = :productUserId
-			  AND pu.status IN ('PENDING', 'PAID')
+			  AND pu.status IN ('RESERVED', 'CONFIRMED')
+			  AND pu.restoreStatus = 0
 		""")
 	int claimRestore(
-		@Param("productUserId") UUID productUserId,
-		@Param("restoringStatus") ReservationStatus restoringStatus
+		@Param("productUserId") UUID productUserId
 	);
 
 	// 2026-04-09 재고 복구
 	@Modifying
 	@Query("""
 		    UPDATE Schedule s
-		       SET s.maxCapacity = s.maxCapacity + :quantity
+		       SET s.capacity = s.capacity + :quantity
 		     WHERE s.id = :scheduleId
-		       AND s.maxCapacity + :quantity <= :capacity
+		       AND s.capacity + :quantity <= :maxCapacity
 		""")
 	int restoreCapacity(
 		@Param("scheduleId") UUID scheduleId,
 		@Param("quantity") int quantity,
-		@Param("capacity") int capacity
+		@Param("maxCapacity") int maxCapacity
 	);
 
-	// 2026-04-09 예약자 테이블 id로 스케쥴 검색
+	// 2026-04-16 멱등성 체크 및 선점
+	@Modifying
 	@Query("""
-		    SELECT s 
-			FROM ProductUser s
-		     WHERE s.id = :productUserId
+		   UPDATE ProductUser pu
+		      SET pu.restoreStatus = 0
+		    WHERE pu.id = :productUserId
+			  AND pu.restoreStatus = 1
 		""")
-	Optional<Schedule> findByProductUserId(@Param("productUserId") UUID productUserId);
+	int restoreStatus(
+		@Param("productUserId") UUID productUserId
+	);
 
 }

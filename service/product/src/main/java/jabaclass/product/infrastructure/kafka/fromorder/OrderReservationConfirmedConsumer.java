@@ -28,7 +28,8 @@ public class OrderReservationConfirmedConsumer {
 			OrderReservationConfirmedEvent event =
 				objectMapper.readValue(message, OrderReservationConfirmedEvent.class);
 
-			scheduleUseCase.confirmReservation(event.productUserId());
+			//	scheduleUseCase.confirmReservation(event.productUserId());
+			scheduleUseCase.reservationCompleted(event.productUserId());
 
 			log.info("order.reservation.confirmed 처리 완료. productUserId={}", event.productUserId());
 		} catch (Exception e) {

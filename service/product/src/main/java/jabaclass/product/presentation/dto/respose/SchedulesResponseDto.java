@@ -29,7 +29,7 @@ public record SchedulesResponseDto(
 	String status,
 
 	@Schema(description = "예약 상태", example = "AVAILABLE")
-	int maxCapacity,
+	int capacity,
 
 	@Schema(description = "등록일시", example = "2026-03-04T18:10:00")
 	LocalDateTime regDt,
