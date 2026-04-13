@@ -25,6 +25,7 @@ jobs:
       settlement: ${{ steps.filter.outputs.settlement }}
       file: ${{ steps.filter.outputs.file }}
       global: ${{ steps.filter.outputs.global }}
+      workflow: ${{ steps.filter.outputs.workflow }}
       docs_only: ${{ steps.filter.outputs.docs_only }}
 
     steps:
@@ -75,6 +76,8 @@ jobs:
               - 'gradlew.bat'
               - 'gradle/**'
               - 'config/**'
+
+            workflow:
               - '.github/workflows/**'
 
             docs_only:
@@ -84,7 +87,7 @@ jobs:
   test:
     needs: detect-changes
     runs-on: ubuntu-latest
-    if: ${{ needs.detect-changes.outputs.docs_only != 'true' || (
+    if: ${{
       needs.detect-changes.outputs.common == 'true' ||
       needs.detect-changes.outputs.gateway == 'true' ||
       needs.detect-changes.outputs.admin == 'true' ||
@@ -95,7 +98,7 @@ jobs:
       needs.detect-changes.outputs.settlement == 'true' ||
       needs.detect-changes.outputs.file == 'true' ||
       needs.detect-changes.outputs.global == 'true'
-      ) }}
+  }}
 
     steps:
       - name: Checkout
