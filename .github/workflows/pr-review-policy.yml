@@ -1,0 +1,92 @@
+name: PR Review Policy
+
+on:
+  pull_request:
+    branches: ["dev"]
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+      - review_requested
+      - review_request_removed
+
+  push:
+    branches: ["dev"]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  review-policy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check PR review policy
+        uses: actions/github-script@v8
+        with:
+          script: |
+            if (context.eventName !== "pull_request") {
+              core.info("Not a pull_request event. Skipping.");
+              return;
+            }
+
+            const pr = context.payload.pull_request;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const pull_number = pr.number;
+
+            const files = await github.paginate(
+              github.rest.pulls.listFiles,
+              {
+                owner,
+                repo,
+                pull_number,
+                per_page: 100
+              }
+            );
+
+            const changedFiles = files.map(file => file.filename);
+
+            core.info(`Changed files: ${changedFiles.join(", ")}`);
+
+            const isDocsOnly =
+              changedFiles.length > 0 &&
+              changedFiles.every(path =>
+                path.startsWith("docs/") || path.endsWith(".md")
+              );
+
+            if (isDocsOnly) {
+              core.info("Docs-only PR detected. Approval not required.");
+              return;
+            }
+
+            const reviews = await github.paginate(
+              github.rest.pulls.listReviews,
+              {
+                owner,
+                repo,
+                pull_number,
+                per_page: 100
+              }
+            );
+
+            const latestStateByUser = new Map();
+
+            for (const review of reviews) {
+              if (!review.user?.login) continue;
+              latestStateByUser.set(review.user.login, review.state);
+            }
+
+            const approvers = [...latestStateByUser.entries()]
+              .filter(([_, state]) => state === "APPROVED")
+              .map(([login]) => login);
+
+            core.info(`Approvers: ${approvers.join(", ")}`);
+
+            if (approvers.length < 1) {
+              core.setFailed(
+                `Code change PR requires at least 1 approval. Current approvals: ${approvers.length}`
+              );
+            }
