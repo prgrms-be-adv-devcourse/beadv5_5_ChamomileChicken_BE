@@ -1,7 +1,7 @@
 package jabaclass.payment.domain.model;
 
-import jabaclass.payment.common.exception.PaymentErrorCode;
-import jabaclass.payment.common.exception.PaymentException;
+import jabaclass.payment.common.error.PaymentErrorCode;
+import jabaclass.payment.common.error.PaymentException;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

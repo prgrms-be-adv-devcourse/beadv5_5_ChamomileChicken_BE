@@ -12,8 +12,8 @@ import jabaclass.payment.application.port.external.OrderPort;
 import jabaclass.payment.application.port.external.PaymentGatewayPort;
 import jabaclass.payment.application.usecase.PaymentSettlementQueryUseCase;
 import jabaclass.payment.application.usecase.PaymentUseCase;
-import jabaclass.payment.common.exception.PaymentErrorCode;
-import jabaclass.payment.common.exception.PaymentException;
+import jabaclass.payment.common.error.PaymentErrorCode;
+import jabaclass.payment.common.error.PaymentException;
 import jabaclass.payment.domain.model.Payment;
 import jabaclass.payment.domain.model.Refund;
 import jabaclass.payment.domain.repository.PaymentRepository;
@@ -51,11 +51,11 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 
 	@Override
 	@Transactional
-	public PaymentResponseDto create(PreparePaymentRequestDto request) {
+	public PaymentResponseDto create(UUID userId, PreparePaymentRequestDto request) {
 
 		// Payment 생성
 		Payment payment = Payment.create(
-			request.userId(),
+			userId,
 			request.productId(),
 			request.orderId(),
 			request.productUserId(),
@@ -86,13 +86,17 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 	}
 
 	@Transactional
-	public PaymentResponseDto confirm(ConfirmPaymentRequestDto request) {
+	public PaymentResponseDto confirm(UUID userId, ConfirmPaymentRequestDto request) {
 
 		// Payment 조회
 		UUID orderId = request.orderId();
 
 		Payment payment = paymentRepository.findByOrderId(orderId)
 			.orElseThrow(() -> new PaymentException(PaymentErrorCode.PAYMENT_NOT_FOUND));
+
+		if (!payment.getUserId().equals(userId)) {
+			throw new PaymentException(PaymentErrorCode.UNAUTHORIZED_PAYMENT_ACCESS);
+		}
 
 		// 멱등성 처리: 이미 완료된 결제는 다시 처리하지 않음
 		if (payment.isDone()) {
@@ -157,11 +161,15 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 
 	@Override
 	@Transactional
-	public void refund(RefundPaymentRequestDto request) {
+	public void refund(UUID userId, RefundPaymentRequestDto request) {
 
 		// Payment 조회
 		Payment payment = paymentRepository.findByOrderId(request.orderId())
 			.orElseThrow(() -> new PaymentException(PaymentErrorCode.PAYMENT_NOT_FOUND));
+
+		if (!payment.getUserId().equals(userId)) {
+			throw new PaymentException(PaymentErrorCode.UNAUTHORIZED_PAYMENT_ACCESS);
+		}
 
 		// 완료된 결제만 환불 가능
 		if (!payment.isDone()) {
