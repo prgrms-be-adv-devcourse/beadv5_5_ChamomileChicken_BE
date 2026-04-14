@@ -52,6 +52,15 @@ public class OutboxEvent extends BaseEntity {
 		return event;
 	}
 
+	public void markPending() {
+		this.status = OutboxStatus.PENDING;
+	}
+
+	public void markSending() {
+		this.status = OutboxStatus.SENDING;
+		this.lastAttemptAt = LocalDateTime.now();
+	}
+
 	public void markPublished() {
 		this.status = OutboxStatus.PUBLISHED;
 	}
