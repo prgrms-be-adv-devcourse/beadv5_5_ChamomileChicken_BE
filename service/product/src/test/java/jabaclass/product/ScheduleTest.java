@@ -266,6 +266,25 @@ class ScheduleTest {
 	}
 
 	@Test
+	void 예약자_ID로_일정_단건을_조회한다() {
+		ProductUser user = ProductUser.builder()
+			.productScheduleId(SCHEDULE_ID)
+			.userId(USER_ID)
+			.guestCount(2)
+			.status(ReservationStatus.RESERVED)
+			.build();
+		ReflectionTestUtils.setField(user, "id", PRODUCT_USER_ID);
+		given(productUserUseCase.innerFindById(PRODUCT_USER_ID)).willReturn(user);
+		given(scheduleRepository.findByIdAndDeleteDtIsNull(SCHEDULE_ID)).willReturn(Optional.of(schedule));
+
+		SchedulesResponseDto result = scheduleService.selectSchedules(PRODUCT_USER_ID);
+
+		assertThat(result.id()).isEqualTo(SCHEDULE_ID);
+		assertThat(result.productId()).isEqualTo(PRODUCT_ID);
+		assertThat(result.capacity()).isEqualTo(10);
+	}
+
+	@Test
 	void 가격이_다르면_가격불일치를_반환한다() {
 		OrderRequestDto request = new OrderRequestDto(SCHEDULE_ID, USER_ID, 3, new BigDecimal("999.99"));
 		given(scheduleRepository.findByIdAndDeleteDtIsNull(SCHEDULE_ID)).willReturn(Optional.of(schedule));
@@ -448,6 +467,39 @@ class ScheduleTest {
 		assertThat(result.maxCapacity()).isEqualTo(10);
 		assertThat(result.reservedCount()).isEqualTo(0);
 		assertThat(result.remainingCount()).isEqualTo(10);
+	}
+
+	@Test
+	void 만료된_일정을_마감처리한다() {
+		List<UUID> closableIds = List.of(SCHEDULE_ID);
+		given(scheduleRepository.findClosableIds(
+			any(LocalDate.class),
+			eq(ReservedStatus.CLOSED),
+			any()
+		)).willReturn(closableIds);
+		given(scheduleRepository.bulkClose(
+			eq(closableIds),
+			eq(List.of(ReservedStatus.AVAILABLE, ReservedStatus.FULL)),
+			eq(ReservedStatus.CLOSED)
+		)).willReturn(1);
+
+		int result = scheduleService.closeExpiredSchedulesOnce();
+
+		assertThat(result).isEqualTo(1);
+	}
+
+	@Test
+	void 마감할_일정이_없으면_0을_반환한다() {
+		given(scheduleRepository.findClosableIds(
+			any(LocalDate.class),
+			eq(ReservedStatus.CLOSED),
+			any()
+		)).willReturn(List.of());
+
+		int result = scheduleService.closeExpiredSchedulesOnce();
+
+		assertThat(result).isZero();
+		then(scheduleRepository).should(never()).bulkClose(any(), any(), any());
 	}
 
 	@Test

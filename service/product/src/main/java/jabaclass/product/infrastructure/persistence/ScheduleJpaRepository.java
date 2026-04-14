@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
@@ -14,6 +15,7 @@ import org.springframework.data.repository.query.Param;
 
 import jabaclass.product.domain.model.Schedule;
 import jabaclass.product.domain.model.status.ReservationStatus;
+import jabaclass.product.domain.model.status.ReservedStatus;
 import jakarta.persistence.LockModeType;
 
 public interface ScheduleJpaRepository extends JpaRepository<Schedule, UUID> {
@@ -119,6 +121,42 @@ public interface ScheduleJpaRepository extends JpaRepository<Schedule, UUID> {
 		""")
 	int restoreStatus(
 		@Param("productUserId") UUID productUserId
+	);
+
+	/*
+	 * 날짜 마감 스케줄러 돌리는 구간
+	 *
+	 *  */
+	// 사이즈를 가져와 날짜 마감 시킬 아이디 가져오기
+	@Query("""
+		    select s.id
+		    from Schedule s
+		    where s.scheduleDt < :today
+		      and s.status not in (:status)
+		""")
+	List<UUID> findClosableIds(
+		@Param("today") LocalDate today,
+		@Param("status") ReservedStatus status,
+		Pageable pageable
+	);
+
+	/*
+	 * @Modifying(clearAutomatically = true, flushAutomatically = true)
+	 * DB랑 JPA 영속성 컨텍스트를 맞추기 위한 안전장치
+	 * clearAutomatically = bulk query 실행 후, 영속성 컨텍스트를 싹 비움(같은 트랜잭션 안에서 이미 조회한 엔티티가 있을 때 문제)
+	 * 메모리 방지용으로 설정
+	 * */
+	@Modifying(clearAutomatically = true, flushAutomatically = true)
+	@Query("""
+		    update Schedule s
+		       set s.status = :closedStatus
+		     where s.id in (:ids)
+		       and s.status in (:status)
+		""")
+	int bulkClose(
+		@Param("ids") List<UUID> ids,
+		@Param("status") List<ReservedStatus> status,
+		@Param("closedStatus") ReservedStatus closedStatus
 	);
 
 }
