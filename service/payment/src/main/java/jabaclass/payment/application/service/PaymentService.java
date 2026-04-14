@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import jabaclass.payment.application.port.external.OrderPort;
 import jabaclass.payment.application.port.external.PaymentGatewayPort;
+import jabaclass.payment.application.port.external.UserPort;
 import jabaclass.payment.application.usecase.PaymentSettlementQueryUseCase;
 import jabaclass.payment.application.usecase.PaymentUseCase;
 import jabaclass.payment.common.exception.PaymentErrorCode;
@@ -18,23 +19,19 @@ import jabaclass.payment.domain.model.Payment;
 import jabaclass.payment.domain.model.Refund;
 import jabaclass.payment.domain.repository.PaymentRepository;
 import jabaclass.payment.domain.repository.RefundRepository;
-import jabaclass.payment.infrastructure.kafka.PaymentCompletedEvent;
-import jabaclass.payment.infrastructure.kafka.PaymentFailedEvent;
-import jabaclass.payment.infrastructure.kafka.PaymentRefundedEvent;
-import jabaclass.payment.infrastructure.outbox.EventType;
-import jabaclass.payment.infrastructure.outbox.OutboxEvent;
-import jabaclass.payment.infrastructure.outbox.OutboxRepository;
+import jabaclass.payment.infrastructure.kafka.PaymentRefundCompletedEvent;
+import jabaclass.payment.infrastructure.kafka.PaymentRefundCompletedEventPublisher;
 import jabaclass.payment.presentation.dto.request.ConfirmPaymentRequestDto;
 import jabaclass.payment.presentation.dto.request.PreparePaymentRequestDto;
 import jabaclass.payment.presentation.dto.request.RefundPaymentRequestDto;
 import jabaclass.payment.presentation.dto.response.PaymentResponseDto;
 import jabaclass.payment.presentation.dto.response.PaymentSettlementSliceResponseDto;
 import jabaclass.payment.presentation.dto.response.PaymentSettlementTargetItemResponseDto;
+import jabaclass.payment.presentation.dto.response.RefundPaymentResponseDto;
 import jabaclass.payment.presentation.dto.response.RefundSettlementSliceResponseDto;
 import jabaclass.payment.presentation.dto.response.RefundSettlementTargetItemResponseDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Service
 @RequiredArgsConstructor
@@ -46,14 +43,12 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 	private final RefundRepository refundRepository;
 	private final PaymentGatewayPort paymentGatewayPort;
 	private final OrderPort orderPort;
-	private final OutboxRepository outboxRepository;
-	private final ObjectMapper objectMapper;
+	private final UserPort userPort;
+	private final PaymentRefundCompletedEventPublisher refundCompletedEventPublisher;
 
 	@Override
 	@Transactional
 	public PaymentResponseDto create(PreparePaymentRequestDto request) {
-
-		// Payment 생성
 		Payment payment = Payment.create(
 			request.userId(),
 			request.productId(),
@@ -64,23 +59,25 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 			request.depositAmount()
 		);
 
-		// 예치금 100% 결제인 경우 → PG 호출 없이 바로 완료 처리
 		if (payment.getPaymentAmount().compareTo(BigDecimal.ZERO) == 0) {
+
+			log.info("예치금 100% 결제 - 즉시 완료 처리 orderId={}", payment.getOrderId());
+
 			payment.markDone("DEPOSIT_ONLY");
+
+			try {
+				orderPort.updatePaymentStatus(
+					payment.getOrderId(),
+					payment.getId(),
+					payment.getDepositAmount().intValue(),
+					"PAID"
+				);
+			} catch (Exception ex) {
+				log.error("Order 상태 업데이트 실패 (deposit only)", ex);
+			}
 		}
 
 		Payment savedPayment = paymentRepository.save(payment);
-
-		if (savedPayment.getPaymentAmount().compareTo(BigDecimal.ZERO) == 0) {
-			OutboxEvent event = OutboxEvent.create(
-				"PAYMENT",
-				savedPayment.getId().toString(),
-				EventType.PAYMENT_COMPLETED,
-				toJson(new PaymentCompletedEvent(savedPayment.getId(), savedPayment.getOrderId()))
-			);
-
-			outboxRepository.save(event);
-		}
 
 		return PaymentResponseDto.from(savedPayment);
 	}
@@ -94,17 +91,23 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 		Payment payment = paymentRepository.findByOrderId(orderId)
 			.orElseThrow(() -> new PaymentException(PaymentErrorCode.PAYMENT_NOT_FOUND));
 
-		// 멱등성 처리: 이미 완료된 결제는 다시 처리하지 않음
+		log.info("[confirm] validate 호출 전 orderId={}, requestAmount={}, totalAmount={}",
+			payment.getOrderId(), request.amount(), payment.getTotalAmount());
+
+		// 멱등성 체크
 		if (payment.isDone()) {
 			return PaymentResponseDto.from(payment);
 		}
 
-		// Order 서비스에 금액 검증 요청
+		// Order 금액 검증
 		boolean valid = orderPort.validateOrder(
 			payment.getOrderId(),
 			payment.getTotalAmount().intValue()
 		);
 		if (!valid) {
+			log.warn("Order 금액 검증 실패. orderId={}, totalAmount={}, requestAmount={}",
+				payment.getOrderId(), payment.getTotalAmount(), request.amount());
+
 			throw new PaymentException(PaymentErrorCode.INVALID_ORDER_AMOUNT);
 		}
 
@@ -115,38 +118,48 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 		}
 
 		try {
-			// 외부 PG 승인 요청
+			// PG 승인
 			paymentGatewayPort.confirm(
 				request.paymentKey(),
 				payment.getOrderId().toString(),
 				request.amount()
 			);
 
-			// 결제 성공 처리
+			// Payment 상태 변경
 			payment.markDone(request.paymentKey());
 
-			outboxRepository.save(
-				OutboxEvent.create(
-					"PAYMENT",
-					payment.getId().toString(),
-					EventType.PAYMENT_COMPLETED,
-					toJson(new PaymentCompletedEvent(payment.getId(), payment.getOrderId()))
-				)
-			);
+			try {
+				orderPort.updatePaymentStatus(
+					payment.getOrderId(),
+					payment.getId(),
+					payment.getDepositAmount().intValue(),
+					"PAID"
+				);
+			} catch (Exception ex) {
+				log.error("Order 상태 업데이트 실패 (PAID). orderId={}",
+					payment.getOrderId(), ex);
+			}
 
 		} catch (Exception e) {
 
-			// 결제 실패 처리
+			log.error("결제 승인 실패. paymentId={}, orderId={}",
+				payment.getId(), payment.getOrderId(), e);
+
+			// Payment 실패 처리
 			payment.markFailed();
 
-			outboxRepository.save(
-				OutboxEvent.create(
-					"PAYMENT",
-					payment.getId().toString(),
-					EventType.PAYMENT_FAILED,
-					toJson(new PaymentFailedEvent(payment.getId(), payment.getOrderId()))
-				)
-			);
+			try {
+				// Order 실패 상태 반영 (보조 처리)
+				orderPort.updatePaymentStatus(
+					payment.getOrderId(),
+					payment.getId(),
+					payment.getDepositAmount().intValue(),
+					"FAILED"
+				);
+			} catch (Exception ex) {
+				log.error("Order 상태 업데이트 실패 (FAILED). orderId={}",
+					payment.getOrderId(), ex);
+			}
 
 			throw new PaymentException(PaymentErrorCode.PAYMENT_CONFIRM_FAILED, e);
 		}
@@ -157,13 +170,10 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 
 	@Override
 	@Transactional
-	public void refund(RefundPaymentRequestDto request) {
-
-		// Payment 조회
+	public RefundPaymentResponseDto refund(RefundPaymentRequestDto request) {
 		Payment payment = paymentRepository.findByOrderId(request.orderId())
 			.orElseThrow(() -> new PaymentException(PaymentErrorCode.PAYMENT_NOT_FOUND));
 
-		// 완료된 결제만 환불 가능
 		if (!payment.isDone()) {
 			throw new PaymentException(PaymentErrorCode.PAYMENT_NOT_COMPLETED);
 		}
@@ -175,48 +185,43 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 			payment.getDepositAmount()
 		);
 		refundRepository.save(refund);
+		refund.markProcessing();
 
 		try {
-			// 실제 결제 금액이 있는 경우 PG 환불 호출
-			if (payment.getPaymentAmount().signum() > 0) {
+			if (payment.getPaymentAmount().signum() > 0) { // 결제수단 금액이 있으면 Toss 환불 호출
 				paymentGatewayPort.refund(
 					payment.getPaymentKey(),
 					payment.getPaymentAmount().intValue()
 				);
 			}
 
-			// 상태 변경
+			if (payment.getDepositAmount().signum() > 0) { // 예치금 금액이 있으면 User 서비스에 환불 호출
+				userPort.refundDeposit(
+					payment.getUserId(),
+					payment.getDepositAmount(),
+					payment.getId()
+				);
+			}
+
 			payment.markCancelled();
 			refund.markCompleted();
 			refundRepository.save(refund);
 
-			outboxRepository.save(
-				OutboxEvent.create(
-					"PAYMENT",
-					payment.getId().toString(),
-					EventType.PAYMENT_REFUNDED,
-					toJson(new PaymentRefundedEvent(payment.getId(), payment.getOrderId()))
+			refundCompletedEventPublisher.publish(
+				new PaymentRefundCompletedEvent(
+					payment.getOrderId(),
+					payment.getProductUserId()
 				)
 			);
-
 		} catch (Exception e) {
-			// 환불 실패 처리
 			refund.markFailed();
 			refundRepository.save(refund);
+			log.error("환불 실패. orderId={}, paymentId={}", payment.getOrderId(), payment.getId(), e);
 
 			throw new PaymentException(PaymentErrorCode.PAYMENT_REFUND_FAILED, e);
 		}
-	}
 
-	// Outbox payload 직렬화
-	// - 이벤트 객체 → JSON 문자열로 변환
-	// - Kafka 전송 시 payload로 사용됨
-	private String toJson(Object obj) {
-		try {
-			return objectMapper.writeValueAsString(obj);
-		} catch (Exception e) {
-			throw new RuntimeException("Outbox 직렬화 실패", e);
-		}
+		return RefundPaymentResponseDto.from(refund, payment.getOrderId());
 	}
 
 	@Override
