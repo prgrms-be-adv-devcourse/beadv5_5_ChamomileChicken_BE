@@ -1,5 +1,7 @@
 package jabaclass.payment.presentation.controller;
 
+import java.util.UUID;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jabaclass.payment.common.dto.ApiResponseDto;
@@ -21,7 +23,7 @@ public interface PaymentApi {
 			"""
 	)
 	ResponseEntity<ApiResponseDto<PaymentResponseDto>> preparePayment(
-		PreparePaymentRequestDto request
+		PreparePaymentRequestDto request, UUID userId
 	);
 
 	@Operation(
@@ -35,7 +37,7 @@ public interface PaymentApi {
             """
 	)
 	ResponseEntity<ApiResponseDto<PaymentResponseDto>> confirmPayment(
-		ConfirmPaymentRequestDto request
+		ConfirmPaymentRequestDto request, UUID userId
 	);
 
 	@Operation(
@@ -48,6 +50,6 @@ public interface PaymentApi {
 			"""
 	)
 	ResponseEntity<ApiResponseDto<Void>> refundPayment(
-		RefundPaymentRequestDto request
+		RefundPaymentRequestDto request, UUID userId
 	);
 }

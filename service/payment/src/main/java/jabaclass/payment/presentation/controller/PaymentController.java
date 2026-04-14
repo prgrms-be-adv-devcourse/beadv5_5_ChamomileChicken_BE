@@ -1,5 +1,7 @@
 package jabaclass.payment.presentation.controller;
 
+import java.util.UUID;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -8,6 +10,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import jabaclass.payment.application.usecase.PaymentUseCase;
+import jabaclass.payment.common.auth.CurrentUser;
 import jabaclass.payment.common.dto.ApiResponseDto;
 import jabaclass.payment.presentation.dto.request.ConfirmPaymentRequestDto;
 import jabaclass.payment.presentation.dto.request.PreparePaymentRequestDto;
@@ -25,10 +28,11 @@ public class PaymentController implements PaymentApi {
 	@Override
 	@PostMapping("/prepare")
 	public ResponseEntity<ApiResponseDto<PaymentResponseDto>> preparePayment(
-		@RequestBody PreparePaymentRequestDto request) {
+		@RequestBody PreparePaymentRequestDto request,
+		@CurrentUser UUID userId) {
 		//UUID userId = SecurityUtil.getCurrentUserId();
 
-		PaymentResponseDto response = paymentUseCase.create(request);
+		PaymentResponseDto response = paymentUseCase.create(userId,request);
 
 		return ResponseEntity.status(HttpStatus.CREATED)
 			.body(ApiResponseDto.success(
@@ -41,8 +45,9 @@ public class PaymentController implements PaymentApi {
 	@Override
 	@PostMapping("/confirm")
 	public ResponseEntity<ApiResponseDto<PaymentResponseDto>> confirmPayment(
-		@RequestBody ConfirmPaymentRequestDto request) {
-		PaymentResponseDto response = paymentUseCase.confirm(request);
+		@RequestBody ConfirmPaymentRequestDto request,
+		@CurrentUser UUID userId) {
+		PaymentResponseDto response = paymentUseCase.confirm(userId,request);
 
 		return ResponseEntity.ok(
 			ApiResponseDto.success(
@@ -56,9 +61,10 @@ public class PaymentController implements PaymentApi {
 	@Override
 	@PostMapping("/refunds")
 	public ResponseEntity<ApiResponseDto<Void>> refundPayment(
-		@RequestBody RefundPaymentRequestDto request) {
+		@RequestBody RefundPaymentRequestDto request,
+		@CurrentUser UUID userId) {
 
-		paymentUseCase.refund(request);
+		paymentUseCase.refund(userId,request);
 
 		return ResponseEntity.status(HttpStatus.ACCEPTED).body(
 			ApiResponseDto.success(
