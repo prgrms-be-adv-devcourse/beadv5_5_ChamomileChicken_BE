@@ -21,8 +21,8 @@ import org.springframework.http.ResponseEntity;
 import jabaclass.product.application.usecase.ProductUseCase;
 import jabaclass.product.application.usecase.ProductUserUseCase;
 import jabaclass.product.common.exception.ApiResponseDto;
-import jabaclass.product.domain.model.status.OrderStatus;
 import jabaclass.product.domain.model.status.ProductStatus;
+import jabaclass.product.domain.model.status.ReservationStatus;
 import jabaclass.product.presentation.controller.ProductRestController;
 import jabaclass.product.presentation.dto.request.CreateProductRequestDto;
 import jabaclass.product.presentation.dto.request.SearchProductRequestDto;
@@ -162,7 +162,7 @@ class ProductRestControllerTest {
 				SCHEDULE_ID,
 				"사용자",
 				2,
-				OrderStatus.PAID.getStatusName()
+				ReservationStatus.CONFIRMED.getStatusName()
 			)
 		);
 		given(productUserUseCase.getUser(SCHEDULE_ID)).willReturn(response);

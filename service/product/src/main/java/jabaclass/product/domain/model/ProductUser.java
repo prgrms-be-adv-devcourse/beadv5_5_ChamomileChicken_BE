@@ -5,7 +5,7 @@ import java.util.UUID;
 import org.hibernate.annotations.UuidGenerator;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
-import jabaclass.product.domain.model.status.OrderStatus;
+import jabaclass.product.domain.model.status.ReservationStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
@@ -42,16 +42,16 @@ public class ProductUser {
 
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false, length = 50)
-	private OrderStatus status;
+	private ReservationStatus status;
 
 	@PrePersist
 	public void prePersist() {
 		if (this.status == null) {
-			this.status = OrderStatus.PENDING;
+			this.status = ReservationStatus.RESERVED;
 		}
 	}
 
-	public void changeStatus(OrderStatus status) {
+	public void changeStatus(ReservationStatus status) {
 		this.status = status;
 	}
 }

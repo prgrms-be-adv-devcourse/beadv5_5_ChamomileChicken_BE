@@ -1,10 +1,11 @@
 package jabaclass.user.common.dto;
 
-import org.springframework.http.HttpStatus;
-
 import com.fasterxml.jackson.annotation.JsonInclude;
 
 import lombok.Getter;
+
+import org.springframework.http.HttpStatus;
+
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @Getter

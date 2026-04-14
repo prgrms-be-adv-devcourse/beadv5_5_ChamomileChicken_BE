@@ -3,7 +3,7 @@ package jabaclass.product.presentation.dto.request;
 import java.util.UUID;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import jabaclass.product.domain.model.status.OrderStatus;
+import jabaclass.product.domain.model.status.ReservationStatus;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 
@@ -23,6 +23,6 @@ public record CreateProductUserRequestDto(
 	int guestCount,
 
 	@Schema(description = "구매 상태", example = "PENDING_PURCHASE")
-	OrderStatus status
+	ReservationStatus status
 ) {
 }

@@ -39,8 +39,8 @@ import jabaclass.product.common.exception.CommonErrorCode;
 import jabaclass.product.domain.model.Product;
 import jabaclass.product.domain.model.ProductUser;
 import jabaclass.product.domain.model.Schedule;
-import jabaclass.product.domain.model.status.OrderStatus;
 import jabaclass.product.domain.model.status.ProductStatus;
+import jabaclass.product.domain.model.status.ReservationStatus;
 import jabaclass.product.domain.model.status.ReservedStatus;
 import jabaclass.product.domain.repository.ScheduleRepository;
 import jabaclass.product.infrastructure.acl.dto.response.UserResponseDto;
@@ -304,90 +304,72 @@ class ScheduleTest {
 	}
 
 	@Test
-	void 예약_검증에_성공하면_예약을_생성하고_true를_반환한다() {
-		OrderRequestDto request = new OrderRequestDto(SCHEDULE_ID, USER_ID, OrderStatus.PENDING, 3, null);
-		ProductUser paidUser = ProductUser.builder()
-			.productScheduleId(SCHEDULE_ID)
-			.userId(UUID.randomUUID())
-			.guestCount(2)
-			.status(OrderStatus.PAID)
-			.build();
+	void 예약_검증에_성공하면_예약을_생성하고_OK를_반환한다() {
+		OrderRequestDto request = new OrderRequestDto(SCHEDULE_ID, USER_ID, 3, PRICE);
 		ProductUserResponseDto createdUser = new ProductUserResponseDto(
 			PRODUCT_USER_ID,
 			SCHEDULE_ID,
 			"user",
 			3,
-			OrderStatus.PENDING.getStatusName()
+			ReservationStatus.RESERVED.getStatusName()
 		);
 		given(scheduleRepository.findByIdAndDeleteDtIsNull(SCHEDULE_ID)).willReturn(Optional.of(schedule));
-		given(productUserUseCase.innserUserList(SCHEDULE_ID)).willReturn(List.of(paidUser));
+		given(scheduleRepository.verification(3, SCHEDULE_ID)).willReturn(1);
 		given(productUserUseCase.create(any(CreateProductUserRequestDto.class))).willReturn(createdUser);
 		given(productUseCase.findByIdOrThrow(PRODUCT_ID)).willReturn(product);
 
 		OrderResponseDto result = scheduleService.verification(request);
 
-		assertThat(result.valid()).isTrue();
+		assertThat(result.valid()).isEqualTo(jabaclass.product.presentation.dto.respose.OrderValid.OK);
 		assertThat(result.productUserId()).isEqualTo(PRODUCT_USER_ID);
 		then(productUserUseCase).should().create(any(CreateProductUserRequestDto.class));
 	}
 
 	@Test
-	void 예약_수량이_재고보다_많으면_false를_반환한다() {
-		OrderRequestDto request = new OrderRequestDto(SCHEDULE_ID, USER_ID, OrderStatus.PENDING, 11, null);
-		ProductUser paidUser = ProductUser.builder()
-			.productScheduleId(SCHEDULE_ID)
-			.userId(UUID.randomUUID())
-			.guestCount(3)
-			.status(OrderStatus.PAID)
-			.build();
+	void 예약_수량이_재고보다_많으면_OUT_OF_STOCK을_반환한다() {
+		OrderRequestDto request = new OrderRequestDto(SCHEDULE_ID, USER_ID, 11, PRICE);
 		given(scheduleRepository.findByIdAndDeleteDtIsNull(SCHEDULE_ID)).willReturn(Optional.of(schedule));
-		given(productUserUseCase.innserUserList(SCHEDULE_ID)).willReturn(List.of(paidUser));
+		given(scheduleRepository.verification(11, SCHEDULE_ID)).willReturn(0);
 		given(productUseCase.findByIdOrThrow(PRODUCT_ID)).willReturn(product);
 
 		OrderResponseDto result = scheduleService.verification(request);
 
-		assertThat(result.valid()).isFalse();
+		assertThat(result.valid()).isEqualTo(jabaclass.product.presentation.dto.respose.OrderValid.OUT_OF_STOCK);
 		assertThat(result.productUserId()).isNull();
 		then(productUserUseCase).should(never()).create(any(CreateProductUserRequestDto.class));
 	}
 
 	@Test
-	void 예약_검증시_pending_예약도_재고에서_차감한다() {
-		OrderRequestDto request = new OrderRequestDto(SCHEDULE_ID, USER_ID, OrderStatus.PENDING, 7, null);
-		ProductUser pendingUser = ProductUser.builder()
-			.productScheduleId(SCHEDULE_ID)
-			.userId(UUID.randomUUID())
-			.guestCount(4)
-			.status(OrderStatus.PENDING)
-			.build();
+	void 예약_검증시_가격이_다르면_PRICE_MISMATCH를_반환한다() {
+		OrderRequestDto request = new OrderRequestDto(SCHEDULE_ID, USER_ID, 7, new BigDecimal("9999"));
 		given(scheduleRepository.findByIdAndDeleteDtIsNull(SCHEDULE_ID)).willReturn(Optional.of(schedule));
-		given(productUserUseCase.innserUserList(SCHEDULE_ID)).willReturn(List.of(pendingUser));
 		given(productUseCase.findByIdOrThrow(PRODUCT_ID)).willReturn(product);
 
 		OrderResponseDto result = scheduleService.verification(request);
 
-		assertThat(result.valid()).isFalse();
+		assertThat(result.valid()).isEqualTo(jabaclass.product.presentation.dto.respose.OrderValid.PRICE_MISMATCH);
 		assertThat(result.productUserId()).isNull();
 		then(productUserUseCase).should(never()).create(any(CreateProductUserRequestDto.class));
 	}
 
 	@Test
-	void 재고_복원_요청이_오면_예약_상태를_변경한다() {
+	void 예약_해제_요청이_오면_예약_상태를_RELEASED로_변경한다() {
 		ProductUser productUser = ProductUser.builder()
 			.productScheduleId(SCHEDULE_ID)
 			.userId(USER_ID)
 			.guestCount(2)
-			.status(OrderStatus.PAID)
+			.status(ReservationStatus.CONFIRMED)
 			.build();
 		ReflectionTestUtils.setField(productUser, "id", PRODUCT_USER_ID);
-		OrderRequestDto request = new OrderRequestDto(SCHEDULE_ID, USER_ID, OrderStatus.REFUNDED, 2, PRODUCT_USER_ID);
 		given(productUserUseCase.innerFindById(PRODUCT_USER_ID)).willReturn(productUser);
 		given(scheduleRepository.findByIdAndDeleteDtIsNull(SCHEDULE_ID)).willReturn(Optional.of(schedule));
+		given(productUseCase.findByIdOrThrow(PRODUCT_ID)).willReturn(product);
+		given(scheduleRepository.restoreCapacity(SCHEDULE_ID, 2, product.getMaxCapacity())).willReturn(1);
 		given(productUserUseCase.innserUserList(SCHEDULE_ID)).willReturn(List.of(productUser));
 
-		scheduleService.restoringInventory(request);
+		scheduleService.releaseReservation(PRODUCT_USER_ID);
 
-		assertThat(productUser.getStatus()).isEqualTo(OrderStatus.REFUNDED);
+		assertThat(productUser.getStatus()).isEqualTo(ReservationStatus.RELEASED);
 	}
 
 	@Test
@@ -396,23 +378,25 @@ class ScheduleTest {
 			.productScheduleId(SCHEDULE_ID)
 			.userId(USER_ID)
 			.guestCount(4)
-			.status(OrderStatus.PAID)
+			.status(ReservationStatus.CONFIRMED)
 			.build();
 		ProductUser activeUser = ProductUser.builder()
 			.productScheduleId(SCHEDULE_ID)
 			.userId(UUID.randomUUID())
 			.guestCount(2)
-			.status(OrderStatus.PAID)
+			.status(ReservationStatus.CONFIRMED)
 			.build();
 		ReflectionTestUtils.setField(refundedUser, "id", PRODUCT_USER_ID);
 		schedule.changeStatus(ReservedStatus.FULL);
 		given(productUserUseCase.innerFindById(PRODUCT_USER_ID)).willReturn(refundedUser);
 		given(scheduleRepository.findByIdAndDeleteDtIsNull(SCHEDULE_ID)).willReturn(Optional.of(schedule));
+		given(productUseCase.findByIdOrThrow(PRODUCT_ID)).willReturn(product);
+		given(scheduleRepository.restoreCapacity(SCHEDULE_ID, 4, product.getMaxCapacity())).willReturn(1);
 		given(productUserUseCase.innserUserList(SCHEDULE_ID)).willReturn(List.of(refundedUser, activeUser));
 
 		scheduleService.refundReservation(PRODUCT_USER_ID);
 
-		assertThat(refundedUser.getStatus()).isEqualTo(OrderStatus.REFUNDED);
+		assertThat(refundedUser.getStatus()).isEqualTo(ReservationStatus.REFUNDED);
 		assertThat(schedule.getStatus()).isEqualTo(ReservedStatus.AVAILABLE);
 	}
 
@@ -452,13 +436,13 @@ class ScheduleTest {
 			.productScheduleId(SCHEDULE_ID)
 			.userId(UUID.randomUUID())
 			.guestCount(4)
-			.status(OrderStatus.PAID)
+			.status(ReservationStatus.CONFIRMED)
 			.build();
 		ProductUser pendingUser = ProductUser.builder()
 			.productScheduleId(SCHEDULE_ID)
 			.userId(UUID.randomUUID())
 			.guestCount(2)
-			.status(OrderStatus.PENDING)
+			.status(ReservationStatus.RESERVED)
 			.build();
 		given(scheduleRepository.findByIdAndDeleteDtIsNull(SCHEDULE_ID)).willReturn(Optional.of(schedule));
 		given(productUserUseCase.innserUserList(SCHEDULE_ID)).willReturn(List.of(paidUser, pendingUser));
@@ -466,8 +450,8 @@ class ScheduleTest {
 		AvailabilityScheduleResponseDto result = scheduleService.availabilitySchedule(SCHEDULE_ID);
 
 		assertThat(result.scheduleId()).isEqualTo(SCHEDULE_ID);
-		assertThat(result.reservedCount()).isEqualTo(4);
-		assertThat(result.remainingCount()).isEqualTo(6);
+		assertThat(result.reservedCount()).isEqualTo(6);
+		assertThat(result.remainingCount()).isEqualTo(4);
 	}
 
 	private void 권한있는_판매자와_본인상품을_준비한다() {
