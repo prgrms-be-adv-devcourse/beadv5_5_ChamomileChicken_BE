@@ -104,4 +104,13 @@ public class SchdulesRestController implements SchedulesOpenApi {
 		return ResponseEntity.ok()
 			.body(ApiResponseDto.success(HttpStatus.OK, "성공적으로 검색 되었습니다.", response));
 	}
+
+	@Override
+	@PostMapping("/schedules/{scheduleId}")
+	public ResponseEntity<ApiResponseDto<SchedulesResponseDto>> selectSchedules(@PathVariable UUID scheduleId) {
+		SchedulesResponseDto response = scheduleUseCase.selectSchedules(scheduleId);
+		
+		return ResponseEntity.ok()
+			.body(ApiResponseDto.success(HttpStatus.OK, "성공적으로 검색 되었습니다.", response));
+	}
 }

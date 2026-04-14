@@ -91,4 +91,16 @@ public interface SchedulesOpenApi {
 	)
 	@CommonErrorResponses
 	ResponseEntity<ApiResponseDto<AvailabilityScheduleResponseDto>> schedulesaAvailability(UUID scheduleId);
+
+	@Operation(summary = "상품 일정 상제 정보 확인", description = "상품 일정 상제 정보를 검색 합니다.")
+	@ApiResponse(
+		responseCode = "200",
+		description = "상품 일정 상제 정보 검색 성공",
+		content = @Content(
+			schema = @Schema(implementation = SchedulesResponseDto.class)
+		)
+	)
+	@CommonErrorResponses
+	ResponseEntity<ApiResponseDto<SchedulesResponseDto>> selectSchedules(UUID scheduleId);
+
 }

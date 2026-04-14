@@ -207,6 +207,13 @@ public class ScheduleService implements ScheduleUseCase {
 			return OrderValid.OK;
 	}
 
+	@Override
+	public SchedulesResponseDto selectSchedules(UUID productUserId) {
+		ProductUser user = productUserUseCase.innerFindById(productUserId);
+		Schedule schedule = findByIdOrThrow(user.getProductScheduleId());
+		return SchedulesResponseDto.from(schedule);
+	}
+
 	// 2026-04-09 결제 실패/취소/환불 시 재고 복구  및 상태값 변경 => kafka
 	@Override
 	@Transactional
