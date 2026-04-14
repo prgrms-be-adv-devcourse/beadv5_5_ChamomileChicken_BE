@@ -22,7 +22,8 @@
 {
   "productId": "uuid",
   "productScheduleId": "uuid",
-  "quantity": 2
+  "quantity": 2,
+  "depositAmount": 10000
 }
 ```
 
