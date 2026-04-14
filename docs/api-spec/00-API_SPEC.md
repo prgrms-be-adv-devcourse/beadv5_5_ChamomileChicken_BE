@@ -55,8 +55,8 @@ GET  /api/v1/products/**
 
 비즈니스 흐름 순서로 정렬됩니다.
 
-| # | 서비스        | 포트   | 문서                                                |
-|---|------------|------|---------------------------------------------------|
+| # | 서비스        | 포트   | 문서                                   |
+|---|------------|------|--------------------------------------|
 | 1 | User       | 9003 | [01-user.md](01-user.md)             |
 | 2 | Product    | 9004 | [02-product.md](02-product.md)       |
 | 3 | File       | 9000 | [03-file.md](03-file.md)             |
@@ -104,9 +104,9 @@ GET  /api/v1/products/**
 [서비스 간 직접 호출 RestTemplate — 게이트웨이 우회]
     Order      → Product   재고 확인 (/api/v1/products/reservations)
     Order      → User      예치금 검증/차감 (/api/v1/deposits/validate, /use)
+    Order      → Product   일정 단건 조회 (/api/v1/products/schedules/{scheduleId})
     Payment    → Order     금액 검증, 상태 업데이트 (/api/v1/orders/**)
     Payment    → User      예치금 차감 (/api/v1/deposits/use)
-    Payment    → Product   일정 단건 조회 (/api/v1/products/schedules/{scheduleId})
     Settlement → Payment   정산 대상 조회 (/api/v1/payments/settlement-targets)
     Settlement → Order     주문 정보 조회 (/api/v1/orders/bulk)
     Settlement → User      셀러 정산 계좌 조회 (/api/v1/users/sellers/**/bulk)
