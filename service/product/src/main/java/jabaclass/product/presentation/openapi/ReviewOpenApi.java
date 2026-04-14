@@ -26,7 +26,7 @@ public interface ReviewOpenApi {
 		)
 	)
 	@CommonErrorResponses
-	ResponseEntity<ApiResponseDto<ReviewResponseDto>> create(ReviewRequestDto request, UUID productId);
+	ResponseEntity<ApiResponseDto<ReviewResponseDto>> create(ReviewRequestDto request, UUID productId, UUID userId);
 
 	@Operation(summary = "리뷰 수정", description = "리뷰를 수정 합니다.")
 	@ApiResponse(
@@ -37,7 +37,7 @@ public interface ReviewOpenApi {
 		)
 	)
 	@CommonErrorResponses
-	ResponseEntity<ApiResponseDto<ReviewResponseDto>> update(ReviewRequestDto request, UUID reivewId);
+	ResponseEntity<ApiResponseDto<ReviewResponseDto>> update(ReviewRequestDto request, UUID reivewId, UUID userId);
 
 	@Operation(summary = "리뷰 삭제", description = "리뷰를 삭제 합니다.")
 	@ApiResponse(
@@ -48,7 +48,7 @@ public interface ReviewOpenApi {
 		)
 	)
 	@CommonErrorResponses
-	ResponseEntity<ApiResponseDto<UUID>> delete(UUID reivewId);
+	ResponseEntity<ApiResponseDto<UUID>> delete(UUID reivewId, UUID userId);
 
 	@Operation(summary = "개인 리뷰", description = "본인 리뷰 목록을 검색합니다.")
 	@ApiResponse(
@@ -59,7 +59,7 @@ public interface ReviewOpenApi {
 		)
 	)
 	@CommonErrorResponses
-	ResponseEntity<ApiResponseDto<List<ReviewResponseDto>>> userReview();
+	ResponseEntity<ApiResponseDto<List<ReviewResponseDto>>> userReview(UUID userId);
 
 	@Operation(summary = "상품 리뷰", description = "상품 리뷰 목록을 검색합니다.")
 	@ApiResponse(
@@ -82,5 +82,5 @@ public interface ReviewOpenApi {
 	)
 	@CommonErrorResponses
 	ResponseEntity<ApiResponseDto<ReviewResponseDto>> review(UUID reviewId);
-
+	
 }

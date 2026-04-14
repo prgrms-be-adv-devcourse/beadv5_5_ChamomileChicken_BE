@@ -1,10 +1,11 @@
 package jabaclass.product;
 
-import static org.assertj.core.api.Assertions.*;
-import static org.mockito.BDDMockito.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
 
-import jabaclass.product.application.service.AuditorAwareService;
-import jabaclass.product.infrastructure.acl.client.FileConfirmClient;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
@@ -19,16 +20,18 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import jabaclass.product.application.acl.SellerRepository;
 import jabaclass.product.application.exception.BusinessException;
 import jabaclass.product.application.service.ProductService;
+import jabaclass.product.common.exception.CommonErrorCode;
 import jabaclass.product.domain.model.Product;
 import jabaclass.product.domain.model.status.ProductStatus;
 import jabaclass.product.domain.repository.ProductRepository;
 import jabaclass.product.domain.repository.ProductSearchRepository;
+import jabaclass.product.infrastructure.acl.client.FileConfirmClient;
 import jabaclass.product.infrastructure.acl.dto.response.UserResponseDto;
 import jabaclass.product.infrastructure.elasticsearch.ProductDocument;
 import jabaclass.product.presentation.dto.request.SearchProductRequestDto;
@@ -36,7 +39,7 @@ import jabaclass.product.presentation.dto.respose.ProductResponseDto;
 import jabaclass.product.presentation.dto.respose.SearchProductResponseDto;
 
 @ExtendWith(MockitoExtension.class)
-public class ProductSelectTest {
+class ProductSelectTest {
 
 	@InjectMocks
 	private ProductService productService;
@@ -54,18 +57,13 @@ public class ProductSelectTest {
 	private ApplicationEventPublisher publisher;
 
 	@Mock
-	private AuditorAwareService auditorAwareService;
-
-	@Mock
 	private FileConfirmClient fileConfirmClient;
 
 	private static final BigDecimal PRICE = new BigDecimal("1000.50");
-
 	private static final UUID SELLER_ID = UUID.fromString("123e4567-e89b-12d3-a456-426614174000");
+	private static final UUID PRODUCT_ID = UUID.fromString("223e4567-e89b-12d3-a456-426614174000");
 
-	// test 상품
 	private Product product1;
-	private Product product2;
 
 	@BeforeEach
 	void setup() {
@@ -73,35 +71,23 @@ public class ProductSelectTest {
 			.sellerId(SELLER_ID)
 			.title("상품A")
 			.maxCapacity(10)
-			.description("테스트1")
+			.description("테스트")
 			.price(PRICE)
 			.status(ProductStatus.ENABLE)
 			.build();
-		product2 = Product.builder()
-			.sellerId(SELLER_ID)
-			.title("상품B")
-			.maxCapacity(3)
-			.description("테스트2")
-			.price(PRICE)
-			.status(ProductStatus.ENABLE)
-			.build();
+		ReflectionTestUtils.setField(product1, "id", PRODUCT_ID);
 	}
 
 	@Test
-	void 전체_상품_조회() {
-		SearchProductRequestDto request = new SearchProductRequestDto(
-			"",
-			0,
-			10,
-			ProductStatus.ENABLE
-		);
+	void 전체_상품을_조회한다() {
+		SearchProductRequestDto request = new SearchProductRequestDto("", 0, 10, ProductStatus.ENABLE);
 
 		ProductDocument doc1 = ProductDocument.builder()
-			.id(UUID.randomUUID().toString())
+			.id(PRODUCT_ID.toString())
 			.sellerId(SELLER_ID.toString())
-			.sellerName("판매자1")
+			.sellerName("판매자")
 			.title("상품A")
-			.description("테스트1")
+			.description("테스트")
 			.status("ENABLE")
 			.price(PRICE)
 			.maxCapacity(10)
@@ -110,9 +96,9 @@ public class ProductSelectTest {
 		ProductDocument doc2 = ProductDocument.builder()
 			.id(UUID.randomUUID().toString())
 			.sellerId(SELLER_ID.toString())
-			.sellerName("판매자1")
+			.sellerName("판매자")
 			.title("상품B")
-			.description("테스트2")
+			.description("테스트")
 			.status("ENABLE")
 			.price(PRICE)
 			.maxCapacity(3)
@@ -122,10 +108,8 @@ public class ProductSelectTest {
 		Page<ProductDocument> esPage = new PageImpl<>(List.of(doc1, doc2));
 		given(productSearchRepository.findAllEnabled(any(Pageable.class))).willReturn(esPage);
 
-		// when
 		SearchProductResponseDto result = productService.searchAll(request);
 
-		// then
 		assertThat(result.content()).extracting(ProductResponseDto::title)
 			.containsExactly("상품A", "상품B");
 		assertThat(result.totalCount()).isEqualTo(2);
@@ -134,34 +118,24 @@ public class ProductSelectTest {
 	}
 
 	@Test
-	void 특정_상품_조회_성공() {
-		// given
-		UUID id = product1.getId();
-		given(productRepository.findById(id)).willReturn(Optional.of(product1));
+	void 특정_상품_조회에_성공한다() {
+		given(productRepository.findById(PRODUCT_ID)).willReturn(Optional.of(product1));
+		given(sellerRepository.findSeller(SELLER_ID))
+			.willReturn(Optional.of(new UserResponseDto(SELLER_ID, "테스트판매자", "SELLER")));
 
-		// 존재하는 판매자
-		// Stub: seller 조회
-		given(sellerRepository.findSeller(eq(SELLER_ID)))
-			.willReturn(Optional.of(new UserResponseDto(SELLER_ID, "테스트 판매자", "SELLER")));
+		ProductResponseDto result = productService.searchById(PRODUCT_ID);
 
-		// when
-		ProductResponseDto result = productService.searchById(id);
-
-		// then
 		assertThat(result.title()).isEqualTo("상품A");
-		then(productRepository).should(times(1)).findById(id);
+		then(productRepository).should().findById(PRODUCT_ID);
 	}
 
 	@Test
-	void 특정_상품_조회_실패() {
-		// given
-		UUID id = UUID.randomUUID();
-		given(productRepository.findById(id)).willReturn(Optional.empty());
+	void 특정_상품_조회에_실패한다() {
+		given(productRepository.findById(PRODUCT_ID)).willReturn(Optional.empty());
 
-		// when & then
-		assertThatThrownBy(() -> productService.searchById(id))
+		assertThatThrownBy(() -> productService.searchById(PRODUCT_ID))
 			.isInstanceOf(BusinessException.class)
-			.hasMessage("존재하지 않는 상품 ID 입니다.");
-		then(productRepository).should(times(1)).findById(id);
+			.hasMessage(CommonErrorCode.PRODUCT_NOT_FOUND.getMessage());
+		then(productRepository).should().findById(PRODUCT_ID);
 	}
 }

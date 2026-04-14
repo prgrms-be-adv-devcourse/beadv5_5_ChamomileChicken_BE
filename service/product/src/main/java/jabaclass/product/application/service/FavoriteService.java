@@ -21,17 +21,13 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class FavoriteService implements FavoriteUseCase {
 	private final FavoriteRepository favoriteRepository;
-	private final AuditorAwareService auditorAwareService;
 
 	@Override
 	@Transactional
-	public FavoritesResposeDto createFavorite(int quantity, UUID scheduleId) {
-		UUID sellerId = auditorAwareService.getCurrentAuditor()
-			.orElseThrow(() -> new BusinessException(CommonErrorCode.EMPTY_USER));
-
+	public FavoritesResposeDto createFavorite(int quantity, UUID scheduleId, UUID userId) {
 		Favorite favorite = Favorite.builder()
 			.productScheduleId(scheduleId)
-			.userId(sellerId)
+			.userId(userId)
 			.quantity(quantity)
 			.build();
 
@@ -42,9 +38,7 @@ public class FavoriteService implements FavoriteUseCase {
 
 	@Override
 	@Transactional
-	public void deleteFavorite(UUID favoriteId) {
-		UUID userId = auditorAwareService.getCurrentAuditor()
-			.orElseThrow(() -> new BusinessException(CommonErrorCode.EMPTY_USER));
+	public void deleteFavorite(UUID favoriteId, UUID userId) {
 
 		// 본인 상품인지 확인
 		Favorite matched = favoriteRepository.findByIdAndUserIdAndDeleteDtIsNull(favoriteId, userId);
@@ -57,9 +51,7 @@ public class FavoriteService implements FavoriteUseCase {
 	}
 
 	@Override
-	public List<FavoritesResposeDto> findByUserIdAndDeleteDtIsNull() {
-		UUID userId = auditorAwareService.getCurrentAuditor()
-			.orElseThrow(() -> new BusinessException(CommonErrorCode.EMPTY_USER));
+	public List<FavoritesResposeDto> findByUserIdAndDeleteDtIsNull(UUID userId) {
 		// 본인 상품 리스트
 		List<Favorite> favorite = favoriteRepository.findByUserIdAndDeleteDtIsNull(userId);
 

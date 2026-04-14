@@ -3,12 +3,12 @@ package jabaclass.product.domain.model;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-import org.springframework.data.annotation.CreatedBy;
+import org.hibernate.annotations.UuidGenerator;
 import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedBy;
 import org.springframework.data.annotation.LastModifiedDate;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Id;
 import jakarta.persistence.MappedSuperclass;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -20,18 +20,15 @@ import lombok.experimental.SuperBuilder;
 @SuperBuilder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public abstract class EntityBase {
-	// AuditorAware 통해 세팅 가능-> 추후 확인
-	@CreatedBy
-	@Column(name = "reg_id", nullable = true, updatable = false)
-	private UUID regId;
+
+	@Id
+	@UuidGenerator
+	@Column(name = "id", updatable = false, nullable = false)
+	private UUID id;
 
 	@CreatedDate
 	@Column(name = "reg_dt", nullable = false, updatable = false)
 	private LocalDateTime regDt;
-
-	@LastModifiedBy
-	@Column(name = "modify_id")
-	private UUID modifyId;
 
 	@LastModifiedDate
 	@Column(name = "modify_dt")

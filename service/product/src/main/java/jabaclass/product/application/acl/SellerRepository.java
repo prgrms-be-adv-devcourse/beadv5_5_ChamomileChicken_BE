@@ -11,3 +11,4 @@ public interface SellerRepository {
 
 	Optional<List<UserResponseDto>> findSellerList(List<UUID> sellerIds);
 }
+

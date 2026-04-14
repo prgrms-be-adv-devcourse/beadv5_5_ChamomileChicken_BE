@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import jabaclass.product.application.usecase.ProductUseCase;
 import jabaclass.product.application.usecase.ProductUserUseCase;
+import jabaclass.product.common.auth.CurrentUser;
 import jabaclass.product.common.exception.ApiResponseDto;
 import jabaclass.product.presentation.dto.request.CreateProductRequestDto;
 import jabaclass.product.presentation.dto.request.SearchProductRequestDto;
@@ -43,9 +44,10 @@ public class ProductRestController implements ProductOpenApi {
 	@Override
 	@PostMapping
 	public ResponseEntity<ApiResponseDto<ProductResponseDto>> create(
-		@RequestBody @Valid CreateProductRequestDto request
+		@RequestBody @Valid CreateProductRequestDto request,
+		@CurrentUser UUID userId
 	) {
-		ProductResponseDto response = productUseCase.create(request);
+		ProductResponseDto response = productUseCase.create(request, userId);
 
 		return ResponseEntity.status(HttpStatus.CREATED)
 			.body(ApiResponseDto.success(HttpStatus.CREATED, "성공적으로 등록 되었습니다.", response));
@@ -57,8 +59,9 @@ public class ProductRestController implements ProductOpenApi {
 	public ResponseEntity<ApiResponseDto<ProductResponseDto>> change(
 		@RequestBody @Valid UpdateProductRequestDto request,
 		@PathVariable UUID productId
+		, @CurrentUser UUID userId
 	) {
-		ProductResponseDto response = productUseCase.update(request, productId);
+		ProductResponseDto response = productUseCase.update(request, productId, userId);
 
 		return ResponseEntity.ok()
 			.body(ApiResponseDto.success(HttpStatus.OK, "성공적으로 수정 되었습니다.", response));
@@ -67,8 +70,9 @@ public class ProductRestController implements ProductOpenApi {
 	// 상품 삭제
 	@Override
 	@DeleteMapping("/{productId}")
-	public ResponseEntity<ApiResponseDto<DeleteProductResposeDto>> delete(@PathVariable UUID productId) {
-		DeleteProductResposeDto response = productUseCase.delete(productId);
+	public ResponseEntity<ApiResponseDto<DeleteProductResposeDto>> delete(@PathVariable UUID productId,
+		@CurrentUser UUID userId) {
+		DeleteProductResposeDto response = productUseCase.delete(productId, userId);
 
 		return ResponseEntity.ok()
 			.body(ApiResponseDto.success(HttpStatus.OK, "성공적으로 삭제 되었습니다.", response));
@@ -98,7 +102,8 @@ public class ProductRestController implements ProductOpenApi {
 	@Override
 	@GetMapping("/{productId}/schedules/{scheduleId}/user")
 	public ResponseEntity<ApiResponseDto<List<ProductUserResponseDto>>> schedulesSelectUser(
-		@PathVariable UUID scheduleId) {
+		@PathVariable UUID scheduleId,
+		@CurrentUser UUID userId) {
 		List<ProductUserResponseDto> response = productUserUseCase.getUser(scheduleId);
 
 		return ResponseEntity.ok()

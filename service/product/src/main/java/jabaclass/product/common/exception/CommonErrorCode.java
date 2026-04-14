@@ -68,6 +68,9 @@ public enum CommonErrorCode {
 	FILE_NOT_FOUND(HttpStatus.NOT_FOUND, "파일을 찾을 수 없습니다."),
 	// 파일 검증 실패
 	FILE_CONFIRM_FAIL(HttpStatus.BAD_REQUEST, "파일 검증에 실패했습니다."),
+	// 재고 복구 실패 에러들
+	RESTORE_INVENTORY_FAILED(HttpStatus.CONFLICT, "재고 복구에 실패했습니다."),
+	UPDATE_RESERVATION_STATUS_FAILED(HttpStatus.CONFLICT, "예약 상태 변경에 실패했습니다."),
 	// 파일 서비스 연결 불가
 	FILE_MODULE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "파일 서비스에 연결할 수 없습니다.");
 

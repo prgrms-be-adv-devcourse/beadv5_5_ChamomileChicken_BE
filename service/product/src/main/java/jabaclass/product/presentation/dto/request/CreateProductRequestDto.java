@@ -11,9 +11,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
-@Schema(description = "상품 요청")
+@Schema(description = "상품 생성 요청")
 public record CreateProductRequestDto(
-
 	@NotNull(message = "판매자 Id를 입력해주세요.")
 	@Schema(description = "판매자 ID", example = "11111111-1111-1111-1111-111111111111")
 	UUID sellerId,
@@ -30,8 +29,8 @@ public record CreateProductRequestDto(
 	@Schema(description = "설명", example = "상품에 대한 설명입니다.")
 	String description,
 
-	@Size(max = 10, message = "이미지는 최대 10장까지 등록 가능합니다.")
-	@Schema(description = "상품 이미지 fileId 목록 (순서 = 표시 순서, 첫 번째가 썸네일)")
+	@Size(max = 10, message = "이미지는 최대 10개까지 등록 가능합니다.")
+	@Schema(description = "상품 이미지 fileId 목록")
 	List<UUID> imageIds,
 
 	@Min(value = 1, message = "가격은 1원 이상이어야 합니다.")
@@ -41,5 +40,4 @@ public record CreateProductRequestDto(
 	@Schema(description = "상태", example = "ENABLE")
 	ProductStatus status
 ) {
-
 }

@@ -23,13 +23,10 @@ import lombok.extern.slf4j.Slf4j;
 public class ReviewService implements ReviewUseCase {
 
 	private final ReviewRepository reviewRepository;
-	private final AuditorAwareService auditorAwareService;
 
 	@Override
 	@Transactional
-	public ReviewResponseDto createReview(ReviewRequestDto review, UUID productId) {
-		UUID userId = auditorAwareService.getCurrentAuditor()
-			.orElseThrow(() -> new BusinessException(CommonErrorCode.EMPTY_USER));
+	public ReviewResponseDto createReview(ReviewRequestDto review, UUID productId, UUID userId) {
 
 		Review entity = Review.builder()
 			.productId(productId)
@@ -45,9 +42,7 @@ public class ReviewService implements ReviewUseCase {
 
 	@Override
 	@Transactional
-	public ReviewResponseDto updateReview(ReviewRequestDto requestDto, UUID revewId) {
-		UUID userId = auditorAwareService.getCurrentAuditor()
-			.orElseThrow(() -> new BusinessException(CommonErrorCode.EMPTY_USER));
+	public ReviewResponseDto updateReview(ReviewRequestDto requestDto, UUID revewId, UUID userId) {
 
 		// 본인 리뷰인지 매치
 		Review review = findByUserId(userId, revewId);
@@ -61,9 +56,7 @@ public class ReviewService implements ReviewUseCase {
 
 	@Override
 	@Transactional
-	public void deleteReview(UUID reviewId) {
-		UUID userId = auditorAwareService.getCurrentAuditor()
-			.orElseThrow(() -> new BusinessException(CommonErrorCode.EMPTY_USER));
+	public void deleteReview(UUID reviewId, UUID userId) {
 
 		// 본인 리뷰인지 매치
 		Review review = findByUserId(userId, reviewId);
@@ -73,9 +66,7 @@ public class ReviewService implements ReviewUseCase {
 	}
 
 	@Override
-	public List<ReviewResponseDto> userReview() {
-		UUID userId = auditorAwareService.getCurrentAuditor()
-			.orElseThrow(() -> new BusinessException(CommonErrorCode.EMPTY_USER));
+	public List<ReviewResponseDto> userReview(UUID userId) {
 
 		List<Review> reviews = reviewRepository.findByUserIdAndDeleteDtIsNull(userId);
 

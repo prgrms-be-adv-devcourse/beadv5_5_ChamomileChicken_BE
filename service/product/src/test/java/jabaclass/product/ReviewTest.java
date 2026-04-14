@@ -1,8 +1,10 @@
 package jabaclass.product;
 
-import static org.assertj.core.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.BDDMockito.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
 
 import java.util.List;
 import java.util.Optional;
@@ -20,7 +22,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import jabaclass.product.application.exception.BusinessException;
-import jabaclass.product.application.service.AuditorAwareService;
 import jabaclass.product.application.service.ReviewService;
 import jabaclass.product.application.usecase.ReviewUseCase;
 import jabaclass.product.common.exception.ApiResponseDto;
@@ -47,9 +48,6 @@ class ReviewTest {
 	private ReviewRepository reviewRepository;
 
 	@Mock
-	private AuditorAwareService auditorAwareService;
-
-	@Mock
 	private ReviewUseCase reviewUseCase;
 
 	private static final UUID USER_ID = UUID.fromString("123e4567-e89b-12d3-a456-426614174000");
@@ -68,58 +66,53 @@ class ReviewTest {
 			.productId(PRODUCT_ID)
 			.userId(USER_ID)
 			.rating(5)
-			.content("좋아요")
+			.content("정말 좋았어요")
 			.build();
 		ReflectionTestUtils.setField(review, "id", REVIEW_ID);
 
-		request = new ReviewRequestDto(5, "좋아요");
+		request = new ReviewRequestDto(5, "정말 좋았어요");
 	}
 
 	@Test
 	void 리뷰를_생성한다() {
-		given(auditorAwareService.getCurrentAuditor()).willReturn(Optional.of(USER_ID));
-		given(reviewRepository.save(any(Review.class)))
-			.willAnswer(invocation -> {
-				Review saved = invocation.getArgument(0);
-				ReflectionTestUtils.setField(saved, "id", REVIEW_ID);
-				return saved;
-			});
+		given(reviewRepository.save(any(Review.class))).willAnswer(invocation -> {
+			Review saved = invocation.getArgument(0);
+			ReflectionTestUtils.setField(saved, "id", REVIEW_ID);
+			return saved;
+		});
 
-		ReviewResponseDto result = reviewService.createReview(request, PRODUCT_ID);
+		ReviewResponseDto result = reviewService.createReview(request, PRODUCT_ID, USER_ID);
 
 		assertThat(result.id()).isEqualTo(REVIEW_ID);
 		assertThat(result.rating()).isEqualTo(5);
-		assertThat(result.content()).isEqualTo("좋아요");
+		assertThat(result.content()).isEqualTo("정말 좋았어요");
 	}
 
 	@Test
 	void 리뷰를_수정한다() {
-		ReviewRequestDto updateRequest = new ReviewRequestDto(3, "보통이에요");
-		given(auditorAwareService.getCurrentAuditor()).willReturn(Optional.of(USER_ID));
+		ReviewRequestDto updateRequest = new ReviewRequestDto(3, "보통이었어요");
 		given(reviewRepository.findByIdAndUserIdAndDeleteDtIsNull(REVIEW_ID, USER_ID)).willReturn(Optional.of(review));
 
-		ReviewResponseDto result = reviewService.updateReview(updateRequest, REVIEW_ID);
+		ReviewResponseDto result = reviewService.updateReview(updateRequest, REVIEW_ID, USER_ID);
 
 		assertThat(result.rating()).isEqualTo(3);
-		assertThat(result.content()).isEqualTo("보통이에요");
+		assertThat(result.content()).isEqualTo("보통이었어요");
 	}
 
 	@Test
 	void 리뷰를_삭제한다() {
-		given(auditorAwareService.getCurrentAuditor()).willReturn(Optional.of(USER_ID));
 		given(reviewRepository.findByIdAndUserIdAndDeleteDtIsNull(REVIEW_ID, USER_ID)).willReturn(Optional.of(review));
 
-		reviewService.deleteReview(REVIEW_ID);
+		reviewService.deleteReview(REVIEW_ID, USER_ID);
 
 		assertThat(review.getDeleteDt()).isNotNull();
 	}
 
 	@Test
 	void 내_리뷰_목록을_조회한다() {
-		given(auditorAwareService.getCurrentAuditor()).willReturn(Optional.of(USER_ID));
 		given(reviewRepository.findByUserIdAndDeleteDtIsNull(USER_ID)).willReturn(List.of(review));
 
-		List<ReviewResponseDto> result = reviewService.userReview();
+		List<ReviewResponseDto> result = reviewService.userReview(USER_ID);
 
 		assertThat(result).hasSize(1);
 		assertThat(result.get(0).id()).isEqualTo(REVIEW_ID);
@@ -132,7 +125,7 @@ class ReviewTest {
 		List<ReviewResponseDto> result = reviewService.productReview(PRODUCT_ID);
 
 		assertThat(result).hasSize(1);
-		assertThat(result.get(0).content()).isEqualTo("좋아요");
+		assertThat(result.get(0).content()).isEqualTo("정말 좋았어요");
 	}
 
 	@Test
@@ -146,12 +139,12 @@ class ReviewTest {
 	}
 
 	@Test
-	void 로그인_사용자가_없으면_리뷰_생성에_실패한다() {
-		given(auditorAwareService.getCurrentAuditor()).willReturn(Optional.empty());
+	void 리뷰_작성자가_아니면_수정에_실패한다() {
+		given(reviewRepository.findByIdAndUserIdAndDeleteDtIsNull(REVIEW_ID, USER_ID)).willReturn(Optional.empty());
 
-		assertThatThrownBy(() -> reviewService.createReview(request, PRODUCT_ID))
+		assertThatThrownBy(() -> reviewService.updateReview(request, REVIEW_ID, USER_ID))
 			.isInstanceOf(BusinessException.class)
-			.hasMessage(CommonErrorCode.EMPTY_USER.getMessage());
+			.hasMessage(CommonErrorCode.NOT_MATCH_USER_REVIEW.getMessage());
 	}
 
 	@Test
@@ -166,56 +159,55 @@ class ReviewTest {
 
 	@Test
 	void 리뷰_생성_요청이_들어오면_컨트롤러가_유스케이스를_호출한다() {
-		ReviewResponseDto response = new ReviewResponseDto(REVIEW_ID, 5, "좋아요");
-		given(reviewUseCase.createReview(request, PRODUCT_ID)).willReturn(response);
+		ReviewResponseDto response = new ReviewResponseDto(REVIEW_ID, 5, "정말 좋았어요");
+		given(reviewUseCase.createReview(request, PRODUCT_ID, USER_ID)).willReturn(response);
 
-		ResponseEntity<ApiResponseDto<ReviewResponseDto>> result = reviewRestController.create(request, PRODUCT_ID);
+		ResponseEntity<ApiResponseDto<ReviewResponseDto>> result = reviewRestController.create(request, PRODUCT_ID, USER_ID);
 
 		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.CREATED);
 		assertThat(result.getBody()).isNotNull();
 		assertThat(result.getBody().getData()).isEqualTo(response);
-		then(reviewUseCase).should().createReview(request, PRODUCT_ID);
+		then(reviewUseCase).should().createReview(request, PRODUCT_ID, USER_ID);
 	}
 
 	@Test
 	void 리뷰_수정_요청이_들어오면_컨트롤러가_유스케이스를_호출한다() {
-		ReviewResponseDto response = new ReviewResponseDto(REVIEW_ID, 3, "보통이에요");
-		ReviewRequestDto updateRequest = new ReviewRequestDto(3, "보통이에요");
-		given(reviewUseCase.updateReview(updateRequest, REVIEW_ID)).willReturn(response);
+		ReviewResponseDto response = new ReviewResponseDto(REVIEW_ID, 3, "보통이었어요");
+		ReviewRequestDto updateRequest = new ReviewRequestDto(3, "보통이었어요");
+		given(reviewUseCase.updateReview(updateRequest, REVIEW_ID, USER_ID)).willReturn(response);
 
-		ResponseEntity<ApiResponseDto<ReviewResponseDto>> result = reviewRestController.update(updateRequest,
-			REVIEW_ID);
+		ResponseEntity<ApiResponseDto<ReviewResponseDto>> result = reviewRestController.update(updateRequest, REVIEW_ID, USER_ID);
 
 		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
 		assertThat(result.getBody()).isNotNull();
 		assertThat(result.getBody().getData()).isEqualTo(response);
-		then(reviewUseCase).should().updateReview(updateRequest, REVIEW_ID);
+		then(reviewUseCase).should().updateReview(updateRequest, REVIEW_ID, USER_ID);
 	}
 
 	@Test
 	void 리뷰_삭제_요청이_들어오면_컨트롤러가_유스케이스를_호출한다() {
-		ResponseEntity<ApiResponseDto<UUID>> result = reviewRestController.delete(REVIEW_ID);
+		ResponseEntity<ApiResponseDto<UUID>> result = reviewRestController.delete(REVIEW_ID, USER_ID);
 
 		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
-		then(reviewUseCase).should().deleteReview(REVIEW_ID);
+		then(reviewUseCase).should().deleteReview(REVIEW_ID, USER_ID);
 	}
 
 	@Test
 	void 내_리뷰_조회_요청이_들어오면_컨트롤러가_유스케이스를_호출한다() {
-		List<ReviewResponseDto> response = List.of(new ReviewResponseDto(REVIEW_ID, 5, "좋아요"));
-		given(reviewUseCase.userReview()).willReturn(response);
+		List<ReviewResponseDto> response = List.of(new ReviewResponseDto(REVIEW_ID, 5, "정말 좋았어요"));
+		given(reviewUseCase.userReview(USER_ID)).willReturn(response);
 
-		ResponseEntity<ApiResponseDto<List<ReviewResponseDto>>> result = reviewRestController.userReview();
+		ResponseEntity<ApiResponseDto<List<ReviewResponseDto>>> result = reviewRestController.userReview(USER_ID);
 
 		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
 		assertThat(result.getBody()).isNotNull();
 		assertThat(result.getBody().getData()).hasSize(1);
-		then(reviewUseCase).should().userReview();
+		then(reviewUseCase).should().userReview(USER_ID);
 	}
 
 	@Test
 	void 상품_리뷰_조회_요청이_들어오면_컨트롤러가_유스케이스를_호출한다() {
-		List<ReviewResponseDto> response = List.of(new ReviewResponseDto(REVIEW_ID, 5, "좋아요"));
+		List<ReviewResponseDto> response = List.of(new ReviewResponseDto(REVIEW_ID, 5, "정말 좋았어요"));
 		given(reviewUseCase.productReview(PRODUCT_ID)).willReturn(response);
 
 		ResponseEntity<ApiResponseDto<List<ReviewResponseDto>>> result = reviewRestController.productReview(PRODUCT_ID);
@@ -228,7 +220,7 @@ class ReviewTest {
 
 	@Test
 	void 리뷰_단건_조회_요청이_들어오면_컨트롤러가_유스케이스를_호출한다() {
-		ReviewResponseDto response = new ReviewResponseDto(REVIEW_ID, 5, "좋아요");
+		ReviewResponseDto response = new ReviewResponseDto(REVIEW_ID, 5, "정말 좋았어요");
 		given(reviewUseCase.review(REVIEW_ID)).willReturn(response);
 
 		ResponseEntity<ApiResponseDto<ReviewResponseDto>> result = reviewRestController.review(REVIEW_ID);

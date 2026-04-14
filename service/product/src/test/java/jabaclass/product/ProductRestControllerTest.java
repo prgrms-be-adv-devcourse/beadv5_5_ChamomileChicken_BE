@@ -84,48 +84,46 @@ class ProductRestControllerTest {
 			List.of("userId/fileId/img.jpg"),
 			new BigDecimal("10000"),
 			"활성",
-			SELLER_ID,
 			LocalDateTime.now(),
-			SELLER_ID,
 			LocalDateTime.now()
 		);
 	}
 
 	@Test
 	void 상품_생성_요청이_들어오면_유스케이스를_호출한다() {
-		given(productUseCase.create(createRequest)).willReturn(productResponse);
+		given(productUseCase.create(createRequest, SELLER_ID)).willReturn(productResponse);
 
-		ResponseEntity<ApiResponseDto<ProductResponseDto>> result = productRestController.create(createRequest);
+		ResponseEntity<ApiResponseDto<ProductResponseDto>> result = productRestController.create(createRequest, SELLER_ID);
 
 		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.CREATED);
 		assertThat(result.getBody()).isNotNull();
 		assertThat(result.getBody().getData()).isEqualTo(productResponse);
-		then(productUseCase).should().create(createRequest);
+		then(productUseCase).should().create(createRequest, SELLER_ID);
 	}
 
 	@Test
 	void 상품_수정_요청이_들어오면_유스케이스를_호출한다() {
-		given(productUseCase.update(updateRequest, PRODUCT_ID)).willReturn(productResponse);
+		given(productUseCase.update(updateRequest, PRODUCT_ID, SELLER_ID)).willReturn(productResponse);
 
-		ResponseEntity<ApiResponseDto<ProductResponseDto>> result = productRestController.change(updateRequest, PRODUCT_ID);
+		ResponseEntity<ApiResponseDto<ProductResponseDto>> result = productRestController.change(updateRequest, PRODUCT_ID, SELLER_ID);
 
 		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
 		assertThat(result.getBody()).isNotNull();
 		assertThat(result.getBody().getData()).isEqualTo(productResponse);
-		then(productUseCase).should().update(updateRequest, PRODUCT_ID);
+		then(productUseCase).should().update(updateRequest, PRODUCT_ID, SELLER_ID);
 	}
 
 	@Test
 	void 상품_삭제_요청이_들어오면_유스케이스를_호출한다() {
 		DeleteProductResposeDto response = DeleteProductResposeDto.from(PRODUCT_ID, ProductStatus.DISABLE);
-		given(productUseCase.delete(PRODUCT_ID)).willReturn(response);
+		given(productUseCase.delete(PRODUCT_ID, SELLER_ID)).willReturn(response);
 
-		ResponseEntity<ApiResponseDto<DeleteProductResposeDto>> result = productRestController.delete(PRODUCT_ID);
+		ResponseEntity<ApiResponseDto<DeleteProductResposeDto>> result = productRestController.delete(PRODUCT_ID, SELLER_ID);
 
 		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
 		assertThat(result.getBody()).isNotNull();
 		assertThat(result.getBody().getData()).isEqualTo(response);
-		then(productUseCase).should().delete(PRODUCT_ID);
+		then(productUseCase).should().delete(PRODUCT_ID, SELLER_ID);
 	}
 
 	@Test
@@ -168,7 +166,9 @@ class ProductRestControllerTest {
 		given(productUserUseCase.getUser(SCHEDULE_ID)).willReturn(response);
 
 		ResponseEntity<ApiResponseDto<List<ProductUserResponseDto>>> result = productRestController.schedulesSelectUser(
-			SCHEDULE_ID);
+			SCHEDULE_ID,
+			SELLER_ID
+		);
 
 		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
 		assertThat(result.getBody()).isNotNull();

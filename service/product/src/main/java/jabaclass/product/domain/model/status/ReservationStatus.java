@@ -22,6 +22,6 @@ public enum ReservationStatus {
 		return Arrays.stream(values())
 			.filter(status -> status.statusName.equals(statusName))
 			.findFirst()
-			.orElseThrow(() -> new IllegalArgumentException("존재하지 않는 상태값"));
+			.orElseThrow(() -> new IllegalArgumentException("존재하지 않는 상태값입니다."));
 	}
 }

@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import jabaclass.product.application.usecase.FavoriteUseCase;
+import jabaclass.product.common.auth.CurrentUser;
 import jabaclass.product.common.exception.ApiResponseDto;
 import jabaclass.product.presentation.dto.respose.FavoritesResposeDto;
 import jabaclass.product.presentation.openapi.FavoritesOpenApi;
@@ -31,8 +32,9 @@ public class FavoritesRestController implements FavoritesOpenApi {
 	@Override
 	@PostMapping("/{scheduleId}/likes")
 	public ResponseEntity<ApiResponseDto<FavoritesResposeDto>> create(@RequestParam int quantity,
-		@PathVariable UUID scheduleId) {
-		FavoritesResposeDto response = favoriteUseCase.createFavorite(quantity, scheduleId);
+		@PathVariable UUID scheduleId,
+		@CurrentUser UUID userId) {
+		FavoritesResposeDto response = favoriteUseCase.createFavorite(quantity, scheduleId, userId);
 
 		return ResponseEntity.status(HttpStatus.CREATED)
 			.body(ApiResponseDto.success(HttpStatus.CREATED, "성공적으로 등록 되었습니다.", response));
@@ -40,8 +42,9 @@ public class FavoritesRestController implements FavoritesOpenApi {
 
 	@Override
 	@DeleteMapping("/{scheduleId}/likes")
-	public ResponseEntity<ApiResponseDto<FavoritesResposeDto>> delete(@RequestParam UUID likeId) {
-		favoriteUseCase.deleteFavorite(likeId);
+	public ResponseEntity<ApiResponseDto<FavoritesResposeDto>> delete(@RequestParam UUID likeId,
+		@CurrentUser UUID userId) {
+		favoriteUseCase.deleteFavorite(likeId, userId);
 
 		return ResponseEntity.ok()
 			.body(ApiResponseDto.success(HttpStatus.OK, "성공적으로 삭제 되었습니다.", null));
@@ -49,8 +52,8 @@ public class FavoritesRestController implements FavoritesOpenApi {
 
 	@Override
 	@GetMapping("/me/likes")
-	public ResponseEntity<ApiResponseDto<List<FavoritesResposeDto>>> getList() {
-		List<FavoritesResposeDto> response = favoriteUseCase.findByUserIdAndDeleteDtIsNull();
+	public ResponseEntity<ApiResponseDto<List<FavoritesResposeDto>>> getList(@CurrentUser UUID userId) {
+		List<FavoritesResposeDto> response = favoriteUseCase.findByUserIdAndDeleteDtIsNull(userId);
 
 		return ResponseEntity.ok()
 			.body(ApiResponseDto.success(HttpStatus.OK, "성공적으로 검색 되었습니다.", response));

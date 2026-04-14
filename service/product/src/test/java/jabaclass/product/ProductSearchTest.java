@@ -1,20 +1,15 @@
 package jabaclass.product;
 
-import static org.assertj.core.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.BDDMockito.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.never;
 
-import jabaclass.product.application.acl.SellerRepository;
-import jabaclass.product.application.service.AuditorAwareService;
-import jabaclass.product.application.service.ProductService;
-import jabaclass.product.domain.model.status.ProductStatus;
-import jabaclass.product.domain.repository.ProductRepository;
-import jabaclass.product.domain.repository.ProductSearchRepository;
-import jabaclass.product.infrastructure.acl.client.FileConfirmClient;
-import jabaclass.product.infrastructure.elasticsearch.ProductDocument;
-import jabaclass.product.presentation.dto.request.SearchProductRequestDto;
-import jabaclass.product.presentation.dto.respose.ProductResponseDto;
-import jabaclass.product.presentation.dto.respose.SearchProductResponseDto;
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -27,9 +22,16 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 
-import java.math.BigDecimal;
-import java.util.List;
-import java.util.UUID;
+import jabaclass.product.application.acl.SellerRepository;
+import jabaclass.product.application.service.ProductService;
+import jabaclass.product.domain.model.status.ProductStatus;
+import jabaclass.product.domain.repository.ProductRepository;
+import jabaclass.product.domain.repository.ProductSearchRepository;
+import jabaclass.product.infrastructure.acl.client.FileConfirmClient;
+import jabaclass.product.infrastructure.elasticsearch.ProductDocument;
+import jabaclass.product.presentation.dto.request.SearchProductRequestDto;
+import jabaclass.product.presentation.dto.respose.ProductResponseDto;
+import jabaclass.product.presentation.dto.respose.SearchProductResponseDto;
 
 @ExtendWith(MockitoExtension.class)
 class ProductSearchTest {
@@ -48,9 +50,6 @@ class ProductSearchTest {
 
 	@Mock
 	private ApplicationEventPublisher publisher;
-
-	@Mock
-	private AuditorAwareService auditorAwareService;
 
 	@Mock
 	private FileConfirmClient fileConfirmClient;
@@ -89,7 +88,7 @@ class ProductSearchTest {
 	}
 
 	@Test
-	void 키워드_없으면_전체_ENABLE_상품을_ES에서_조회한다() {
+	void 키워드가_없으면_전체_ENABLE_상품을_ES에서_조회한다() {
 		SearchProductRequestDto request = new SearchProductRequestDto("", 0, 10, ProductStatus.ENABLE);
 		Page<ProductDocument> esPage = new PageImpl<>(List.of(doc1, doc2));
 		given(productSearchRepository.findAllEnabled(any(Pageable.class))).willReturn(esPage);
@@ -119,7 +118,7 @@ class ProductSearchTest {
 	}
 
 	@Test
-	void ES_검색결과에_sellerName이_포함된다() {
+	void ES_검색결과에는_sellerName이_포함된다() {
 		SearchProductRequestDto request = new SearchProductRequestDto("공방", 0, 10, ProductStatus.ENABLE);
 		Page<ProductDocument> esPage = new PageImpl<>(List.of(doc1, doc2));
 		given(productSearchRepository.searchByKeyword(eq("공방"), any(Pageable.class))).willReturn(esPage);
@@ -128,15 +127,13 @@ class ProductSearchTest {
 
 		assertThat(result.content()).extracting(ProductResponseDto::sellerName)
 			.containsOnly("판매자A");
-		// ES에 sellerName이 비정규화되어 있어 user 서비스 호출이 없어야 함
 		then(sellerRepository).shouldHaveNoInteractions();
 	}
 
 	@Test
 	void 검색_결과가_없으면_빈_리스트를_반환한다() {
-		SearchProductRequestDto request = new SearchProductRequestDto("존재하지않는키워드", 0, 10, ProductStatus.ENABLE);
-		given(productSearchRepository.searchByKeyword(any(), any(Pageable.class)))
-			.willReturn(new PageImpl<>(List.of()));
+		SearchProductRequestDto request = new SearchProductRequestDto("없는키워드", 0, 10, ProductStatus.ENABLE);
+		given(productSearchRepository.searchByKeyword(any(), any(Pageable.class))).willReturn(new PageImpl<>(List.of()));
 
 		SearchProductResponseDto result = productService.searchAll(request);
 
@@ -145,12 +142,12 @@ class ProductSearchTest {
 	}
 
 	@Test
-	void 페이징_정보가_올바르게_반환된다() {
+	void 페이지_정보가_올바르게_반환된다() {
 		SearchProductRequestDto request = new SearchProductRequestDto("", 2, 5, ProductStatus.ENABLE);
 		Page<ProductDocument> esPage = new PageImpl<>(
 			List.of(doc1),
 			org.springframework.data.domain.PageRequest.of(2, 5),
-			11  // 전체 11개
+			11
 		);
 		given(productSearchRepository.findAllEnabled(any(Pageable.class))).willReturn(esPage);
 
@@ -158,6 +155,6 @@ class ProductSearchTest {
 
 		assertThat(result.thisPage()).isEqualTo(2);
 		assertThat(result.totalCount()).isEqualTo(11);
-		assertThat(result.totalPage()).isEqualTo(3);  // 11 / 5 = ceil(2.2) = 3
+		assertThat(result.totalPage()).isEqualTo(3);
 	}
 }

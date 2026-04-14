@@ -22,8 +22,8 @@ import org.springframework.http.ResponseEntity;
 
 import jabaclass.product.application.usecase.ScheduleUseCase;
 import jabaclass.product.common.exception.ApiResponseDto;
+import jabaclass.product.domain.model.status.ReservationStatus;
 import jabaclass.product.domain.model.status.ReservedStatus;
-import jabaclass.product.presentation.dto.respose.OrderValid;
 import jabaclass.product.presentation.controller.SchdulesRestController;
 import jabaclass.product.presentation.dto.request.CreateScheduleRequestDto;
 import jabaclass.product.presentation.dto.request.OrderRequestDto;
@@ -31,6 +31,7 @@ import jabaclass.product.presentation.dto.request.UpdateScheduleRequestDto;
 import jabaclass.product.presentation.dto.respose.AvailabilityScheduleResponseDto;
 import jabaclass.product.presentation.dto.respose.DeleteScheduleResposeDto;
 import jabaclass.product.presentation.dto.respose.OrderResponseDto;
+import jabaclass.product.presentation.dto.respose.OrderValid;
 import jabaclass.product.presentation.dto.respose.SchedulesResponseDto;
 
 @ExtendWith(MockitoExtension.class)
@@ -73,44 +74,44 @@ class SchdulesRestControllerTest {
 			LocalDate.now().plusDays(1),
 			LocalTime.of(10, 0),
 			LocalTime.of(12, 0),
-			"AVAILABLE",
+			"예약 가능",
 			10,
-			USER_ID,
 			LocalDateTime.now(),
-			USER_ID,
 			LocalDateTime.now()
 		);
 	}
 
 	@Test
 	void 일정_생성_요청이_들어오면_유스케이스를_호출한다() {
-		given(scheduleUseCase.create(createRequest, PRODUCT_ID)).willReturn(scheduleResponse);
+		given(scheduleUseCase.create(createRequest, PRODUCT_ID, USER_ID)).willReturn(scheduleResponse);
 
 		ResponseEntity<ApiResponseDto<SchedulesResponseDto>> result = schdulesRestController.schedulesCreate(
 			createRequest,
-			PRODUCT_ID
+			PRODUCT_ID,
+			USER_ID
 		);
 
 		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.CREATED);
 		assertThat(result.getBody()).isNotNull();
 		assertThat(result.getBody().getData()).isEqualTo(scheduleResponse);
-		then(scheduleUseCase).should().create(createRequest, PRODUCT_ID);
+		then(scheduleUseCase).should().create(createRequest, PRODUCT_ID, USER_ID);
 	}
 
 	@Test
 	void 일정_수정_요청이_들어오면_유스케이스를_호출한다() {
-		given(scheduleUseCase.update(updateRequest, PRODUCT_ID, SCHEDULE_ID)).willReturn(scheduleResponse);
+		given(scheduleUseCase.update(updateRequest, PRODUCT_ID, SCHEDULE_ID, USER_ID)).willReturn(scheduleResponse);
 
 		ResponseEntity<ApiResponseDto<SchedulesResponseDto>> result = schdulesRestController.schedulesUpdate(
 			updateRequest,
 			PRODUCT_ID,
-			SCHEDULE_ID
+			SCHEDULE_ID,
+			USER_ID
 		);
 
 		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
 		assertThat(result.getBody()).isNotNull();
 		assertThat(result.getBody().getData()).isEqualTo(scheduleResponse);
-		then(scheduleUseCase).should().update(updateRequest, PRODUCT_ID, SCHEDULE_ID);
+		then(scheduleUseCase).should().update(updateRequest, PRODUCT_ID, SCHEDULE_ID, USER_ID);
 	}
 
 	@Test
@@ -129,17 +130,18 @@ class SchdulesRestControllerTest {
 	@Test
 	void 일정_삭제_요청이_들어오면_유스케이스를_호출한다() {
 		DeleteScheduleResposeDto response = DeleteScheduleResposeDto.from(SCHEDULE_ID, ReservedStatus.CLOSED);
-		given(scheduleUseCase.delete(PRODUCT_ID, SCHEDULE_ID)).willReturn(response);
+		given(scheduleUseCase.delete(PRODUCT_ID, SCHEDULE_ID, USER_ID)).willReturn(response);
 
 		ResponseEntity<ApiResponseDto<DeleteScheduleResposeDto>> result = schdulesRestController.schedulesDelete(
 			PRODUCT_ID,
-			SCHEDULE_ID
+			SCHEDULE_ID,
+			USER_ID
 		);
 
 		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
 		assertThat(result.getBody()).isNotNull();
 		assertThat(result.getBody().getData()).isEqualTo(response);
-		then(scheduleUseCase).should().delete(PRODUCT_ID, SCHEDULE_ID);
+		then(scheduleUseCase).should().delete(PRODUCT_ID, SCHEDULE_ID, USER_ID);
 	}
 
 	@Test
@@ -147,8 +149,8 @@ class SchdulesRestControllerTest {
 		List<SchedulesResponseDto> response = List.of(scheduleResponse);
 		given(scheduleUseCase.schedulesList(PRODUCT_ID)).willReturn(response);
 
-		ResponseEntity<ApiResponseDto<List<SchedulesResponseDto>>> result = schdulesRestController.schedulesSelectList(
-			PRODUCT_ID);
+		ResponseEntity<ApiResponseDto<List<SchedulesResponseDto>>> result =
+			schdulesRestController.schedulesSelectList(PRODUCT_ID);
 
 		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
 		assertThat(result.getBody()).isNotNull();
@@ -167,8 +169,8 @@ class SchdulesRestControllerTest {
 		);
 		given(scheduleUseCase.availabilitySchedule(SCHEDULE_ID)).willReturn(response);
 
-		ResponseEntity<ApiResponseDto<AvailabilityScheduleResponseDto>> result = schdulesRestController
-			.schedulesaAvailability(SCHEDULE_ID);
+		ResponseEntity<ApiResponseDto<AvailabilityScheduleResponseDto>> result =
+			schdulesRestController.schedulesaAvailability(SCHEDULE_ID);
 
 		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
 		assertThat(result.getBody()).isNotNull();

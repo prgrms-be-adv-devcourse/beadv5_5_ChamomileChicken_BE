@@ -1,6 +1,5 @@
 package jabaclass.product.presentation.dto.respose;
 
-import jabaclass.product.domain.model.ProductImageItem;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -9,6 +8,7 @@ import java.util.UUID;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jabaclass.product.domain.model.Product;
+import jabaclass.product.domain.model.ProductImageItem;
 import jabaclass.product.domain.model.status.ProductStatus;
 import jabaclass.product.infrastructure.elasticsearch.ProductDocument;
 
@@ -17,7 +17,7 @@ public record ProductResponseDto(
 	@Schema(description = "상품 ID", example = "550e8400-e29b-41d4-a716-446655440000")
 	UUID id,
 
-	@Schema(description = "판매자 이름", example = "신짱구")
+	@Schema(description = "판매자 이름", example = "홍길동")
 	String sellerName,
 
 	@Schema(description = "상품명", example = "향수 공방")
@@ -41,14 +41,8 @@ public record ProductResponseDto(
 	@Schema(description = "상태", example = "공개")
 	String statusName,
 
-	@Schema(description = "등록자 ID", example = "22222222-2222-2222-2222-222222222222")
-	UUID regId,
-
 	@Schema(description = "등록일시", example = "2026-03-04T18:10:00")
 	LocalDateTime regDt,
-
-	@Schema(description = "수정자 ID", example = "33333333-3333-3333-3333-333333333333")
-	UUID modifyId,
 
 	@Schema(description = "수정일시", example = "2026-03-04T18:12:00")
 	LocalDateTime modifyDt
@@ -57,7 +51,7 @@ public record ProductResponseDto(
 	public static ProductResponseDto from(Product product, String sellerName) {
 		List<ProductImageItem> images = product.getDescriptionImages();
 		List<String> imagePaths = images == null ? List.of()
-				: images.stream().map(ProductImageItem::storagePath).toList();
+			: images.stream().map(ProductImageItem::storagePath).toList();
 
 		return new ProductResponseDto(
 			product.getId(),
@@ -69,9 +63,7 @@ public record ProductResponseDto(
 			imagePaths,
 			product.getPrice(),
 			product.getStatus().getStatusName(),
-			product.getRegId(),
 			product.getRegDt(),
-			product.getModifyId(),
 			product.getModifyDt()
 		);
 	}
@@ -87,9 +79,7 @@ public record ProductResponseDto(
 			List.of(),
 			document.getPrice(),
 			ProductStatus.valueOf(document.getStatus()).getStatusName(),
-			null,
 			document.getRegDt(),
-			null,
 			null
 		);
 	}
@@ -97,22 +87,20 @@ public record ProductResponseDto(
 	public static ProductResponseDto listFrom(Product product, Map<UUID, String> map) {
 		List<ProductImageItem> images = product.getDescriptionImages();
 		List<String> imagePaths = images == null ? List.of()
-				: images.stream().map(ProductImageItem::storagePath).toList();
+			: images.stream().map(ProductImageItem::storagePath).toList();
 
 		return new ProductResponseDto(
-				product.getId(),
-				map.getOrDefault(product.getSellerId(), "사용자 이름이 지정되지 않았습니다."),
-				product.getTitle(),
-				product.getMaxCapacity(),
-				product.getDescription(),
-				product.getThumbnailPath(),
-				imagePaths,
-				product.getPrice(),
-				product.getStatus().getStatusName(),
-				product.getRegId(),
-				product.getRegDt(),
-				product.getModifyId(),
-				product.getModifyDt()
+			product.getId(),
+			map.getOrDefault(product.getSellerId(), "사용자 이름이 지정되지 않았습니다."),
+			product.getTitle(),
+			product.getMaxCapacity(),
+			product.getDescription(),
+			product.getThumbnailPath(),
+			imagePaths,
+			product.getPrice(),
+			product.getStatus().getStatusName(),
+			product.getRegDt(),
+			product.getModifyDt()
 		);
 	}
 }

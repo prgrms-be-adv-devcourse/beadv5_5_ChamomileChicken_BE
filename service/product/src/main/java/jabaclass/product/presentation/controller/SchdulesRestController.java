@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import jabaclass.product.application.usecase.ScheduleUseCase;
+import jabaclass.product.common.auth.CurrentUser;
 import jabaclass.product.common.exception.ApiResponseDto;
 import jabaclass.product.presentation.dto.request.CreateScheduleRequestDto;
 import jabaclass.product.presentation.dto.request.OrderRequestDto;
@@ -41,9 +42,10 @@ public class SchdulesRestController implements SchedulesOpenApi {
 	@PostMapping("/{productId}/schedules")
 	public ResponseEntity<ApiResponseDto<SchedulesResponseDto>> schedulesCreate(
 		@RequestBody @Valid CreateScheduleRequestDto requestDto
-		, @PathVariable UUID productId) {
+		, @PathVariable UUID productId
+		, @CurrentUser UUID userId) {
 
-		SchedulesResponseDto response = scheduleUseCase.create(requestDto, productId);
+		SchedulesResponseDto response = scheduleUseCase.create(requestDto, productId, userId);
 
 		return ResponseEntity.status(HttpStatus.CREATED)
 			.body(ApiResponseDto.success(HttpStatus.CREATED, "성공적으로 등록 되었습니다.", response));
@@ -55,9 +57,10 @@ public class SchdulesRestController implements SchedulesOpenApi {
 	public ResponseEntity<ApiResponseDto<SchedulesResponseDto>> schedulesUpdate(
 		@RequestBody @Valid UpdateScheduleRequestDto requestDto,
 		@PathVariable UUID productId,
-		@PathVariable UUID scheduleId
+		@PathVariable UUID scheduleId,
+		@CurrentUser UUID userId
 	) {
-		SchedulesResponseDto response = scheduleUseCase.update(requestDto, productId, scheduleId);
+		SchedulesResponseDto response = scheduleUseCase.update(requestDto, productId, scheduleId, userId);
 
 		return ResponseEntity.ok()
 			.body(ApiResponseDto.success(HttpStatus.OK, "성공적으로 수정 되었습니다.", response));
@@ -71,17 +74,12 @@ public class SchdulesRestController implements SchedulesOpenApi {
 		return ResponseEntity.ok().body(response);
 	}
 
-	/*@Override
-	@PostMapping("/reservations/status")
-	public void schedulesVerification(@RequestBody OrderRequestDto requestDto) {
-		scheduleUseCase.restoringInventory(requestDto);
-	}*/
-
 	@Override
 	@DeleteMapping("/{productId}/schedules/{scheduleId}")
 	public ResponseEntity<ApiResponseDto<DeleteScheduleResposeDto>> schedulesDelete(@PathVariable UUID productId,
-		@PathVariable UUID scheduleId) {
-		DeleteScheduleResposeDto response = scheduleUseCase.delete(productId, scheduleId);
+		@PathVariable UUID scheduleId,
+		@CurrentUser UUID userId) {
+		DeleteScheduleResposeDto response = scheduleUseCase.delete(productId, scheduleId, userId);
 
 		return ResponseEntity.ok()
 			.body(ApiResponseDto.success(HttpStatus.OK, "성공적으로 삭제 되었습니다.", response));
