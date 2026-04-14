@@ -32,7 +32,7 @@ public class PaymentFailedEventConsumer {
 
 			orderUseCase.updatePaymentStatus(
 				event.orderId(),
-				new UpdateOrderPaymentStatusRequestDto(PaymentResultStatus.FAILED)
+				new UpdateOrderPaymentStatusRequestDto(PaymentResultStatus.FAILED, event.depositAmount())
 			);
 
 			log.info("payment.failed 이벤트 처리 완료. orderId={}", event.orderId());

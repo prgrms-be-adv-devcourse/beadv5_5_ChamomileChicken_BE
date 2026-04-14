@@ -32,7 +32,7 @@ public class PaymentCompletedEventConsumer {
 
 			orderUseCase.updatePaymentStatus(
 				event.orderId(),
-				new UpdateOrderPaymentStatusRequestDto(PaymentResultStatus.SUCCESS)
+				new UpdateOrderPaymentStatusRequestDto(PaymentResultStatus.SUCCESS, null)
 			);
 
 			log.info("payment.completed 이벤트 처리 완료. orderId={}", event.orderId());

@@ -19,7 +19,7 @@ public record CreateOrderResponseDto(
     OrderStatus status
 ) {
 
-    public static CreateOrderResponseDto of(Order order, UUID productId) {
+    public static CreateOrderResponseDto of(Order order, UUID productId, BigDecimal depositAmount) {
         return new CreateOrderResponseDto(
             order.getId(),
             order.getUserId(),
@@ -28,8 +28,8 @@ public record CreateOrderResponseDto(
             order.getProductUserId(),
             order.getQuantity(),
             order.getPrice(),
-            order.getDepositAmount(),
-            order.getPrice().subtract(order.getDepositAmount()),
+            depositAmount,
+            order.getPrice().subtract(depositAmount),
             order.getStatus()
         );
     }
