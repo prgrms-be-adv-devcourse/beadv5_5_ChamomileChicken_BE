@@ -88,6 +88,7 @@
 | DELETE | `/api/v1/products/{productId}/schedules/{scheduleId}` | ✅ JWT | 스케줄 삭제 |
 | GET | `/api/v1/products/{productId}/schedules` | ❌ 공개 | 스케줄 목록 조회 |
 | GET | `/api/v1/products/{scheduleId}/availability` | ❌ 공개 | 잔여 수량 조회 |
+| POST | `/api/v1/products/schedules/{scheduleId}` | ⚙️ Internal | 스케줄 단건 조회 |
 
 ---
 
@@ -111,6 +112,23 @@
     "date": "2024-06-01",
     "quantity": 10,
     "status": "OPEN"
+  }
+}
+```
+
+---
+
+### POST `/api/v1/products/schedules/{scheduleId}`
+
+**Response** `200 OK`
+```json
+{
+  "data": {
+    "scheduleId": "uuid",
+    "productId": "uuid",
+    "date": "2024-06-01",
+    "quantity": 10,
+    "status": "AVAILABLE | FULL | CLOSED"
   }
 }
 ```
@@ -200,6 +218,7 @@
 |--------|------|------|------|
 | POST | `/api/v1/products/reservations` | ⚙️ Internal | 재고 확인 및 예약 처리 |
 | POST | `/api/v1/products/reservations/status` | ⚙️ Internal | 재고 복원 (주문 취소 시) |
+| POST | `/api/v1/products/schedules/{scheduleId}` | ⚙️ Internal | 스케줄 단건 조회 |
 | GET | `/api/v1/products/{productId}/schedules/{scheduleId}/user` | ⚙️ Internal | 스케줄 참여 유저 조회 |
 | POST | `/api/v1/products/bulk` | ⚙️ Internal | 상품 다건 조회 (정산용) |
 | POST | `/api/v1/products/es-migrate` | ⚙️ Internal | Elasticsearch 마이그레이션 |

@@ -106,6 +106,7 @@ GET  /api/v1/products/**
     Order      → User      예치금 검증/차감 (/api/v1/deposits/validate, /use)
     Payment    → Order     금액 검증, 상태 업데이트 (/api/v1/orders/**)
     Payment    → User      예치금 차감 (/api/v1/deposits/use)
+    Payment    → Product   일정 단건 조회 (/api/v1/products/schedules/{scheduleId})
     Settlement → Payment   정산 대상 조회 (/api/v1/payments/settlement-targets)
     Settlement → Order     주문 정보 조회 (/api/v1/orders/bulk)
     Settlement → User      셀러 정산 계좌 조회 (/api/v1/users/sellers/**/bulk)
