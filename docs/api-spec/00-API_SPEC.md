@@ -57,12 +57,12 @@ GET  /api/v1/products/**
 
 | # | 서비스        | 포트   | 문서                                                |
 |---|------------|------|---------------------------------------------------|
-| 1 | User       | 9003 | [api/01-user.md](api-spec/01-user.md)             |
-| 2 | Product    | 9004 | [api/02-product.md](api-spec/02-product.md)       |
-| 3 | File       | 9000 | [api/03-file.md](api-spec/03-file.md)             |
-| 4 | Order      | 9005 | [api/04-order.md](api-spec/04-order.md)           |
-| 5 | Payment    | 9001 | [api/05-payment.md](api-spec/05-payment.md)       |
-| 6 | Settlement | 9002 | [api/06-settlement.md](api-spec/06-settlement.md) |
+| 1 | User       | 9003 | [01-user.md](01-user.md)             |
+| 2 | Product    | 9004 | [02-product.md](02-product.md)       |
+| 3 | File       | 9000 | [03-file.md](03-file.md)             |
+| 4 | Order      | 9005 | [04-order.md](04-order.md)           |
+| 5 | Payment    | 9001 | [05-payment.md](05-payment.md)       |
+| 6 | Settlement | 9002 | [06-settlement.md](06-settlement.md) |
 
 ---
 
