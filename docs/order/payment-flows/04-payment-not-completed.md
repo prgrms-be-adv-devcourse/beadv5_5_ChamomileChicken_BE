@@ -1,58 +1,77 @@
 # 결제 미완료 (만료)
 
-> 사용자가 결제를 직접 취소하거나 앱을 나가버린 경우.  
-> **PaymentService**가 일정 시간 경과 후 타임아웃을 감지하여 `payment.expired` 이벤트를 발행합니다.
-
----
+> 사용자가 결제를 진행하지 않거나 앱을 이탈한 경우.
+> PaymentService 스케줄러가 생성 후 10분 경과한 READY 상태 Payment를 감지하여 만료 처리한다.
 
 ## 흐름
 
 ```
-PaymentService: 타임아웃 감지 → payment.expired 발행 { orderId }
-  └─ OrderService (PaymentExpiredEventConsumer)
-       Order.status: PENDING → EXPIRED
-       ├─ Kafka: order.reservation.released { productUserId }
-       │    └─ ProductService (OrderReservationReleasedConsumer)
-       │         ProductUser.status: RESERVED → RELEASED
-       │         Schedule 잔여 인원 복구
-       └─ Kafka: order.expired { orderId, userId, depositAmount }
-            └─ UserService: 예치금 복구
+PaymentService: 스케줄러 (ExpirePaymentService) — 10분 주기
+  Payment.status: READY → EXPIRED
+  └─ Outbox 저장 (PAYMENT_EXPIRED)
+       └─ OutboxPublisher → Kafka: payment.events (PAYMENT_EXPIRED)
+            └─ OrderService (PaymentEventsConsumer)
+                 Order.status: PENDING → EXPIRED
+                 ├─ Kafka: order.events (ORDER_RESERVATION_RELEASED)
+                 │    └─ ProductService (OrderEventsConsumer)
+                 │         ProductUser.status: RESERVED → RELEASED
+                 │         Schedule 잔여 인원 복구
+                 └─ Kafka: order.events (ORDER_EXPIRED)
+                      └─ UserService (OrderEventsConsumer)
+                           예치금 복구
 ```
 
 ---
 
-## Order 처리 — `PaymentExpiredEventConsumer`
+## 각 모듈 처리
 
-| 항목 | 값 |
-|------|----|
-| 수신 토픽 | `payment.expired` |
-| groupId | `order-service` |
-| 페이로드 | `{ "orderId": "UUID" }` |
+### Payment — `ExpirePaymentService.execute()`
 
-1. `payment.expired` 수신
-2. **중복 처리 방지:** 이미 `EXPIRED`이면 무시
+1. 스케줄러 실행 (10분 주기)
+2. `status = READY` + `createdAt < now - 10분` 인 Payment 조회
+3. `Payment.status → EXPIRED`
+4. Outbox 저장 (`PAYMENT_EXPIRED`)
+
+Kafka 이벤트:
+```
+Topic:  payment.events
+Header: eventType = PAYMENT_EXPIRED
+Body:   { "eventId": "UUID", "paymentId": "UUID", "orderId": "UUID", "depositAmount": 5000 }
+```
+
+### Order — `PaymentEventsConsumer` → `OrderService.expireOrder()`
+
+1. `PAYMENT_EXPIRED` 수신
+2. 이미 `EXPIRED`이면 무시 (멱등성)
 3. `order.expire()` → `PENDING → EXPIRED`
-   - `PENDING`이 아닌 경우 `BusinessException(ORDER_EXPIRE_NOT_ALLOWED)` 발생
-4. `order.reservation.released` 발행
-   ```json
-   { "productUserId": "..." }
-   ```
-5. `order.expired` 발행
-   ```json
-   { "orderId": "...", "userId": "...", "depositAmount": 5000 }
-   ```
+4. `ORDER_RESERVATION_RELEASED` 발행
+5. `ORDER_EXPIRED` 발행
 
----
+Kafka 이벤트:
+```
+Topic:  order.events
+Header: eventType = ORDER_RESERVATION_RELEASED
+Body:   { "eventId": "UUID", "productUserId": "UUID" }
 
-## Product 처리 — `OrderReservationReleasedConsumer`
+Topic:  order.events
+Header: eventType = ORDER_EXPIRED
+Body:   { "eventId": "UUID", "orderId": "UUID", "userId": "UUID", "depositAmount": 5000 }
+```
 
-| 항목 | 값 |
-|------|----|
-| 수신 토픽 | `order.reservation.released` |
-| groupId | `product-service` |
-| 페이로드 | `{ "productUserId": "UUID" }` |
+### Product — `OrderEventsConsumer` → `ScheduleService.restoringInventory(RELEASED)`
 
-결제 실패(03)와 동일. `ProductUser.status` → `RELEASED`, 재고 복구.
+결제 실패(03)와 동일.
+
+1. `ORDER_RESERVATION_RELEASED` 수신
+2. 이미 `RELEASED`이면 무시
+3. Schedule 잔여 인원 복구
+4. `ProductUser.status → RELEASED`
+
+### User (Deposit) — `OrderEventsConsumer` → `DepositService.refund()`
+
+1. `ORDER_EXPIRED` 수신
+2. `user.chargeDeposit(depositAmount)` — 잔액 복구
+3. `DepositHistory` 저장 (type: `REFUND`)
 
 ---
 
@@ -60,6 +79,8 @@ PaymentService: 타임아웃 감지 → payment.expired 발행 { orderId }
 
 | 도메인 | 상태 |
 |--------|------|
+| `Payment.status` | `EXPIRED` |
 | `Order.status` | `EXPIRED` |
 | `ProductUser.status` | `RELEASED` |
 | Schedule 잔여 인원 | 복구됨 |
+| 예치금 잔액 | 복구됨 (사용한 경우) |
