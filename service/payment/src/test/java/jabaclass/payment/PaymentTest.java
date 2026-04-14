@@ -29,8 +29,8 @@ import static org.mockito.Mockito.lenient;
 import jabaclass.payment.application.port.external.OrderPort;
 import jabaclass.payment.application.port.external.PaymentGatewayPort;
 import jabaclass.payment.application.service.PaymentService;
-import jabaclass.payment.common.exception.PaymentErrorCode;
-import jabaclass.payment.common.exception.PaymentException;
+import jabaclass.payment.common.error.PaymentErrorCode;
+import jabaclass.payment.common.error.PaymentException;
 import jabaclass.payment.domain.model.Payment;
 import jabaclass.payment.domain.model.PaymentMethod;
 import jabaclass.payment.domain.model.PaymentStatus;
@@ -45,6 +45,7 @@ import jabaclass.payment.presentation.dto.response.PaymentResponseDto;
 
 @ExtendWith(MockitoExtension.class)
 class PaymentTest {
+	private static final UUID TEST_USER_ID = UUID.randomUUID();
 
 	@Mock
 	private PaymentRepository paymentRepository;
@@ -91,7 +92,7 @@ class PaymentTest {
 				return payment;
 			});
 
-		PaymentResponseDto response = paymentService.create(request);
+		PaymentResponseDto response = paymentService.create(TEST_USER_ID, request);
 
 		ArgumentCaptor<Payment> paymentCaptor = ArgumentCaptor.forClass(Payment.class);
 		verify(paymentRepository).save(paymentCaptor.capture());
@@ -119,7 +120,7 @@ class PaymentTest {
 				return payment;
 			});
 
-		PaymentResponseDto response = paymentService.create(request);
+		PaymentResponseDto response = paymentService.create(TEST_USER_ID, request);
 
 		ArgumentCaptor<Payment> paymentCaptor = ArgumentCaptor.forClass(Payment.class);
 		verify(paymentRepository).save(paymentCaptor.capture());
@@ -135,13 +136,14 @@ class PaymentTest {
 	@Test
 	void confirm_이미완료된결제면_기존결과반환_외부호출없음() {
 		UUID orderId = UUID.randomUUID();
-		Payment payment = createPayment(orderId, BigDecimal.valueOf(10000), BigDecimal.ZERO);
+		Payment payment = createPayment(TEST_USER_ID, orderId, BigDecimal.valueOf(10000), BigDecimal.ZERO);
 		assignPaymentId(payment);
 		payment.markDone("existing-key");
 
 		when(paymentRepository.findByOrderId(orderId)).thenReturn(Optional.of(payment));
 
 		PaymentResponseDto response = paymentService.confirm(
+			TEST_USER_ID,
 			new ConfirmPaymentRequestDto(orderId, "ignored-key", 10000)
 		);
 
@@ -154,14 +156,14 @@ class PaymentTest {
 	@Test
 	void confirm_주문금액검증실패면_예외() {
 		UUID orderId = UUID.randomUUID();
-		Payment payment = createPayment(orderId, BigDecimal.valueOf(10000), BigDecimal.ZERO);
+		Payment payment = createPayment(TEST_USER_ID, orderId, BigDecimal.valueOf(10000), BigDecimal.ZERO);
 		assignPaymentId(payment);
 		when(paymentRepository.findByOrderId(orderId)).thenReturn(Optional.of(payment));
 		when(orderPort.validateOrder(orderId, 10000)).thenReturn(false);
 
 		PaymentException exception = assertThrows(
 			PaymentException.class,
-			() -> paymentService.confirm(new ConfirmPaymentRequestDto(orderId, "pay-key", 10000))
+			() -> paymentService.confirm(TEST_USER_ID, new ConfirmPaymentRequestDto(orderId, "pay-key", 10000))
 		);
 
 		assertEquals(PaymentErrorCode.INVALID_ORDER_AMOUNT, exception.getErrorCode());
@@ -172,14 +174,14 @@ class PaymentTest {
 	@Test
 	void confirm_결제금액불일치면_예외() {
 		UUID orderId = UUID.randomUUID();
-		Payment payment = createPayment(orderId, BigDecimal.valueOf(10000), BigDecimal.ZERO);
+		Payment payment = createPayment(TEST_USER_ID, orderId, BigDecimal.valueOf(10000), BigDecimal.ZERO);
 		assignPaymentId(payment);
 		when(paymentRepository.findByOrderId(orderId)).thenReturn(Optional.of(payment));
 		when(orderPort.validateOrder(orderId, 10000)).thenReturn(true);
 
 		PaymentException exception = assertThrows(
 			PaymentException.class,
-			() -> paymentService.confirm(new ConfirmPaymentRequestDto(orderId, "pay-key", 9000))
+			() -> paymentService.confirm(TEST_USER_ID, new ConfirmPaymentRequestDto(orderId, "pay-key", 9000))
 		);
 
 		assertEquals(PaymentErrorCode.INVALID_PAYMENT_AMOUNT, exception.getErrorCode());
@@ -190,12 +192,13 @@ class PaymentTest {
 	@Test
 	void confirm_성공하면_결제완료와_완료아웃박스저장() {
 		UUID orderId = UUID.randomUUID();
-		Payment payment = createPayment(orderId, BigDecimal.valueOf(10000), BigDecimal.ZERO);
+		Payment payment = createPayment(TEST_USER_ID, orderId, BigDecimal.valueOf(10000), BigDecimal.ZERO);
 		assignPaymentId(payment);
 		when(paymentRepository.findByOrderId(orderId)).thenReturn(Optional.of(payment));
 		when(orderPort.validateOrder(orderId, 10000)).thenReturn(true);
 
 		PaymentResponseDto response = paymentService.confirm(
+			TEST_USER_ID,
 			new ConfirmPaymentRequestDto(orderId, "pay-key", 10000)
 		);
 
@@ -214,7 +217,7 @@ class PaymentTest {
 	@Test
 	void confirm_PG승인실패면_결제실패와_실패아웃박스저장() {
 		UUID orderId = UUID.randomUUID();
-		Payment payment = createPayment(orderId, BigDecimal.valueOf(10000), BigDecimal.ZERO);
+		Payment payment = createPayment(TEST_USER_ID, orderId, BigDecimal.valueOf(10000), BigDecimal.ZERO);
 		assignPaymentId(payment);
 		when(paymentRepository.findByOrderId(orderId)).thenReturn(Optional.of(payment));
 		when(orderPort.validateOrder(orderId, 10000)).thenReturn(true);
@@ -223,7 +226,7 @@ class PaymentTest {
 
 		PaymentException exception = assertThrows(
 			PaymentException.class,
-			() -> paymentService.confirm(new ConfirmPaymentRequestDto(orderId, "pay-key", 10000))
+			() -> paymentService.confirm(TEST_USER_ID, new ConfirmPaymentRequestDto(orderId, "pay-key", 10000))
 		);
 
 		assertEquals(PaymentErrorCode.PAYMENT_CONFIRM_FAILED, exception.getErrorCode());
@@ -246,9 +249,9 @@ class PaymentTest {
 		);
 	}
 
-	private Payment createPayment(UUID orderId, BigDecimal paymentAmount, BigDecimal depositAmount) {
+	private Payment createPayment(UUID userId, UUID orderId, BigDecimal paymentAmount, BigDecimal depositAmount) {
 		return Payment.create(
-			UUID.randomUUID(),
+			userId,
 			UUID.randomUUID(),
 			orderId,
 			UUID.randomUUID(),
