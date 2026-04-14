@@ -2,6 +2,7 @@ package jabaclass.payment.application.service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 import jabaclass.payment.application.usecase.ExpirePaymentUseCase;
 import jabaclass.payment.domain.model.Payment;
 import jabaclass.payment.domain.model.PaymentStatus;
@@ -49,7 +50,7 @@ public class ExpirePaymentService implements ExpirePaymentUseCase {
 						"PAYMENT",
 						payment.getId().toString(),
 						EventType.PAYMENT_EXPIRED,
-						toJson(new PaymentExpiredEvent(payment.getId(), payment.getOrderId()))
+						toJson(new PaymentExpiredEvent(UUID.randomUUID(), payment.getId(), payment.getOrderId(), payment.getDepositAmount()))
 					)
 				);
 

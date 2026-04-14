@@ -23,11 +23,11 @@ public class OrderEventPublisher {
 	private final OrderExpiredEventPublisher orderExpiredEventPublisher;
 
 	public void publishReservationConfirmed(UUID productUserId) {
-		reservationConfirmedEventPublisher.publish(new OrderReservationConfirmedEvent(productUserId));
+		reservationConfirmedEventPublisher.publish(new OrderReservationConfirmedEvent(UUID.randomUUID(), productUserId));
 	}
 
 	public void publishReservationReleased(UUID productUserId) {
-		reservationReleasedEventPublisher.publish(new OrderReservationReleasedEvent(productUserId));
+		reservationReleasedEventPublisher.publish(new OrderReservationReleasedEvent(UUID.randomUUID(), productUserId));
 	}
 
 	public void publishDepositRefundRequested(Order order, BigDecimal depositAmount) {
@@ -35,13 +35,13 @@ public class OrderEventPublisher {
 			return;
 		}
 		depositRefundRequestedEventPublisher.publish(
-			new DepositRefundRequestedEvent(order.getId(), order.getUserId(), depositAmount)
+			new DepositRefundRequestedEvent(UUID.randomUUID(), order.getId(), order.getUserId(), depositAmount)
 		);
 	}
 
 	public void publishOrderExpired(Order order, BigDecimal depositAmount) {
 		orderExpiredEventPublisher.publish(
-			new OrderExpiredEvent(order.getId(), order.getUserId(), depositAmount)
+			new OrderExpiredEvent(UUID.randomUUID(), order.getId(), order.getUserId(), depositAmount)
 		);
 	}
 }

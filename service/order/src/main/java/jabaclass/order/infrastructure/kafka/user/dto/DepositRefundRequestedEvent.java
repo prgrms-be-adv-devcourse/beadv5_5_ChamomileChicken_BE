@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 public record DepositRefundRequestedEvent(
+	UUID eventId,
 	UUID orderId,
 	UUID userId,
 	BigDecimal depositAmount

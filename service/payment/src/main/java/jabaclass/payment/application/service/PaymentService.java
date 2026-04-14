@@ -76,7 +76,7 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 				"PAYMENT",
 				savedPayment.getId().toString(),
 				EventType.PAYMENT_COMPLETED,
-				toJson(new PaymentCompletedEvent(savedPayment.getId(), savedPayment.getOrderId()))
+				toJson(new PaymentCompletedEvent(UUID.randomUUID(), savedPayment.getId(), savedPayment.getOrderId()))
 			);
 
 			outboxRepository.save(event);
@@ -134,7 +134,7 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 					"PAYMENT",
 					payment.getId().toString(),
 					EventType.PAYMENT_COMPLETED,
-					toJson(new PaymentCompletedEvent(payment.getId(), payment.getOrderId()))
+					toJson(new PaymentCompletedEvent(UUID.randomUUID(), payment.getId(), payment.getOrderId()))
 				)
 			);
 
@@ -148,7 +148,7 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 					"PAYMENT",
 					payment.getId().toString(),
 					EventType.PAYMENT_FAILED,
-					toJson(new PaymentFailedEvent(payment.getId(), payment.getOrderId()))
+					toJson(new PaymentFailedEvent(UUID.randomUUID(), payment.getId(), payment.getOrderId(), payment.getDepositAmount()))
 				)
 			);
 
@@ -203,7 +203,7 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 					"PAYMENT",
 					payment.getId().toString(),
 					EventType.PAYMENT_REFUNDED,
-					toJson(new PaymentRefundedEvent(payment.getId(), payment.getOrderId()))
+					toJson(new PaymentRefundedEvent(UUID.randomUUID(), payment.getId(), payment.getOrderId()))
 				)
 			);
 

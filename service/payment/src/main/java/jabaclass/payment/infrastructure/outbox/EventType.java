@@ -1,10 +1,10 @@
 package jabaclass.payment.infrastructure.outbox;
 
 public enum EventType {
-	PAYMENT_COMPLETED("payment.completed"),
-	PAYMENT_FAILED("payment.failed"),
-	PAYMENT_REFUNDED("payment.refunded"),
-	PAYMENT_EXPIRED("payment.expired");
+	PAYMENT_COMPLETED("payment.events"),
+	PAYMENT_FAILED("payment.events"),
+	PAYMENT_REFUNDED("payment.events"),
+	PAYMENT_EXPIRED("payment.events");
 
 	private final String topic;
 

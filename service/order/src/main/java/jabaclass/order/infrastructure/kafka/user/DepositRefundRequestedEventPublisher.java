@@ -1,25 +1,36 @@
 package jabaclass.order.infrastructure.kafka.user;
 
+import java.nio.charset.StandardCharsets;
+
+import org.apache.kafka.clients.producer.ProducerRecord;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import jabaclass.order.infrastructure.kafka.user.dto.DepositRefundRequestedEvent;
+import jabaclass.order.common.config.KafkaTopicConfig;
 import lombok.RequiredArgsConstructor;
 
 @Component
 @RequiredArgsConstructor
 public class DepositRefundRequestedEventPublisher {
 
-	public static final String TOPIC = "order.deposit.refund-requested";
+	public static final String EVENT_TYPE = "ORDER_DEPOSIT_REFUND_REQUESTED";
 
 	private final KafkaTemplate<String, String> kafkaTemplate;
 	private final ObjectMapper objectMapper;
 
 	public void publish(DepositRefundRequestedEvent event) {
 		try {
-			kafkaTemplate.send(TOPIC, event.orderId().toString(), objectMapper.writeValueAsString(event));
+			String payload = objectMapper.writeValueAsString(event);
+			ProducerRecord<String, String> record = new ProducerRecord<>(
+				KafkaTopicConfig.TOPIC,
+				event.orderId().toString(),
+				payload
+			);
+			record.headers().add("eventType", EVENT_TYPE.getBytes(StandardCharsets.UTF_8));
+			kafkaTemplate.send(record);
 		} catch (Exception e) {
 			throw new RuntimeException("예치금 복구 요청 이벤트 발행 실패", e);
 		}

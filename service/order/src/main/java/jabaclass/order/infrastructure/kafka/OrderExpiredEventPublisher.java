@@ -1,26 +1,37 @@
 package jabaclass.order.infrastructure.kafka;
 
+import java.nio.charset.StandardCharsets;
+
+import org.apache.kafka.clients.producer.ProducerRecord;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import jabaclass.order.common.config.KafkaTopicConfig;
 import lombok.RequiredArgsConstructor;
 
 @Component
 @RequiredArgsConstructor
 public class OrderExpiredEventPublisher {
 
-	public static final String TOPIC = "order.expired";
+	public static final String EVENT_TYPE = "ORDER_EXPIRED";
 
 	private final KafkaTemplate<String, String> kafkaTemplate;
 	private final ObjectMapper objectMapper;
 
 	public void publish(OrderExpiredEvent event) {
 		try {
-			kafkaTemplate.send(TOPIC, event.orderId().toString(), objectMapper.writeValueAsString(event));
+			String payload = objectMapper.writeValueAsString(event);
+			ProducerRecord<String, String> record = new ProducerRecord<>(
+				KafkaTopicConfig.TOPIC,
+				event.orderId().toString(),
+				payload
+			);
+			record.headers().add("eventType", EVENT_TYPE.getBytes(StandardCharsets.UTF_8));
+			kafkaTemplate.send(record);
 		} catch (Exception e) {
-			throw new RuntimeException("OrderExpired 이벤트 발행 실패", e);
+			throw new RuntimeException("주문 만료 이벤트 발행 실패", e);
 		}
 	}
 }
