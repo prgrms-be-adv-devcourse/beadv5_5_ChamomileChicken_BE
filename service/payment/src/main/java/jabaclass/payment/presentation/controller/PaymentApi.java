@@ -7,6 +7,8 @@ import jabaclass.payment.presentation.dto.request.ConfirmPaymentRequestDto;
 import jabaclass.payment.presentation.dto.request.PreparePaymentRequestDto;
 import jabaclass.payment.presentation.dto.request.RefundPaymentRequestDto;
 import jabaclass.payment.presentation.dto.response.PaymentResponseDto;
+import jabaclass.payment.presentation.dto.response.RefundPaymentResponseDto;
+
 import org.springframework.http.ResponseEntity;
 
 @Tag(name = "Payment", description = "결제 API")
@@ -47,7 +49,7 @@ public interface PaymentApi {
 			- 완료 후 payment.refund.completed 이벤트를 발행합니다.
 			"""
 	)
-	ResponseEntity<ApiResponseDto<Void>> refundPayment(
+	ResponseEntity<ApiResponseDto<RefundPaymentResponseDto>> refundPayment(
 		RefundPaymentRequestDto request
 	);
 }
