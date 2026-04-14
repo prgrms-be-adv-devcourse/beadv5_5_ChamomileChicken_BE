@@ -240,15 +240,4 @@ public class ProductService implements ProductUseCase {
 		return sellerInfo;
 	}
 
-/*	private UserResponseDto validateAndGetSeller() {
-		UUID sellerId = auditorAwareService.getCurrentAuditor()
-			.orElseThrow(() -> new BusinessException(CommonErrorCode.EMPTY_USER));
-		UserResponseDto seller = findBySellerIdOrThrow(sellerId);
-		SellerRole role = SellerRole.from(seller.role());
-		if (role != SellerRole.SELLER) {
-			throw new BusinessException(CommonErrorCode.NOT_SELLER);
-		}
-		return seller;
-	}*/
-
 }
