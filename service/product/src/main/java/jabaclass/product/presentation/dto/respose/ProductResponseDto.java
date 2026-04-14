@@ -17,7 +17,7 @@ public record ProductResponseDto(
 	@Schema(description = "상품 ID", example = "550e8400-e29b-41d4-a716-446655440000")
 	UUID id,
 
-	@Schema(description = "판매자 이름", example = "신짱구")
+	@Schema(description = "판매자 이름", example = "홍길동")
 	String sellerName,
 
 	@Schema(description = "상품명", example = "향수 공방")

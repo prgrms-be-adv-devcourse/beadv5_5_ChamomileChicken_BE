@@ -47,7 +47,7 @@ public class Schedule extends EntityBase {
 	@Column(nullable = false, length = 20)
 	private ReservedStatus status;
 
-	@Column(name = "capacity")
+	@Column(name = "capacity", nullable = false)
 	private int capacity;
 
 	@PrePersist

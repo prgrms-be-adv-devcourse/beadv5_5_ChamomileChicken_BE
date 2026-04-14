@@ -28,7 +28,7 @@ public record SchedulesResponseDto(
 	@Schema(description = "예약 상태", example = "예약 가능")
 	String status,
 
-	@Schema(description = "예약 상태", example = "AVAILABLE")
+	@Schema(description = "남은 예약 가능 인원", example = "10")
 	int capacity,
 
 	@Schema(description = "등록일시", example = "2026-03-04T18:10:00")
@@ -36,7 +36,6 @@ public record SchedulesResponseDto(
 
 	@Schema(description = "수정일시", example = "2026-03-04T18:12:00")
 	LocalDateTime modifyDt
-
 ) {
 	public static SchedulesResponseDto from(Schedule schedule) {
 		return new SchedulesResponseDto(

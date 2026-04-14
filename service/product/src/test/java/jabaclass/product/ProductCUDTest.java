@@ -1,8 +1,10 @@
 package jabaclass.product;
 
-import static org.assertj.core.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.BDDMockito.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -21,12 +23,14 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import jabaclass.product.application.acl.SellerRepository;
 import jabaclass.product.application.exception.BusinessException;
-import jabaclass.product.application.service.AuditorAwareService;
 import jabaclass.product.application.service.ProductService;
+import jabaclass.product.common.exception.CommonErrorCode;
 import jabaclass.product.domain.model.Product;
 import jabaclass.product.domain.model.status.ProductStatus;
 import jabaclass.product.domain.repository.ProductRepository;
 import jabaclass.product.domain.repository.ProductSearchRepository;
+import jabaclass.product.infrastructure.acl.client.FileConfirmClient;
+import jabaclass.product.infrastructure.acl.client.FileConfirmResponse;
 import jabaclass.product.infrastructure.acl.dto.response.UserResponseDto;
 import jabaclass.product.infrastructure.event.dto.ProductEsDeleteEvent;
 import jabaclass.product.infrastructure.event.dto.ProductEsSaveEvent;
@@ -37,8 +41,6 @@ import jabaclass.product.presentation.dto.respose.ProductResponseDto;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
-import jabaclass.product.infrastructure.acl.client.FileConfirmClient;
-import jabaclass.product.infrastructure.acl.client.FileConfirmResponse;
 
 @ExtendWith(MockitoExtension.class)
 class ProductCUDTest {
@@ -59,25 +61,20 @@ class ProductCUDTest {
 	private ApplicationEventPublisher publisher;
 
 	@Mock
-	private AuditorAwareService auditorAwareService;
-
-	@Mock
 	private FileConfirmClient fileConfirmClient;
 
 	private static final UUID SELLER_ID = UUID.fromString("123e4567-e89b-12d3-a456-426614174000");
+	private static final UUID PRODUCT_ID = UUID.fromString("223e4567-e89b-12d3-a456-426614174000");
 	private static final BigDecimal PRICE = new BigDecimal("1000.50");
 
 	private Validator validator;
-	private UUID productId;
 	private Product product;
 
 	@BeforeEach
 	void setUp() {
 		validator = Validation.buildDefaultValidatorFactory().getValidator();
-		productId = UUID.randomUUID();
 
 		product = Product.builder()
-			.id(productId)
 			.sellerId(SELLER_ID)
 			.title("상품A")
 			.maxCapacity(10)
@@ -85,33 +82,35 @@ class ProductCUDTest {
 			.price(PRICE)
 			.status(ProductStatus.ENABLE)
 			.build();
+		ReflectionTestUtils.setField(product, "id", PRODUCT_ID);
 	}
 
 	@Test
 	void 상품_생성에_성공한다() {
 		CreateProductRequestDto request = new CreateProductRequestDto(
-				SELLER_ID, "테스트상품", 5, "테스트 상품 입니다.",
-				List.of(UUID.randomUUID()), PRICE, ProductStatus.ENABLE
+			SELLER_ID,
+			"테스트상품",
+			5,
+			"테스트 상품입니다.",
+			List.of(UUID.randomUUID()),
+			PRICE,
+			ProductStatus.ENABLE
 		);
-
 		UUID fileId = UUID.randomUUID();
-		given(fileConfirmClient.confirmBulk(any()))
-				.willReturn(List.of(new FileConfirmResponse(fileId, "userId/fileId/img.jpg")));
+		given(fileConfirmClient.confirmBulk(any())).willReturn(List.of(new FileConfirmResponse(fileId, "user/file/image.jpg")));
+		given(sellerRepository.findSeller(SELLER_ID))
+			.willReturn(Optional.of(new UserResponseDto(SELLER_ID, "테스트판매자", "SELLER")));
+		given(productRepository.save(any(Product.class))).willAnswer(invocation -> {
+			Product saved = invocation.getArgument(0);
+			ReflectionTestUtils.setField(saved, "id", PRODUCT_ID);
+			return saved;
+		});
 
-		given(auditorAwareService.getCurrentAuditor()).willReturn(Optional.of(SELLER_ID));
-		given(sellerRepository.findSeller(eq(SELLER_ID)))
-				.willReturn(Optional.of(new UserResponseDto(SELLER_ID, "테스트 판매자", "SELLER")));
-		given(productRepository.save(any(Product.class)))
-				.willAnswer(invocation -> {
-					Product saved = invocation.getArgument(0);
-					ReflectionTestUtils.setField(saved, "id", UUID.randomUUID());
-					return saved;
-				});
+		ProductResponseDto saved = productService.create(request, SELLER_ID);
 
-		ProductResponseDto saved = productService.create(request);
-
+		assertThat(saved.id()).isEqualTo(PRODUCT_ID);
 		assertThat(saved.title()).isEqualTo("테스트상품");
-		assertThat(saved.thumbnailPath()).isEqualTo("userId/fileId/img.jpg");  // 추가
+		assertThat(saved.thumbnailPath()).isEqualTo("user/file/image.jpg");
 		assertThat(saved.price()).isEqualByComparingTo(PRICE);
 		then(productRepository).should().save(any(Product.class));
 		then(publisher).should().publishEvent(any(ProductEventResponseDto.class));
@@ -124,7 +123,7 @@ class ProductCUDTest {
 			SELLER_ID,
 			"테스트상품",
 			0,
-			"테스트 상품 입니다.",
+			"테스트 상품입니다.",
 			List.of(UUID.randomUUID()),
 			PRICE,
 			ProductStatus.ENABLE
@@ -142,7 +141,7 @@ class ProductCUDTest {
 			SELLER_ID,
 			"",
 			10,
-			"테스트 상품 입니다.",
+			"테스트 상품입니다.",
 			List.of(UUID.randomUUID()),
 			PRICE,
 			ProductStatus.ENABLE
@@ -160,7 +159,7 @@ class ProductCUDTest {
 			null,
 			"테스트상품",
 			10,
-			"테스트 상품 입니다.",
+			"테스트 상품입니다.",
 			List.of(UUID.randomUUID()),
 			PRICE,
 			ProductStatus.ENABLE
@@ -178,7 +177,7 @@ class ProductCUDTest {
 			SELLER_ID,
 			"테스트상품",
 			10,
-			"테스트 상품 입니다.",
+			"테스트 상품입니다.",
 			List.of(UUID.randomUUID()),
 			BigDecimal.ZERO,
 			ProductStatus.ENABLE
@@ -196,66 +195,20 @@ class ProductCUDTest {
 			SELLER_ID,
 			"테스트상품",
 			5,
-			"테스트 상품 입니다.",
+			"테스트 상품입니다.",
 			List.of(UUID.randomUUID()),
 			PRICE,
 			ProductStatus.ENABLE
 		);
-		given(auditorAwareService.getCurrentAuditor()).willReturn(Optional.of(SELLER_ID));
-		given(sellerRepository.findSeller(any(UUID.class))).willReturn(Optional.empty());
+		given(sellerRepository.findSeller(SELLER_ID)).willReturn(Optional.empty());
 
-		assertThatThrownBy(() -> productService.create(request))
+		assertThatThrownBy(() -> productService.create(request, SELLER_ID))
 			.isInstanceOf(BusinessException.class)
-			.hasMessage("존재하지 않는 유저 입니다.");
-	}
-
-	@Test
-	void 판매자_권한이_없으면_상품_생성에_실패한다() {
-		CreateProductRequestDto request = new CreateProductRequestDto(
-			SELLER_ID,
-			"테스트상품",
-			5,
-			"테스트 상품 입니다.",
-			List.of(UUID.randomUUID()),
-			PRICE,
-			ProductStatus.ENABLE
-		);
-		given(auditorAwareService.getCurrentAuditor()).willReturn(Optional.of(SELLER_ID));
-		given(sellerRepository.findSeller(any(UUID.class)))
-			.willReturn(Optional.of(new UserResponseDto(SELLER_ID, "일반 사용자", "USER")));
-
-		assertThatThrownBy(() -> productService.create(request))
-			.isInstanceOf(BusinessException.class)
-			.hasMessage("판매자가 아닙니다.");
+			.hasMessage(CommonErrorCode.SELLER_NOT_FOUND.getMessage());
 	}
 
 	@Test
 	void 상품_수정에_성공한다() {
-		UpdateProductRequestDto request = new UpdateProductRequestDto(
-				"수정상품", 10, "수정 설명",
-				List.of(UUID.randomUUID()), new BigDecimal("1200.00"), ProductStatus.ENABLE
-		);
-
-		UUID fileId = UUID.randomUUID();
-		given(fileConfirmClient.confirmBulk(any()))
-				.willReturn(List.of(new FileConfirmResponse(fileId, "userId/fileId/img.jpg")));
-
-		given(auditorAwareService.getCurrentAuditor()).willReturn(Optional.of(SELLER_ID));
-		given(sellerRepository.findSeller(eq(SELLER_ID)))
-				.willReturn(Optional.of(new UserResponseDto(SELLER_ID, "테스트 판매자", "SELLER")));
-		given(productRepository.findById(productId)).willReturn(Optional.of(product));
-		given(productRepository.findByIdAndSellerId(productId, SELLER_ID)).willReturn(Optional.of(product));
-
-		ProductResponseDto updated = productService.update(request, productId);
-
-		assertThat(updated.title()).isEqualTo("수정상품");
-		assertThat(updated.price()).isEqualByComparingTo(request.price());
-		then(publisher).should().publishEvent(any(ProductEsSaveEvent.class));
-	}
-
-	@Test
-	void 존재하지_않는_상품은_수정에_실패한다() {
-		UUID missingProductId = UUID.randomUUID();
 		UpdateProductRequestDto request = new UpdateProductRequestDto(
 			"수정상품",
 			10,
@@ -264,25 +217,43 @@ class ProductCUDTest {
 			new BigDecimal("1200.00"),
 			ProductStatus.ENABLE
 		);
-		given(auditorAwareService.getCurrentAuditor()).willReturn(Optional.of(SELLER_ID));
-		given(sellerRepository.findSeller(eq(SELLER_ID)))
-			.willReturn(Optional.of(new UserResponseDto(SELLER_ID, "테스트 판매자", "SELLER")));
-		given(productRepository.findById(missingProductId)).willReturn(Optional.empty());
+		UUID fileId = UUID.randomUUID();
+		given(fileConfirmClient.confirmBulk(any())).willReturn(List.of(new FileConfirmResponse(fileId, "user/file/image.jpg")));
+		given(sellerRepository.findSeller(SELLER_ID))
+			.willReturn(Optional.of(new UserResponseDto(SELLER_ID, "테스트판매자", "SELLER")));
+		given(productRepository.findById(PRODUCT_ID)).willReturn(Optional.of(product));
+		given(productRepository.findByIdAndSellerId(PRODUCT_ID, SELLER_ID)).willReturn(Optional.of(product));
 
-		assertThatThrownBy(() -> productService.update(request, missingProductId))
+		ProductResponseDto updated = productService.update(request, PRODUCT_ID, SELLER_ID);
+
+		assertThat(updated.title()).isEqualTo("수정상품");
+		assertThat(updated.price()).isEqualByComparingTo(request.price());
+		then(publisher).should().publishEvent(any(ProductEsSaveEvent.class));
+	}
+
+	@Test
+	void 존재하지_않는_상품은_수정에_실패한다() {
+		UpdateProductRequestDto request = new UpdateProductRequestDto(
+			"수정상품",
+			10,
+			"수정 설명",
+			List.of(UUID.randomUUID()),
+			new BigDecimal("1200.00"),
+			ProductStatus.ENABLE
+		);
+		given(productRepository.findById(PRODUCT_ID)).willReturn(Optional.empty());
+
+		assertThatThrownBy(() -> productService.update(request, PRODUCT_ID, SELLER_ID))
 			.isInstanceOf(BusinessException.class)
-			.hasMessage("존재하지 않는 상품 ID 입니다.");
+			.hasMessage(CommonErrorCode.PRODUCT_NOT_FOUND.getMessage());
 	}
 
 	@Test
 	void 상품_삭제에_성공한다() {
-		given(auditorAwareService.getCurrentAuditor()).willReturn(Optional.of(SELLER_ID));
-		given(sellerRepository.findSeller(eq(SELLER_ID)))
-			.willReturn(Optional.of(new UserResponseDto(SELLER_ID, "테스트 판매자", "SELLER")));
-		given(productRepository.findById(productId)).willReturn(Optional.of(product));
-		given(productRepository.findByIdAndSellerId(productId, SELLER_ID)).willReturn(Optional.of(product));
+		given(productRepository.findById(PRODUCT_ID)).willReturn(Optional.of(product));
+		given(productRepository.findByIdAndSellerId(PRODUCT_ID, SELLER_ID)).willReturn(Optional.of(product));
 
-		productService.delete(productId);
+		productService.delete(PRODUCT_ID, SELLER_ID);
 
 		assertThat(product.getDeleteDt()).isNotNull();
 		assertThat(product.getStatus()).isEqualTo(ProductStatus.DISABLE);
@@ -291,15 +262,11 @@ class ProductCUDTest {
 
 	@Test
 	void 존재하지_않는_상품은_삭제에_실패한다() {
-		UUID missingProductId = UUID.randomUUID();
-		given(auditorAwareService.getCurrentAuditor()).willReturn(Optional.of(SELLER_ID));
-		given(sellerRepository.findSeller(eq(SELLER_ID)))
-			.willReturn(Optional.of(new UserResponseDto(SELLER_ID, "테스트 판매자", "SELLER")));
-		given(productRepository.findById(missingProductId)).willReturn(Optional.empty());
+		given(productRepository.findById(PRODUCT_ID)).willReturn(Optional.empty());
 
-		assertThatThrownBy(() -> productService.delete(missingProductId))
+		assertThatThrownBy(() -> productService.delete(PRODUCT_ID, SELLER_ID))
 			.isInstanceOf(BusinessException.class)
-			.hasMessage("존재하지 않는 상품 ID 입니다.");
+			.hasMessage(CommonErrorCode.PRODUCT_NOT_FOUND.getMessage());
 	}
 
 	@Test
@@ -312,17 +279,11 @@ class ProductCUDTest {
 			new BigDecimal("1200.00"),
 			ProductStatus.ENABLE
 		);
-		given(auditorAwareService.getCurrentAuditor()).willReturn(Optional.of(SELLER_ID));
-		given(sellerRepository.findSeller(any(UUID.class)))
-			.willAnswer(invocation -> {
-				UUID id = invocation.getArgument(0);
-				return Optional.of(new UserResponseDto(id, "판매자", "SELLER"));
-			});
-		given(productRepository.findById(any(UUID.class))).willReturn(Optional.of(product));
-		given(productRepository.findByIdAndSellerId(any(UUID.class), any(UUID.class))).willReturn(Optional.empty());
+		given(productRepository.findById(PRODUCT_ID)).willReturn(Optional.of(product));
+		given(productRepository.findByIdAndSellerId(PRODUCT_ID, SELLER_ID)).willReturn(Optional.empty());
 
-		assertThatThrownBy(() -> productService.update(request, SELLER_ID))
+		assertThatThrownBy(() -> productService.update(request, PRODUCT_ID, SELLER_ID))
 			.isInstanceOf(BusinessException.class)
-			.hasMessage("해당 상품은 본인 상품이 아닙니다.");
+			.hasMessage(CommonErrorCode.MATCH_FAIL.getMessage());
 	}
 }

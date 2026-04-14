@@ -1,11 +1,12 @@
 package jabaclass.product;
 
-import static org.assertj.core.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.BDDMockito.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -41,9 +42,6 @@ class FavoriteTest {
 	private FavoriteRepository favoriteRepository;
 
 	@Mock
-	private AuditorAwareService auditorAwareService;
-
-	@Mock
 	private FavoriteUseCase favoriteUseCase;
 
 	private static final UUID USER_ID = UUID.fromString("123e4567-e89b-12d3-a456-426614174000");
@@ -64,15 +62,13 @@ class FavoriteTest {
 
 	@Test
 	void 즐겨찾기를_생성한다() {
-		given(auditorAwareService.getCurrentAuditor()).willReturn(Optional.of(USER_ID));
-		given(favoriteRepository.save(any(Favorite.class)))
-			.willAnswer(invocation -> {
-				Favorite saved = invocation.getArgument(0);
-				ReflectionTestUtils.setField(saved, "id", FAVORITE_ID);
-				return saved;
-			});
+		given(favoriteRepository.save(any(Favorite.class))).willAnswer(invocation -> {
+			Favorite saved = invocation.getArgument(0);
+			ReflectionTestUtils.setField(saved, "id", FAVORITE_ID);
+			return saved;
+		});
 
-		FavoritesResposeDto result = favoriteService.createFavorite(2, SCHEDULE_ID);
+		FavoritesResposeDto result = favoriteService.createFavorite(2, SCHEDULE_ID, USER_ID);
 
 		assertThat(result.id()).isEqualTo(FAVORITE_ID);
 		assertThat(result.productScheduleId()).isEqualTo(SCHEDULE_ID);
@@ -81,65 +77,63 @@ class FavoriteTest {
 
 	@Test
 	void 즐겨찾기를_삭제한다() {
-		given(auditorAwareService.getCurrentAuditor()).willReturn(Optional.of(USER_ID));
 		given(favoriteRepository.findByIdAndUserIdAndDeleteDtIsNull(FAVORITE_ID, USER_ID)).willReturn(favorite);
 
-		favoriteService.deleteFavorite(FAVORITE_ID);
+		favoriteService.deleteFavorite(FAVORITE_ID, USER_ID);
 
 		assertThat(favorite.getDeleteDt()).isNotNull();
 	}
 
 	@Test
 	void 내_즐겨찾기_목록을_조회한다() {
-		given(auditorAwareService.getCurrentAuditor()).willReturn(Optional.of(USER_ID));
 		given(favoriteRepository.findByUserIdAndDeleteDtIsNull(USER_ID)).willReturn(List.of(favorite));
 
-		List<FavoritesResposeDto> result = favoriteService.findByUserIdAndDeleteDtIsNull();
+		List<FavoritesResposeDto> result = favoriteService.findByUserIdAndDeleteDtIsNull(USER_ID);
 
 		assertThat(result).hasSize(1);
 		assertThat(result.get(0).id()).isEqualTo(FAVORITE_ID);
 	}
 
 	@Test
-	void 로그인_사용자가_없으면_즐겨찾기_생성에_실패한다() {
-		given(auditorAwareService.getCurrentAuditor()).willReturn(Optional.empty());
+	void 다른_사용자의_즐겨찾기는_삭제할_수_없다() {
+		given(favoriteRepository.findByIdAndUserIdAndDeleteDtIsNull(FAVORITE_ID, USER_ID)).willReturn(null);
 
-		assertThatThrownBy(() -> favoriteService.createFavorite(2, SCHEDULE_ID))
+		assertThatThrownBy(() -> favoriteService.deleteFavorite(FAVORITE_ID, USER_ID))
 			.isInstanceOf(BusinessException.class)
-			.hasMessage(CommonErrorCode.EMPTY_USER.getMessage());
+			.hasMessage(CommonErrorCode.NOT_MATCH_USER_LIKE.getMessage());
 	}
 
 	@Test
 	void 즐겨찾기_생성_요청이_들어오면_컨트롤러가_유스케이스를_호출한다() {
 		FavoritesResposeDto response = new FavoritesResposeDto(FAVORITE_ID, SCHEDULE_ID, 2);
-		given(favoriteUseCase.createFavorite(2, SCHEDULE_ID)).willReturn(response);
+		given(favoriteUseCase.createFavorite(2, SCHEDULE_ID, USER_ID)).willReturn(response);
 
-		ResponseEntity<ApiResponseDto<FavoritesResposeDto>> result = favoritesRestController.create(2, SCHEDULE_ID);
+		ResponseEntity<ApiResponseDto<FavoritesResposeDto>> result = favoritesRestController.create(2, SCHEDULE_ID, USER_ID);
 
 		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.CREATED);
 		assertThat(result.getBody()).isNotNull();
 		assertThat(result.getBody().getData()).isEqualTo(response);
-		then(favoriteUseCase).should().createFavorite(2, SCHEDULE_ID);
+		then(favoriteUseCase).should().createFavorite(2, SCHEDULE_ID, USER_ID);
 	}
 
 	@Test
 	void 즐겨찾기_삭제_요청이_들어오면_컨트롤러가_유스케이스를_호출한다() {
-		ResponseEntity<ApiResponseDto<FavoritesResposeDto>> result = favoritesRestController.delete(FAVORITE_ID);
+		ResponseEntity<ApiResponseDto<FavoritesResposeDto>> result = favoritesRestController.delete(FAVORITE_ID, USER_ID);
 
 		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
-		then(favoriteUseCase).should().deleteFavorite(FAVORITE_ID);
+		then(favoriteUseCase).should().deleteFavorite(FAVORITE_ID, USER_ID);
 	}
 
 	@Test
 	void 즐겨찾기_목록_조회_요청이_들어오면_컨트롤러가_유스케이스를_호출한다() {
 		List<FavoritesResposeDto> response = List.of(new FavoritesResposeDto(FAVORITE_ID, SCHEDULE_ID, 2));
-		given(favoriteUseCase.findByUserIdAndDeleteDtIsNull()).willReturn(response);
+		given(favoriteUseCase.findByUserIdAndDeleteDtIsNull(USER_ID)).willReturn(response);
 
-		ResponseEntity<ApiResponseDto<List<FavoritesResposeDto>>> result = favoritesRestController.getList();
+		ResponseEntity<ApiResponseDto<List<FavoritesResposeDto>>> result = favoritesRestController.getList(USER_ID);
 
 		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
 		assertThat(result.getBody()).isNotNull();
 		assertThat(result.getBody().getData()).hasSize(1);
-		then(favoriteUseCase).should().findByUserIdAndDeleteDtIsNull();
+		then(favoriteUseCase).should().findByUserIdAndDeleteDtIsNull(USER_ID);
 	}
 }

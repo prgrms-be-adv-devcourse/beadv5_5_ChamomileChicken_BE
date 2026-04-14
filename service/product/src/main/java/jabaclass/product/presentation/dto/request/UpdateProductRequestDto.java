@@ -1,18 +1,17 @@
 package jabaclass.product.presentation.dto.request;
 
 import java.math.BigDecimal;
+import java.util.List;
+import java.util.UUID;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jabaclass.product.domain.model.status.ProductStatus;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
-import java.util.List;
-import java.util.UUID;
 
 @Schema(description = "상품 수정")
 public record UpdateProductRequestDto(
-
 	@NotBlank(message = "상품명을 입력해주세요.")
 	@Size(max = 100)
 	@Schema(description = "상품명", example = "향수 공방")
@@ -25,8 +24,8 @@ public record UpdateProductRequestDto(
 	@Schema(description = "설명", example = "상품에 대한 설명입니다.")
 	String description,
 
-	@Size(max = 10, message = "사진은 최대 10장까지 등록 가능합니다.")
-	@Schema(description = "상품 이미지 file 목록(순서 = 표시 순서, 첫 번째가 썸네)")
+	@Size(max = 10, message = "사진은 최대 10개까지 등록 가능합니다.")
+	@Schema(description = "상품 이미지 file 목록")
 	List<UUID> imageIds,
 
 	@Min(value = 1, message = "가격은 1원 이상이어야 합니다.")
@@ -35,4 +34,5 @@ public record UpdateProductRequestDto(
 
 	@Schema(description = "상태", example = "ENABLE")
 	ProductStatus status
-) {}
+) {
+}
