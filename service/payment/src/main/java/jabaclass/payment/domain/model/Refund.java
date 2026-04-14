@@ -88,12 +88,8 @@ public class Refund {
 			totalRefundAmount,
 			LocalDateTime.now(),
 			null,
-			RefundStatus.REQUESTED
+			null
 		);
-	}
-
-	public void markProcessing() {
-		this.status = RefundStatus.PROCESSING;
 	}
 
 	public void markCompleted() {

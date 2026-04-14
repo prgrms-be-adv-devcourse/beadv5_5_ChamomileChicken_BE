@@ -9,8 +9,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
 import jabaclass.payment.application.port.external.OrderPort;
-import jabaclass.payment.common.exception.PaymentErrorCode;
-import jabaclass.payment.common.exception.PaymentException;
+import jabaclass.payment.common.error.PaymentErrorCode;
+import jabaclass.payment.common.error.PaymentException;
 import jabaclass.payment.domain.model.PaymentResultStatus;
 import jabaclass.payment.infrastructure.external.order.dto.request.OrderStatusUpdateRequestDto;
 import lombok.RequiredArgsConstructor;

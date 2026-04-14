@@ -1,4 +1,4 @@
-package jabaclass.payment.common.exception;
+package jabaclass.payment.common.error;
 
 import jabaclass.payment.common.dto.ApiResponseDto;
 import lombok.extern.slf4j.Slf4j;

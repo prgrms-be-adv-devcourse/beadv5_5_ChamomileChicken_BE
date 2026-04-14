@@ -1,5 +1,7 @@
 package jabaclass.payment.presentation.controller;
 
+import java.util.UUID;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jabaclass.payment.common.dto.ApiResponseDto;
@@ -7,8 +9,6 @@ import jabaclass.payment.presentation.dto.request.ConfirmPaymentRequestDto;
 import jabaclass.payment.presentation.dto.request.PreparePaymentRequestDto;
 import jabaclass.payment.presentation.dto.request.RefundPaymentRequestDto;
 import jabaclass.payment.presentation.dto.response.PaymentResponseDto;
-import jabaclass.payment.presentation.dto.response.RefundPaymentResponseDto;
-
 import org.springframework.http.ResponseEntity;
 
 @Tag(name = "Payment", description = "결제 API")
@@ -23,7 +23,7 @@ public interface PaymentApi {
 			"""
 	)
 	ResponseEntity<ApiResponseDto<PaymentResponseDto>> preparePayment(
-		PreparePaymentRequestDto request
+		PreparePaymentRequestDto request, UUID userId
 	);
 
 	@Operation(
@@ -37,7 +37,7 @@ public interface PaymentApi {
             """
 	)
 	ResponseEntity<ApiResponseDto<PaymentResponseDto>> confirmPayment(
-		ConfirmPaymentRequestDto request
+		ConfirmPaymentRequestDto request, UUID userId
 	);
 
 	@Operation(
@@ -49,7 +49,7 @@ public interface PaymentApi {
 			- 완료 후 payment.refund.completed 이벤트를 발행합니다.
 			"""
 	)
-	ResponseEntity<ApiResponseDto<RefundPaymentResponseDto>> refundPayment(
-		RefundPaymentRequestDto request
+	ResponseEntity<ApiResponseDto<Void>> refundPayment(
+		RefundPaymentRequestDto request, UUID userId
 	);
 }

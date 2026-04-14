@@ -1,4 +1,4 @@
-package jabaclass.payment.common.exception;
+package jabaclass.payment.common.error;
 
 import org.springframework.http.HttpStatus;
 
@@ -21,7 +21,8 @@ public enum PaymentErrorCode {
 	ORDER_RESPONSE_INVALID(HttpStatus.BAD_GATEWAY, "Order 응답이 올바르지 않습니다."),
 	ORDER_UPDATE_FAILED(HttpStatus.BAD_GATEWAY, "Order 상태 업데이트에 실패했습니다."),
 	USER_DEPOSIT_INCREASE_FAILED(HttpStatus.BAD_GATEWAY, "유저 예치금 증가에 실패했습니다."),
-	USER_DEPOSIT_REFUND_FAILED(HttpStatus.BAD_GATEWAY, "유저 예치금 환불에 실패했습니다.");
+	USER_DEPOSIT_REFUND_FAILED(HttpStatus.BAD_GATEWAY, "유저 예치금 환불에 실패했습니다."),
+	UNAUTHORIZED_PAYMENT_ACCESS(HttpStatus.FORBIDDEN, "본인의 결제가 아닙니다.");
 
 	private final HttpStatus status;
 	private final String message;

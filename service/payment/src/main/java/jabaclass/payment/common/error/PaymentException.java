@@ -1,4 +1,4 @@
-package jabaclass.payment.common.exception;
+package jabaclass.payment.common.error;
 
 import org.springframework.http.HttpStatus;
 
