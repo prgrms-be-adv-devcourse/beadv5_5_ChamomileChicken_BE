@@ -9,6 +9,7 @@
 |------|----------------|----------------------|
 | 검색 방식 | `title` 컬럼 부분 일치만 지원 | `title` + `description` 전문 검색 |
 | 한국어 지원 | 형태소 분석 없음 ("노트북"으로 "노트북 거치대" 검색 불가) | nori 형태소 분석기 적용 |
+| 오타 허용 | 오타 시 검색 결과 없음 | `fuzziness: AUTO` 적용 — 음절 단위 편집 거리 허용 |
 | 성능 | Full table scan (LIKE 앞 와일드카드) | 역인덱스 기반 빠른 검색 |
 | 확장성 | 컬럼 추가 시 쿼리 전체 수정 필요 | 필드 추가만으로 검색 범위 확장 가능 |
 | user 서비스 호출 | 검색마다 sellerName 조회를 위해 REST 호출 | sellerName 비정규화로 호출 제거 |
@@ -114,6 +115,23 @@ resources/elasticsearch/
 
 > Spring Data Elasticsearch 인터페이스(`ElasticsearchRepository`) 대신 `ElasticsearchOperations`를 직접 사용한다.
 > `CriteriaQuery` or() 체이닝의 우선순위 버그를 피하기 위해 `searchByKeyword`는 `NativeQuery` bool 쿼리로 구현했다.
+
+**fuzziness 적용 (`searchByKeyword`):**
+
+```java
+.should(s -> s.match(m -> m.field("title").query(keyword).fuzziness("AUTO")))
+.should(s -> s.match(m -> m.field("description").query(keyword).fuzziness("AUTO")))
+```
+
+`fuzziness: AUTO` 기준 — 완성형 음절 블록(Unicode code point) 단위 편집 거리 계산:
+
+| 토큰 길이 | 허용 편집 거리 | 예시 |
+|-----------|---------------|------|
+| 1~2글자 | 0 (exact) | "향수" → "향소" 매칭 안 됨 |
+| 3~5글자 | 1 | "도재기" → "도자기" 매칭됨 |
+| 6글자 이상 | 2 | — |
+
+> nori가 형태소 분석 후 짧은 토큰(1~2글자)으로 분리되면 해당 토큰에는 fuzziness가 적용되지 않는다.
 
 **`ProductService`에서의 의존 관계:**
 
@@ -221,13 +239,16 @@ spring:
 - [x] `SecurityConfig` — es-migrate 엔드포인트 permitAll 추가
 
 ### Kafka 기반 ES 색인 (비동기 Dual Write)
-- [ ] `ProductEsSaveEvent` — `ProductDocument` 전체를 담는 이벤트 DTO
-- [ ] `ProductEsDeleteEvent` — `productId`를 담는 삭제 이벤트 DTO
-- [ ] `ProductService.create()` — ES 직접 색인 제거 → `ProductEsSaveEvent` Kafka 발행
-- [ ] `ProductService.update()` — ES 직접 색인 제거 → `ProductEsSaveEvent` Kafka 발행
-- [ ] `ProductService.delete()` — ES 직접 삭제 제거 → `ProductEsDeleteEvent` Kafka 발행
-- [ ] `ProductEsKafkaConsumer` — 이벤트 수신 후 `ProductSearchRepository` 색인/삭제 처리
-- [ ] Kafka 토픽 설정 (`product-es-index` 등) 추가
+- [x] `ProductEsSaveEvent` — `ProductDocument` 전체를 담는 이벤트 DTO
+- [x] `ProductEsDeleteEvent` — `productId`를 담는 삭제 이벤트 DTO
+- [x] `ProductService.create()` — ES 직접 색인 제거 → `ProductEsSaveEvent` Kafka 발행
+- [x] `ProductService.update()` — ES 직접 색인 제거 → `ProductEsSaveEvent` Kafka 발행
+- [x] `ProductService.delete()` — ES 직접 삭제 제거 → `ProductEsDeleteEvent` Kafka 발행
+- [x] `ProductEsKafkaConsumer` — 이벤트 수신 후 `ProductSearchRepository` 색인/삭제 처리
+- [x] Kafka 토픽 설정 (`product.es.index`) 추가
+
+### 검색 고도화
+- [x] `searchByKeyword()` — `fuzziness: AUTO` 적용 (오타 허용 검색)
 
 ### 인프라
 - [x] `docker-compose.yml`에 Elasticsearch 9.0.3 컨테이너 추가 (nori 플러그인 포함)
