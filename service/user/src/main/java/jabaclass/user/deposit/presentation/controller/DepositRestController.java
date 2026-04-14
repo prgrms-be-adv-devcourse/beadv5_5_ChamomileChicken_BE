@@ -28,10 +28,10 @@ public class DepositRestController {
 	}
 
 	@PostMapping("/use")
-	public ResponseEntity<Void> useDeposit(
+	public ResponseEntity<ValidateDepositResponseDto> useDeposit(
 		@RequestBody UseDepositRequestDto request
 	) {
 		depositUseCase.use(request.userId(), request.depositAmount());
-		return ResponseEntity.ok().build();
+		return ResponseEntity.ok(new ValidateDepositResponseDto(true));
 	}
 }
