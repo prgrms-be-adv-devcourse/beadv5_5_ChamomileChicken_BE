@@ -52,8 +52,8 @@ public class ProductSearchRepositoryAdapter implements ProductSearchRepository {
 		// (title OR description) AND status=ENABLE AND deleted=false
 		Query query = Query.of(q -> q
 			.bool(b -> b
-				.should(s -> s.match(m -> m.field("title").query(keyword)))
-				.should(s -> s.match(m -> m.field("description").query(keyword)))
+				.should(s -> s.match(m -> m.field("title").query(keyword).fuzziness("AUTO")))
+				.should(s -> s.match(m -> m.field("description").query(keyword).fuzziness("AUTO")))
 				.minimumShouldMatch("1")
 				.filter(f -> f.term(t -> t.field("status").value(ProductStatus.ENABLE.name())))
 				.filter(f -> f.term(t -> t.field("deleted").value(false)))
