@@ -45,4 +45,6 @@ public interface ScheduleUseCase {
 	// 2026-04-14 -> 예약자 id로 스케줄 정보 가져오기
 	SchedulesResponseDto selectSchedules(UUID productUserId);
 
+	// 날짜 지나면 스케줄 상태 값 자동 변경
+	int closeExpiredSchedulesOnce();
 }

@@ -5,6 +5,8 @@ import java.time.LocalTime;
 import java.util.List;
 import java.util.UUID;
 
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -44,6 +46,8 @@ public class ScheduleService implements ScheduleUseCase {
 	private final ProductUseCase productUseCase;
 	private final SellerRepository sellerRepository;
 	private final ProductUserUseCase productUserUseCase;
+
+	private static final int BATCH_SIZE = 100;
 
 	@Override
 	@Transactional
@@ -212,6 +216,28 @@ public class ScheduleService implements ScheduleUseCase {
 		ProductUser user = productUserUseCase.innerFindById(productUserId);
 		Schedule schedule = findByIdOrThrow(user.getProductScheduleId());
 		return SchedulesResponseDto.from(schedule);
+	}
+
+	@Override
+	@Transactional
+	public int closeExpiredSchedulesOnce() {
+		LocalDate today = LocalDate.now();
+		Pageable pageable = PageRequest.of(0, BATCH_SIZE);
+		List<UUID> ids = scheduleRepository.findClosableIds(
+			today,
+			List.of(ReservedStatus.CLOSED, ReservedStatus.FULL),
+			pageable
+		);
+
+		if (ids.isEmpty()) {
+			return 0;
+		}
+
+		return scheduleRepository.bulkClose(
+			ids,
+			ReservedStatus.AVAILABLE,
+			ReservedStatus.CLOSED
+		);
 	}
 
 	// 2026-04-09 결제 실패/취소/환불 시 재고 복구  및 상태값 변경 => kafka

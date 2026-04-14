@@ -6,10 +6,12 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.repository.query.Param;
 
 import jabaclass.product.domain.model.Schedule;
 import jabaclass.product.domain.model.status.ReservationStatus;
+import jabaclass.product.domain.model.status.ReservedStatus;
 
 public interface ScheduleRepository {
 
@@ -57,5 +59,21 @@ public interface ScheduleRepository {
 	// 2026-04-13 재고 복구 과정에서 실패 시 복구 선점 해제
 	int restoreStatus(
 		@Param("productUserId") UUID productUserId
+	);
+
+	/*
+	 * 날짜 마감 스케줄러 돌리는 구간
+	 *
+	 *  */
+	List<UUID> findClosableIds(
+		@Param("today") LocalDate today,
+		@Param("status") List<ReservedStatus> status,
+		Pageable pageable
+	);
+
+	int bulkClose(
+		@Param("ids") List<UUID> ids,
+		@Param("openStatus") ReservedStatus openStatus,
+		@Param("closedStatus") ReservedStatus closedStatus
 	);
 }
