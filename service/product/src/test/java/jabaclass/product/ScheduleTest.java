@@ -406,10 +406,11 @@ class ScheduleTest {
 		given(productUseCase.findByIdOrThrow(PRODUCT_ID)).willReturn(product);
 		given(scheduleRepository.restoreCapacity(SCHEDULE_ID, 2, 10)).willReturn(0);
 
-		OrderValid result = scheduleService.restoringInventory(PRODUCT_USER_ID, ReservationStatus.RELEASED);
-
-		assertThat(result).isEqualTo(OrderValid.MODI_FAIL);
-		then(scheduleRepository).should().restoreStatus(PRODUCT_USER_ID);
+		assertBusinessException(
+			() -> scheduleService.restoringInventory(PRODUCT_USER_ID, ReservationStatus.RELEASED),
+			HttpStatus.CONFLICT,
+			CommonErrorCode.RESTORE_INVENTORY_FAILED
+		);
 	}
 
 	@Test
@@ -429,10 +430,11 @@ class ScheduleTest {
 		given(scheduleRepository.updateStatus(PRODUCT_USER_ID, ReservationStatus.REFUNDED,
 			List.of(ReservationStatus.RESERVED, ReservationStatus.CONFIRMED))).willReturn(0);
 
-		OrderValid result = scheduleService.restoringInventory(PRODUCT_USER_ID, ReservationStatus.REFUNDED);
-
-		assertThat(result).isEqualTo(OrderValid.MODI_FAIL);
-		then(scheduleRepository).should().restoreStatus(PRODUCT_USER_ID);
+		assertBusinessException(
+			() -> scheduleService.restoringInventory(PRODUCT_USER_ID, ReservationStatus.REFUNDED),
+			HttpStatus.CONFLICT,
+			CommonErrorCode.UPDATE_RESERVATION_STATUS_FAILED
+		);
 	}
 
 	@Test
