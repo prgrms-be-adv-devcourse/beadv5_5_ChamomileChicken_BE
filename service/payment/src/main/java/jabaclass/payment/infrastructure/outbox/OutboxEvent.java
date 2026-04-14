@@ -22,6 +22,8 @@ public class OutboxEvent extends BaseEntity {
 
 	private String aggregateType;
 	private String aggregateId;
+
+	@Enumerated(EnumType.STRING)
 	private EventType eventType;
 
 	@Lob
