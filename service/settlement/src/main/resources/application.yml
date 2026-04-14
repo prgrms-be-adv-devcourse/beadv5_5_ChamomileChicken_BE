@@ -25,11 +25,6 @@ clients:
   transfer:
     base-url: ${TRANSFER_SERVICE_HOST:http://localhost:9010}
 
-jwt:
-  secret: ${JWT_SECRET:test-jwt-secret-key-for-local-settlement-module-only}
-  access-token-validity: 1800000
-  refresh-token-validity: 604800000
-
 management:
   endpoints:
     web:
