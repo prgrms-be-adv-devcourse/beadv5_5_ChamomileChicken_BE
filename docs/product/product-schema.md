@@ -2,7 +2,7 @@
 
 ## 배경 및 목적
 
-`product` 모듈의 엔티티들은 JPA 연관 객체보다는 `UUID` 기반 참조를 사용한다.  
+`product` 모듈의 엔티티들은 JPA 연관 객체보다 `UUID` 기반 참조를 주로 사용한다.  
 즉, 코드상으로는 느슨하게 연결되어 있지만 도메인 관점에서는 명확한 상하 관계와 흐름이 존재한다.
 
 이 문서는 `domain.model` 하위 엔티티를 기준으로 다음을 정리한다.
@@ -76,12 +76,14 @@ EntityBase
 - `Product 1 : N Schedule`
 - `Product 1 : N Review`
 - `Product 1 : 1 ProductDocument(ES)`
+- `Product N : 1 User(외부 user 서비스의 seller)`
 
 #### 관계 해석
 
 - 하나의 상품은 여러 일정(`Schedule`)을 가진다.
 - 리뷰는 상품 단위로 누적된다.
 - 검색용 문서(`ProductDocument`)는 `Product`를 기준으로 파생 생성된다.
+- `sellerId`는 product DB 안의 엔티티가 아니라 API Gateway와 user 서비스를 통해 식별되는 외부 사용자 ID다.
 
 ---
 
@@ -115,7 +117,7 @@ EntityBase
 
 - `capacity`는 생성 시 `Product.maxCapacity` 값으로 초기화된다.
 - 주문 검증 시 `capacity`가 감소한다.
-- 결제 실패/취소/환불 시 `capacity`가 다시 복구된다.
+- 취소/환불 시 `capacity`가 다시 복구된다.
 - `capacity`는 null이면 안 되며, 사실상 재고 컬럼 역할을 한다.
 
 ---
@@ -136,27 +138,28 @@ EntityBase
 #### 논리 관계
 
 - `ProductUser N : 1 Schedule`
-- `ProductUser N : 1 User(외부 서비스)`
+- `ProductUser N : 1 User(외부 user 서비스)`
 
 #### 관계 해석
 
 - `productScheduleId`를 통해 어느 일정에 대한 예약인지 결정된다.
-- `userId`는 product DB 안에 사용자 객체를 직접 들고 있지 않고, 외부 `user` 서비스의 사용자 id를 참조한다.
+- `userId`는 product DB 안에 사용자 객체를 직접 들고 있지 않고, 외부 user 서비스의 사용자 ID를 참조한다.
 
 #### 상태 흐름
 
 ```text
 RESERVED   -> 결제 전 임시 선점
 CONFIRMED  -> 결제 완료 후 예약 확정
-RELEASED   -> 결제 실패/취소 등으로 해제
+RELEASED   -> 결제 취소/실패로 해제
 REFUNDED   -> 환불 완료
 ```
 
-#### 핵심 규칙
+#### 복구 흐름의 핵심 규칙
 
-- 예약 검증 성공 시 생성된다.
-- 기본 상태는 `RESERVED`다.
-- 재고 복구 로직에서는 `restoreStatus`를 이용해 중복 복구를 막는다.
+- 복구 가능 여부는 `claimRestore()`에서 현재 상태와 `restoreStatus`를 함께 검사한다.
+- `restoreStatus = 1`은 "복구 처리 중"을 의미한다.
+- `restoreCapacity()` 또는 `updateStatus()`가 실패하면 예외를 던져 트랜잭션 전체를 롤백한다.
+- 따라서 `restoreStatus`만 풀리고 재고가 중복 복구되는 상황을 방지하는 방향으로 동작한다.
 
 ---
 
@@ -174,7 +177,7 @@ REFUNDED   -> 환불 완료
 #### 논리 관계
 
 - `Review N : 1 Product`
-- `Review N : 1 User(외부 서비스)`
+- `Review N : 1 User(외부 user 서비스)`
 
 #### 관계 해석
 
@@ -200,7 +203,7 @@ REFUNDED   -> 환불 완료
 #### 논리 관계
 
 - `Favorite N : 1 Schedule`
-- `Favorite N : 1 User(외부 서비스)`
+- `Favorite N : 1 User(외부 user 서비스)`
 
 #### 관계 해석
 
@@ -272,8 +275,9 @@ erDiagram
 
 ```text
 Product 생성
-  -> 이미지 확인
+  -> file 서비스로 이미지 확인
   -> Product 저장
+  -> user 서비스로 seller 정보 조회
   -> ES 문서 생성
 ```
 
@@ -297,7 +301,7 @@ Schedule 조회
   -> ProductUser 생성
 ```
 
-여기서 `ProductUser`는 “결제 완료된 구매자”가 아니라 “예약 선점된 사용자” 개념에 가깝다.
+여기서 `ProductUser`는 "결제 완료된 구매자"가 아니라 "예약 선점된 사용자" 개념에 가깝다.
 
 ### 4. 결제 완료
 
@@ -306,12 +310,13 @@ ProductUser.status
   RESERVED -> CONFIRMED
 ```
 
-### 5. 결제 실패/취소/환불
+### 5. 결제 취소/환불
 
 ```text
-ProductUser.restoreStatus 선점
+claimRestore 선점
   -> Schedule.capacity 복구
   -> ProductUser.status 변경
+  -> 실패 시 전체 롤백
 ```
 
 이 흐름 때문에 `ProductUser`와 `Schedule`은 실질적으로 강하게 결합되어 있다.
@@ -321,18 +326,20 @@ ProductUser.restoreStatus 선점
 ## 외부 서비스와의 연결
 
 product 스키마는 내부 엔티티만으로 완결되지 않는다.  
-특히 `user`와 `file` 서비스와의 연결을 함께 이해해야 한다.
+특히 `user`, `file`, `api-gateway`와의 연결을 함께 이해해야 한다.
 
-| 외부 서비스 | 연결 필드 | 설명 |
+| 외부 구성요소 | 연결 필드 | 설명 |
 |------------|-----------|------|
+| `api-gateway` | `X-User-Id`, `X-User-Role` | 요청 사용자 식별값 전달 |
 | `user` | `sellerId`, `userId` | 판매자/예약자/리뷰 작성자/찜 사용자 참조 |
 | `file` | `thumbnailPath`, `descriptionImages.fileId/storagePath` | 상품 이미지 메타데이터 연결 |
 
 ### 중요한 점
 
-- `sellerId`, `userId`는 모두 외부 서비스의 id다.
+- `sellerId`, `userId`는 모두 외부 user 서비스의 ID다.
+- product 서비스는 API Gateway가 전달한 사용자 헤더를 신뢰해 컨트롤러에서 사용자 식별값을 꺼낸다.
 - product DB 안에는 사용자 엔티티가 없다.
-- 따라서 관계는 “DB FK”보다 “서비스 간 참조”로 이해해야 한다.
+- 따라서 관계는 "DB FK"보다 "서비스 간 참조"로 이해해야 한다.
 
 ---
 
@@ -362,6 +369,11 @@ product 스키마는 내부 엔티티만으로 완결되지 않는다.
 
 `Product`, `Schedule`, `Review`, `Favorite`는 `deleteDt` 기반 soft delete를 사용한다.  
 따라서 조회 로직에서 `deleteDt is null` 조건이 빠지면 논리 삭제 데이터가 다시 보일 수 있다.
+
+### 5. Gateway 헤더 신뢰 전제가 깨지면 컨트롤러 레벨 사용자 식별이 실패한다
+
+현재 product 서비스는 자체 인증 필터보다 `CurrentUserArgumentResolver`와 `CurrentUserRoleArgumentResolver`에 의존한다.  
+따라서 API Gateway가 `X-User-Id`, `X-User-Role`을 정확히 전달해준다는 전제가 중요하다.
 
 ---
 

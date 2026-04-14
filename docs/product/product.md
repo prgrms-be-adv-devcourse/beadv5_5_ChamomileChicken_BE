@@ -2,16 +2,16 @@
 
 ## 배경 및 목적
 
-`product` 서비스는 상품 도메인의 중심 서비스로, 단순 상품 CRUD를 넘어서 일정 관리, 예약 선점, 재고 차감/복구, 리뷰/찜, 검색 연동까지 함께 담당한다.
+`product` 서비스는 상품 도메인의 중심 서비스로, 상품 CRUD뿐 아니라 일정 관리, 예약 선점, 재고 차감/복구, 리뷰/찜, 검색 연동까지 함께 담당한다.
 
-현재 프로젝트에서 `product` 서비스는 다음 문제를 한 곳에서 풀고 있다.
+현재 프로젝트에서 `product` 서비스는 아래 역할을 가진다.
 
 | 항목 | 역할 |
 |------|------|
 | 상품 관리 | 상품 등록, 수정, 삭제, 단건/목록 조회 |
 | 일정 관리 | 상품별 일정 생성, 수정, 삭제 |
 | 예약 관리 | 주문 전 재고 검증, 예약 사용자 생성 |
-| 결제 후처리 | 결제 성공 시 예약 확정, 실패/취소/환불 시 재고 복구 |
+| 결제 후처리 | 결제 성공 시 예약 확정, 취소/환불 시 재고 복구 |
 | 사용자 연동 | 판매자/예약 사용자 이름 조회 |
 | 파일 연동 | 상품 이미지 업로드 확인 |
 | 검색 연동 | Elasticsearch 색인 이벤트 발행 및 조회 |
@@ -29,7 +29,7 @@
 | 상품 | `PUT /api/v1/products/{productId}` | 상품 수정 |
 | 상품 | `DELETE /api/v1/products/{productId}` | 상품 삭제 |
 | 일정 | `POST /api/v1/products/{productId}/schedules` | 일정 생성 |
-| 일정 | `POST /api/v1/products/schedules/reservations` | 주문 전 예약 검증 |
+| 일정 | `POST /api/v1/products/reservations` | 주문 전 예약 검증 |
 | 리뷰 | `POST /api/v1/products/{productId}/reviews` | 리뷰 생성 |
 | 찜 | `POST /api/v1/products/schedules/{scheduleId}/favorites` | 찜 생성 |
 
@@ -50,22 +50,45 @@ Controller
 - 상품 생성/수정 시 파일 서비스와 사용자 서비스 조회가 함께 묶여 있다.
 - 일정은 `capacity`를 통해 재고 역할을 수행한다.
 - 예약 엔티티는 `ProductUser`로 별도 관리한다.
-- 결제 이후 상태 변경은 동기 API가 아니라 이벤트 기반 후처리 성격이 강하다.
-- 검색은 RDB보다 Elasticsearch 사용 비중이 높다.
+- 결제 이후 상태 변경은 이벤트 기반 후처리 성격이 강하다.
+- 사용자 식별값은 product 서비스가 직접 인증해서 얻는 것이 아니라, API Gateway가 주입한 `X-User-Id`, `X-User-Role` 헤더를 신뢰하는 구조다.
 
 ---
 
-## 주요 도메인 설계
+## 사용자 식별 방식
+
+현재 product 서비스는 자체 시큐리티 필터 체인보다 API Gateway가 전달한 헤더를 기준으로 요청 주체를 식별한다.
+
+| 헤더 | 의미 | 사용 위치 |
+|------|------|-----------|
+| `X-User-Id` | 현재 요청 사용자 ID | `@CurrentUser` |
+| `X-User-Role` | 현재 요청 사용자 권한 | `@CurrentUserRole` |
+
+동작 흐름:
+
+```
+API Gateway
+  -> X-User-Id / X-User-Role 헤더 주입
+  -> product 서비스
+    -> CurrentUserArgumentResolver / CurrentUserRoleArgumentResolver
+    -> Controller 파라미터 바인딩
+```
+
+즉 product 서비스는 "사용자 인증을 직접 수행"하기보다 "Gateway가 검증 후 전달한 사용자 식별값을 신뢰"하는 방식으로 동작한다.
+
+---
+
+## 주요 도메인 구조
 
 ### 엔티티별 역할
 
 | 엔티티 | 설명 | 핵심 필드 |
 |--------|------|-----------|
 | `Product` | 상품 기본 정보 | `sellerId`, `title`, `description`, `price`, `maxCapacity`, `status` |
-| `Schedule` | 상품의 날짜/시간 슬롯 | `productId`, `scheduleDt`, `startTime`, `endTime`, `status`, `capacity` |
+| `Schedule` | 상품별 날짜/시간 슬롯 | `productId`, `scheduleDt`, `startTime`, `endTime`, `status`, `capacity` |
 | `ProductUser` | 특정 일정에 대한 예약 사용자 | `productScheduleId`, `userId`, `guestCount`, `status`, `restoreStatus` |
 | `Review` | 상품 리뷰 | `productId`, `userId`, `rating`, `content` |
-| `Favorite` | 상품 찜 | `productScheduleId`, `userId`, `quantity` |
+| `Favorite` | 일정 찜 | `productScheduleId`, `userId`, `quantity` |
 
 ### 상태값
 
@@ -75,13 +98,11 @@ Controller
 | `ReservedStatus` | `FULL`, `AVAILABLE`, `PENDING`, `CLOSED` |
 | `ReservationStatus` | `RESERVED`, `CONFIRMED`, `RELEASED`, `REFUNDED` |
 
-> `ReservedStatus`는 일정 자체의 상태이고, `ReservationStatus`는 예약 사용자(`ProductUser`)의 상태이다.
+> `ReservedStatus`는 일정(`Schedule`)의 상태이고, `ReservationStatus`는 예약 사용자(`ProductUser`)의 상태다.
 
 ---
 
 ## 패키지 구조 및 계층 역할
-
-현재 구조는 도메인 인터페이스와 인프라 구현을 분리하는 형태를 유지하고 있다.
 
 ```
 presentation/controller/
@@ -128,8 +149,6 @@ infrastructure/elasticsearch/
   ProductSearchRepositoryAdapter.java
 ```
 
-> `application.service`가 실제 유스케이스를 수행하고, 외부 서비스 연동은 `infrastructure.acl`, 검색 연동은 `infrastructure.elasticsearch`, 이벤트 기반 처리는 `infrastructure.kafka`로 분리되어 있다.
-
 ---
 
 ## 핵심 서비스별 책임
@@ -155,7 +174,7 @@ infrastructure/elasticsearch/
 | 일정 삭제 | 일정 상태 종료 및 soft delete |
 | 예약 검증 | 주문 전 재고 차감과 `ProductUser` 생성 |
 | 예약 확정 | 결제 성공 후 `RESERVED -> CONFIRMED` |
-| 재고 복구 | 결제 실패/취소/환불 시 재고 복구 및 상태 변경 |
+| 재고 복구 | 취소/환불 시 재고 복구 및 상태 변경 |
 | 잔여 좌석 조회 | 상품 최대 인원과 남은 재고를 조합해 반환 |
 
 ### ProductUserService
@@ -247,17 +266,24 @@ SchdulesRestController
     -> status RESERVED -> CONFIRMED 변경
 ```
 
-### 결제 실패/취소/환불 후 재고 복구 흐름
+### 결제 취소/환불 후 재고 복구 흐름
 
 ```
-결제 실패/취소/환불 이벤트
+취소/환불 이벤트
   -> ScheduleService.restoringInventory()
-    -> restoreStatus 선점
-    -> ProductUser 조회
-    -> Schedule / Product 조회
-    -> 재고 복구
-    -> status RELEASED 또는 REFUNDED 변경
+    -> claimRestore()로 복구 가능 대상 선점
+    -> ProductUser / Schedule / Product 조회
+    -> restoreCapacity()                       // 재고 복구
+    -> updateStatus(RELEASED or REFUNDED)     // 최종 상태 변경
+    -> 중간 실패 시 예외 발생
+    -> 트랜잭션 전체 롤백
 ```
+
+핵심 포인트:
+
+- `claimRestore()`는 현재 복구 가능한 상태(`RESERVED`, `CONFIRMED`)인지와 중복 복구 여부를 함께 확인한다.
+- `restoreCapacity()` 또는 `updateStatus()`가 실패하면 예외를 던져 전체 트랜잭션을 롤백한다.
+- 따라서 "재고만 복구되고 상태는 그대로인 채 커밋"되는 상황을 피하도록 설계되어 있다.
 
 ### 리뷰 / 찜 흐름
 
@@ -310,9 +336,9 @@ FavoritesRestController
 ### 운영 관점
 
 - Hibernate `ddl-auto: update`만으로는 운영 스키마 변경을 안전하게 처리하기 어렵다.
-- 상태값 변경(`PENDING -> RESERVED` 등)이 있었다면 DB check constraint도 함께 변경해야 한다.
+- 상태값 변경(`PENDING/PAID -> RESERVED/CONFIRMED`)이 있었다면 DB check constraint도 함께 변경해야 한다.
 - 일정 재고(`capacity`)와 상품 최대 인원(`maxCapacity`)은 다른 의미이므로 마이그레이션 시 구분해서 다뤄야 한다.
-- ES, file, user 연동이 상품 생성/수정 흐름에 함께 들어 있으므로 실패 원인 추적 시 외부 연동 로그가 중요하다.
+- Gateway가 주입하는 사용자 헤더를 신뢰하는 구조이므로, product 서비스 단에서 사용자 인증 자체를 다시 수행하지는 않는다.
 
 ---
 
@@ -330,7 +356,8 @@ FavoritesRestController
 - [x] 주문 전 재고 검증 구현
 - [x] 예약 사용자 생성 구현
 - [x] 결제 완료 후 예약 확정 구현
-- [x] 결제 실패/취소/환불 후 재고 복구 구현
+- [x] 취소/환불 후 재고 복구 구현
+- [x] 재고 복구 실패 시 예외 기반 롤백 처리 반영
 
 ### 부가 기능
 - [x] 리뷰 생성/수정/삭제/조회 구현
