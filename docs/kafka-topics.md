@@ -48,7 +48,8 @@
 
 | eventType | 설명 | Consumer |
 |-----------|------|----------|
-| `PRODUCT_ES_INDEXED` | ES 색인 완료 | - |
+| `PRODUCT_STOCK_RELEASED` | 재고 복구 완료 | (추후 정의) |
+| `PRODUCT_STATUS_CHANGED` | 상품 상태 변경 | (추후 정의) |
 
 ### `deposit.events` (user-service → 여러 서비스)
 
@@ -85,4 +86,13 @@
 | `order.reservation.released` | `order.events` | `ORDER_RESERVATION_RELEASED` |
 | `order.expired` | `order.events` | `ORDER_EXPIRED` |
 | `order.deposit.refund-requested` | `order.events` | `ORDER_DEPOSIT_REFUND_REQUESTED` |
-| `product.es.index` | `product.events` | `PRODUCT_ES_INDEXED` |
+
+---
+
+## 독립 토픽 (별도 관리)
+
+아래 토픽은 서비스 내부 목적으로 사용되며 위 설계 원칙과 별개로 운영됨.
+
+| 토픽명 | 용도 | 비고 |
+|--------|------|------|
+| `product.es.index` | product-service 내부 ES 색인 | 외부 서비스 미소비, 독립 운영 |
