@@ -11,6 +11,7 @@ import jabaclass.order.domain.model.Order;
 import jabaclass.order.infrastructure.kafka.product.dto.OrderReservationConfirmedEvent;
 import jabaclass.order.infrastructure.kafka.product.dto.OrderReservationReleasedEvent;
 import jabaclass.order.infrastructure.kafka.user.dto.DepositRefundRequestedEvent;
+import jabaclass.order.infrastructure.kafka.user.dto.OrderExpiredEvent;
 import jabaclass.order.infrastructure.outbox.EventType;
 import jabaclass.order.infrastructure.outbox.OutboxEvent;
 import jabaclass.order.infrastructure.outbox.OutboxRepository;

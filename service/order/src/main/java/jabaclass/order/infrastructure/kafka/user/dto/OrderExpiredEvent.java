@@ -1,4 +1,4 @@
-package jabaclass.order.infrastructure.kafka;
+package jabaclass.order.infrastructure.kafka.user.dto;
 
 import java.math.BigDecimal;
 import java.util.UUID;
