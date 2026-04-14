@@ -4,7 +4,6 @@ import jabaclass.payment.presentation.dto.request.ConfirmPaymentRequestDto;
 import jabaclass.payment.presentation.dto.request.PreparePaymentRequestDto;
 import jabaclass.payment.presentation.dto.request.RefundPaymentRequestDto;
 import jabaclass.payment.presentation.dto.response.PaymentResponseDto;
-import jabaclass.payment.presentation.dto.response.RefundPaymentResponseDto;
 
 public interface PaymentUseCase {
 
@@ -12,6 +11,6 @@ public interface PaymentUseCase {
 
 	PaymentResponseDto confirm(ConfirmPaymentRequestDto request);
 
-	RefundPaymentResponseDto refund(RefundPaymentRequestDto request);
+	void refund(RefundPaymentRequestDto request);
 
 }
