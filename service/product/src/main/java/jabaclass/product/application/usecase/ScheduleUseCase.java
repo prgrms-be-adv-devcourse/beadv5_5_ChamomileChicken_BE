@@ -36,12 +36,6 @@ public interface ScheduleUseCase {
 	// 스케줄 예약 상태 검색
 	AvailabilityScheduleResponseDto availabilitySchedule(UUID scheduleId);
 
-	//	void confirmReservation(UUID productUserId);
-
-	//	void releaseReservation(UUID productUserId);
-
-	//	void refundReservation(UUID productUserId);
-
 	// 2026-04-09 재고 복구
 	int restoreCapacity(UUID scheduleId, int quantity, int capacity);
 

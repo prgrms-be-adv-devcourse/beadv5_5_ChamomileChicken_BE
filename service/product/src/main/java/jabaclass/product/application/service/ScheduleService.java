@@ -249,65 +249,6 @@ public class ScheduleService implements ScheduleUseCase {
 			return OrderValid.OK;
 	}
 
-/*	@Override
-	@Transactional
-	public void confirmReservation(UUID productUserId) {
-		ProductUser user = productUserUseCase.innerFindById(productUserId);
-		if (user.getStatus() == ReservationStatus.CONFIRMED) {
-			return;
-		}
-
-		user.changeStatus(ReservationStatus.CONFIRMED);
-	}*/
-
-/*	@Override
-	@Transactional
-	public void releaseReservation(UUID productUserId) {
-		ProductUser user = productUserUseCase.innerFindById(productUserId);
-		if (user.getStatus() == ReservationStatus.RELEASED || user.getStatus() == ReservationStatus.REFUNDED) {
-			return;
-		}
-
-		Schedule schedule = findByIdOrThrow(user.getProductScheduleId());
-		Product product = productUseCase.findByIdOrThrow(schedule.getProductId());
-
-		int restored = scheduleRepository.restoreCapacity(
-			schedule.getId(),
-			user.getGuestCount(),
-			product.getMaxCapacity()
-		);
-		if (restored == 0) {
-			throw new RuntimeException("재고 복구 실패");
-		}
-
-		user.changeStatus(ReservationStatus.RELEASED);
-		//	refreshScheduleStatus(schedule);
-	}*/
-
-/*	@Override
-	@Transactional
-	public void refundReservation(UUID productUserId) {
-		ProductUser user = productUserUseCase.innerFindById(productUserId);
-		if (user.getStatus() == ReservationStatus.REFUNDED) {
-			return;
-		}
-
-		Schedule schedule = findByIdOrThrow(user.getProductScheduleId());
-		Product product = productUseCase.findByIdOrThrow(schedule.getProductId());
-
-		int restored = scheduleRepository.restoreCapacity(
-			schedule.getId(),
-			user.getGuestCount(),
-			product.getMaxCapacity()
-		);
-		if (restored == 0) {
-			throw new RuntimeException("재고 복구 실패");
-		}
-
-		user.changeStatus(ReservationStatus.REFUNDED);
-		//	refreshScheduleStatus(schedule);
-	}*/
-
 	@Override
 	public int restoreCapacity(UUID scheduleId, int quantity, int capacity) {
 		return scheduleRepository.restoreCapacity(scheduleId, quantity, capacity);
@@ -350,16 +291,5 @@ public class ScheduleService implements ScheduleUseCase {
 			throw new BusinessException(CommonErrorCode.INVALID_TIME_RANGE);
 		}
 	}
-
-/*	private UserResponseDto validateAndGetSeller() {
-		UUID sellerId = auditorAwareService.getCurrentAuditor()
-			.orElseThrow(() -> new BusinessException(CommonErrorCode.EMPTY_USER));
-		UserResponseDto seller = findBySellerIdOrThrow(sellerId);
-		SellerRole role = SellerRole.from(seller.role());
-		if (role != SellerRole.SELLER) {
-			throw new BusinessException(CommonErrorCode.NOT_SELLER);
-		}
-		return seller;
-	}*/
 
 }
