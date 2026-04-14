@@ -16,13 +16,13 @@ import jabaclass.product.presentation.dto.respose.SchedulesResponseDto;
 public interface ScheduleUseCase {
 
 	// 스케줄 생성
-	SchedulesResponseDto create(CreateScheduleRequestDto requestDto, UUID productId);
+	SchedulesResponseDto create(CreateScheduleRequestDto requestDto, UUID productId, UUID sellerId);
 
 	// 스케줄 삭제
-	DeleteScheduleResposeDto delete(UUID productId, UUID scheduleId);
+	DeleteScheduleResposeDto delete(UUID productId, UUID scheduleId, UUID sellerId);
 
 	// 스케줄 수정
-	SchedulesResponseDto update(UpdateScheduleRequestDto requestDto, UUID productId, UUID scheduleId);
+	SchedulesResponseDto update(UpdateScheduleRequestDto requestDto, UUID productId, UUID scheduleId, UUID sellerId);
 
 	// 스케줄 검색
 	List<SchedulesResponseDto> schedulesList(UUID productId);

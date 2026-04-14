@@ -31,7 +31,7 @@ public interface ProductOpenApi {
 		)
 	)
 	@CommonErrorResponses
-	ResponseEntity<ApiResponseDto<ProductResponseDto>> create(CreateProductRequestDto request);
+	ResponseEntity<ApiResponseDto<ProductResponseDto>> create(CreateProductRequestDto request, UUID userId);
 
 	@Operation(summary = "상품 수정", description = "상품을 수정 합니다.")
 	@ApiResponse(
@@ -42,7 +42,9 @@ public interface ProductOpenApi {
 		)
 	)
 	@CommonErrorResponses
-	ResponseEntity<ApiResponseDto<ProductResponseDto>> change(UpdateProductRequestDto request, UUID productId);
+	ResponseEntity<ApiResponseDto<ProductResponseDto>> change(UpdateProductRequestDto request
+		, UUID productId
+		, UUID userId);
 
 	@Operation(summary = "상품 삭제", description = "상품을 삭제 합니다.")
 	@ApiResponse(
@@ -53,7 +55,7 @@ public interface ProductOpenApi {
 		)
 	)
 	@CommonErrorResponses
-	ResponseEntity<ApiResponseDto<DeleteProductResposeDto>> delete(UUID productId);
+	ResponseEntity<ApiResponseDto<DeleteProductResposeDto>> delete(UUID productId, UUID userId);
 
 	@Operation(summary = "상품 전체 검색", description = "전체 상품을 검색 합니다.")
 	@ApiResponse(
@@ -87,6 +89,6 @@ public interface ProductOpenApi {
 		)
 	)
 	@CommonErrorResponses
-	ResponseEntity<ApiResponseDto<List<ProductUserResponseDto>>> schedulesSelectUser(UUID scheduleId);
+	ResponseEntity<ApiResponseDto<List<ProductUserResponseDto>>> schedulesSelectUser(UUID scheduleId, UUID userId);
 
 }

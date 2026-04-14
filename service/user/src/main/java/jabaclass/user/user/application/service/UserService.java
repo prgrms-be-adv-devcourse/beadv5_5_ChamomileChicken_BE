@@ -29,10 +29,12 @@ import jabaclass.user.user.presentation.dto.response.SellerSettlementAccountResp
 import jabaclass.user.user.presentation.dto.response.SellerSettlementDetailResponseDto;
 import jabaclass.user.user.presentation.dto.response.UserResponseDto;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
+@Slf4j
 public class UserService implements UserUseCase {
 
 	private final PasswordEncoder passwordEncoder;
@@ -68,7 +70,10 @@ public class UserService implements UserUseCase {
 
 	@Override
 	public UserResponseDto getMyInfo(UUID userId) {
+		log.info("UserService.getMyInfo start userId={}", userId);
 		User user = getUser(userId);
+		log.info("UserService.getMyInfo found userId={}, email={}, role={}",
+			user.getId(), user.getEmail(), user.getRole());
 		return UserResponseDto.from(user);
 	}
 
@@ -170,6 +175,7 @@ public class UserService implements UserUseCase {
 	}
 
 	private User getUser(UUID userId) {
+		log.info("UserService.getUser lookup userId={}", userId);
 		return userRepository.findById(userId)
 			.orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
 	}

@@ -22,10 +22,12 @@ import jabaclass.user.user.presentation.dto.response.EmailCheckResponseDto;
 import jabaclass.user.user.presentation.dto.response.UserResponseDto;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @RestController
 @RequestMapping("/api/v1/users")
 @RequiredArgsConstructor
+@Slf4j
 public class UserController implements UserApi {
 
 	private final UserUseCase userUseCase;
@@ -82,6 +84,7 @@ public class UserController implements UserApi {
 	@Override
 	@PostMapping("/me")
 	public ResponseEntity<UserResponseDto> getUserInfo(@RequestBody UUID userId) {
+		log.info("UserController.getUserInfo request userId={}", userId);
 		return ResponseEntity.ok(userUseCase.getMyInfo(userId));
 	}
 }

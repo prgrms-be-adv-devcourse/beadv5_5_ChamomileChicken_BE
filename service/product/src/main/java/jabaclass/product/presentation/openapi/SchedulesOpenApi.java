@@ -32,7 +32,7 @@ public interface SchedulesOpenApi {
 	)
 	@CommonErrorResponses
 	ResponseEntity<ApiResponseDto<SchedulesResponseDto>> schedulesCreate(CreateScheduleRequestDto requestDto,
-		UUID productId);
+		UUID productId, UUID userId);
 
 	@Operation(summary = "상품 일정 수정", description = "상품 일정을 수정 합니다.")
 	@ApiResponse(
@@ -44,7 +44,7 @@ public interface SchedulesOpenApi {
 	)
 	@CommonErrorResponses
 	ResponseEntity<ApiResponseDto<SchedulesResponseDto>> schedulesUpdate(UpdateScheduleRequestDto requestDto,
-		UUID productId, UUID scheduleId);
+		UUID productId, UUID scheduleId, UUID userId);
 
 	@Operation(summary = "상품 일정 검증", description = "상품 일정을 검증 합니다.")
 	@ApiResponse(
@@ -66,7 +66,8 @@ public interface SchedulesOpenApi {
 		)
 	)
 	@CommonErrorResponses
-	ResponseEntity<ApiResponseDto<DeleteScheduleResposeDto>> schedulesDelete(UUID productId, UUID scheduleId);
+	ResponseEntity<ApiResponseDto<DeleteScheduleResposeDto>> schedulesDelete(UUID productId, UUID scheduleId,
+		UUID userId);
 
 	@Operation(summary = "상품 일정 검색", description = "상품 일정을 검색 합니다.")
 	@ApiResponse(

@@ -19,7 +19,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import jabaclass.product.application.exception.BusinessException;
-import jabaclass.product.application.service.AuditorAwareService;
 import jabaclass.product.application.service.FavoriteService;
 import jabaclass.product.application.usecase.FavoriteUseCase;
 import jabaclass.product.common.exception.ApiResponseDto;

@@ -5,7 +5,6 @@ import java.time.LocalTime;
 import java.util.List;
 import java.util.UUID;
 
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,7 +20,6 @@ import jabaclass.product.domain.model.Schedule;
 import jabaclass.product.domain.model.status.ReservationStatus;
 import jabaclass.product.domain.model.status.ReservedStatus;
 import jabaclass.product.domain.repository.ScheduleRepository;
-import jabaclass.product.infrastructure.acl.dto.SellerRole;
 import jabaclass.product.infrastructure.acl.dto.response.UserResponseDto;
 import jabaclass.product.presentation.dto.request.CreateProductUserRequestDto;
 import jabaclass.product.presentation.dto.request.CreateScheduleRequestDto;
@@ -45,19 +43,15 @@ public class ScheduleService implements ScheduleUseCase {
 	private final ScheduleRepository scheduleRepository;
 	private final ProductUseCase productUseCase;
 	private final SellerRepository sellerRepository;
-	private final ApplicationEventPublisher publisher;
-	private final AuditorAwareService auditorAwareService;
 	private final ProductUserUseCase productUserUseCase;
 
 	@Override
 	@Transactional
-	public SchedulesResponseDto create(CreateScheduleRequestDto requestDto, UUID productId) {
-		UserResponseDto seller = validateAndGetSeller();
-
+	public SchedulesResponseDto create(CreateScheduleRequestDto requestDto, UUID productId, UUID sellerId) {
 		// 상품 존재하는지 확인
 		Product product = productUseCase.findByIdOrThrow(productId);
 		// 본인 상품인지 확인
-		productUseCase.matchProductAndSellerId(productId, seller.userId());
+		productUseCase.matchProductAndSellerId(productId, sellerId);
 
 		// 날짜/시간 형태
 		Schedule schedule = new Schedule();
@@ -94,15 +88,13 @@ public class ScheduleService implements ScheduleUseCase {
 
 	@Override
 	@Transactional
-	public DeleteScheduleResposeDto delete(UUID productId, UUID scheduleId) {
-		UserResponseDto seller = validateAndGetSeller();
-
+	public DeleteScheduleResposeDto delete(UUID productId, UUID scheduleId, UUID sellerId) {
 		// 상품 존재하는지 확인
 		Product product = productUseCase.findByIdOrThrow(productId);
 		// 상품 일자가 존재하는지
 		Schedule schedule = findByIdOrThrow(scheduleId);
 		// 본인 상품인지 확인
-		productUseCase.matchProductAndSellerId(product.getId(), seller.userId());
+		productUseCase.matchProductAndSellerId(product.getId(), sellerId);
 
 		if (!schedule.getProductId().equals(product.getId())) {
 			throw new BusinessException(CommonErrorCode.MATCH_FAIL);
@@ -116,15 +108,14 @@ public class ScheduleService implements ScheduleUseCase {
 
 	@Override
 	@Transactional
-	public SchedulesResponseDto update(UpdateScheduleRequestDto requestDto, UUID productId, UUID scheduleId) {
-		UserResponseDto seller = validateAndGetSeller();
-
+	public SchedulesResponseDto update(UpdateScheduleRequestDto requestDto, UUID productId, UUID scheduleId,
+		UUID sellerId) {
 		// 상품 존재하는지 확인
 		productUseCase.findByIdOrThrow(productId);
 		// 상품 일자 데이터가 존재하는지 확인
 		Schedule schedule = findByIdOrThrow(scheduleId);
 		// 본인 상품인지 확인
-		productUseCase.matchProductAndSellerId(productId, seller.userId());
+		productUseCase.matchProductAndSellerId(productId, sellerId);
 		// 시간 형태
 		LocalTime startTime = schedule.fTime(requestDto.startTime());
 		LocalTime endTime = schedule.fTime(requestDto.endTime());
@@ -360,7 +351,7 @@ public class ScheduleService implements ScheduleUseCase {
 		}
 	}
 
-	private UserResponseDto validateAndGetSeller() {
+/*	private UserResponseDto validateAndGetSeller() {
 		UUID sellerId = auditorAwareService.getCurrentAuditor()
 			.orElseThrow(() -> new BusinessException(CommonErrorCode.EMPTY_USER));
 		UserResponseDto seller = findBySellerIdOrThrow(sellerId);
@@ -369,6 +360,6 @@ public class ScheduleService implements ScheduleUseCase {
 			throw new BusinessException(CommonErrorCode.NOT_SELLER);
 		}
 		return seller;
-	}
+	}*/
 
 }
