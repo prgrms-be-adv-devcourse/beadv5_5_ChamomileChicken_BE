@@ -225,7 +225,7 @@ public class ScheduleService implements ScheduleUseCase {
 		Pageable pageable = PageRequest.of(0, BATCH_SIZE);
 		List<UUID> ids = scheduleRepository.findClosableIds(
 			today,
-			List.of(ReservedStatus.CLOSED, ReservedStatus.FULL),
+			ReservedStatus.CLOSED,
 			pageable
 		);
 
@@ -235,7 +235,7 @@ public class ScheduleService implements ScheduleUseCase {
 
 		return scheduleRepository.bulkClose(
 			ids,
-			ReservedStatus.AVAILABLE,
+			List.of(ReservedStatus.AVAILABLE, ReservedStatus.FULL),
 			ReservedStatus.CLOSED
 		);
 	}

@@ -101,6 +101,6 @@ public interface SchedulesOpenApi {
 		)
 	)
 	@CommonErrorResponses
-	ResponseEntity<ApiResponseDto<SchedulesResponseDto>> selectSchedules(UUID scheduleId);
+	ResponseEntity<ApiResponseDto<SchedulesResponseDto>> selectSchedules(UUID productUserId);
 
 }

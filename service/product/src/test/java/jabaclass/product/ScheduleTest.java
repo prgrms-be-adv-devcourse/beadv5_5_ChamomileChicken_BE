@@ -474,13 +474,13 @@ class ScheduleTest {
 		List<UUID> closableIds = List.of(SCHEDULE_ID);
 		given(scheduleRepository.findClosableIds(
 			any(LocalDate.class),
-			eq(List.of(ReservedStatus.CLOSED, ReservedStatus.FULL)),
+			eq(ReservedStatus.CLOSED),
 			any()
 		)).willReturn(closableIds);
 		given(scheduleRepository.bulkClose(
-			closableIds,
-			ReservedStatus.AVAILABLE,
-			ReservedStatus.CLOSED
+			eq(closableIds),
+			eq(List.of(ReservedStatus.AVAILABLE, ReservedStatus.FULL)),
+			eq(ReservedStatus.CLOSED)
 		)).willReturn(1);
 
 		int result = scheduleService.closeExpiredSchedulesOnce();
@@ -492,7 +492,7 @@ class ScheduleTest {
 	void 마감할_일정이_없으면_0을_반환한다() {
 		given(scheduleRepository.findClosableIds(
 			any(LocalDate.class),
-			eq(List.of(ReservedStatus.CLOSED, ReservedStatus.FULL)),
+			eq(ReservedStatus.CLOSED),
 			any()
 		)).willReturn(List.of());
 

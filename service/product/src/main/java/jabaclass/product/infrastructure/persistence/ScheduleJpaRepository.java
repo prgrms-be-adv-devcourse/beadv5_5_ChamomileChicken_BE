@@ -136,7 +136,7 @@ public interface ScheduleJpaRepository extends JpaRepository<Schedule, UUID> {
 		""")
 	List<UUID> findClosableIds(
 		@Param("today") LocalDate today,
-		@Param("status") List<ReservedStatus> status,
+		@Param("status") ReservedStatus status,
 		Pageable pageable
 	);
 
@@ -150,12 +150,12 @@ public interface ScheduleJpaRepository extends JpaRepository<Schedule, UUID> {
 	@Query("""
 		    update Schedule s
 		       set s.status = :closedStatus
-		     where s.id in :ids
-		       and s.status = :openStatus
+		     where s.id in (:ids)
+		       and s.status in (:status)
 		""")
 	int bulkClose(
 		@Param("ids") List<UUID> ids,
-		@Param("openStatus") ReservedStatus openStatus,
+		@Param("status") List<ReservedStatus> status,
 		@Param("closedStatus") ReservedStatus closedStatus
 	);
 

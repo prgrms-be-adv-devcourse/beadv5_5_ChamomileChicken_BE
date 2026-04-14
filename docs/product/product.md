@@ -184,7 +184,7 @@ infrastructure/elasticsearch/
 | 예약 확정 | 결제 성공 시 `RESERVED -> CONFIRMED` |
 | 재고 복구 | 취소/환불 시 재고 복구 및 상태 변경 |
 | 잔여 좌석 조회 | 상품 최대 인원과 현재 재고를 조합해 반환 |
-| 만료 일정 마감 배치 | 오늘 이전 일정 중 열려 있는 일정을 배치로 `CLOSED` 처리 |
+| 만료 일정 마감 배치 | 오늘 이전 일정 중 `AVAILABLE`, `FULL` 상태 일정을 배치로 `CLOSED` 처리 |
 
 ### ProductUserService
 
@@ -309,8 +309,8 @@ SchdulesRestController
 ```
 ScheduleStatusScheduler.closeExpiredSchedules()
   -> ScheduleService.closeExpiredSchedulesOnce()
-    -> findClosableIds(today, [CLOSED, FULL] 제외)
-    -> bulkClose(AVAILABLE -> CLOSED)
+    -> findClosableIds(today, CLOSED 제외)
+    -> bulkClose(AVAILABLE, FULL -> CLOSED)
     -> 배치 크기만큼 반복 처리
 ```
 

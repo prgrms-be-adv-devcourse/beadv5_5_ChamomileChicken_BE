@@ -67,13 +67,13 @@ public interface ScheduleRepository {
 	 *  */
 	List<UUID> findClosableIds(
 		@Param("today") LocalDate today,
-		@Param("status") List<ReservedStatus> status,
+		@Param("status") ReservedStatus status,
 		Pageable pageable
 	);
 
 	int bulkClose(
 		@Param("ids") List<UUID> ids,
-		@Param("openStatus") ReservedStatus openStatus,
+		@Param("status") List<ReservedStatus> status,
 		@Param("closedStatus") ReservedStatus closedStatus
 	);
 }

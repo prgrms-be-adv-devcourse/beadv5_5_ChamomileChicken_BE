@@ -82,13 +82,13 @@ public class ScheduleRepositoryAdapter implements ScheduleRepository {
 	}
 
 	@Override
-	public List<UUID> findClosableIds(LocalDate today, List<ReservedStatus> status, Pageable pageable) {
+	public List<UUID> findClosableIds(LocalDate today, ReservedStatus status, Pageable pageable) {
 		return scheduleJpaRepository.findClosableIds(today, status, pageable);
 	}
 
 	@Override
-	public int bulkClose(List<UUID> ids, ReservedStatus openStatus, ReservedStatus closedStatus) {
-		return scheduleJpaRepository.bulkClose(ids, openStatus, closedStatus);
+	public int bulkClose(List<UUID> ids, List<ReservedStatus> status, ReservedStatus closedStatus) {
+		return scheduleJpaRepository.bulkClose(ids, status, closedStatus);
 	}
 
 }

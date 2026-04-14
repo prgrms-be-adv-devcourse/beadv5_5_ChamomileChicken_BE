@@ -114,7 +114,7 @@ EntityBase
 - `capacity`는 생성 시 `Product.maxCapacity` 값으로 초기화됩니다.
 - 주문 검증 시 `capacity`가 감소합니다.
 - 취소/환불 시 `capacity`가 다시 복구됩니다.
-- 만료 일정 스케줄러는 오늘 이전 일정 중 `AVAILABLE` 상태인 일정을 배치로 `CLOSED` 처리합니다.
+- 만료 일정 스케줄러는 오늘 이전 일정 중 `AVAILABLE`, `FULL` 상태 일정을 배치로 `CLOSED` 처리합니다.
 - `ReservedStatus`에서 대기(`PENDING`) 상태는 제거되었으므로 현재 일정 상태는 `FULL`, `AVAILABLE`, `CLOSED`만 사용합니다.
 - `capacity`는 null이면 안 되며, 실질적인 재고 컬럼입니다.
 
@@ -324,7 +324,7 @@ claimRestore 선점
 ScheduleStatusScheduler
   -> closeExpiredSchedulesOnce()
   -> findClosableIds()
-  -> bulkClose(AVAILABLE -> CLOSED)
+  -> bulkClose(AVAILABLE, FULL -> CLOSED)
 ```
 
 이 흐름 때문에 `Schedule`은 단순 일정 엔티티가 아니라 재고와 상태 전이의 중심 엔티티입니다.
