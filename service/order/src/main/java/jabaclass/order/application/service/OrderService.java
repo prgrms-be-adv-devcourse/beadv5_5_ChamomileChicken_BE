@@ -62,11 +62,10 @@ public class OrderService implements OrderUseCase {
             userId,
             reservation.productUserId(),
             requestDto.quantity(),
-            totalAmount,
-            requestDto.depositAmount()
+            totalAmount
         );
 
-        return CreateOrderResponseDto.of(orderRepository.save(order), requestDto.productId());
+        return CreateOrderResponseDto.of(orderRepository.save(order), requestDto.productId(), requestDto.depositAmount());
     }
 
     // -------------------------------------------------------------------------
@@ -119,20 +118,20 @@ public class OrderService implements OrderUseCase {
         Order order = findOrderOrThrow(orderId);
         switch (requestDto.paymentStatus()) {
             case SUCCESS -> onPaymentSuccess(order);
-            case FAILED -> onPaymentFailed(order);
+            case FAILED -> onPaymentFailed(order, requestDto.depositAmount());
         }
     }
 
     @Override
     @Transactional
-    public void expireOrder(UUID orderId) {
+    public void expireOrder(UUID orderId, BigDecimal depositAmount) {
         Order order = findOrderOrThrow(orderId);
         if (order.getStatus() == OrderStatus.EXPIRED) {
             return;
         }
         order.expire();
         eventPublisher.publishReservationReleased(requireProductUserId(order));
-        eventPublisher.publishOrderExpired(order);
+        eventPublisher.publishOrderExpired(order, depositAmount);
     }
 
     @Override
@@ -150,13 +149,13 @@ public class OrderService implements OrderUseCase {
         eventPublisher.publishReservationConfirmed(requireProductUserId(order));
     }
 
-    private void onPaymentFailed(Order order) {
+    private void onPaymentFailed(Order order, BigDecimal depositAmount) {
         if (order.getStatus() == OrderStatus.FAILED || order.getStatus() == OrderStatus.EXPIRED) {
             return;
         }
         order.failPayment();
         eventPublisher.publishReservationReleased(requireProductUserId(order));
-        eventPublisher.publishDepositRefundRequested(order);
+        eventPublisher.publishDepositRefundRequested(order, depositAmount);
     }
 
     // -------------------------------------------------------------------------

@@ -23,7 +23,7 @@ public class PaymentExpiredEventConsumer {
 	public void consume(String message) {
 		try {
 			PaymentExpiredEvent event = objectMapper.readValue(message, PaymentExpiredEvent.class);
-			orderUseCase.expireOrder(event.orderId());
+			orderUseCase.expireOrder(event.orderId(), event.depositAmount());
 			log.info("payment.expired 이벤트 처리 완료. orderId={}", event.orderId());
 		} catch (Exception e) {
 			log.error("payment.expired 처리 실패. message={}", message, e);
