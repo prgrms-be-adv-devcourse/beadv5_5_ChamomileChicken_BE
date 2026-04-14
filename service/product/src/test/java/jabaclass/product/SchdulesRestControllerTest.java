@@ -22,7 +22,6 @@ import org.springframework.http.ResponseEntity;
 
 import jabaclass.product.application.usecase.ScheduleUseCase;
 import jabaclass.product.common.exception.ApiResponseDto;
-import jabaclass.product.domain.model.status.ReservationStatus;
 import jabaclass.product.domain.model.status.ReservedStatus;
 import jabaclass.product.presentation.controller.SchdulesRestController;
 import jabaclass.product.presentation.dto.request.CreateScheduleRequestDto;
@@ -176,5 +175,17 @@ class SchdulesRestControllerTest {
 		assertThat(result.getBody()).isNotNull();
 		assertThat(result.getBody().getData()).isEqualTo(response);
 		then(scheduleUseCase).should().availabilitySchedule(SCHEDULE_ID);
+	}
+
+	@Test
+	void 일정_단건_조회_요청이_들어오면_유스케이스를_호출한다() {
+		given(scheduleUseCase.selectSchedules(SCHEDULE_ID)).willReturn(scheduleResponse);
+
+		ResponseEntity<ApiResponseDto<SchedulesResponseDto>> result = schdulesRestController.selectSchedules(SCHEDULE_ID);
+
+		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+		assertThat(result.getBody()).isNotNull();
+		assertThat(result.getBody().getData()).isEqualTo(scheduleResponse);
+		then(scheduleUseCase).should().selectSchedules(SCHEDULE_ID);
 	}
 }
