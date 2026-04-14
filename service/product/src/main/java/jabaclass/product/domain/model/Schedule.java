@@ -75,7 +75,7 @@ public class Schedule extends EntityBase {
 		this.status = status;
 	}
 
-	public void changeMaxCapacity(int capacity) {
+	public void changeCapacity(int capacity) {
 		this.capacity = capacity;
 	}
 

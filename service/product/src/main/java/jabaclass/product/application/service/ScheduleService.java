@@ -136,7 +136,7 @@ public class ScheduleService implements ScheduleUseCase {
 		schedule.changeStartTime(startTime);
 		schedule.changeEndTime(endTime);
 		schedule.changeStatus(requestDto.status());
-		schedule.changeMaxCapacity(requestDto.maxCapacity());
+		schedule.changeCapacity(requestDto.maxCapacity());
 
 		return SchedulesResponseDto.from(schedule);
 	}
@@ -211,6 +211,7 @@ public class ScheduleService implements ScheduleUseCase {
 	@Override
 	@Transactional
 	public OrderValid restoringInventory(UUID productUserId, ReservationStatus orderStatus) {
+
 		// 예약자 존재 여부 확인 및 재고 적용 상태로값 수정
 		// 0일경우 재고 복구 x, 1일 경우 복구
 		// 예약 대기 or 예약 확정일 경우에만 진행
@@ -234,8 +235,7 @@ public class ScheduleService implements ScheduleUseCase {
 			product.getMaxCapacity());
 		// 복구 실패
 		if (inventory == 0) { // 재고 복구 상태값 원복
-			scheduleRepository.restoreStatus(user.getId());
-			return OrderValid.MODI_FAIL;
+			throw new BusinessException(CommonErrorCode.RESTORE_INVENTORY_FAILED);
 		}
 
 		// 상태값 변경
@@ -243,10 +243,11 @@ public class ScheduleService implements ScheduleUseCase {
 		int count = scheduleRepository.updateStatus(user.getId(), orderStatus
 			, List.of(ReservationStatus.RESERVED, ReservationStatus.CONFIRMED));
 		if (count == 0) {
-			scheduleRepository.restoreStatus(user.getId());
-			return OrderValid.MODI_FAIL;
-		} else
-			return OrderValid.OK;
+			throw new BusinessException(CommonErrorCode.UPDATE_RESERVATION_STATUS_FAILED);
+		}
+
+		return OrderValid.OK;
+
 	}
 
 	@Override
