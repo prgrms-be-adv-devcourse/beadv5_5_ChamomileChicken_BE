@@ -53,7 +53,6 @@ public class ProductService implements ProductUseCase {
 	@Override
 	@Transactional
 	public ProductResponseDto create(CreateProductRequestDto requestDto, UUID sellerId) {
-		log.info("userID ::: {}", sellerId);
 		List<ProductImageItem> images = List.of();
 		if (requestDto.imageIds() != null && !requestDto.imageIds().isEmpty()) {
 			List<FileConfirmResponse> confirmed =
@@ -70,6 +69,11 @@ public class ProductService implements ProductUseCase {
 			.description(requestDto.description())
 			.price(requestDto.price())
 			.status(requestDto.status())
+			.roadAddress(requestDto.roadAddress())
+			.detailAddress(requestDto.detailAddress())
+			.zonecode(requestDto.zonecode())
+			.latitude(requestDto.latitude())
+			.longitude(requestDto.longitude())
 			.build();
 
 		product.changeImages(images);
@@ -94,6 +98,11 @@ public class ProductService implements ProductUseCase {
 		product.changeDescription(requestDto.description());
 		product.changePrice(requestDto.price());
 		product.changeStatus(requestDto.status());
+		product.changeRoadAddress(requestDto.roadAddress());
+		product.changeDetailAddress(requestDto.detailAddress());
+		product.changeZonecode(requestDto.zonecode());
+		product.changeLatitude(requestDto.latitude());
+		product.changeLongitude(requestDto.longitude());
 
 		// 이미지 수정 — null이면 기존 이미지 유지
 		if (requestDto.imageIds() != null) {

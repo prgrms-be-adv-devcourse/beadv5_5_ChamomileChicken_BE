@@ -62,7 +62,12 @@ class ProductRestControllerTest {
 			"설명",
 			List.of(UUID.randomUUID()),
 			new BigDecimal("10000"),
-			ProductStatus.ENABLE
+			ProductStatus.ENABLE,
+			"경기 성남시 분당구 판교역로 166",
+			"카카오 판교 아지트 1층",
+			"13529",
+			new BigDecimal("37.3952000"),
+			new BigDecimal("127.1110000")
 		);
 
 		updateRequest = new UpdateProductRequestDto(
@@ -71,7 +76,12 @@ class ProductRestControllerTest {
 			"수정설명",
 			List.of(UUID.randomUUID()),
 			new BigDecimal("20000"),
-			ProductStatus.DISABLE
+			ProductStatus.DISABLE,
+			"서울 강남구 테헤란로 123",
+			"3층",
+			"06234",
+			new BigDecimal("37.1234567"),
+			new BigDecimal("127.7654321")
 		);
 
 		productResponse = new ProductResponseDto(
@@ -85,7 +95,12 @@ class ProductRestControllerTest {
 			new BigDecimal("10000"),
 			"활성",
 			LocalDateTime.now(),
-			LocalDateTime.now()
+			LocalDateTime.now(),
+			"경기 성남시 분당구 판교역로 166",
+			"카카오 판교 아지트 1층",
+			"13529",
+			new BigDecimal("37.3952000"),
+			new BigDecimal("127.1110000")
 		);
 	}
 
