@@ -72,7 +72,7 @@ public class ReviewRestController implements ReviewOpenApi {
 	}
 
 	@Override
-	@GetMapping("/{productId}/reviews")
+	@GetMapping("/{productId}/reviewList")
 	public ResponseEntity<ApiResponseDto<List<ReviewResponseDto>>> productReview(@PathVariable UUID productId) {
 		List<ReviewResponseDto> response = reviewUseCase.productReview(productId);
 
