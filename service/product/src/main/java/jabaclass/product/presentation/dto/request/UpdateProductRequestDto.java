@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jabaclass.product.domain.model.status.ProductStatus;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 @Schema(description = "상품 수정")
@@ -33,6 +34,24 @@ public record UpdateProductRequestDto(
 	BigDecimal price,
 
 	@Schema(description = "상태", example = "ENABLE")
-	ProductStatus status
+	ProductStatus status,
+
+	@NotBlank(message = "도로명 주소를 입력해주세요.")
+	@Schema(description = "도로명 주소", example = "경기 성남시 분당구 판교역로 166")
+	String roadAddress,
+
+	@Schema(description = "상세 주소", example = "카카오 판교 아지트 1층")
+	String detailAddress,
+
+	@Schema(description = "우편 번호", example = "13529")
+	String zonecode,
+
+	@NotNull(message = "위도를 입력해주세요.")
+	@Schema(description = "위도", example = "37.3952")
+	BigDecimal latitude,
+
+	@NotNull(message = "경도를 입력해주세요.")
+	@Schema(description = "경도", example = "127.1110")
+	BigDecimal longitude
 ) {
 }

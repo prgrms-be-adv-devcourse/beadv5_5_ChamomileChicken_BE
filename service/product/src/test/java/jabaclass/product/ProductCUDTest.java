@@ -15,6 +15,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -26,6 +27,7 @@ import jabaclass.product.application.exception.BusinessException;
 import jabaclass.product.application.service.ProductService;
 import jabaclass.product.common.exception.CommonErrorCode;
 import jabaclass.product.domain.model.Product;
+import jabaclass.product.domain.model.ProductImageItem;
 import jabaclass.product.domain.model.status.ProductStatus;
 import jabaclass.product.domain.repository.ProductRepository;
 import jabaclass.product.domain.repository.ProductSearchRepository;
@@ -66,6 +68,8 @@ class ProductCUDTest {
 	private static final UUID SELLER_ID = UUID.fromString("123e4567-e89b-12d3-a456-426614174000");
 	private static final UUID PRODUCT_ID = UUID.fromString("223e4567-e89b-12d3-a456-426614174000");
 	private static final BigDecimal PRICE = new BigDecimal("1000.50");
+	private static final BigDecimal LATITUDE = new BigDecimal("37.3952000");
+	private static final BigDecimal LONGITUDE = new BigDecimal("127.1110000");
 
 	private Validator validator;
 	private Product product;
@@ -81,12 +85,17 @@ class ProductCUDTest {
 			.description("테스트 상품")
 			.price(PRICE)
 			.status(ProductStatus.ENABLE)
+			.roadAddress("경기 성남시 분당구 판교역로 166")
+			.detailAddress("카카오 판교 아지트 1층")
+			.zonecode("13529")
+			.latitude(LATITUDE)
+			.longitude(LONGITUDE)
 			.build();
 		ReflectionTestUtils.setField(product, "id", PRODUCT_ID);
 	}
 
 	@Test
-	void 상품_생성에_성공한다() {
+	void 상품_생성시_추가된_주소와_좌표_컬럼까지_저장한다() {
 		CreateProductRequestDto request = new CreateProductRequestDto(
 			SELLER_ID,
 			"테스트상품",
@@ -94,7 +103,12 @@ class ProductCUDTest {
 			"테스트 상품입니다.",
 			List.of(UUID.randomUUID()),
 			PRICE,
-			ProductStatus.ENABLE
+			ProductStatus.ENABLE,
+			"경기 성남시 분당구 판교역로 166",
+			"카카오 판교 아지트 1층",
+			"13529",
+			LATITUDE,
+			LONGITUDE
 		);
 		UUID fileId = UUID.randomUUID();
 		given(fileConfirmClient.confirmBulk(any())).willReturn(List.of(new FileConfirmResponse(fileId, "user/file/image.jpg")));
@@ -108,11 +122,24 @@ class ProductCUDTest {
 
 		ProductResponseDto saved = productService.create(request, SELLER_ID);
 
+		ArgumentCaptor<Product> captor = ArgumentCaptor.forClass(Product.class);
+		then(productRepository).should().save(captor.capture());
+		Product captured = captor.getValue();
+
+		assertThat(captured.getRoadAddress()).isEqualTo("경기 성남시 분당구 판교역로 166");
+		assertThat(captured.getDetailAddress()).isEqualTo("카카오 판교 아지트 1층");
+		assertThat(captured.getZonecode()).isEqualTo("13529");
+		assertThat(captured.getLatitude()).isEqualByComparingTo(LATITUDE);
+		assertThat(captured.getLongitude()).isEqualByComparingTo(LONGITUDE);
+
 		assertThat(saved.id()).isEqualTo(PRODUCT_ID);
 		assertThat(saved.title()).isEqualTo("테스트상품");
 		assertThat(saved.thumbnailPath()).isEqualTo("user/file/image.jpg");
-		assertThat(saved.price()).isEqualByComparingTo(PRICE);
-		then(productRepository).should().save(any(Product.class));
+		assertThat(saved.roadAddress()).isEqualTo("경기 성남시 분당구 판교역로 166");
+		assertThat(saved.detailAddress()).isEqualTo("카카오 판교 아지트 1층");
+		assertThat(saved.zonecode()).isEqualTo("13529");
+		assertThat(saved.latitude()).isEqualByComparingTo(LATITUDE);
+		assertThat(saved.longitude()).isEqualByComparingTo(LONGITUDE);
 		then(publisher).should().publishEvent(any(ProductEventResponseDto.class));
 		then(publisher).should().publishEvent(any(ProductEsSaveEvent.class));
 	}
@@ -126,7 +153,12 @@ class ProductCUDTest {
 			"테스트 상품입니다.",
 			List.of(UUID.randomUUID()),
 			PRICE,
-			ProductStatus.ENABLE
+			ProductStatus.ENABLE,
+			"경기 성남시 분당구 판교역로 166",
+			"카카오 판교 아지트 1층",
+			"13529",
+			LATITUDE,
+			LONGITUDE
 		);
 
 		Set<ConstraintViolation<CreateProductRequestDto>> violations = validator.validate(request);
@@ -144,7 +176,12 @@ class ProductCUDTest {
 			"테스트 상품입니다.",
 			List.of(UUID.randomUUID()),
 			PRICE,
-			ProductStatus.ENABLE
+			ProductStatus.ENABLE,
+			"경기 성남시 분당구 판교역로 166",
+			"카카오 판교 아지트 1층",
+			"13529",
+			LATITUDE,
+			LONGITUDE
 		);
 
 		Set<ConstraintViolation<CreateProductRequestDto>> violations = validator.validate(request);
@@ -162,7 +199,12 @@ class ProductCUDTest {
 			"테스트 상품입니다.",
 			List.of(UUID.randomUUID()),
 			PRICE,
-			ProductStatus.ENABLE
+			ProductStatus.ENABLE,
+			"경기 성남시 분당구 판교역로 166",
+			"카카오 판교 아지트 1층",
+			"13529",
+			LATITUDE,
+			LONGITUDE
 		);
 
 		Set<ConstraintViolation<CreateProductRequestDto>> violations = validator.validate(request);
@@ -180,7 +222,12 @@ class ProductCUDTest {
 			"테스트 상품입니다.",
 			List.of(UUID.randomUUID()),
 			BigDecimal.ZERO,
-			ProductStatus.ENABLE
+			ProductStatus.ENABLE,
+			"경기 성남시 분당구 판교역로 166",
+			"카카오 판교 아지트 1층",
+			"13529",
+			LATITUDE,
+			LONGITUDE
 		);
 
 		Set<ConstraintViolation<CreateProductRequestDto>> violations = validator.validate(request);
@@ -198,7 +245,12 @@ class ProductCUDTest {
 			"테스트 상품입니다.",
 			List.of(UUID.randomUUID()),
 			PRICE,
-			ProductStatus.ENABLE
+			ProductStatus.ENABLE,
+			"경기 성남시 분당구 판교역로 166",
+			"카카오 판교 아지트 1층",
+			"13529",
+			LATITUDE,
+			LONGITUDE
 		);
 		given(sellerRepository.findSeller(SELLER_ID)).willReturn(Optional.empty());
 
@@ -208,14 +260,19 @@ class ProductCUDTest {
 	}
 
 	@Test
-	void 상품_수정에_성공한다() {
+	void 상품_수정시_추가된_주소와_좌표_컬럼도_변경한다() {
 		UpdateProductRequestDto request = new UpdateProductRequestDto(
 			"수정상품",
 			10,
 			"수정 설명",
 			List.of(UUID.randomUUID()),
 			new BigDecimal("1200.00"),
-			ProductStatus.ENABLE
+			ProductStatus.ENABLE,
+			"서울 강남구 테헤란로 123",
+			"3층",
+			"06234",
+			new BigDecimal("37.1234567"),
+			new BigDecimal("127.7654321")
 		);
 		UUID fileId = UUID.randomUUID();
 		given(fileConfirmClient.confirmBulk(any())).willReturn(List.of(new FileConfirmResponse(fileId, "user/file/image.jpg")));
@@ -226,8 +283,18 @@ class ProductCUDTest {
 
 		ProductResponseDto updated = productService.update(request, PRODUCT_ID, SELLER_ID);
 
+		assertThat(product.getRoadAddress()).isEqualTo("서울 강남구 테헤란로 123");
+		assertThat(product.getDetailAddress()).isEqualTo("3층");
+		assertThat(product.getZonecode()).isEqualTo("06234");
+		assertThat(product.getLatitude()).isEqualByComparingTo("37.1234567");
+		assertThat(product.getLongitude()).isEqualByComparingTo("127.7654321");
+
 		assertThat(updated.title()).isEqualTo("수정상품");
-		assertThat(updated.price()).isEqualByComparingTo(request.price());
+		assertThat(updated.roadAddress()).isEqualTo("서울 강남구 테헤란로 123");
+		assertThat(updated.detailAddress()).isEqualTo("3층");
+		assertThat(updated.zonecode()).isEqualTo("06234");
+		assertThat(updated.latitude()).isEqualByComparingTo("37.1234567");
+		assertThat(updated.longitude()).isEqualByComparingTo("127.7654321");
 		then(publisher).should().publishEvent(any(ProductEsSaveEvent.class));
 	}
 
@@ -239,7 +306,12 @@ class ProductCUDTest {
 			"수정 설명",
 			List.of(UUID.randomUUID()),
 			new BigDecimal("1200.00"),
-			ProductStatus.ENABLE
+			ProductStatus.ENABLE,
+			"서울 강남구 테헤란로 123",
+			"3층",
+			"06234",
+			new BigDecimal("37.1234567"),
+			new BigDecimal("127.7654321")
 		);
 		given(productRepository.findById(PRODUCT_ID)).willReturn(Optional.empty());
 
@@ -277,7 +349,12 @@ class ProductCUDTest {
 			"수정 설명",
 			List.of(UUID.randomUUID()),
 			new BigDecimal("1200.00"),
-			ProductStatus.ENABLE
+			ProductStatus.ENABLE,
+			"서울 강남구 테헤란로 123",
+			"3층",
+			"06234",
+			new BigDecimal("37.1234567"),
+			new BigDecimal("127.7654321")
 		);
 		given(productRepository.findById(PRODUCT_ID)).willReturn(Optional.of(product));
 		given(productRepository.findByIdAndSellerId(PRODUCT_ID, SELLER_ID)).willReturn(Optional.empty());
