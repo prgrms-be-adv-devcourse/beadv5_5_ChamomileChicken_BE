@@ -7,7 +7,6 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import jabaclass.auth.exception.JwtAuthException;
 import jakarta.validation.ConstraintViolationException;
 
 @RestControllerAdvice
