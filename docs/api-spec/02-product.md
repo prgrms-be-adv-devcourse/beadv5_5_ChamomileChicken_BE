@@ -142,7 +142,7 @@
 | POST | `/api/v1/products/{productId}/reviews` | ✅ JWT | 리뷰 작성 |
 | PUT | `/api/v1/products/{productId}/reviews/{reviewId}` | ✅ JWT | 리뷰 수정 |
 | DELETE | `/api/v1/products/{productId}/reviews/{reviewId}` | ✅ JWT | 리뷰 삭제 |
-| GET | `/api/v1/products/{productId}/reviews` | ❌ 공개 | 상품 리뷰 목록 |
+| GET | `/api/v1/products/{productId}/reviewList` | ❌ 공개 | 상품 리뷰 목록 |
 | GET | `/api/v1/products/{productId}/reviews/{reviewId}` | ❌ 공개 | 리뷰 상세 |
 | GET | `/api/v1/products/me/reviews` | ❌ 공개* | 내 리뷰 목록 |
 
