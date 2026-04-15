@@ -3,9 +3,6 @@ package jabaclass.product.application.usecase;
 import java.util.List;
 import java.util.UUID;
 
-import org.springframework.data.repository.query.Param;
-
-import jabaclass.product.domain.model.Schedule;
 import jabaclass.product.domain.model.status.ReservationStatus;
 import jabaclass.product.presentation.dto.request.CreateScheduleRequestDto;
 import jabaclass.product.presentation.dto.request.OrderRequestDto;
@@ -19,13 +16,13 @@ import jabaclass.product.presentation.dto.respose.SchedulesResponseDto;
 public interface ScheduleUseCase {
 
 	// 스케줄 생성
-	SchedulesResponseDto create(CreateScheduleRequestDto requestDto, UUID productId);
+	SchedulesResponseDto create(CreateScheduleRequestDto requestDto, UUID productId, UUID sellerId);
 
 	// 스케줄 삭제
-	DeleteScheduleResposeDto delete(UUID productId, UUID scheduleId);
+	DeleteScheduleResposeDto delete(UUID productId, UUID scheduleId, UUID sellerId);
 
 	// 스케줄 수정
-	SchedulesResponseDto update(UpdateScheduleRequestDto requestDto, UUID productId, UUID scheduleId);
+	SchedulesResponseDto update(UpdateScheduleRequestDto requestDto, UUID productId, UUID scheduleId, UUID sellerId);
 
 	// 스케줄 검색
 	List<SchedulesResponseDto> schedulesList(UUID productId);
@@ -39,19 +36,15 @@ public interface ScheduleUseCase {
 	// 스케줄 예약 상태 검색
 	AvailabilityScheduleResponseDto availabilitySchedule(UUID scheduleId);
 
-	void confirmReservation(UUID productUserId);
-
-	void releaseReservation(UUID productUserId);
-
-	void refundReservation(UUID productUserId);
-
-	// 2026-04-09 멱등성 체크 및 선점
-	int claimRestore(UUID productUserId, ReservationStatus restoringStatus);
-
 	// 2026-04-09 재고 복구
 	int restoreCapacity(UUID scheduleId, int quantity, int capacity);
 
-	// 2026-04-09 Kafka용 schedule 검색
-	Schedule findByProductUserId(@Param("productUserId") UUID productUserId);
+	// 2026-04-13 결제 성공 시, 예약 확정
+	OrderValid reservationCompleted(UUID productUserId);
 
+	// 2026-04-14 -> 예약자 id로 스케줄 정보 가져오기
+	SchedulesResponseDto selectSchedules(UUID productUserId);
+
+	// 날짜 지나면 스케줄 상태 값 자동 변경
+	int closeExpiredSchedulesOnce();
 }

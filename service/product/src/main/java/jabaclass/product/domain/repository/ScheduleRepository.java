@@ -6,10 +6,12 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.repository.query.Param;
 
 import jabaclass.product.domain.model.Schedule;
 import jabaclass.product.domain.model.status.ReservationStatus;
+import jabaclass.product.domain.model.status.ReservedStatus;
 
 public interface ScheduleRepository {
 
@@ -39,22 +41,39 @@ public interface ScheduleRepository {
 
 	// 2026-04-09 상태값 변경
 	int updateStatus(@Param("productUserId") UUID productUserId,
-		@Param("status") ReservationStatus status);
+		@Param("status") ReservationStatus status,
+		@Param("conditionStatus") List<ReservationStatus> conditionStatus);
 
 	// 2026-04-09 멱등성 체크 및 선점
 	int claimRestore(
-		@Param("productUserId") UUID productUserId,
-		@Param("restoringStatus") ReservationStatus restoringStatus
+		@Param("productUserId") UUID productUserId
 	);
 
 	// 2026-04-09 재고 복구
 	int restoreCapacity(
 		@Param("scheduleId") UUID scheduleId,
 		@Param("quantity") int quantity,
-		@Param("capacity") int capacity
+		@Param("maxCapacity") int maxCapacity
 	);
 
-	// 2026-04-09 예약자 테이블 id로 스케쥴 검색
-	Optional<Schedule> findByProductUserId(@Param("productUserId") UUID productUserId);
+	// 2026-04-13 재고 복구 과정에서 실패 시 복구 선점 해제
+	int restoreStatus(
+		@Param("productUserId") UUID productUserId
+	);
 
+	/*
+	 * 날짜 마감 스케줄러 돌리는 구간
+	 *
+	 *  */
+	List<UUID> findClosableIds(
+		@Param("today") LocalDate today,
+		@Param("status") ReservedStatus status,
+		Pageable pageable
+	);
+
+	int bulkClose(
+		@Param("ids") List<UUID> ids,
+		@Param("status") List<ReservedStatus> status,
+		@Param("closedStatus") ReservedStatus closedStatus
+	);
 }

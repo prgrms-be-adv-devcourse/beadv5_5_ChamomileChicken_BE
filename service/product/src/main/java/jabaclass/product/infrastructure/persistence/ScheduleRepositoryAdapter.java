@@ -6,11 +6,13 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import jabaclass.product.domain.model.Schedule;
 import jabaclass.product.domain.model.status.ReservationStatus;
+import jabaclass.product.domain.model.status.ReservedStatus;
 import jabaclass.product.domain.repository.ScheduleRepository;
 import lombok.RequiredArgsConstructor;
 
@@ -60,22 +62,33 @@ public class ScheduleRepositoryAdapter implements ScheduleRepository {
 	}
 
 	@Override
-	public int updateStatus(UUID productUserId, ReservationStatus status) {
-		return scheduleJpaRepository.updateStatus(productUserId, status);
+	public int updateStatus(UUID productUserId, ReservationStatus status, List<ReservationStatus> conditionStatus) {
+		return scheduleJpaRepository.updateStatus(productUserId, status, conditionStatus);
 	}
 
 	@Override
-	public int claimRestore(UUID productUserId, ReservationStatus restoringStatus) {
-		return scheduleJpaRepository.claimRestore(productUserId, restoringStatus);
+	public int claimRestore(UUID productUserId) {
+		return scheduleJpaRepository.claimRestore(productUserId);
 	}
 
 	@Override
-	public int restoreCapacity(UUID scheduleId, int quantity, int capacity) {
-		return scheduleJpaRepository.restoreCapacity(scheduleId, quantity, capacity);
+	public int restoreCapacity(UUID scheduleId, int quantity, int maxCapacity) {
+		return scheduleJpaRepository.restoreCapacity(scheduleId, quantity, maxCapacity);
 	}
 
 	@Override
-	public Optional<Schedule> findByProductUserId(UUID productUserId) {
-		return scheduleJpaRepository.findByProductUserId(productUserId);
+	public int restoreStatus(UUID productUserId) {
+		return scheduleJpaRepository.restoreStatus(productUserId);
 	}
+
+	@Override
+	public List<UUID> findClosableIds(LocalDate today, ReservedStatus status, Pageable pageable) {
+		return scheduleJpaRepository.findClosableIds(today, status, pageable);
+	}
+
+	@Override
+	public int bulkClose(List<UUID> ids, List<ReservedStatus> status, ReservedStatus closedStatus) {
+		return scheduleJpaRepository.bulkClose(ids, status, closedStatus);
+	}
+
 }

@@ -8,13 +8,13 @@ import jabaclass.product.presentation.dto.respose.ReviewResponseDto;
 
 public interface ReviewUseCase {
 
-	ReviewResponseDto createReview(ReviewRequestDto review, UUID productId);
+	ReviewResponseDto createReview(ReviewRequestDto review, UUID productId, UUID userId);
 
-	ReviewResponseDto updateReview(ReviewRequestDto review, UUID reivewId);
+	ReviewResponseDto updateReview(ReviewRequestDto review, UUID reivewId, UUID userId);
 
-	void deleteReview(UUID reviewId);
+	void deleteReview(UUID reviewId, UUID userId);
 
-	List<ReviewResponseDto> userReview();
+	List<ReviewResponseDto> userReview(UUID userId);
 
 	List<ReviewResponseDto> productReview(UUID productId);
 

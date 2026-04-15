@@ -1,27 +1,25 @@
 package jabaclass.product.domain.model;
 
-import jabaclass.product.infrastructure.converter.ProductImageItemsConverter;
-import jakarta.persistence.Convert;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-import lombok.Builder;
-import org.hibernate.annotations.UuidGenerator;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import jabaclass.product.application.exception.BusinessException;
 import jabaclass.product.common.exception.CommonErrorCode;
 import jabaclass.product.domain.model.status.ProductStatus;
+import jabaclass.product.infrastructure.converter.ProductImageItemsConverter;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
@@ -34,11 +32,6 @@ import lombok.experimental.SuperBuilder;
 @Table(name = "products")
 public class Product extends EntityBase {
 
-	@Id
-	@UuidGenerator
-	@Column(name = "id", updatable = false, nullable = false)
-	private UUID id;
-
 	@Column(name = "seller_id", nullable = false)
 	private UUID sellerId;
 
@@ -49,14 +42,15 @@ public class Product extends EntityBase {
 	private int maxCapacity;
 
 	// null이 가능하게 하고 백단이든, 프론트 단이든 둘 중 하나라도 있게 체크하는게 좋을듯
-	@Column(columnDefinition = "text")
+	// ai 분석 상품 내용 분석을 위해 필수 값으로 수정
+	@Column(columnDefinition = "text", nullable = false)
 	private String description;
 
 	@Column(name = "thumbnail_path")
 	private String thumbnailPath;
 
-//	Postgres 사용시 주석 해제
-//	@Column(name = "description_path", columnDefinition = "jsonb")
+	//	Postgres 사용시 주석 해제
+	//	@Column(name = "description_path", columnDefinition = "jsonb")
 	@Builder.Default
 	@Column(name = "description_path", columnDefinition = "text")
 	@Convert(converter = ProductImageItemsConverter.class)

@@ -14,7 +14,6 @@ import jabaclass.product.application.usecase.ProductUserUseCase;
 import jabaclass.product.common.exception.CommonErrorCode;
 import jabaclass.product.domain.model.ProductUser;
 import jabaclass.product.domain.repository.ProductUserRepository;
-import jabaclass.product.infrastructure.acl.dto.SellerRole;
 import jabaclass.product.infrastructure.acl.dto.response.UserResponseDto;
 import jabaclass.product.presentation.dto.request.CreateProductUserRequestDto;
 import jabaclass.product.presentation.dto.respose.ProductUserResponseDto;
@@ -28,12 +27,10 @@ import lombok.extern.slf4j.Slf4j;
 public class ProductUserService implements ProductUserUseCase {
 
 	private final ProductUserRepository pUserRepository;
-	private final AuditorAwareService auditorAwareService;
 	private final SellerRepository sellerRepository;
 
 	@Override
 	public List<ProductUserResponseDto> getUser(UUID scheduleId) {
-		validateAndGetSeller();
 		List<ProductUser> list = pUserRepository.findByProductScheduleId(scheduleId);
 
 		// 검색해온 상품의 user uuid를 List에 담는 작업
@@ -114,14 +111,4 @@ public class ProductUserService implements ProductUserUseCase {
 		return sellerInfo;
 	}
 
-	private UserResponseDto validateAndGetSeller() {
-		UUID sellerId = auditorAwareService.getCurrentAuditor()
-			.orElseThrow(() -> new BusinessException(CommonErrorCode.EMPTY_USER));
-		UserResponseDto seller = findBySellerIdOrThrow(sellerId);
-		SellerRole role = SellerRole.from(seller.role());
-		if (role != SellerRole.SELLER) {
-			throw new BusinessException(CommonErrorCode.NOT_SELLER);
-		}
-		return seller;
-	}
 }

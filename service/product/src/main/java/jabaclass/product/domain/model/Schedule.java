@@ -5,7 +5,6 @@ import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
 import java.util.UUID;
 
-import org.hibernate.annotations.UuidGenerator;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import jabaclass.product.application.exception.BusinessException;
@@ -16,7 +15,6 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.Getter;
@@ -32,11 +30,6 @@ import lombok.extern.slf4j.Slf4j;
 @Table(name = "products_schedule", schema = "public")
 @Slf4j
 public class Schedule extends EntityBase {
-
-	@Id
-	@UuidGenerator
-	@Column(name = "id", updatable = false, nullable = false)
-	private UUID id;
 
 	@Column(name = "product_id", nullable = false)
 	private UUID productId;
@@ -54,8 +47,8 @@ public class Schedule extends EntityBase {
 	@Column(nullable = false, length = 20)
 	private ReservedStatus status;
 
-	@Column(name = "max_capacity")
-	private int maxCapacity;
+	@Column(name = "capacity", nullable = false)
+	private int capacity;
 
 	@PrePersist
 	public void prePersist() {
@@ -82,8 +75,8 @@ public class Schedule extends EntityBase {
 		this.status = status;
 	}
 
-	public void changeMaxCapacity(int maxCapacity) {
-		this.maxCapacity = maxCapacity;
+	public void changeCapacity(int capacity) {
+		this.capacity = capacity;
 	}
 
 	public static LocalDate fDt(String dt) {

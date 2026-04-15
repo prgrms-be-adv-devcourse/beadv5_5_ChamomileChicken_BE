@@ -12,6 +12,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
 
 import jabaclass.product.infrastructure.acl.dto.response.UserResponseDto;
@@ -42,16 +43,26 @@ public class SellerApiClient implements SellerClient {
 
 		HttpEntity<UUID> requesst = new HttpEntity<>(sellerId, headers);
 
-		ResponseEntity<UserResponseDto> response =
-			restTemplate.exchange(
-				url,
-				HttpMethod.POST,
-				requesst,
-				new ParameterizedTypeReference<UserResponseDto>() {
-				}
-			);
+		try {
+			log.info("SellerApiClient.findSeller request url={}, sellerId={}", url, sellerId);
 
-		return Optional.of(response.getBody());
+			ResponseEntity<UserResponseDto> response =
+				restTemplate.exchange(
+					url,
+					HttpMethod.POST,
+					requesst,
+					new ParameterizedTypeReference<UserResponseDto>() {
+					}
+				);
+
+			log.info("SellerApiClient.findSeller response status={}, body={}",
+				response.getStatusCode(), response.getBody());
+			return Optional.ofNullable(response.getBody());
+		} catch (HttpStatusCodeException e) {
+			log.error("SellerApiClient.findSeller failed url={}, sellerId={}, status={}, responseBody={}",
+				url, sellerId, e.getStatusCode(), e.getResponseBodyAsString(), e);
+			throw e;
+		}
 	}
 
 	// 페이지에 보여질 seller 이름 가져오는 api

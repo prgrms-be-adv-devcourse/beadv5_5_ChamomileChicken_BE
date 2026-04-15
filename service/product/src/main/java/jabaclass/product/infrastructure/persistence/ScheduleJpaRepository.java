@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
@@ -14,6 +15,7 @@ import org.springframework.data.repository.query.Param;
 
 import jabaclass.product.domain.model.Schedule;
 import jabaclass.product.domain.model.status.ReservationStatus;
+import jabaclass.product.domain.model.status.ReservedStatus;
 import jakarta.persistence.LockModeType;
 
 public interface ScheduleJpaRepository extends JpaRepository<Schedule, UUID> {
@@ -57,57 +59,104 @@ public interface ScheduleJpaRepository extends JpaRepository<Schedule, UUID> {
 	Optional<Schedule> findByIdAndDeleteDtIsNull(UUID schedulesId);
 
 	// 2026-04-09 추가, 재고 검증 및 재고 차감, 상태값 변경
+	@Modifying
 	@Query("""
 			UPDATE Schedule s
-		 		SET s.maxCapacity = s.maxCapacity - :quantity,
+		 		SET s.capacity = s.capacity - :quantity,
 		     		s.status = CASE
-		         WHEN s.maxCapacity - :quantity = 0 THEN 'FULL'
+		         WHEN s.capacity - :quantity = 0 THEN 'FULL'
 		         ELSE s.status
 		     	END
 		 		WHERE s.id = :scheduleId
-		   	AND s.maxCapacity >= :quantity
+		   	AND s.capacity >= :quantity
 		""")
 	int verification(@Param("quantity") int quantity, @Param("scheduleId") UUID scheduleId);
 
 	// 2026-04-09 상태값 변경
 	@Modifying
-	@Query("update ProductUser u set u.status = :status where u.id = :productUserId")
+	@Query("""
+			update ProductUser u set u.status = :status
+			where u.id = :productUserId 
+					and u.status in :conditionStatus
+		""")
 	int updateStatus(@Param("productUserId") UUID productUserId,
-		@Param("status") ReservationStatus status);
+		@Param("status") ReservationStatus status,
+		@Param("conditionStatus") List<ReservationStatus> conditionStatus
+	);
 
-	// 2026-04-09 멱등성 체크 및 선점
+	// 2026-04-16 멱등성 체크 및 선점
 	@Modifying
 	@Query("""
 		   UPDATE ProductUser pu
-		      SET pu.status = :restoringStatus
+		      SET pu.restoreStatus = 1
 		    WHERE pu.id = :productUserId
-			  AND pu.status IN ('PENDING', 'PAID')
+			  AND pu.status IN ('RESERVED', 'CONFIRMED')
+			  AND pu.restoreStatus = 0
 		""")
 	int claimRestore(
-		@Param("productUserId") UUID productUserId,
-		@Param("restoringStatus") ReservationStatus restoringStatus
+		@Param("productUserId") UUID productUserId
 	);
 
 	// 2026-04-09 재고 복구
 	@Modifying
 	@Query("""
 		    UPDATE Schedule s
-		       SET s.maxCapacity = s.maxCapacity + :quantity
+		       SET s.capacity = s.capacity + :quantity
 		     WHERE s.id = :scheduleId
-		       AND s.maxCapacity + :quantity <= :capacity
+		       AND s.capacity + :quantity <= :maxCapacity
 		""")
 	int restoreCapacity(
 		@Param("scheduleId") UUID scheduleId,
 		@Param("quantity") int quantity,
-		@Param("capacity") int capacity
+		@Param("maxCapacity") int maxCapacity
 	);
 
-	// 2026-04-09 예약자 테이블 id로 스케쥴 검색
+	// 2026-04-16 멱등성 체크 및 선점
+	@Modifying
 	@Query("""
-		    SELECT s 
-			FROM ProductUser s
-		     WHERE s.id = :productUserId
+		   UPDATE ProductUser pu
+		      SET pu.restoreStatus = 0
+		    WHERE pu.id = :productUserId
+			  AND pu.restoreStatus = 1
 		""")
-	Optional<Schedule> findByProductUserId(@Param("productUserId") UUID productUserId);
+	int restoreStatus(
+		@Param("productUserId") UUID productUserId
+	);
+
+	/*
+	 * 날짜 마감 스케줄러 돌리는 구간
+	 *
+	 *  */
+	// 사이즈를 가져와 날짜 마감 시킬 아이디 가져오기
+	@Query("""
+		    select s.id
+		    from Schedule s
+		    where s.scheduleDt < :today
+		      and s.status not in (:status)
+		""")
+	List<UUID> findClosableIds(
+		@Param("today") LocalDate today,
+		@Param("status") ReservedStatus status,
+		Pageable pageable
+	);
+
+	/*
+	 * @Modifying(clearAutomatically = true, flushAutomatically = true)
+	 * DB랑 JPA 영속성 컨텍스트를 맞추기 위한 안전장치
+	 * clearAutomatically = bulk query 실행 후, 영속성 컨텍스트를 싹 비움(같은 트랜잭션 안에서 이미 조회한 엔티티가 있을 때 문제)
+	 * 메모리 방지용으로 설정
+	 * */
+	@Modifying(clearAutomatically = true, flushAutomatically = true)
+	@Query("""
+		    update Schedule s
+		       set s.status = :closedStatus
+		     where s.id in (:ids)
+		       and s.status in (:status)
+		""")
+	int bulkClose(
+		@Param("ids") List<UUID> ids,
+		@Param("status") List<ReservedStatus> status,
+		@Param("closedStatus") ReservedStatus closedStatus
+	);
 
 }

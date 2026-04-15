@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import jabaclass.product.application.usecase.ReviewUseCase;
+import jabaclass.product.common.auth.CurrentUser;
 import jabaclass.product.common.exception.ApiResponseDto;
 import jabaclass.product.presentation.dto.request.ReviewRequestDto;
 import jabaclass.product.presentation.dto.respose.ReviewResponseDto;
@@ -33,8 +34,9 @@ public class ReviewRestController implements ReviewOpenApi {
 	@Override
 	@PostMapping("/{productId}/reviews")
 	public ResponseEntity<ApiResponseDto<ReviewResponseDto>> create(@RequestBody ReviewRequestDto request,
-		@PathVariable UUID productId) {
-		ReviewResponseDto response = reviewUseCase.createReview(request, productId);
+		@PathVariable UUID productId,
+		@CurrentUser UUID userId) {
+		ReviewResponseDto response = reviewUseCase.createReview(request, productId, userId);
 
 		return ResponseEntity.status(HttpStatus.CREATED)
 			.body(ApiResponseDto.success(HttpStatus.CREATED, "성공적으로 등록 되었습니다.", response));
@@ -43,8 +45,9 @@ public class ReviewRestController implements ReviewOpenApi {
 	@Override
 	@PutMapping("/{productId}/reviews/{reviewId}")
 	public ResponseEntity<ApiResponseDto<ReviewResponseDto>> update(@RequestBody ReviewRequestDto request,
-		@PathVariable UUID reivewId) {
-		ReviewResponseDto response = reviewUseCase.updateReview(request, reivewId);
+		@PathVariable UUID reivewId,
+		@CurrentUser UUID userId) {
+		ReviewResponseDto response = reviewUseCase.updateReview(request, reivewId, userId);
 
 		return ResponseEntity.ok()
 			.body(ApiResponseDto.success(HttpStatus.OK, "성공적으로 수정 되었습니다.", response));
@@ -52,8 +55,8 @@ public class ReviewRestController implements ReviewOpenApi {
 
 	@Override
 	@DeleteMapping("/{productId}/reviews/{reviewId}")
-	public ResponseEntity<ApiResponseDto<UUID>> delete(@PathVariable UUID reivewId) {
-		reviewUseCase.deleteReview(reivewId);
+	public ResponseEntity<ApiResponseDto<UUID>> delete(@PathVariable UUID reivewId, @CurrentUser UUID userId) {
+		reviewUseCase.deleteReview(reivewId, userId);
 
 		return ResponseEntity.ok()
 			.body(ApiResponseDto.success(HttpStatus.OK, "성공적으로 삭제 되었습니다.", null));
@@ -61,8 +64,8 @@ public class ReviewRestController implements ReviewOpenApi {
 
 	@Override
 	@GetMapping("/me/reviews")
-	public ResponseEntity<ApiResponseDto<List<ReviewResponseDto>>> userReview() {
-		List<ReviewResponseDto> response = reviewUseCase.userReview();
+	public ResponseEntity<ApiResponseDto<List<ReviewResponseDto>>> userReview(@CurrentUser UUID userId) {
+		List<ReviewResponseDto> response = reviewUseCase.userReview(userId);
 
 		return ResponseEntity.ok()
 			.body(ApiResponseDto.success(HttpStatus.OK, "성공적으로 검색 되었습니다.", response));

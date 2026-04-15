@@ -25,7 +25,7 @@ public interface FavoritesOpenApi {
 		)
 	)
 	@CommonErrorResponses
-	ResponseEntity<ApiResponseDto<FavoritesResposeDto>> create(int quantity, UUID scheduleId);
+	ResponseEntity<ApiResponseDto<FavoritesResposeDto>> create(int quantity, UUID scheduleId, UUID userId);
 
 	@Operation(summary = "즐겨찾기 해제", description = "즐겨찾기를 해제 합니다.")
 	@ApiResponse(
@@ -36,7 +36,7 @@ public interface FavoritesOpenApi {
 		)
 	)
 	@CommonErrorResponses
-	ResponseEntity<ApiResponseDto<FavoritesResposeDto>> delete(UUID likeId);
+	ResponseEntity<ApiResponseDto<FavoritesResposeDto>> delete(UUID likeId, UUID userId);
 
 	@Operation(summary = "즐겨찾기 검색", description = "즐겨찾기를 검색 합니다.")
 	@ApiResponse(
@@ -47,5 +47,5 @@ public interface FavoritesOpenApi {
 		)
 	)
 	@CommonErrorResponses
-	ResponseEntity<ApiResponseDto<List<FavoritesResposeDto>>> getList();
+	ResponseEntity<ApiResponseDto<List<FavoritesResposeDto>>> getList(UUID userId);
 }

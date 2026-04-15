@@ -28,21 +28,14 @@ public record SchedulesResponseDto(
 	@Schema(description = "예약 상태", example = "예약 가능")
 	String status,
 
-	@Schema(description = "예약 상태", example = "AVAILABLE")
-	int maxCapacity,
-
-	@Schema(description = "등록자 ID", example = "22222222-2222-2222-2222-222222222222")
-	UUID regId,
+	@Schema(description = "남은 예약 가능 인원", example = "10")
+	int capacity,
 
 	@Schema(description = "등록일시", example = "2026-03-04T18:10:00")
 	LocalDateTime regDt,
 
-	@Schema(description = "수정자 ID", example = "33333333-3333-3333-3333-333333333333")
-	UUID modifyId,
-
 	@Schema(description = "수정일시", example = "2026-03-04T18:12:00")
 	LocalDateTime modifyDt
-
 ) {
 	public static SchedulesResponseDto from(Schedule schedule) {
 		return new SchedulesResponseDto(
@@ -52,10 +45,8 @@ public record SchedulesResponseDto(
 			schedule.getStartTime(),
 			schedule.getEndTime(),
 			schedule.getStatus().getStatusName(),
-			schedule.getMaxCapacity(),
-			schedule.getRegId(),
+			schedule.getCapacity(),
 			schedule.getRegDt(),
-			schedule.getModifyId(),
 			schedule.getModifyDt()
 		);
 	}

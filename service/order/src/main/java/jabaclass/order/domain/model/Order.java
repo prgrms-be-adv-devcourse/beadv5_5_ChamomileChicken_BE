@@ -38,9 +38,6 @@ public class Order {
 	@Column(name = "price", nullable = false, precision = 10, scale = 2)
 	private BigDecimal price;
 
-	@Column(name = "deposit_amount", nullable = false, precision = 10, scale = 2)
-	private BigDecimal depositAmount;
-
 	@Enumerated(EnumType.STRING)
 	@Column(name = "status", nullable = false, length = 20)
 	private OrderStatus status;
@@ -55,7 +52,6 @@ public class Order {
 		UUID productUserId,
 		Integer quantity,
 		BigDecimal price,
-		BigDecimal depositAmount,
 		OrderStatus status
 	) {
 		this.id = id;
@@ -64,7 +60,6 @@ public class Order {
 		this.productUserId = productUserId;
 		this.quantity = quantity;
 		this.price = price;
-		this.depositAmount = depositAmount;
 		this.status = status;
 	}
 
@@ -73,13 +68,11 @@ public class Order {
 		UUID userId,
 		UUID productUserId,
 		Integer quantity,
-		BigDecimal price,
-		BigDecimal depositAmount
+		BigDecimal price
 	) {
 		validateQuantity(quantity);
 		validateProductUserId(productUserId);
 		validatePrice(price);
-		validateDepositAmount(depositAmount);
 
 		return new Order(
 			UUID.randomUUID(),
@@ -88,7 +81,6 @@ public class Order {
 			productUserId,
 			quantity,
 			price,
-			depositAmount,
 			OrderStatus.PENDING
 		);
 	}
@@ -119,8 +111,14 @@ public class Order {
 		if (Objects.isNull(amount)) {
 			return false;
 		}
-
 		return price.compareTo(amount) == 0;
+	}
+
+	public void expire() {
+		if (this.status != OrderStatus.PENDING) {
+			throw new BusinessException(OrderErrorCode.ORDER_EXPIRE_NOT_ALLOWED);
+		}
+		this.status = OrderStatus.EXPIRED;
 	}
 
 	private static void validateQuantity(Integer quantity) {
@@ -139,18 +137,5 @@ public class Order {
 		if (Objects.isNull(price) || price.signum() < 0) {
 			throw new BusinessException(OrderErrorCode.ORDER_PRICE_INVALID);
 		}
-	}
-
-	private static void validateDepositAmount(BigDecimal depositAmount) {
-		if (Objects.isNull(depositAmount) || depositAmount.signum() < 0) {
-			throw new BusinessException(OrderErrorCode.ORDER_DEPOSIT_AMOUNT_INVALID);
-		}
-	}
-
-	public void expire() {
-		if (this.status != OrderStatus.PENDING) {
-			throw new BusinessException(OrderErrorCode.ORDER_EXPIRE_NOT_ALLOWED);
-		}
-		this.status = OrderStatus.EXPIRED;
 	}
 }

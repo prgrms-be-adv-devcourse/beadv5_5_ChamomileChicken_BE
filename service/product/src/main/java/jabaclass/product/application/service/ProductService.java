@@ -1,8 +1,5 @@
 package jabaclass.product.application.service;
 
-import jabaclass.product.domain.model.ProductImageItem;
-import jabaclass.product.infrastructure.acl.client.FileConfirmClient;
-import jabaclass.product.infrastructure.acl.client.FileConfirmResponse;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -21,12 +18,14 @@ import jabaclass.product.application.exception.BusinessException;
 import jabaclass.product.application.usecase.ProductUseCase;
 import jabaclass.product.common.exception.CommonErrorCode;
 import jabaclass.product.domain.model.Product;
+import jabaclass.product.domain.model.ProductImageItem;
 import jabaclass.product.domain.model.status.ProductStatus;
 import jabaclass.product.domain.repository.ProductRepository;
 import jabaclass.product.domain.repository.ProductSearchRepository;
-import jabaclass.product.infrastructure.elasticsearch.ProductDocument;
-import jabaclass.product.infrastructure.acl.dto.SellerRole;
+import jabaclass.product.infrastructure.acl.client.FileConfirmClient;
+import jabaclass.product.infrastructure.acl.client.FileConfirmResponse;
 import jabaclass.product.infrastructure.acl.dto.response.UserResponseDto;
+import jabaclass.product.infrastructure.elasticsearch.ProductDocument;
 import jabaclass.product.infrastructure.event.dto.ProductEsDeleteEvent;
 import jabaclass.product.infrastructure.event.dto.ProductEsSaveEvent;
 import jabaclass.product.infrastructure.event.dto.ProductEventResponseDto;
@@ -49,22 +48,19 @@ public class ProductService implements ProductUseCase {
 	private final ProductSearchRepository productSearchRepository;
 	private final SellerRepository sellerRepository;
 	private final ApplicationEventPublisher publisher;
-	private final AuditorAwareService auditorAwareService;
 	private final FileConfirmClient fileConfirmClient;
 
 	@Override
 	@Transactional
-	public ProductResponseDto create(CreateProductRequestDto requestDto) {
-		// seller 룰을 확인
-		UserResponseDto seller = validateAndGetSeller();
-
+	public ProductResponseDto create(CreateProductRequestDto requestDto, UUID sellerId) {
+		log.info("userID ::: {}", sellerId);
 		List<ProductImageItem> images = List.of();
 		if (requestDto.imageIds() != null && !requestDto.imageIds().isEmpty()) {
 			List<FileConfirmResponse> confirmed =
-					fileConfirmClient.confirmBulk(requestDto.imageIds());
+				fileConfirmClient.confirmBulk(requestDto.imageIds());
 			images = confirmed.stream()
-					.map(r -> new ProductImageItem(r.fileId(), r.storagePath()))
-					.toList();
+				.map(r -> new ProductImageItem(r.fileId(), r.storagePath()))
+				.toList();
 		}
 
 		Product product = Product.builder()
@@ -79,6 +75,8 @@ public class ProductService implements ProductUseCase {
 		product.changeImages(images);
 
 		Product saved = productRepository.save(product);
+		UserResponseDto seller = findBySellerIdOrThrow(sellerId);
+
 		publisher.publishEvent(new ProductEventResponseDto(saved.getId()));
 		publisher.publishEvent(new ProductEsSaveEvent(ProductDocument.from(saved, seller.name())));
 		return ProductResponseDto.from(saved, seller.name());
@@ -86,13 +84,10 @@ public class ProductService implements ProductUseCase {
 
 	@Override
 	@Transactional
-	public ProductResponseDto update(UpdateProductRequestDto requestDto, UUID productId) {
-
-		UserResponseDto seller = validateAndGetSeller();
-
+	public ProductResponseDto update(UpdateProductRequestDto requestDto, UUID productId, UUID sellerId) {
 		Product product = findByIdOrThrow(productId);
 
-		matchProductAndSellerId(productId, seller.userId());
+		matchProductAndSellerId(productId, sellerId);
 
 		product.changeTitle(requestDto.title());
 		product.changeMaxCapacity(requestDto.maxCapacity());
@@ -105,28 +100,25 @@ public class ProductService implements ProductUseCase {
 			List<ProductImageItem> images = List.of();
 			if (!requestDto.imageIds().isEmpty()) {
 				List<FileConfirmResponse> confirmed =
-						fileConfirmClient.confirmBulk(requestDto.imageIds());
+					fileConfirmClient.confirmBulk(requestDto.imageIds());
 				images = confirmed.stream()
-						.map(r -> new ProductImageItem(r.fileId(), r.storagePath()))
-						.toList();
+					.map(r -> new ProductImageItem(r.fileId(), r.storagePath()))
+					.toList();
 			}
 			product.changeImages(images);
 		}
-
+		UserResponseDto seller = findBySellerIdOrThrow(sellerId);
 		publisher.publishEvent(new ProductEsSaveEvent(ProductDocument.from(product, seller.name())));
 		return ProductResponseDto.from(product, seller.name());
 	}
 
 	@Override
 	@Transactional
-	public DeleteProductResposeDto delete(UUID productId) {
-		// seller 룰을 확인
-		UserResponseDto seller = validateAndGetSeller();
-
+	public DeleteProductResposeDto delete(UUID productId, UUID sellerId) {
 		// 상품 존재하는지 확인
 		Product product = findByIdOrThrow(productId);
 		// 본인 상품인지 확인
-		matchProductAndSellerId(productId, seller.userId());
+		matchProductAndSellerId(productId, sellerId);
 
 		product.changeStatus(ProductStatus.DISABLE);
 		product.changeDelete();
@@ -246,17 +238,6 @@ public class ProductService implements ProductUseCase {
 			.orElseThrow(() -> new BusinessException(CommonErrorCode.SELLER_NOT_FOUND));
 
 		return sellerInfo;
-	}
-
-	private UserResponseDto validateAndGetSeller() {
-		UUID sellerId = auditorAwareService.getCurrentAuditor()
-			.orElseThrow(() -> new BusinessException(CommonErrorCode.EMPTY_USER));
-		UserResponseDto seller = findBySellerIdOrThrow(sellerId);
-		SellerRole role = SellerRole.from(seller.role());
-		if (role != SellerRole.SELLER) {
-			throw new BusinessException(CommonErrorCode.NOT_SELLER);
-		}
-		return seller;
 	}
 
 }

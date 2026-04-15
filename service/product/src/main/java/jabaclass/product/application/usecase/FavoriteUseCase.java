@@ -7,9 +7,9 @@ import jabaclass.product.presentation.dto.respose.FavoritesResposeDto;
 
 public interface FavoriteUseCase {
 
-	FavoritesResposeDto createFavorite(int quantity, UUID scheduleId);
+	FavoritesResposeDto createFavorite(int quantity, UUID scheduleId, UUID userId);
 
-	void deleteFavorite(UUID favoriteId);
+	void deleteFavorite(UUID favoriteId, UUID userId);
 
-	List<FavoritesResposeDto> findByUserIdAndDeleteDtIsNull();
+	List<FavoritesResposeDto> findByUserIdAndDeleteDtIsNull(UUID userId);
 }
