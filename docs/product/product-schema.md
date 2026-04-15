@@ -68,6 +68,11 @@ EntityBase
 | `description` | 상품 설명 |
 | `thumbnailPath` | 대표 이미지 경로 |
 | `descriptionImages` | 상세 이미지 목록 |
+| `roadAddress` | 도로명 주소 |
+| `detailAddress` | 상세 주소 |
+| `zonecode` | 우편번호 |
+| `latitude` | 위도 |
+| `longitude` | 경도 |
 | `price` | 가격 |
 | `status` | 상품 상태 (`ENABLE`, `DISABLE`) |
 
@@ -82,6 +87,7 @@ EntityBase
 - 리뷰는 상품 단위로 누적됩니다.
 - 검색용 문서(`ProductDocument`)는 `Product`를 기준으로 파생 생성됩니다.
 - `sellerId`는 product DB 내부 엔티티가 아니라 API Gateway와 user 서비스를 통해 식별하는 외부 사용자 ID입니다.
+- 상품 주소와 좌표는 `roadAddress`, `detailAddress`, `zonecode`, `latitude`, `longitude` 컬럼으로 직접 관리됩니다.
 
 ---
 
@@ -114,7 +120,7 @@ EntityBase
 - `capacity`는 생성 시 `Product.maxCapacity` 값으로 초기화됩니다.
 - 주문 검증 시 `capacity`가 감소합니다.
 - 취소/환불 시 `capacity`가 다시 복구됩니다.
-- 만료 일정 스케줄러는 오늘 이전 일정 중 `AVAILABLE`, `FULL` 상태 일정을 배치로 `CLOSED` 처리합니다.
+- 만료 일정 스케줄러는 오늘 이전 일정 중 `AVAILABLE`, `FULL` 상태인 일정을 배치로 `CLOSED` 처리합니다.
 - `ReservedStatus`에서 대기(`PENDING`) 상태는 제거되었으므로 현재 일정 상태는 `FULL`, `AVAILABLE`, `CLOSED`만 사용합니다.
 - `capacity`는 null이면 안 되며, 실질적인 재고 컬럼입니다.
 
@@ -215,6 +221,11 @@ erDiagram
         uuid seller_id
         string title
         int max_capacity
+        string road_address
+        string detail_address
+        string zonecode
+        decimal latitude
+        decimal longitude
         decimal price
         string status
     }
@@ -265,7 +276,7 @@ erDiagram
 ```text
 Product 생성
   -> file 서비스로 이미지 확인
-  -> Product 저장
+  -> 주소/좌표 포함 Product 저장
   -> user 서비스로 seller 정보 조회
   -> ES 문서 생성
 ```
@@ -366,24 +377,29 @@ product 스키마는 내부 엔티티만으로 완결되지 않습니다.
 
 이 둘이 어긋나면 insert/update가 모두 실패합니다.
 
-### 3. `Schedule.capacity`는 단순 컬럼이 아니라 재고입니다
+### 3. 상품 주소 컬럼은 API와 스키마를 함께 관리해야 합니다
+- `roadAddress`, `detailAddress`, `zonecode`는 사용자 입력 주소입니다.
+- `latitude`, `longitude`는 지도 좌표 값입니다.
+- 생성/수정 DTO와 응답 DTO, DB 컬럼이 함께 맞물리므로 어느 한쪽만 바뀌면 문서와 구현이 쉽게 어긋납니다.
+
+### 4. `Schedule.capacity`는 단순 컬럼이 아니라 재고입니다
 - null이면 안 됩니다.
 - 주문/결제 흐름에서 직접 차감/복구됩니다.
 - 마이그레이션 시 가장 먼저 정합성을 확인해야 하는 컬럼입니다.
 
-### 4. `Schedule.status`는 현재 3개 값만 사용합니다
+### 5. `Schedule.status`는 현재 3개 값만 사용합니다
 - `AVAILABLE`
 - `FULL`
 - `CLOSED`
 
 기존 `PENDING` 상태는 제거되었고, 만료 일정 배치도 이 기준으로 동작합니다.
 
-### 5. soft delete를 전제로 조회해야 합니다
+### 6. soft delete를 전제로 조회해야 합니다
 
 `Product`, `Schedule`, `Review`, `Favorite`는 `deleteDt` 기반 soft delete를 사용합니다.  
 따라서 조회 로직에서 `deleteDt is null` 조건이 빠지면 논리 삭제 데이터가 다시 보일 수 있습니다.
 
-### 6. Gateway 헤더 신뢰 전제가 깨지면 컨트롤러 사용자 식별이 실패합니다
+### 7. Gateway 헤더 신뢰 전제가 깨지면 컨트롤러 사용자 식별이 실패합니다
 
 현재 product 서비스는 자체 인증 필터보다 `CurrentUserArgumentResolver`와 `CurrentUserRoleArgumentResolver`에 의존합니다.  
 따라서 API Gateway가 `X-User-Id`, `X-User-Role`을 정확히 전달한다는 전제가 중요합니다.
@@ -399,6 +415,7 @@ product 스키마는 내부 엔티티만으로 완결되지 않습니다.
 - [x] `Product -> Review` 관계 정리
 - [x] `Schedule -> Favorite` 관계 정리
 - [x] `ProductUser -> Schedule` 역추적 조회 흐름 정리
+- [x] 주소/좌표 컬럼 반영
 - [x] 만료 일정 자동 마감 배치 반영
 
 ### 운영 정합성

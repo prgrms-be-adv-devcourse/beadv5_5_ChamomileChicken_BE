@@ -3,7 +3,6 @@ package jabaclass.product.presentation.dto.respose;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -45,7 +44,22 @@ public record ProductResponseDto(
 	LocalDateTime regDt,
 
 	@Schema(description = "수정일시", example = "2026-03-04T18:12:00")
-	LocalDateTime modifyDt
+	LocalDateTime modifyDt,
+
+	@Schema(description = "도로명 주소", example = "경기 성남시 분당구 판교역로 166")
+	String roadAddress,
+
+	@Schema(description = "상세 주소", example = "카카오 판교 아지트 1층")
+	String detailAddress,
+
+	@Schema(description = "우편 번호", example = "13529")
+	String zonecode,
+
+	@Schema(description = "위도", example = "37.3952")
+	BigDecimal latitude,
+
+	@Schema(description = "경도", example = "127.1110")
+	BigDecimal longitude
 ) {
 
 	public static ProductResponseDto from(Product product, String sellerName) {
@@ -64,7 +78,12 @@ public record ProductResponseDto(
 			product.getPrice(),
 			product.getStatus().getStatusName(),
 			product.getRegDt(),
-			product.getModifyDt()
+			product.getModifyDt(),
+			product.getRoadAddress(),
+			product.getDetailAddress(),
+			product.getZonecode(),
+			product.getLatitude(),
+			product.getLongitude()
 		);
 	}
 
@@ -80,27 +99,13 @@ public record ProductResponseDto(
 			document.getPrice(),
 			ProductStatus.valueOf(document.getStatus()).getStatusName(),
 			document.getRegDt(),
+			null,
+			null,
+			null,
+			null,
+			null,
 			null
 		);
 	}
 
-	public static ProductResponseDto listFrom(Product product, Map<UUID, String> map) {
-		List<ProductImageItem> images = product.getDescriptionImages();
-		List<String> imagePaths = images == null ? List.of()
-			: images.stream().map(ProductImageItem::storagePath).toList();
-
-		return new ProductResponseDto(
-			product.getId(),
-			map.getOrDefault(product.getSellerId(), "사용자 이름이 지정되지 않았습니다."),
-			product.getTitle(),
-			product.getMaxCapacity(),
-			product.getDescription(),
-			product.getThumbnailPath(),
-			imagePaths,
-			product.getPrice(),
-			product.getStatus().getStatusName(),
-			product.getRegDt(),
-			product.getModifyDt()
-		);
-	}
 }
