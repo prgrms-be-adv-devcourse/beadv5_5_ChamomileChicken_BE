@@ -20,8 +20,7 @@ cors:
     - http://localhost:3000
 
 jwt:
-  # 환경변수 대신 고정값 (CI 깨짐 방지)
-  secret: test-secret-test-secret-test-secret
+  secret: "test-environment-secret-key-must-be-32-chars-long-!!!"
 
 logging:
   level:
