@@ -25,7 +25,7 @@ public class UseDepositService {
 
 	@Transactional
 	public void use(UUID userId, BigDecimal amount) {
-		User user = userRepository.findByIdWithLock(userId)
+		User user = userRepository.findById(userId)
 			.orElseThrow(() -> new DepositException(DepositErrorCode.NOT_FOUND_USER));
 
 		user.deductDeposit(amount);

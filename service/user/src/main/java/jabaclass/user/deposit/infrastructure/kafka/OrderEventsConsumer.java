@@ -43,14 +43,14 @@ public class OrderEventsConsumer {
 		OrderDepositEvent event = objectMapper.readValue(message, OrderDepositEvent.class);
 		log.info("ORDER_DEPOSIT_REFUND_REQUESTED 수신 - orderId: {}, userId: {}, amount: {}",
 			event.orderId(), event.userId(), event.depositAmount());
-		depositUseCase.refund(event.userId(), event.depositAmount(), event.orderId());
+		depositUseCase.refund(event.eventId(), event.userId(), event.depositAmount(), event.orderId());
 	}
 
 	private void handleOrderExpired(String message) throws Exception {
 		OrderDepositEvent event = objectMapper.readValue(message, OrderDepositEvent.class);
 		log.info("ORDER_EXPIRED 수신 - orderId: {}, userId: {}, amount: {}",
 			event.orderId(), event.userId(), event.depositAmount());
-		depositUseCase.refund(event.userId(), event.depositAmount(), event.orderId());
+		depositUseCase.refund(event.eventId(), event.userId(), event.depositAmount(), event.orderId());
 	}
 
 	record OrderDepositEvent(UUID eventId, UUID orderId, UUID userId, BigDecimal depositAmount) {}

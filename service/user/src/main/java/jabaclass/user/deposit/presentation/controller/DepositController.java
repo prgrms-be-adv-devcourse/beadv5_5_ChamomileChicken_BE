@@ -64,7 +64,7 @@ public class DepositController implements DepositApi {
 		@PathVariable UUID userId,
 		@RequestBody IncreaseDepositRequestDto request
 	) {
-		depositUseCase.refund(userId, request.amount(), request.paymentId());
+		depositUseCase.refund(null, userId, request.amount(), request.paymentId());
 		return ResponseEntity.ok().build();
 	}
 }

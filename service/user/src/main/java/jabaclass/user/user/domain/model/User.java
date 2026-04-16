@@ -10,6 +10,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -47,6 +48,10 @@ public class User extends BaseEntity {
 
 	@Column(name = "social_id", length = 255)
 	private String socialId;
+
+	@Version
+	@Column(name = "version")
+	private Long version;
 
 	@Builder.Default
 	@Column(name = "deposit", nullable = false, precision = 19, scale = 2)
