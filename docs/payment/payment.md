@@ -191,22 +191,25 @@ ExpirePaymentService.execute() [10분 주기]
 
 ```mermaid
 sequenceDiagram
-    participant PaySvc as PaymentService
-    participant Toss as TossPaymentClient
+    actor Client
+    participant Order as OrderService
+    participant Pay as PaymentService
     participant TossAPI as Toss API
 
-    PaySvc->>Toss: confirm(paymentKey, orderId, amount)
-    Toss->>TossAPI: POST /v1/payments/confirm
-    TossAPI-->>Toss: 승인 결과
-    Toss-->>PaySvc: 성공 / 예외
+    Client->>Order: 주문 생성
+    Order-->>Client: orderId
 
-    PaySvc->>Toss: refund(paymentKey, amount)
-    Toss->>TossAPI: POST /v1/payments/{paymentKey}/cancel
-    TossAPI-->>Toss: 환불 결과
-    Toss-->>PaySvc: 성공 / 예외
+    Client->>Pay: 결제 준비 (orderId)
+    Pay-->>Client: paymentId
+
+    Client->>TossAPI: 결제창 호출 (Toss JS SDK)
+    TossAPI-->>Client: paymentKey
+
+    Client->>Pay: 결제 승인 요청 (paymentKey, orderId, amount)
+    Pay->>TossAPI: POST /v1/payments/confirm
+    TossAPI-->>Pay: 승인 결과
+    Pay-->>Client: 응답
 ```
-
-> `PaymentGatewayPort` 인터페이스를 통해 PG 구현체와 서비스 로직을 분리한다. 테스트 시 Mock으로 교체 가능하다.
 
 ---
 
