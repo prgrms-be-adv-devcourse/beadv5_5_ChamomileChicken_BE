@@ -1,4 +1,4 @@
-package jabaclass.product.infrastructure.kafka.fromorder;
+package jabaclass.product.infrastructure.kafka.order;
 
 import java.util.UUID;
 

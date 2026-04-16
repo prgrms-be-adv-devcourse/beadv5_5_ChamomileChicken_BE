@@ -5,7 +5,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import org.apache.kafka.clients.producer.ProducerRecord;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -26,7 +25,7 @@ public class OutboxPublisher {
 		// SENDING 상태에서 멈춘 이벤트 찾기
 		LocalDateTime threshold = LocalDateTime.now().minusMinutes(5); // 5분 기준
 		List<OutboxEvent> events =
-			outboxRepository.findProcessableEvents(threshold, PageRequest.of(0, 100));
+			outboxRepository.findProcessableEvents(threshold, 100);
 
 		// [트랜잭션 1] PENDING → SENDING  (commit)
 		outboxService.markSending(events);
