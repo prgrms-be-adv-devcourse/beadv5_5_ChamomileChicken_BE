@@ -20,7 +20,10 @@ public class GlobalExceptionHandler {
 
 	@ExceptionHandler(MethodArgumentNotValidException.class)
 	public ResponseEntity<ApiResponseDto<Void>> handleValidationException(MethodArgumentNotValidException ex) {
-		String message = ex.getBindingResult().getFieldError().getDefaultMessage();
+		String message = ex.getBindingResult().getAllErrors().stream()
+			.findFirst()
+			.map(e -> e.getDefaultMessage())
+			.orElse("잘못된 요청입니다.");
 		return ResponseEntity
 			.status(HttpStatus.BAD_REQUEST)
 			.body(ApiResponseDto.fail(HttpStatus.BAD_REQUEST, message));
