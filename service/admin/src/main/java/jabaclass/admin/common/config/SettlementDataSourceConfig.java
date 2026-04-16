@@ -5,6 +5,7 @@ import java.util.Map;
 import javax.sql.DataSource;
 
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.jdbc.DataSourceBuilder;
 import org.springframework.context.annotation.Bean;
@@ -23,6 +24,9 @@ import org.springframework.transaction.PlatformTransactionManager;
 )
 public class SettlementDataSourceConfig {
 
+	@Value("${jpa.ddl-auto:none}")
+	private String ddlAuto;
+
 	@Bean(name = "settlementDataSource")
 	@ConfigurationProperties(prefix = "datasource.settlement")
 	public DataSource settlementDataSource() {
@@ -38,7 +42,7 @@ public class SettlementDataSourceConfig {
 		factory.setPackagesToScan("jabaclass.admin.settlement.domain.model");
 		factory.setJpaVendorAdapter(new HibernateJpaVendorAdapter());
 		factory.setJpaPropertyMap(Map.of(
-			"hibernate.hbm2ddl.auto", "none",
+			"hibernate.hbm2ddl.auto", ddlAuto,
 			"hibernate.physical_naming_strategy",
 			"org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy"
 		));

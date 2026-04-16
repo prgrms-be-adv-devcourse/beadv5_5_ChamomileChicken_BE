@@ -20,6 +20,9 @@ datasource:
     username: sa
     password:
 
+jpa:
+  ddl-auto: create-drop
+
 spring:
   kafka:
     bootstrap-servers: localhost:9092

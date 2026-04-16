@@ -5,6 +5,7 @@ import java.util.Map;
 import javax.sql.DataSource;
 
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.jdbc.DataSourceBuilder;
 import org.springframework.context.annotation.Bean;
@@ -24,6 +25,9 @@ import org.springframework.transaction.PlatformTransactionManager;
 )
 public class UserDataSourceConfig {
 
+	@Value("${jpa.ddl-auto:none}")
+	private String ddlAuto;
+
 	@Primary
 	@Bean(name = "userDataSource")
 	@ConfigurationProperties(prefix = "datasource.user")
@@ -41,7 +45,7 @@ public class UserDataSourceConfig {
 		factory.setPackagesToScan("jabaclass.admin.user.domain.model");
 		factory.setJpaVendorAdapter(new HibernateJpaVendorAdapter());
 		factory.setJpaPropertyMap(Map.of(
-			"hibernate.hbm2ddl.auto", "none",
+			"hibernate.hbm2ddl.auto", ddlAuto,
 			"hibernate.physical_naming_strategy",
 			"org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy"
 		));
