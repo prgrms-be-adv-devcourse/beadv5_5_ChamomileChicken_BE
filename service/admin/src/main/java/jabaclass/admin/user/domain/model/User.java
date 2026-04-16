@@ -1,5 +1,7 @@
 package jabaclass.admin.user.domain.model;
 
+import jabaclass.admin.common.error.AdminErrorCode;
+import jabaclass.admin.common.error.BusinessException;
 import jabaclass.admin.common.model.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -31,6 +33,9 @@ public class User extends BaseEntity {
 	private UserRole role;
 
 	public void approveSeller() {
+		if (this.role != UserRole.USER) {
+			throw new BusinessException(AdminErrorCode.INVALID_SELLER_APPROVAL);
+		}
 		this.role = UserRole.SELLER;
 	}
 }
