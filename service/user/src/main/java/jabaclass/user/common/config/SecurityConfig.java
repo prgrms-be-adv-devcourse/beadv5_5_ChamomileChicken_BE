@@ -15,11 +15,18 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import jabaclass.auth.jwt.JwtProperties;
 import jabaclass.auth.jwt.JwtProvider;
+import jabaclass.user.auth.infrastructure.oauth2.CustomOAuth2UserService;
+import jabaclass.user.auth.infrastructure.oauth2.OAuth2SuccessHandler;
+import lombok.RequiredArgsConstructor;
 
 @Configuration
 @EnableWebSecurity
 @EnableConfigurationProperties(JwtProperties.class)
+@RequiredArgsConstructor
 public class SecurityConfig {
+
+	private final CustomOAuth2UserService customOAuth2UserService;
+	private final OAuth2SuccessHandler oAuth2SuccessHandler;
 
 	@Bean
 	public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -34,6 +41,12 @@ public class SecurityConfig {
 				.requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-resources/**").permitAll()
 				.requestMatchers("/actuator/health").permitAll()
 				.anyRequest().permitAll()
+			)
+			.oauth2Login(oauth2 -> oauth2
+				.userInfoEndpoint(userInfo ->
+					userInfo.userService(customOAuth2UserService)
+				)
+				.successHandler(oAuth2SuccessHandler)
 			);
 
 		return http.build();

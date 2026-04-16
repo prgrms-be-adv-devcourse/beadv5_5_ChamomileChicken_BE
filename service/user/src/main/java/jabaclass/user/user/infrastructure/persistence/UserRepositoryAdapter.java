@@ -4,11 +4,13 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import jabaclass.user.user.domain.model.SocialType;
+import lombok.RequiredArgsConstructor;
+
 import org.springframework.stereotype.Repository;
 
 import jabaclass.user.user.domain.model.User;
 import jabaclass.user.user.domain.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
 
 @Repository
 @RequiredArgsConstructor
@@ -54,5 +56,10 @@ public class UserRepositoryAdapter implements UserRepository {
 	@Override
 	public Optional<User> findByEmail(String email) {
 		return userJpaRepository.findByEmail(email);
+	}
+
+	@Override
+	public Optional<User> findBySocialTypeAndSocialId(SocialType socialType, String socialId) {
+		return userJpaRepository.findBySocialTypeAndSocialId(socialType, socialId);
 	}
 }
