@@ -23,9 +23,9 @@ public interface OrderUseCase {
 
     boolean validatePaymentAmount(UUID orderId, BigDecimal amount);
 
-    void updatePaymentStatus(UUID orderId, UpdateOrderPaymentStatusRequestDto requestDto);
+    void updatePaymentStatus(UUID eventId, UUID orderId, UpdateOrderPaymentStatusRequestDto requestDto);
 
-    void expireOrder(UUID orderId, BigDecimal depositAmount);
+    void expireOrder(UUID eventId, UUID orderId, BigDecimal depositAmount);
 
     void refund(UUID orderId);
 

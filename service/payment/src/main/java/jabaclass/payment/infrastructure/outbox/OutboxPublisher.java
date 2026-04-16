@@ -1,9 +1,10 @@
 package jabaclass.payment.infrastructure.outbox;
 
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.List;
 
-import org.springframework.data.domain.PageRequest;
+import org.apache.kafka.clients.producer.ProducerRecord;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -24,7 +25,7 @@ public class OutboxPublisher {
 		// SENDING 상태에서 멈춘 이벤트 찾기
 		LocalDateTime threshold = LocalDateTime.now().minusMinutes(5); // 5분 기준
 		List<OutboxEvent> events =
-			outboxRepository.findProcessableEvents(threshold, PageRequest.of(0, 100));
+			outboxRepository.findProcessableEvents(threshold, 100);
 
 		// [트랜잭션 1] PENDING → SENDING  (commit)
 		outboxService.markSending(events);
@@ -40,17 +41,21 @@ public class OutboxPublisher {
 			}
 
 			try {
-				kafkaTemplate.send(
+				ProducerRecord<String, String> record = new ProducerRecord<>(
 					event.getEventType().getTopic(),
 					event.getAggregateId(), // 같은 aggregate는 같은 partition → 순서 보장
 					event.getPayload()
-				).get(); // send().get()을 통해 Kafka가 메시지를 정상 수신했는지 확인
+				);
+				record.headers().add(
+					"eventType",
+					event.getEventType().name().getBytes(StandardCharsets.UTF_8)
+				);
 
+				kafkaTemplate.send(record).get(); // send().get()을 통해 Kafka가 메시지를 정상 수신했는지 확인
 				// [트랜잭션 2] SENDING → PUBLISHED (commit)
 				outboxService.markPublished(event);
 
-
-			} catch (Exception e) { // Kafka 전송 실패 시 재시도 → 다음 스케줄에서 재처리
+			} catch (Exception e) {
 				outboxService.retry(event);
 			}
 		}

@@ -17,7 +17,7 @@ public interface DepositUseCase {
 
 	DepositDetailResponseDto findDepositHistory(UUID depositHistoryId);
 
-	void refund(UUID userId, BigDecimal amount, UUID paymentId);
+	void refund(UUID eventId, UUID userId, BigDecimal amount, UUID orderId);
 
 	void use(UUID userId, BigDecimal amount);
 

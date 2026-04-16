@@ -5,15 +5,20 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import jabaclass.order.common.error.BusinessException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import jabaclass.order.application.port.external.DepositPort;
 import jabaclass.order.application.port.external.ProductPort;
+import jabaclass.order.application.service.handler.OrderExpireHandler;
+import jabaclass.order.application.service.handler.OrderPaymentResultHandler;
+import jabaclass.order.common.error.BusinessException;
 import jabaclass.order.domain.model.Order;
-import jabaclass.order.domain.model.PaymentResultStatus;
 import jabaclass.order.domain.model.OrderStatus;
+import jabaclass.order.domain.model.PaymentResultStatus;
 import jabaclass.order.domain.repository.OrderRepository;
-import jabaclass.order.infrastructure.kafka.OrderEventPublisher;
 import jabaclass.order.infrastructure.client.product.dto.ProductReservationResponseDto;
+import jabaclass.order.infrastructure.outbox.EventType;
+import jabaclass.order.infrastructure.outbox.OutboxRepository;
 import jabaclass.order.presentation.dto.request.CreateOrderRequestDto;
 import jabaclass.order.presentation.dto.request.UpdateOrderPaymentStatusRequestDto;
 import jabaclass.order.presentation.dto.response.CreateOrderResponseDto;
@@ -24,13 +29,13 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
@@ -50,7 +55,16 @@ class OrderServiceTest {
     private ProductPort productPort;
 
     @Mock
-    private OrderEventPublisher eventPublisher;
+    private OutboxRepository outboxRepository;
+
+    @Spy
+    private ObjectMapper objectMapper;
+
+    @Mock
+    private OrderPaymentResultHandler orderPaymentResultHandler;
+
+    @Mock
+    private OrderExpireHandler orderExpireHandler;
 
     @InjectMocks
     private OrderService orderService;
@@ -124,7 +138,9 @@ class OrderServiceTest {
             .isInstanceOf(BusinessException.class)
             .hasMessage("사용 가능한 예치금이 부족합니다.");
         then(orderRepository).should(never()).save(any(Order.class));
-        then(eventPublisher).should().publishReservationReleased(productUserId);
+        then(outboxRepository).should().save(argThat(e ->
+            e.getEventType() == EventType.ORDER_RESERVATION_RELEASED
+        ));
     }
 
     @Test
@@ -223,36 +239,26 @@ class OrderServiceTest {
     @Test
     void 결제_성공을_반영한다() {
         // given
-        UUID productUserId = UUID.randomUUID();
-        Order order = Order.create(UUID.randomUUID(), UUID.randomUUID(), productUserId, 1, new BigDecimal("15000"));
-        given(orderRepository.findById(order.getId())).willReturn(Optional.of(order));
+        UUID orderId = UUID.randomUUID();
 
         // when
-        orderService.updatePaymentStatus(order.getId(), new UpdateOrderPaymentStatusRequestDto(PaymentResultStatus.SUCCESS, null));
+        orderService.updatePaymentStatus(null, orderId, new UpdateOrderPaymentStatusRequestDto(PaymentResultStatus.SUCCESS, null));
 
         // then
-        assertThat(order.getStatus()).isEqualTo(OrderStatus.PAID);
-        then(eventPublisher).should().publishReservationConfirmed(productUserId);
+        then(orderPaymentResultHandler).should().onSuccess(null, orderId);
     }
 
     @Test
     void 결제_실패를_반영한다() {
         // given
-        UUID productUserId = UUID.randomUUID();
+        UUID orderId = UUID.randomUUID();
         BigDecimal depositAmount = new BigDecimal("3000");
-        Order order = Order.create(UUID.randomUUID(), UUID.randomUUID(), productUserId, 2, new BigDecimal("15000"));
-        given(orderRepository.findById(order.getId())).willReturn(Optional.of(order));
 
         // when
-        orderService.updatePaymentStatus(order.getId(), new UpdateOrderPaymentStatusRequestDto(PaymentResultStatus.FAILED, depositAmount));
+        orderService.updatePaymentStatus(null, orderId, new UpdateOrderPaymentStatusRequestDto(PaymentResultStatus.FAILED, depositAmount));
 
         // then
-        assertThat(order.getStatus()).isEqualTo(OrderStatus.FAILED);
-        then(eventPublisher).should().publishReservationReleased(productUserId);
-        then(eventPublisher).should().publishDepositRefundRequested(
-            argThat(o -> o.getId().equals(order.getId())),
-            eq(depositAmount)
-        );
+        then(orderPaymentResultHandler).should().onFailed(null, orderId, depositAmount);
     }
 
     @Test

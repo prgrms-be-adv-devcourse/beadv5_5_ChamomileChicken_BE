@@ -18,8 +18,8 @@ import jabaclass.payment.domain.model.Payment;
 import jabaclass.payment.domain.model.Refund;
 import jabaclass.payment.domain.repository.PaymentRepository;
 import jabaclass.payment.domain.repository.RefundRepository;
+import jabaclass.payment.application.service.handler.PaymentConfirmHandler;
 import jabaclass.payment.infrastructure.kafka.PaymentCompletedEvent;
-import jabaclass.payment.infrastructure.kafka.PaymentFailedEvent;
 import jabaclass.payment.infrastructure.kafka.PaymentRefundedEvent;
 import jabaclass.payment.infrastructure.outbox.EventType;
 import jabaclass.payment.infrastructure.outbox.OutboxEvent;
@@ -47,6 +47,7 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 	private final PaymentGatewayPort paymentGatewayPort;
 	private final OrderPort orderPort;
 	private final OutboxRepository outboxRepository;
+	private final PaymentConfirmHandler paymentConfirmHandler;
 	private final ObjectMapper objectMapper;
 
 	@Override
@@ -76,7 +77,7 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 				"PAYMENT",
 				savedPayment.getId().toString(),
 				EventType.PAYMENT_COMPLETED,
-				toJson(new PaymentCompletedEvent(savedPayment.getId(), savedPayment.getOrderId()))
+				toJson(new PaymentCompletedEvent(UUID.randomUUID(), savedPayment.getId(), savedPayment.getOrderId()))
 			);
 
 			outboxRepository.save(event);
@@ -85,78 +86,36 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 		return PaymentResponseDto.from(savedPayment);
 	}
 
-	@Transactional
+	// 외부 PG 호출 포함 — tx 없음, 핸들러에서 각자 tx 처리
 	public PaymentResponseDto confirm(UUID userId, ConfirmPaymentRequestDto request) {
 
-		// Payment 조회
-		UUID orderId = request.orderId();
-
-		Payment payment = paymentRepository.findByOrderId(orderId)
+		Payment payment = paymentRepository.findByOrderId(request.orderId())
 			.orElseThrow(() -> new PaymentException(PaymentErrorCode.PAYMENT_NOT_FOUND));
 
 		if (!payment.getUserId().equals(userId)) {
 			throw new PaymentException(PaymentErrorCode.UNAUTHORIZED_PAYMENT_ACCESS);
 		}
 
-		// 멱등성 처리: 이미 완료된 결제는 다시 처리하지 않음
 		if (payment.isDone()) {
 			return PaymentResponseDto.from(payment);
 		}
 
-		// Order 서비스에 금액 검증 요청
-		boolean valid = orderPort.validateOrder(
-			payment.getOrderId(),
-			payment.getTotalAmount().intValue()
-		);
+		boolean valid = orderPort.validateOrder(payment.getOrderId(), payment.getTotalAmount().intValue());
 		if (!valid) {
 			throw new PaymentException(PaymentErrorCode.INVALID_ORDER_AMOUNT);
 		}
 
-		// Payment 내부 금액 검증
-		if (payment.getPaymentAmount()
-			.compareTo(BigDecimal.valueOf(request.amount())) != 0) {
+		if (payment.getPaymentAmount().compareTo(BigDecimal.valueOf(request.amount())) != 0) {
 			throw new PaymentException(PaymentErrorCode.INVALID_PAYMENT_AMOUNT);
 		}
 
 		try {
-			// 외부 PG 승인 요청
-			paymentGatewayPort.confirm(
-				request.paymentKey(),
-				payment.getOrderId().toString(),
-				request.amount()
-			);
-
-			// 결제 성공 처리
-			payment.markDone(request.paymentKey());
-
-			outboxRepository.save(
-				OutboxEvent.create(
-					"PAYMENT",
-					payment.getId().toString(),
-					EventType.PAYMENT_COMPLETED,
-					toJson(new PaymentCompletedEvent(payment.getId(), payment.getOrderId()))
-				)
-			);
-
+			paymentGatewayPort.confirm(request.paymentKey(), payment.getOrderId().toString(), request.amount());
+			return paymentConfirmHandler.onSuccess(payment.getId(), request.paymentKey());
 		} catch (Exception e) {
-
-			// 결제 실패 처리
-			payment.markFailed();
-
-			outboxRepository.save(
-				OutboxEvent.create(
-					"PAYMENT",
-					payment.getId().toString(),
-					EventType.PAYMENT_FAILED,
-					toJson(new PaymentFailedEvent(payment.getId(), payment.getOrderId()))
-				)
-			);
-
+			paymentConfirmHandler.onFailure(payment.getId(), payment.getOrderId(), payment.getDepositAmount());
 			throw new PaymentException(PaymentErrorCode.PAYMENT_CONFIRM_FAILED, e);
 		}
-
-		// 결과 반환
-		return PaymentResponseDto.from(payment);
 	}
 
 	@Override
@@ -203,7 +162,7 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 					"PAYMENT",
 					payment.getId().toString(),
 					EventType.PAYMENT_REFUNDED,
-					toJson(new PaymentRefundedEvent(payment.getId(), payment.getOrderId()))
+					toJson(new PaymentRefundedEvent(UUID.randomUUID(), payment.getId(), payment.getOrderId()))
 				)
 			);
 
