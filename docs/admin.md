@@ -13,8 +13,12 @@ Admin은 트래픽이 현저히 낮고, 각 서비스에 Internal API를 추가�
 
 ### ADMIN 역할 검증
 
-API Gateway가 JWT를 검증하고 `X-User-Role` 헤더를 주입한다.
-Admin 서비스는 `AdminRoleInterceptor`에서 해당 헤더가 `ADMIN`인지 확인한다.
+Admin은 보안 최상급 영역이므로 이중 검증 구조를 채택한다.
+
+- **1차 (Gateway)**: JWT 검증 + Redis 블랙리스트 체크 → `X-User-Role` 헤더 주입
+- **2차 (Admin 서비스)**: `AdminRoleInterceptor`에서 `X-User-Role == ADMIN` 재확인
+
+클라이언트가 `X-User-Role` 헤더를 임의로 조작해도 Gateway가 JWT claim 기반으로 덮어쓰므로 위조가 불가능하다.
 별도의 Admin 엔티티는 존재하지 않는다.
 
 ```
@@ -41,7 +45,7 @@ Admin 서비스는 `AdminRoleInterceptor`에서 해당 헤더가 `ADMIN`인지 �
 | 상품 강제 내리기 | 직접 DB (product) + Kafka 이벤트 | soft delete 후 schedule 취소 + ES 삭제를 product 서비스에 위임 |
 | 전체 주문 조회 | 직접 DB (order) | 조회, 부작용 없음 |
 | 정산 현황 조회 | 직접 DB (settlement) | 조회, 부작용 없음 |
-| 리뷰 삭제 | 직접 DB (product) | 단순 삭제, 집계 컬럼 없음 |
+| 리뷰 삭제 | 직접 DB (product) | 소프트딜리트 (deleteDt 셋팅), 감사 추적 가능 |
 
 > **상품 강제 내리기를 이벤트 기반으로 처리하는 이유**
 >
@@ -129,8 +133,11 @@ service/admin/src/main/java/jabaclass/admin/
 │   │   └── AdminRoleInterceptor.java           # X-User-Role: ADMIN 검증
 │   ├── config/
 │   │   ├── WebMvcConfig.java                   # ArgumentResolver, Interceptor 등록
-│   │   ├── KafkaConfig.java                    # Kafka Producer 설정
-│   │   ├── DataSourceConfig.java               # Multi-DataSource 설정
+│   │   ├── KafkaProducerConfig.java            # Kafka Producer 설정
+│   │   ├── UserDataSourceConfig.java           # user DB DataSource/EMF/TM
+│   │   ├── ProductDataSourceConfig.java        # product + review DB DataSource/EMF/TM
+│   │   ├── OrderDataSourceConfig.java          # order DB DataSource/EMF/TM
+│   │   ├── SettlementDataSourceConfig.java     # settlement DB DataSource/EMF/TM
 │   │   └── SwaggerConfig.java
 │   ├── dto/
 │   │   └── ApiResponseDto.java
@@ -162,9 +169,6 @@ service/admin/src/main/java/jabaclass/admin/
 │       │   ├── UserAdminApi.java
 │       │   └── UserAdminController.java
 │       └── dto/
-│           ├── request/
-│           │   ├── SuspendUserRequestDto.java
-│           │   └── ApproveSellerRequestDto.java
 │           └── response/
 │               └── UserAdminResponseDto.java
 │
@@ -184,8 +188,8 @@ service/admin/src/main/java/jabaclass/admin/
 │   │   │   ├── ProductAdminJpaRepository.java
 │   │   │   └── ProductAdminRepositoryAdapter.java
 │   │   └── kafka/
-│   │       ├── ProductForceDownEvent.java      # 강제 내리기 이벤트
-│   │       └── ProductForceDownEventPublisher.java  # AFTER_COMMIT 이벤트 발행
+│   │       ├── AdminProductEvent.java          # 강제 내리기 이벤트 (type + productId)
+│   │       └── AdminProductEventPublisher.java # AFTER_COMMIT 이벤트 발행
 │   └── presentation/
 │       ├── controller/
 │       │   ├── ProductAdminApi.java
