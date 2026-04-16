@@ -1,4 +1,4 @@
-package jabaclass.product.infrastructure.kafka.frompayment;
+package jabaclass.product.infrastructure.kafka.payment;
 
 import java.util.UUID;
 
