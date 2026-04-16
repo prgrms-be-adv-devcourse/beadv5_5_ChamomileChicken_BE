@@ -24,6 +24,7 @@ public class KafkaProducerConfig {
 		config.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
 		config.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
 		config.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+		config.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, true); // 브로커 수준 중복 발행 방지
 		return new DefaultKafkaProducerFactory<>(config);
 	}
 

@@ -48,6 +48,7 @@ public class PaymentEventsConsumer {
 	private void handlePaymentCompleted(String message) throws Exception {
 		PaymentCompletedEvent event = objectMapper.readValue(message, PaymentCompletedEvent.class);
 		orderUseCase.updatePaymentStatus(
+			event.eventId(),
 			event.orderId(),
 			new UpdateOrderPaymentStatusRequestDto(PaymentResultStatus.SUCCESS, null)
 		);
@@ -57,6 +58,7 @@ public class PaymentEventsConsumer {
 	private void handlePaymentFailed(String message) throws Exception {
 		PaymentFailedEvent event = objectMapper.readValue(message, PaymentFailedEvent.class);
 		orderUseCase.updatePaymentStatus(
+			event.eventId(),
 			event.orderId(),
 			new UpdateOrderPaymentStatusRequestDto(PaymentResultStatus.FAILED, event.depositAmount())
 		);
@@ -65,7 +67,7 @@ public class PaymentEventsConsumer {
 
 	private void handlePaymentExpired(String message) throws Exception {
 		PaymentExpiredEvent event = objectMapper.readValue(message, PaymentExpiredEvent.class);
-		orderUseCase.expireOrder(event.orderId(), event.depositAmount());
+		orderUseCase.expireOrder(event.eventId(), event.orderId(), event.depositAmount());
 		log.info("PAYMENT_EXPIRED 처리 완료. orderId={}", event.orderId());
 	}
 
