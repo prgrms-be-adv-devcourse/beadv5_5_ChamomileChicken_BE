@@ -5,6 +5,7 @@ import java.util.UUID;
 
 public record PaymentExpiredEvent(
 	UUID eventId,
+	UUID paymentId,
 	UUID orderId,
 	BigDecimal depositAmount
 ) {

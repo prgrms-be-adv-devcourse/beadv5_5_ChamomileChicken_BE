@@ -4,6 +4,7 @@ import java.util.UUID;
 
 public record PaymentRefundCompletedEvent(
 	UUID eventId,
+	UUID paymentId,
 	UUID orderId
 ) {
 }
