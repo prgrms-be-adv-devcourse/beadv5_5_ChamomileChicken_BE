@@ -31,10 +31,10 @@ public class User extends BaseEntity {
 	@Column(name = "email", nullable = false, unique = true, length = 320)
 	private String email;
 
-	@Column(name = "password", nullable = false, length = 255)
+	@Column(name = "password", length = 255)
 	private String password;
 
-	@Column(name = "phone", nullable = false, length = 20)
+	@Column(name = "phone", length = 20)
 	private String phone;
 
 	@Enumerated(EnumType.STRING)
