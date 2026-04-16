@@ -1,9 +1,9 @@
 package jabaclass.admin.review.application.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
-import static org.mockito.Mockito.times;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -57,8 +57,8 @@ class ReviewAdminServiceTest {
 		reviewAdminService.deleteReview(reviewId);
 
 		// then
-		then(reviewAdminRepository).should(times(1)).findById(reviewId);
-		then(reviewAdminRepository).should(times(1)).deleteById(reviewId);
+		assertThat(review.getDeleteDt()).isNotNull();
+		then(reviewAdminRepository).shouldHaveNoMoreInteractions();
 	}
 
 	@Test
@@ -70,7 +70,6 @@ class ReviewAdminServiceTest {
 		assertThatThrownBy(() -> reviewAdminService.deleteReview(reviewId))
 			.isInstanceOf(BusinessException.class)
 			.hasMessage("리뷰를 찾을 수 없습니다.");
-		then(reviewAdminRepository).should(times(1)).findById(reviewId);
 		then(reviewAdminRepository).shouldHaveNoMoreInteractions();
 	}
 }

@@ -92,6 +92,7 @@ class ProductAdminServiceTest {
 
 		// then
 		assertThat(product.getStatus()).isEqualTo(ProductStatus.DISABLE);
+		assertThat(product.getDeleteDt()).isNotNull();
 		then(eventPublisher).should(times(1)).publishEvent(
 			any(AdminProductEvent.class)
 		);
