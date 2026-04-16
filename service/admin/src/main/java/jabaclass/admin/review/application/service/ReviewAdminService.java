@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 import jabaclass.admin.common.error.AdminErrorCode;
 import jabaclass.admin.common.error.BusinessException;
 import jabaclass.admin.review.application.usecase.ReviewAdminUseCase;
+import jabaclass.admin.review.domain.model.Review;
 import jabaclass.admin.review.domain.repository.ReviewAdminRepository;
 import lombok.RequiredArgsConstructor;
 
@@ -20,8 +21,8 @@ public class ReviewAdminService implements ReviewAdminUseCase {
 	@Override
 	@Transactional(transactionManager = "productTransactionManager")
 	public void deleteReview(UUID reviewId) {
-		reviewAdminRepository.findById(reviewId)
+		Review review = reviewAdminRepository.findById(reviewId)
 			.orElseThrow(() -> new BusinessException(AdminErrorCode.REVIEW_NOT_FOUND));
-		reviewAdminRepository.deleteById(reviewId);
+		review.softDelete();
 	}
 }

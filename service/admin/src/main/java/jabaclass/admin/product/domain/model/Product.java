@@ -1,6 +1,7 @@
 package jabaclass.admin.product.domain.model;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 import jabaclass.admin.common.model.BaseEntity;
@@ -36,7 +37,11 @@ public class Product extends BaseEntity {
 	@Column(nullable = false, length = 20)
 	private ProductStatus status;
 
+	@Column(name = "delete_dt")
+	private LocalDateTime deleteDt;
+
 	public void forceDown() {
 		this.status = ProductStatus.DISABLE;
+		this.deleteDt = LocalDateTime.now();
 	}
 }

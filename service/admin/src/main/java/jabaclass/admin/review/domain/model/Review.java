@@ -1,5 +1,6 @@
 package jabaclass.admin.review.domain.model;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 import jabaclass.admin.common.model.BaseEntity;
@@ -28,4 +29,11 @@ public class Review extends BaseEntity {
 
 	@Column(nullable = false)
 	private String content;
+
+	@Column(name = "delete_dt")
+	private LocalDateTime deleteDt;
+
+	public void softDelete() {
+		this.deleteDt = LocalDateTime.now();
+	}
 }
