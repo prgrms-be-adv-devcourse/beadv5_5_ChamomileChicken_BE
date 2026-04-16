@@ -28,6 +28,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jabaclass.payment.application.port.external.OrderPort;
 import jabaclass.payment.application.port.external.PaymentGatewayPort;
 import jabaclass.payment.application.service.PaymentService;
+import jabaclass.payment.application.service.handler.PaymentConfirmHandler;
 import jabaclass.payment.common.error.PaymentErrorCode;
 import jabaclass.payment.common.error.PaymentException;
 import jabaclass.payment.domain.model.Payment;
@@ -61,6 +62,9 @@ class PaymentRefundTest {
 	@Mock
 	private OutboxRepository outboxRepository;
 
+	@Mock
+	private PaymentConfirmHandler paymentConfirmHandler;
+
 	private PaymentService paymentService;
 
 	@BeforeEach
@@ -71,6 +75,7 @@ class PaymentRefundTest {
 			paymentGatewayPort,
 			orderPort,
 			outboxRepository,
+			paymentConfirmHandler,
 			new ObjectMapper()
 		);
 
