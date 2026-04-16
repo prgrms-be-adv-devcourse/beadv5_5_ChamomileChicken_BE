@@ -13,12 +13,8 @@ import org.springframework.security.web.SecurityFilterChain;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import jabaclass.auth.jwt.JwtProperties;
-import jabaclass.auth.jwt.JwtProvider;
-
 @Configuration
 @EnableWebSecurity
-@EnableConfigurationProperties(JwtProperties.class)
 public class SecurityConfig {
 
 	@Bean
@@ -42,11 +38,6 @@ public class SecurityConfig {
 	@Bean
 	public ObjectMapper objectMapper() {
 		return new ObjectMapper();
-	}
-
-	@Bean
-	public JwtProvider jwtProvider(JwtProperties jwtProperties) {
-		return new JwtProvider(jwtProperties);
 	}
 
 	@Bean

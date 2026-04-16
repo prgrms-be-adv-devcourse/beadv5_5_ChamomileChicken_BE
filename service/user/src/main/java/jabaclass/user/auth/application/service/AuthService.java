@@ -15,7 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import jabaclass.user.user.domain.model.UserRole;
-import jabaclass.auth.jwt.JwtProvider;
+import jabaclass.user.auth.infrastructure.jwt.JwtProvider;
 import jabaclass.user.auth.application.exception.AuthErrorCode;
 import jabaclass.user.auth.application.exception.AuthException;
 import jabaclass.user.auth.application.usecase.LoginUseCase;
