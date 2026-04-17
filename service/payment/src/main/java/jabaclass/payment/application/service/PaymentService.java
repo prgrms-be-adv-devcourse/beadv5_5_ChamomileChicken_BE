@@ -134,7 +134,8 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 			// 카드 결제 금액이 있는 경우에만 PG 환불 호출 (예치금 100% 결제면 스킵)
 			BigDecimal paymentRefundAmount = payment.getPaymentAmount().multiply(request.refundRate());
 			if (paymentRefundAmount.signum() > 0) {
-				paymentGatewayPort.refund(payment.getPaymentKey(), paymentRefundAmount.intValue());
+				// orderId를 멱등성 키로 사용 — 타임아웃 후 재시도 시 Toss가 이전 결과 반환, 이중 환불 방지
+				paymentGatewayPort.refund(payment.getPaymentKey(), paymentRefundAmount.intValue(), request.orderId().toString());
 			}
 			// PG 성공 후 DB 변경 + Outbox 저장 (독립 트랜잭션)
 			BigDecimal depositRefundAmount = paymentRefundHandler.onSuccess(payment.getId(), request.refundRate());
