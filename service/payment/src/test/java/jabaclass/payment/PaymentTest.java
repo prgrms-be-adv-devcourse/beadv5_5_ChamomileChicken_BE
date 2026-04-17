@@ -239,7 +239,6 @@ class PaymentTest {
 			UUID.randomUUID(),
 			UUID.randomUUID(),
 			UUID.randomUUID(),
-			UUID.randomUUID(),
 			PaymentMethod.TOSS,
 			paymentAmount,
 			depositAmount
@@ -251,7 +250,6 @@ class PaymentTest {
 			userId,
 			UUID.randomUUID(),
 			orderId,
-			UUID.randomUUID(),
 			PaymentMethod.TOSS,
 			paymentAmount,
 			depositAmount

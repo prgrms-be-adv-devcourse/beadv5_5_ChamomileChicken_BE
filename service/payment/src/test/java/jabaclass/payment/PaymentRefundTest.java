@@ -187,7 +187,6 @@ class PaymentRefundTest {
 			userId,
 			UUID.randomUUID(),
 			orderId,
-			UUID.randomUUID(),
 			PaymentMethod.TOSS,
 			paymentAmount,
 			depositAmount
