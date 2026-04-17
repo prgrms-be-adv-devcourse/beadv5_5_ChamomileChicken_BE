@@ -12,6 +12,8 @@ import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import jabaclass.user.auth.application.exception.AuthErrorCode;
+import jabaclass.user.auth.application.exception.AuthException;
 import jabaclass.user.user.domain.model.UserRole;
 
 @Component
@@ -31,7 +33,7 @@ public class TokenProvider {
             @Value("${jwt.refresh-token-validity}") long refreshTokenValidity
     ) {
         if (secret.length() < 32) {
-            throw new IllegalArgumentException("JWT secret은 최소 32자 이상이어야 합니다.");
+            throw new AuthException(AuthErrorCode.INVALID_TOKEN);
         }
         this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
         this.accessTokenValidity = accessTokenValidity;

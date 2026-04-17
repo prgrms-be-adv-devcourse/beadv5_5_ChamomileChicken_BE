@@ -25,6 +25,9 @@ public class JwtProvider {
 	private final Key key;
 
 	public JwtProvider(@Value("${jwt.secret}") String secret) {
+		if (secret.length() < 32) {
+			throw new AuthException(AuthErrorCode.INVALID_TOKEN);
+		}
 		this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
 	}
 
