@@ -42,7 +42,7 @@ sequenceDiagram
 
 ## 환불 비율 계산
 
-`OrderService.calculateRefundRate()` — `LocalDate.now()` 기준 시작일까지 남은 일수로 결정.
+`RefundPolicy.rateOf(days)` — `LocalDate.now()` 기준 시작일까지 남은 일수로 결정.
 
 | 남은 일수 (`days`) | 환불 비율 |
 |---------------------|-----------|
