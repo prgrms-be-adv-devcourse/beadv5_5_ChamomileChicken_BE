@@ -38,7 +38,7 @@ GET /login/oauth2/code/{provider}?code=AUTH_CODE&state=...
   → CustomOAuth2UserService.loadUser()
        - OAuthAttributes로 provider별 응답 정규화
        - (social_type, social_id)로 기존 유저 조회
-       - 없으면 신규 가입 (이메일 중복 시 에러)
+       - 없으면 신규 가입 ((email, social_type) 복합 unique — 동일 이메일 + 다른 소셜타입은 허용)
        - CustomOAuth2User 반환
   → OAuth2SuccessHandler.onAuthenticationSuccess()
        - Access Token + Refresh Token 생성
@@ -88,12 +88,12 @@ Access Token을 URL fragment에 실어 전달하면 서버 로그에 남지 않�
 ```java
 @Configuration
 @EnableWebSecurity
-@EnableConfigurationProperties(JwtProperties.class)
 @RequiredArgsConstructor
 public class SecurityConfig {
 
     private final CustomOAuth2UserService customOAuth2UserService;
     private final OAuth2SuccessHandler oAuth2SuccessHandler;
+    private final HttpCookieOAuth2AuthorizationRequestRepository httpCookieOAuth2AuthorizationRequestRepository;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -110,6 +110,9 @@ public class SecurityConfig {
                 .anyRequest().permitAll()
             )
             .oauth2Login(oauth2 -> oauth2
+                .authorizationEndpoint(authorization -> authorization
+                    .authorizationRequestRepository(httpCookieOAuth2AuthorizationRequestRepository)
+                )
                 .userInfoEndpoint(userInfo ->
                     userInfo.userService(customOAuth2UserService)
                 )
@@ -119,31 +122,16 @@ public class SecurityConfig {
     }
 
     @Bean
-    public JwtProvider jwtProvider(JwtProperties jwtProperties) {
-        return new JwtProvider(jwtProperties);
-    }
-
-    @Bean
-    public ObjectMapper objectMapper() {
-        return new ObjectMapper();
-    }
-
-    @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 }
 ```
 
-### JwtProvider 빈을 유지하는 이유
+### ObjectMapper 빈 위치
 
-Gateway가 JWT 검증을 담당하지만, User 서비스는 **토큰 생성** 책임이 있다.
-일반 로그인(`AuthService`), 소셜 로그인(`OAuth2SuccessHandler`), 토큰 재발급 모두 `TokenProvider`로 토큰을 생성한다.
-
-### ObjectMapper 빈을 유지하는 이유
-
-Kafka Consumer (`DepositRefundConsumer` 등)가 메시지 역직렬화에 `ObjectMapper`를 사용한다.
-Spring Boot 자동 구성 `ObjectMapper`와 충돌을 방지하기 위해 명시적으로 빈으로 등록한다.
+`HttpCookieOAuth2AuthorizationRequestRepository`가 OAuth2 state를 Redis에 JSON으로 저장하기 위해 `ObjectMapper`를 주입받는다.
+Spring Boot 자동 구성 `ObjectMapper`를 그대로 주입받으며, 별도 빈 등록은 필요 없다.
 
 ### anyRequest().permitAll() 설정 이유
 
@@ -179,7 +167,22 @@ Spring Security는 인증 완료 후 이 객체를 `Authentication.getPrincipal(
 `DefaultOAuth2UserService`를 상속. `loadUser()`는 `super.loadUser()`로 provider 통신을 위임한 뒤 우리 비즈니스 로직(유저 조회/신규 가입)을 실행한다.
 
 - `(social_type, social_id)` 기준으로 기존 유저 조회 → 있으면 로그인, 없으면 신규 가입
-- 신규 가입 시 동일 이메일의 기존 계정이 있으면 `INVALID_EMAIL` 에러 반환
+- 동일 이메일이더라도 소셜 타입이 다르면 별개 계정으로 신규 가입 허용
+
+### HttpCookieOAuth2AuthorizationRequestRepository
+
+STATELESS 세션에서는 Spring Security 기본 구현(`HttpSessionOAuth2AuthorizationRequestRepository`)이 동작하지 않는다.
+OAuth2 state를 쿠키에 직렬화하는 방식은 Java `SerializationUtils`를 사용하며 역직렬화 RCE 취약점에 노출된다.
+
+이를 해결하기 위해 **Redis 서버사이드 저장** 방식으로 재구현했다.
+- state 저장 시: `OAuth2AuthorizationRequest` → `OAuth2AuthorizationRequestDto`로 변환 → JSON으로 Redis 저장 (TTL: 60초), 쿠키에는 state 값(조회 키)만 저장
+- state 조회 시: 쿠키에서 state 값 추출 → Redis 조회 → JSON → DTO → `OAuth2AuthorizationRequest` 재구성
+- `removeAuthorizationRequest()`는 `loadAuthorizationRequest()`에 위임 (Spring Security 명세 준수)
+
+### OAuth2AuthorizationRequestDto
+
+`OAuth2AuthorizationRequest`는 Jackson 역직렬화가 불가능한 구조라 직접 직렬화할 수 없다.
+`from()` 정적 팩토리로 변환하고, `toRequest()`로 다시 `OAuth2AuthorizationRequest`를 재구성하는 DTO.
 
 ### OAuth2SuccessHandler
 
@@ -197,7 +200,7 @@ Spring Security는 인증 완료 후 이 객체를 `Authentication.getPrincipal(
 | `social_type` | `null` | `GOOGLE` / `KAKAO` / `NAVER` |
 | `social_id` | `null` | provider가 발급한 고유 ID |
 | 로그인 방식 | 이메일 + 비밀번호 | OAuth2 provider 인증 |
-| 동일 이메일 중복 가입 | 불가 | 불가 (provider 무관) |
+| 동일 이메일 중복 가입 | 불가 | 허용 (`(email, social_type)` 복합 unique — 동일 이메일 + 다른 소셜타입은 별개 계정) |
 
 ---
 
@@ -248,3 +251,6 @@ public ResponseEntity<UserResponseDto> getMyInfo(
 | `auth/infrastructure/oauth2/CustomOAuth2User.java` | OAuth2User ↔ User 엔티티 브리지 |
 | `auth/infrastructure/oauth2/CustomOAuth2UserService.java` | OAuth2 유저 조회/신규 가입 처리 |
 | `auth/infrastructure/oauth2/OAuth2SuccessHandler.java` | JWT 발급 + Cookie + 프론트 리다이렉트 |
+| `auth/infrastructure/oauth2/CookieUtils.java` | 쿠키 조작 유틸 (getCookie / addCookie / deleteCookie), static 메서드만 유지 |
+| `auth/infrastructure/oauth2/HttpCookieOAuth2AuthorizationRequestRepository.java` | OAuth2 state Redis 서버사이드 저장 + 쿠키 키 관리 |
+| `auth/infrastructure/oauth2/OAuth2AuthorizationRequestDto.java` | OAuth2AuthorizationRequest Redis JSON 직렬화용 DTO |
