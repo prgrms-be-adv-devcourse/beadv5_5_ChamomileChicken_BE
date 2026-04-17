@@ -100,7 +100,6 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
                     UUID userId = jwtProvider.getUserId(claims);
                     String role = jwtProvider.getRole(claims);
-                    log.info("[GATEWAY] User authenticated. Path: {} {}, UserId: {}", httpMethod, path, userId);
 
                     ServerWebExchange mutatedExchange = exchange.mutate()
                         .request(r -> {
