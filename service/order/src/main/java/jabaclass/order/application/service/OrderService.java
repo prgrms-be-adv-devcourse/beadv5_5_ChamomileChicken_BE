@@ -1,6 +1,8 @@
 package jabaclass.order.application.service;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -12,13 +14,16 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import jabaclass.order.application.exception.OrderErrorCode;
 import jabaclass.order.application.port.external.DepositPort;
+import jabaclass.order.application.port.external.PaymentPort;
 import jabaclass.order.application.port.external.ProductPort;
 import jabaclass.order.application.port.internal.OrderUseCase;
 import jabaclass.order.application.service.handler.OrderExpireHandler;
 import jabaclass.order.application.service.handler.OrderPaymentResultHandler;
+import jabaclass.order.application.service.handler.OrderRefundHandler;
 import jabaclass.order.common.error.BusinessException;
 import jabaclass.order.domain.model.Order;
 import jabaclass.order.domain.model.OrderStatus;
+import jabaclass.order.domain.model.RefundPolicy;
 import jabaclass.order.domain.repository.OrderRepository;
 import jabaclass.order.infrastructure.client.product.dto.ProductReservationResponseDto;
 import jabaclass.order.infrastructure.kafka.product.dto.OrderReservationReleasedEvent;
@@ -42,10 +47,12 @@ public class OrderService implements OrderUseCase {
 	private final OrderRepository orderRepository;
 	private final DepositPort depositClient;
 	private final ProductPort productClient;
+	private final PaymentPort paymentClient;
 	private final OutboxRepository outboxRepository;
 	private final ObjectMapper objectMapper;
 	private final OrderPaymentResultHandler orderPaymentResultHandler;
 	private final OrderExpireHandler orderExpireHandler;
+	private final OrderRefundHandler orderRefundHandler;
 
 	// 주문 생성 (외부 호출 포함 — tx 없음)
 	@Override
@@ -78,11 +85,44 @@ public class OrderService implements OrderUseCase {
 		return CreateOrderResponseDto.of(orderRepository.save(order), requestDto.productId(), requestDto.depositAmount());
 	}
 
+	// 환불 오케스트레이션 — 외부 HTTP 호출 포함, @Transactional 없음
+	@Override
+	public void refund(UUID userId, UUID orderId) {
+		Order order = orderRepository.findById(orderId)
+			.orElseThrow(() -> new BusinessException(OrderErrorCode.ORDER_NOT_FOUND));
+
+		if (!order.isOwnedBy(userId)) {
+			throw new BusinessException(OrderErrorCode.ORDER_ACCESS_DENIED);
+		}
+		if (order.getStatus() != OrderStatus.PAID) {
+			throw new BusinessException(OrderErrorCode.ORDER_REFUND_NOT_ALLOWED);
+		}
+
+		// 환불 정책: Product 서비스에서 스케줄 시작일 조회 후 비율 계산
+		LocalDate startDate = productClient.getScheduleStartDate(order.getProductScheduleId());
+		long days = ChronoUnit.DAYS.between(LocalDate.now(), startDate);
+		BigDecimal refundRate = RefundPolicy.rateOf(days);
+		if (refundRate.signum() == 0) {
+			throw new BusinessException(OrderErrorCode.ORDER_REFUND_POLICY_EXPIRED);
+		}
+
+		// Payment 서비스에 환불 요청 (PG 호출 포함) — 성공 시 depositRefundAmount 반환
+		BigDecimal depositRefundAmount = paymentClient.refund(orderId, refundRate);
+
+		// DB 상태 변경 + Outbox 저장 (독립 트랜잭션)
+		orderRefundHandler.onSuccess(orderId, depositRefundAmount);
+	}
+
 	// 조회
 	@Override
 	@Transactional(readOnly = true)
-	public OrderResponseDto getById(UUID orderId) {
-		return OrderResponseDto.from(findOrderOrThrow(orderId));
+	public OrderResponseDto getById(UUID userId, UUID orderId) {
+		Order order = orderRepository.findById(orderId)
+			.orElseThrow(() -> new BusinessException(OrderErrorCode.ORDER_NOT_FOUND));
+		if (!order.isOwnedBy(userId)) {
+			throw new BusinessException(OrderErrorCode.ORDER_ACCESS_DENIED);
+		}
+		return OrderResponseDto.from(order);
 	}
 
 	@Override
@@ -114,7 +154,9 @@ public class OrderService implements OrderUseCase {
 	@Override
 	@Transactional(readOnly = true)
 	public boolean validatePaymentAmount(UUID orderId, BigDecimal amount) {
-		return findOrderOrThrow(orderId).isPaymentAmountValid(amount);
+		return orderRepository.findById(orderId)
+			.orElseThrow(() -> new BusinessException(OrderErrorCode.ORDER_NOT_FOUND))
+			.isPaymentAmountValid(amount);
 	}
 
 	@Override
@@ -128,18 +170,6 @@ public class OrderService implements OrderUseCase {
 	@Override
 	public void expireOrder(UUID eventId, UUID orderId, BigDecimal depositAmount) {
 		orderExpireHandler.expire(eventId, orderId, depositAmount);
-	}
-
-	@Override
-	@Transactional
-	public void refund(UUID orderId) {
-		findOrderOrThrow(orderId).refund();
-	}
-
-	// 내부 헬퍼
-	private Order findOrderOrThrow(UUID orderId) {
-		return orderRepository.findById(orderId)
-			.orElseThrow(() -> new BusinessException(OrderErrorCode.ORDER_NOT_FOUND));
 	}
 
 	private ProductReservationResponseDto reserveProduct(UUID userId, CreateOrderRequestDto requestDto) {

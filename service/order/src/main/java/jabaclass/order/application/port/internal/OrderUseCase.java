@@ -17,7 +17,7 @@ public interface OrderUseCase {
 
     CreateOrderResponseDto create(UUID userId, CreateOrderRequestDto requestDto);
 
-    OrderResponseDto getById(UUID orderId);
+    OrderResponseDto getById(UUID userId, UUID orderId);
 
     List<OrderResponseDto> getOrders(UUID userId, OrderStatus status);
 
@@ -27,7 +27,7 @@ public interface OrderUseCase {
 
     void expireOrder(UUID eventId, UUID orderId, BigDecimal depositAmount);
 
-    void refund(UUID orderId);
+    void refund(UUID userId, UUID orderId);
 
     List<OrderSettlementItemResponseDto> getOrdersByIds(OrderBulkReadRequestDto requestDto);
 }
