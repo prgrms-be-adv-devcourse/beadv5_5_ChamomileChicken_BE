@@ -159,4 +159,8 @@ public interface ScheduleJpaRepository extends JpaRepository<Schedule, UUID> {
 		@Param("closedStatus") ReservedStatus closedStatus
 	);
 
+	@Modifying
+	@Query("UPDATE Schedule s SET s.deleteDt = CURRENT_TIMESTAMP WHERE s.productId = :productId AND s.deleteDt IS NULL")
+	int softDeleteByProductId(@Param("productId") UUID productId);
+
 }
