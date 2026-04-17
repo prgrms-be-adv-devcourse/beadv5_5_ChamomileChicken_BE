@@ -15,18 +15,18 @@ import jabaclass.payment.application.usecase.PaymentUseCase;
 import jabaclass.payment.common.error.PaymentErrorCode;
 import jabaclass.payment.common.error.PaymentException;
 import jabaclass.payment.domain.model.Payment;
-import jabaclass.payment.domain.model.Refund;
 import jabaclass.payment.domain.repository.PaymentRepository;
 import jabaclass.payment.domain.repository.RefundRepository;
 import jabaclass.payment.application.service.handler.PaymentConfirmHandler;
+import jabaclass.payment.application.service.handler.PaymentRefundHandler;
 import jabaclass.payment.infrastructure.kafka.PaymentCompletedEvent;
-import jabaclass.payment.infrastructure.kafka.PaymentRefundedEvent;
 import jabaclass.payment.infrastructure.outbox.EventType;
 import jabaclass.payment.infrastructure.outbox.OutboxEvent;
 import jabaclass.payment.infrastructure.outbox.OutboxRepository;
 import jabaclass.payment.presentation.dto.request.ConfirmPaymentRequestDto;
+import jabaclass.payment.presentation.dto.request.InternalRefundRequestDto;
 import jabaclass.payment.presentation.dto.request.PreparePaymentRequestDto;
-import jabaclass.payment.presentation.dto.request.RefundPaymentRequestDto;
+import jabaclass.payment.presentation.dto.response.InternalRefundResponseDto;
 import jabaclass.payment.presentation.dto.response.PaymentResponseDto;
 import jabaclass.payment.presentation.dto.response.PaymentSettlementSliceResponseDto;
 import jabaclass.payment.presentation.dto.response.PaymentSettlementTargetItemResponseDto;
@@ -48,6 +48,7 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 	private final OrderPort orderPort;
 	private final OutboxRepository outboxRepository;
 	private final PaymentConfirmHandler paymentConfirmHandler;
+	private final PaymentRefundHandler paymentRefundHandler;
 	private final ObjectMapper objectMapper;
 
 	@Override
@@ -59,7 +60,6 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 			userId,
 			request.productId(),
 			request.orderId(),
-			request.productUserId(),
 			request.paymentMethod(),
 			request.paymentAmount(),
 			request.depositAmount()
@@ -118,59 +118,30 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 		}
 	}
 
+	// Order 서비스에서 환불 비율을 계산하여 호출 — 외부 PG 호출 포함, tx 없음
+	// Order 서비스가 환불 비율을 계산하여 호출 — 외부 PG 호출 포함, @Transactional 없음
 	@Override
-	@Transactional
-	public void refund(UUID userId, RefundPaymentRequestDto request) {
-
-		// Payment 조회
+	public InternalRefundResponseDto refundByOrder(InternalRefundRequestDto request) {
 		Payment payment = paymentRepository.findByOrderId(request.orderId())
 			.orElseThrow(() -> new PaymentException(PaymentErrorCode.PAYMENT_NOT_FOUND));
-
-		if (!payment.getUserId().equals(userId)) {
-			throw new PaymentException(PaymentErrorCode.UNAUTHORIZED_PAYMENT_ACCESS);
-		}
 
 		// 완료된 결제만 환불 가능
 		if (!payment.isDone()) {
 			throw new PaymentException(PaymentErrorCode.PAYMENT_NOT_COMPLETED);
 		}
 
-		Refund refund = Refund.create(
-			payment.getId(),
-			null,
-			payment.getPaymentAmount(),
-			payment.getDepositAmount()
-		);
-		refundRepository.save(refund);
-
 		try {
-			// 실제 결제 금액이 있는 경우 PG 환불 호출
-			if (payment.getPaymentAmount().signum() > 0) {
-				paymentGatewayPort.refund(
-					payment.getPaymentKey(),
-					payment.getPaymentAmount().intValue()
-				);
+			// 카드 결제 금액이 있는 경우에만 PG 환불 호출 (예치금 100% 결제면 스킵)
+			BigDecimal paymentRefundAmount = payment.getPaymentAmount().multiply(request.refundRate());
+			if (paymentRefundAmount.signum() > 0) {
+				paymentGatewayPort.refund(payment.getPaymentKey(), paymentRefundAmount.intValue());
 			}
-
-			// 상태 변경
-			payment.markCancelled();
-			refund.markCompleted();
-			refundRepository.save(refund);
-
-			outboxRepository.save(
-				OutboxEvent.create(
-					"PAYMENT",
-					payment.getId().toString(),
-					EventType.PAYMENT_REFUNDED,
-					toJson(new PaymentRefundedEvent(UUID.randomUUID(), payment.getId(), payment.getOrderId()))
-				)
-			);
-
-		} catch (Exception e) {
-			// 환불 실패 처리
-			refund.markFailed();
-			refundRepository.save(refund);
-
+			// PG 성공 후 DB 변경 + Outbox 저장 (독립 트랜잭션)
+			BigDecimal depositRefundAmount = paymentRefundHandler.onSuccess(payment.getId(), request.refundRate());
+			return new InternalRefundResponseDto(depositRefundAmount);
+		} catch (PaymentException e) {
+			throw e;
+		} catch (Exception e) { // PG사 timeout
 			throw new PaymentException(PaymentErrorCode.PAYMENT_REFUND_FAILED, e);
 		}
 	}
