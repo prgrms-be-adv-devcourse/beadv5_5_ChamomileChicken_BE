@@ -79,3 +79,5 @@ app:
 
 jwt:
   secret: "test-environment-secret-key-must-be-32-chars-long-!!!"
+  access-token-validity: 1800000
+  refresh-token-validity: 604800000

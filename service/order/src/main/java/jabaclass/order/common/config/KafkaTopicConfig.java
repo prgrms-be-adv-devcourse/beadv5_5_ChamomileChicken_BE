@@ -1,12 +1,5 @@
 package jabaclass.order.common.config;
 
-import jabaclass.order.infrastructure.kafka.OrderExpiredEventPublisher;
-import jabaclass.order.infrastructure.kafka.payment.PaymentCompletedEventConsumer;
-import jabaclass.order.infrastructure.kafka.payment.PaymentFailedEventConsumer;
-import jabaclass.order.infrastructure.kafka.payment.PaymentRefundCompletedEventConsumer;
-import jabaclass.order.infrastructure.kafka.product.OrderReservationConfirmedEventPublisher;
-import jabaclass.order.infrastructure.kafka.product.OrderReservationReleasedEventPublisher;
-import jabaclass.order.infrastructure.kafka.user.DepositRefundRequestedEventPublisher;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -15,57 +8,29 @@ import org.springframework.kafka.config.TopicBuilder;
 @Configuration
 public class KafkaTopicConfig {
 
+	public static final String TOPIC = "order.events";
+	public static final String DLQ_TOPIC = "order.events.dlq";
+	public static final String PAYMENT_DLQ_TOPIC = "payment.events.dlq";
+
 	@Bean
-	public NewTopic paymentCompletedTopic() {
-		return TopicBuilder.name(PaymentCompletedEventConsumer.TOPIC)
+	public NewTopic orderEventsTopic() {
+		return TopicBuilder.name(TOPIC)
 			.partitions(3)
 			.replicas(1)
 			.build();
 	}
 
 	@Bean
-	public NewTopic paymentFailedTopic() {
-		return TopicBuilder.name(PaymentFailedEventConsumer.TOPIC)
+	public NewTopic orderEventsDlqTopic() {
+		return TopicBuilder.name(DLQ_TOPIC)
 			.partitions(3)
 			.replicas(1)
 			.build();
 	}
 
 	@Bean
-	public NewTopic paymentRefundCompletedTopic() {
-		return TopicBuilder.name(PaymentRefundCompletedEventConsumer.TOPIC)
-			.partitions(3)
-			.replicas(1)
-			.build();
-	}
-
-	@Bean
-	public NewTopic orderReservationConfirmedTopic() {
-		return TopicBuilder.name(OrderReservationConfirmedEventPublisher.TOPIC)
-			.partitions(3)
-			.replicas(1)
-			.build();
-	}
-
-	@Bean
-	public NewTopic orderReservationReleasedTopic() {
-		return TopicBuilder.name(OrderReservationReleasedEventPublisher.TOPIC)
-			.partitions(3)
-			.replicas(1)
-			.build();
-	}
-
-	@Bean
-	public NewTopic orderDepositRefundRequestedTopic() {
-		return TopicBuilder.name(DepositRefundRequestedEventPublisher.TOPIC)
-			.partitions(3)
-			.replicas(1)
-			.build();
-	}
-
-	@Bean
-	public NewTopic orderExpiredTopic() {
-		return TopicBuilder.name(OrderExpiredEventPublisher.TOPIC)
+	public NewTopic paymentEventsDlqTopic() {
+		return TopicBuilder.name(PAYMENT_DLQ_TOPIC)
 			.partitions(3)
 			.replicas(1)
 			.build();

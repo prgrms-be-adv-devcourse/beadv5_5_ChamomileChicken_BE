@@ -46,7 +46,7 @@ public class OrderInternalController implements OrderInternalOpenApi {
         @PathVariable UUID orderId,
         @Valid @RequestBody UpdateOrderPaymentStatusRequestDto requestDto
     ) {
-        orderUseCase.updatePaymentStatus(orderId, requestDto);
+        orderUseCase.updatePaymentStatus(null, orderId, requestDto);
 
         return ResponseEntity.noContent().build();
     }

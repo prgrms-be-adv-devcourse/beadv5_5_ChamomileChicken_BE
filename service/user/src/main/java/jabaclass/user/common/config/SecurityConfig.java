@@ -1,8 +1,5 @@
 package jabaclass.user.common.config;
 
-import lombok.RequiredArgsConstructor;
-
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -11,20 +8,17 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.oauth2.client.web.AuthorizationRequestRepository;
 import org.springframework.security.web.SecurityFilterChain;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import jabaclass.auth.jwt.JwtProperties;
-import jabaclass.auth.jwt.JwtProvider;
 import jabaclass.user.auth.infrastructure.oauth2.CustomOAuth2UserService;
 import jabaclass.user.auth.infrastructure.oauth2.HttpCookieOAuth2AuthorizationRequestRepository;
 import jabaclass.user.auth.infrastructure.oauth2.OAuth2SuccessHandler;
+import lombok.RequiredArgsConstructor;
 
 @Configuration
 @EnableWebSecurity
-@EnableConfigurationProperties(JwtProperties.class)
 @RequiredArgsConstructor
 public class SecurityConfig {
 
@@ -62,11 +56,6 @@ public class SecurityConfig {
 	@Bean
 	public ObjectMapper objectMapper() {
 		return new ObjectMapper();
-	}
-
-	@Bean
-	public JwtProvider jwtProvider(JwtProperties jwtProperties) {
-		return new JwtProvider(jwtProperties);
 	}
 
 	@Bean

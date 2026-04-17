@@ -42,8 +42,8 @@ public class DepositService implements DepositUseCase {
 	}
 
 	@Override
-	public void refund(UUID userId, BigDecimal amount, UUID paymentId) {
-		refundDepositService.refund(userId, amount, paymentId);
+	public void refund(UUID eventId, UUID userId, BigDecimal amount, UUID orderId) {
+		refundDepositService.refund(eventId, userId, amount, orderId);
 	}
 
 	@Override
