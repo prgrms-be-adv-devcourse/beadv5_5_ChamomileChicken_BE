@@ -1,0 +1,12 @@
+server:
+  port: 9009
+
+spring:
+  application:
+    name: ai
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+
+product:
+  service:
+    url: ${PRODUCT_SERVICE_HOST:http://localhost:9004}
