@@ -39,14 +39,6 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 	}
 
 	private User register(OAuthAttributes attributes) {
-		userRepository.findByEmail(attributes.getEmail())
-			.ifPresent(u -> {
-				throw new OAuth2AuthenticationException(
-					new OAuth2Error("INVALID_ERROR", "가입할 수 없는 이메일입니다. 다른 이메일을 사용해주세요.",
-						null)
-				);
-			});
-
 		return userRepository.save(
 			User.builder()
 				.name(attributes.getName())
