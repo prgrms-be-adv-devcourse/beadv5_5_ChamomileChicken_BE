@@ -10,8 +10,6 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import jabaclass.user.auth.infrastructure.oauth2.CustomOAuth2UserService;
 import jabaclass.user.auth.infrastructure.oauth2.HttpCookieOAuth2AuthorizationRequestRepository;
 import jabaclass.user.auth.infrastructure.oauth2.OAuth2SuccessHandler;
@@ -51,11 +49,6 @@ public class SecurityConfig {
 			);
 
 		return http.build();
-	}
-
-	@Bean
-	public ObjectMapper objectMapper() {
-		return new ObjectMapper();
 	}
 
 	@Bean

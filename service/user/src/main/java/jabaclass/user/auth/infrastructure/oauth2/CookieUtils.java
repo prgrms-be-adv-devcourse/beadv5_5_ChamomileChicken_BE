@@ -3,13 +3,22 @@ package jabaclass.user.auth.infrastructure.oauth2;
 import java.util.Base64;
 import java.util.Optional;
 
-import org.springframework.util.SerializationUtils;
+import org.springframework.stereotype.Component;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+@Component
 public class CookieUtils {
+
+	private final ObjectMapper objectMapper;
+
+	public CookieUtils(ObjectMapper objectMapper) {
+		this.objectMapper = objectMapper;
+	}
 
 	public static Optional<Cookie> getCookie(HttpServletRequest request, String name) {
 		Cookie[] cookies = request.getCookies();
@@ -47,14 +56,21 @@ public class CookieUtils {
 		}
 	}
 
-	public static String serialize(Object object) {
-		return Base64.getUrlEncoder()
-			.encodeToString(SerializationUtils.serialize(object));
+	public String serialize(Object object) {
+		try {
+			return Base64.getUrlEncoder()
+				.encodeToString(objectMapper.writeValueAsBytes(object));
+		} catch (Exception e) {
+			throw new RuntimeException("쿠키 직렬화 실패", e);
+		}
 	}
 
-	@SuppressWarnings("unchecked")
-	public static <T> T deserialize(Cookie cookie, Class<T> cls) {
-		return cls.cast(SerializationUtils.deserialize(
-			Base64.getUrlDecoder().decode(cookie.getValue())));
+	public <T> T deserialize(Cookie cookie, Class<T> cls) {
+		try {
+			return objectMapper.readValue(
+				Base64.getUrlDecoder().decode(cookie.getValue()), cls);
+		} catch (Exception e) {
+			throw new RuntimeException("쿠키 역직렬화 실패", e);
+		}
 	}
 }
