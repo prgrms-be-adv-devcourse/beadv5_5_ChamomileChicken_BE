@@ -26,6 +26,7 @@ public class AdminProductEventPublisher {
 			kafkaTemplate.send(TOPIC, event.productId(), objectMapper.writeValueAsString(event));
 		} catch (Exception e) {
 			log.error("[ADMIN] AdminProductEvent 발행 실패. type={}, productId={}", event.type(), event.productId(), e);
+			throw new RuntimeException("AdminProductEvent 발행 실패", e);
 		}
 	}
 }

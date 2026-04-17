@@ -60,16 +60,44 @@ Admin은 보안 최상급 영역이므로 이중 검증 구조를 채택한다.
 ### 상품 강제 내리기 흐름
 
 ```
-Admin 서비스
-  1. Product soft delete (DB 직접)
-  2. @TransactionalEventListener(AFTER_COMMIT) → Kafka: ProductForceDownEvent 발행
+[Admin 서비스 — 동기, HTTP 응답 전]
 
-Product 서비스
-  3. ProductForceDownEvent 수신
-  4. 연관 Schedule 전체 soft delete
-  5. ES 인덱스 삭제
-  6. 실패 시 → 보상 트랜잭션으로 Product 상태 복구 이벤트 발행
+PATCH /api/v1/admins/products/{productId}/force-down
+  → AdminRoleInterceptor: X-User-Role == ADMIN 검증
+  → ProductAdminService.forceDownProduct()  @Transactional(productTransactionManager)
+      1. Admin DB products 조회 (없으면 404)
+      2. product.forceDown() → Admin DB: status=DISABLE, deleteDt=now()
+      3. applicationEventPublisher.publishEvent(AdminProductEvent)  ← Spring 내부 이벤트
+      ↓ DB 커밋
+  → AdminProductEventPublisher.publish()  @TransactionalEventListener(AFTER_COMMIT)
+      4. kafkaTemplate.send("admin.product", { type: "FORCE_DOWN", productId: "..." })
+  → HTTP 200 응답 반환
+
+[Product 서비스 — 비동기, Kafka]
+
+Kafka 토픽: admin.product
+  → AdminProductKafkaConsumer.consume()
+      ↓ type == "FORCE_DOWN"
+  → AdminProductEventHandler.processForceDown()  @Transactional
+      5. Product DB products 조회
+      6. product.changeStatus(DISABLE) + product.changeDelete()  → Product DB 반영
+      7. scheduleRepository.softDeleteByProductId()
+           UPDATE products_schedule SET delete_dt = NOW()
+           WHERE product_id = :id AND delete_dt IS NULL
+      ↓ DB 커밋
+  → productSearchRepository.deleteById()  ← ES 삭제 (트랜잭션 밖)
+      ↓ ES 실패 시
+  → AdminProductEventHandler.restoreProductStatus()  @Transactional  ← 보상 트랜잭션
+      8. product.changeStatus(ENABLE)  → Product DB 복구
+      RuntimeException 재던짐 → Kafka 재시도 (FixedBackOff 1s × 3회)
 ```
+
+| 처리 대상 | 시점 | 결과 |
+|-----------|------|------|
+| Admin DB `products` | HTTP 응답 전 (동기) | status=DISABLE, deleteDt=now() |
+| Product DB `products` | Kafka 소비 후 (비동기) | status=DISABLE, deleteDt=now() |
+| Product DB `products_schedule` | 위와 같은 트랜잭션 | delete_dt=now() (soft-delete) |
+| Elasticsearch | DB 커밋 직후 | 인덱스 삭제 |
 
 ### Multi-DataSource 구성
 
@@ -373,17 +401,47 @@ public void forceDownProduct(UUID productId) {
 ```
 
 ```java
-// Product 서비스 - AdminProductEventConsumer (product 서비스 담당자 구현)
-@KafkaListener(topics = AdminProductEventConsumer.TOPIC)
+// Product 서비스 - AdminProductKafkaConsumer
+// 위치: service/product/.../infrastructure/kafka/admin/
+@KafkaListener(topics = "admin.product", groupId = "product-admin-consumer")
 public void consume(String message) {
-    AdminProductEvent event = objectMapper.readValue(message, AdminProductEvent.class);
-    switch (event.type()) {
-        case "FORCE_DOWN" -> {
-            // 1. 연관 Schedule 전체 soft delete
-            // 2. ES 인덱스 삭제
-            // 실패 시 보상 트랜잭션으로 Product 상태 복구
+    try {
+        AdminProductMessage event = objectMapper.readValue(message, AdminProductMessage.class);
+        if ("FORCE_DOWN".equals(event.type())) {
+            handleForceDown(event);
+        } else {
+            log.warn("알 수 없는 admin.product type: {}", event.type());
         }
+    } catch (Exception e) {
+        throw new RuntimeException("admin.product 이벤트 처리 실패: " + e.getMessage(), e);
     }
+}
+
+private void handleForceDown(AdminProductMessage event) {
+    UUID productId = UUID.fromString(event.productId());
+    handler.processForceDown(productId);            // DB 트랜잭션
+    try {
+        productSearchRepository.deleteById(event.productId());  // ES 삭제
+    } catch (Exception esEx) {
+        handler.restoreProductStatus(productId);    // 보상 트랜잭션
+        throw new RuntimeException("FORCE_DOWN ES 처리 실패. productId=" + event.productId(), esEx);
+    }
+}
+
+// Product 서비스 - AdminProductEventHandler
+@Transactional
+public void processForceDown(UUID productId) {
+    Product product = productRepository.findById(productId)
+        .orElseThrow(() -> new BusinessException(CommonErrorCode.PRODUCT_NOT_FOUND));
+    product.changeStatus(ProductStatus.DISABLE);
+    product.changeDelete();
+    scheduleRepository.softDeleteByProductId(productId);  // bulk soft-delete
+}
+
+@Transactional
+public void restoreProductStatus(UUID productId) {
+    productRepository.findById(productId)
+        .ifPresent(p -> p.changeStatus(ProductStatus.ENABLE));
 }
 ```
 
@@ -395,8 +453,23 @@ Admin 기능에 필요한 필드만 포함한 **읽기 전용에 가까운 가�
 
 ---
 
-## 협의 필요 사항
+## 구현 현황
 
-| 항목 | 담당 서비스 | 내용 |
-|------|------------|------|
-| 상품 강제 내리기 Kafka Consumer 구현 | product 서비스 | `admin.product` 토픽 수신 후 type=FORCE_DOWN 처리 → schedule soft delete + ES 삭제 + 보상 트랜잭션 구현 필요 |
+| 항목 | 상태 | 브랜치 |
+|------|------|--------|
+| Admin 모듈 전체 구현 (유저/상품/주문/정산/리뷰) | ✅ 완료 | `feature/admin/admin-init/218` |
+| 상품 강제 내리기 Kafka Consumer (Product 서비스) | ✅ 완료 | `feature/product/product-admin-delete-product/231` |
+
+### Product 서비스 Consumer 추가 파일
+
+```
+service/product/.../infrastructure/kafka/admin/
+├── AdminProductMessage.java         # 메시지 역직렬화 레코드
+├── AdminProductEventHandler.java    # DB 트랜잭션 처리 (processForceDown, restoreProductStatus)
+└── AdminProductKafkaConsumer.java   # @KafkaListener + ES 삭제 + 보상 오케스트레이션
+```
+
+수정된 파일:
+- `ScheduleRepository` — `softDeleteByProductId(UUID)` 추가
+- `ScheduleJpaRepository` — bulk soft-delete JPQL 쿼리 추가
+- `ScheduleRepositoryAdapter` — 위 인터페이스 구현 위임
