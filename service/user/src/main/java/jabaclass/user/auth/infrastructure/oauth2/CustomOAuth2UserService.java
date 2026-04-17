@@ -6,12 +6,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
+import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import jabaclass.user.auth.application.exception.AuthErrorCode;
-import jabaclass.user.auth.application.exception.AuthException;
 import jabaclass.user.user.domain.model.User;
 import jabaclass.user.user.domain.repository.UserRepository;
 
@@ -42,7 +41,10 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 	private User register(OAuthAttributes attributes) {
 		userRepository.findByEmail(attributes.getEmail())
 			.ifPresent(u -> {
-				throw new AuthException(AuthErrorCode.INVALID_EMAIL);
+				throw new OAuth2AuthenticationException(
+					new OAuth2Error("INVALID_ERROR", "가입할 수 없는 이메일입니다. 다른 이메일을 사용해주세요.",
+						null)
+				);
 			});
 
 		return userRepository.save(
