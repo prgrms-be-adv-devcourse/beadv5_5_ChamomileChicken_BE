@@ -104,6 +104,9 @@ public class Order {
 	}
 
 	public void refund() {
+		if (this.status != OrderStatus.PAID) {
+			throw new BusinessException(OrderErrorCode.ORDER_REFUND_NOT_ALLOWED);
+		}
 		this.status = OrderStatus.REFUNDED;
 	}
 
