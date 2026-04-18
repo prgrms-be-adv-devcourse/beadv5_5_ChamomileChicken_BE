@@ -19,9 +19,11 @@ import jabaclass.settlement.application.dto.SettlementTransferResult;
 import jabaclass.settlement.application.exception.BusinessException;
 import jabaclass.settlement.application.port.external.SellerSettlementPort;
 import jabaclass.settlement.application.port.external.SettlementTransferPort;
+import jabaclass.settlement.domain.model.SellerGradeType;
 import jabaclass.settlement.domain.model.Settlement;
 import jabaclass.settlement.domain.model.SettlementStatus;
 import jabaclass.settlement.domain.repository.SettlementRepository;
+import jabaclass.settlement.domain.repository.SettlementTransferRepository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -35,8 +37,13 @@ import static org.mockito.BDDMockito.then;
 @DisplayNameGeneration(ReplaceUnderscores.class)
 class SettlementTransferServiceTest {
 
+	private static final UUID SELLER_GRADE_POLICY_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
+
 	@Mock
 	private SettlementRepository settlementRepository;
+
+	@Mock
+	private SettlementTransferRepository settlementTransferRepository;
 
 	@Mock
 	private SellerSettlementPort sellerSettlementPort;
@@ -56,6 +63,9 @@ class SettlementTransferServiceTest {
 			sellerId,
 			settlementMonth,
 			new BigDecimal("10000"),
+			SellerGradeType.BASIC,
+			SELLER_GRADE_POLICY_ID,
+			new BigDecimal("300000"),
 			new BigDecimal("330.00"),
 			new BigDecimal("0.033"),
 			new BigDecimal("9670.00")
@@ -74,6 +84,8 @@ class SettlementTransferServiceTest {
 		given(settlementTransferPort.transfer(any()))
 			.willReturn(SettlementTransferResult.ok());
 		given(settlementRepository.saveAll(anyList()))
+			.willAnswer(invocation -> invocation.getArgument(0));
+		given(settlementTransferRepository.saveAll(anyList()))
 			.willAnswer(invocation -> invocation.getArgument(0));
 
 		ArgumentCaptor<List<Settlement>> settlementCaptor = ArgumentCaptor.forClass(List.class);
@@ -98,6 +110,9 @@ class SettlementTransferServiceTest {
 			sellerId,
 			settlementMonth,
 			new BigDecimal("10000"),
+			SellerGradeType.BASIC,
+			SELLER_GRADE_POLICY_ID,
+			new BigDecimal("300000"),
 			new BigDecimal("330.00"),
 			new BigDecimal("0.033"),
 			new BigDecimal("9670.00")
@@ -107,6 +122,8 @@ class SettlementTransferServiceTest {
 			.willReturn(List.of(settlement));
 		given(sellerSettlementPort.fetchSellerSettlementAccounts(Set.of(sellerId)))
 			.willReturn(List.of());
+		given(settlementTransferRepository.saveAll(anyList()))
+			.willAnswer(invocation -> invocation.getArgument(0));
 
 		ArgumentCaptor<List<Settlement>> settlementCaptor = ArgumentCaptor.forClass(List.class);
 
@@ -130,6 +147,9 @@ class SettlementTransferServiceTest {
 			sellerId,
 			settlementMonth,
 			new BigDecimal("10000"),
+			SellerGradeType.BASIC,
+			SELLER_GRADE_POLICY_ID,
+			new BigDecimal("300000"),
 			new BigDecimal("330.00"),
 			new BigDecimal("0.033"),
 			new BigDecimal("9670.00")
@@ -145,6 +165,8 @@ class SettlementTransferServiceTest {
 				"판매자",
 				true
 			)));
+		given(settlementTransferRepository.saveAll(anyList()))
+			.willAnswer(invocation -> invocation.getArgument(0));
 
 		ArgumentCaptor<List<Settlement>> settlementCaptor = ArgumentCaptor.forClass(List.class);
 
@@ -167,6 +189,9 @@ class SettlementTransferServiceTest {
 			sellerId,
 			settlementMonth,
 			new BigDecimal("10000"),
+			SellerGradeType.BASIC,
+			SELLER_GRADE_POLICY_ID,
+			new BigDecimal("300000"),
 			new BigDecimal("330.00"),
 			new BigDecimal("0.033"),
 			new BigDecimal("9670.00")
@@ -184,6 +209,8 @@ class SettlementTransferServiceTest {
 			)));
 		given(settlementTransferPort.transfer(any()))
 			.willReturn(SettlementTransferResult.fail("송금 실패"));
+		given(settlementTransferRepository.saveAll(anyList()))
+			.willAnswer(invocation -> invocation.getArgument(0));
 
 		ArgumentCaptor<List<Settlement>> settlementCaptor = ArgumentCaptor.forClass(List.class);
 
