@@ -32,13 +32,4 @@ public class AdminProductEventHandler {
 		log.info("FORCE_DOWN DB 처리 완료. productId={}, 삭제된 스케줄 수={}", productId, deletedCount);
 	}
 
-	@Transactional
-	public void restoreProductStatus(UUID productId) {
-		productRepository.findById(productId).ifPresent(p -> {
-			p.changeStatus(ProductStatus.ENABLE);
-			p.restoreDelete();
-		});
-		scheduleRepository.restoreDeleteByProductId(productId);
-		log.info("FORCE_DOWN 보상 트랜잭션 완료 — product/schedule 복구. productId={}", productId);
-	}
 }

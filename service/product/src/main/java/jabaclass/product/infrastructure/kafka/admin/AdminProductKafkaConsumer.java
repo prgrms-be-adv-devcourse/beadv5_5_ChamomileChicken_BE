@@ -44,8 +44,7 @@ public class AdminProductKafkaConsumer {
 			productSearchRepository.deleteById(event.productId());
 			log.info("FORCE_DOWN ES 삭제 완료. productId={}", event.productId());
 		} catch (Exception esEx) {
-			log.error("ES 삭제 실패, 보상 트랜잭션 실행. productId={}", event.productId(), esEx);
-			handler.restoreProductStatus(productId);
+			log.error("ES 삭제 실패, Kafka 재시도로 위임. productId={}", event.productId(), esEx);
 			throw new RuntimeException("FORCE_DOWN ES 처리 실패. productId=" + event.productId(), esEx);
 		}
 	}

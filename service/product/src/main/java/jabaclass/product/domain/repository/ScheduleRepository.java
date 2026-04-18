@@ -79,7 +79,4 @@ public interface ScheduleRepository {
 
 	// admin.product FORCE_DOWN 처리 — 해당 상품의 모든 스케줄 소프트 딜리트
 	int softDeleteByProductId(UUID productId);
-
-	// admin.product FORCE_DOWN 보상 트랜잭션 — 소프트 딜리트된 스케줄 복구
-	int restoreDeleteByProductId(UUID productId);
 }

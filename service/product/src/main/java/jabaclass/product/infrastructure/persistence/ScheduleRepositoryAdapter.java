@@ -96,9 +96,4 @@ public class ScheduleRepositoryAdapter implements ScheduleRepository {
 		return scheduleJpaRepository.softDeleteByProductId(productId);
 	}
 
-	@Override
-	public int restoreDeleteByProductId(UUID productId) {
-		return scheduleJpaRepository.restoreDeleteByProductId(productId);
-	}
-
 }

@@ -163,8 +163,4 @@ public interface ScheduleJpaRepository extends JpaRepository<Schedule, UUID> {
 	@Query("UPDATE Schedule s SET s.deleteDt = CURRENT_TIMESTAMP WHERE s.productId = :productId AND s.deleteDt IS NULL")
 	int softDeleteByProductId(@Param("productId") UUID productId);
 
-	@Modifying(clearAutomatically = true, flushAutomatically = true)
-	@Query("UPDATE Schedule s SET s.deleteDt = NULL WHERE s.productId = :productId AND s.deleteDt IS NOT NULL")
-	int restoreDeleteByProductId(@Param("productId") UUID productId);
-
 }
