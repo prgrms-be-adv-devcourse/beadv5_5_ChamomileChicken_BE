@@ -27,6 +27,8 @@ public interface OrderUseCase {
 
     void expireOrder(UUID eventId, UUID orderId, BigDecimal depositAmount);
 
+    void completeRefund(UUID eventId, UUID orderId, BigDecimal depositRefundAmount);
+
     void refund(UUID userId, UUID orderId);
 
     List<OrderSettlementItemResponseDto> getOrdersByIds(OrderBulkReadRequestDto requestDto);

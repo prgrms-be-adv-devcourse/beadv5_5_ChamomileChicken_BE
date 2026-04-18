@@ -59,10 +59,12 @@ public class OrderService implements OrderUseCase {
 	public CreateOrderResponseDto create(UUID userId, CreateOrderRequestDto requestDto) {
 		validateCreateRequest(requestDto);
 
+		//재고 차감
 		ProductReservationResponseDto reservation = reserveProduct(userId, requestDto);
 		BigDecimal totalAmount = calculateTotalAmount(reservation.price(), requestDto.quantity());
 
 		try {
+			//예치금 차감
 			useDeposit(userId, requestDto.depositAmount(), totalAmount);
 		} catch (RuntimeException e) {
 			// 예치금 차감 실패 → 재고 예약 해제 (단순 outbox 저장, save() 자체 @Transactional로 충분)
@@ -85,7 +87,8 @@ public class OrderService implements OrderUseCase {
 		return CreateOrderResponseDto.of(orderRepository.save(order), requestDto.productId(), requestDto.depositAmount());
 	}
 
-	// 환불 오케스트레이션 — 외부 HTTP 호출 포함, @Transactional 없음
+	// [오케스트레이터] @Transactional 없음 — 외부 HTTP 호출(Product, Payment) 포함
+	// Payment 서비스 호출이 동기이므로 PG 환불 실패 시 예외가 여기로 전파 → Order PAID 유지 (보상 불필요)
 	@Override
 	public void refund(UUID userId, UUID orderId) {
 		Order order = orderRepository.findById(orderId)
@@ -94,11 +97,12 @@ public class OrderService implements OrderUseCase {
 		if (!order.isOwnedBy(userId)) {
 			throw new BusinessException(OrderErrorCode.ORDER_ACCESS_DENIED);
 		}
+		// PAID 상태 가드 — Eventual Consistency로 인해 결제 직후 이 시점에 아직 PENDING일 수 있음
 		if (order.getStatus() != OrderStatus.PAID) {
 			throw new BusinessException(OrderErrorCode.ORDER_REFUND_NOT_ALLOWED);
 		}
 
-		// 환불 정책: Product 서비스에서 스케줄 시작일 조회 후 비율 계산
+		// Product 서비스에서 스케줄 시작일 조회 → 환불 비율 계산
 		LocalDate startDate = productClient.getScheduleStartDate(order.getProductScheduleId());
 		long days = ChronoUnit.DAYS.between(LocalDate.now(), startDate);
 		BigDecimal refundRate = RefundPolicy.rateOf(days);
@@ -106,10 +110,11 @@ public class OrderService implements OrderUseCase {
 			throw new BusinessException(OrderErrorCode.ORDER_REFUND_POLICY_EXPIRED);
 		}
 
-		// Payment 서비스에 환불 요청 (PG 호출 포함) — 성공 시 depositRefundAmount 반환
+		// Payment 서비스로 환불 요청 (PG 호출 포함) — 성공 시 예치금 환불 금액 반환
+		// orderId를 PG 멱등키로 사용하므로 타임아웃 후 재시도해도 이중 환불 없음
 		BigDecimal depositRefundAmount = paymentClient.refund(orderId, refundRate);
 
-		// DB 상태 변경 + Outbox 저장 (독립 트랜잭션)
+		// Payment 커밋 완료 후 → Order REFUNDED + Outbox 저장 (독립 트랜잭션)
 		orderRefundHandler.onSuccess(orderId, depositRefundAmount);
 	}
 
@@ -170,6 +175,11 @@ public class OrderService implements OrderUseCase {
 	@Override
 	public void expireOrder(UUID eventId, UUID orderId, BigDecimal depositAmount) {
 		orderExpireHandler.expire(eventId, orderId, depositAmount);
+	}
+
+	@Override
+	public void completeRefund(UUID eventId, UUID orderId, BigDecimal depositRefundAmount) {
+		orderRefundHandler.onSuccess(orderId, depositRefundAmount);
 	}
 
 	private ProductReservationResponseDto reserveProduct(UUID userId, CreateOrderRequestDto requestDto) {

@@ -55,7 +55,6 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 	@Transactional
 	public PaymentResponseDto create(UUID userId, PreparePaymentRequestDto request) {
 
-		// Payment 생성
 		Payment payment = Payment.create(
 			userId,
 			request.productId(),
@@ -65,7 +64,8 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 			request.depositAmount()
 		);
 
-		// 예치금 100% 결제인 경우 → PG 호출 없이 바로 완료 처리
+		// 예치금 100% 결제 → PG 호출 없이 즉시 완료, Outbox에 PAYMENT_COMPLETED 저장
+		// Payment 저장 + Outbox 저장이 같은 트랜잭션 → 원자성 보장
 		if (payment.getPaymentAmount().compareTo(BigDecimal.ZERO) == 0) {
 			payment.markDone("DEPOSIT_ONLY");
 		}
@@ -73,20 +73,19 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 		Payment savedPayment = paymentRepository.save(payment);
 
 		if (savedPayment.getPaymentAmount().compareTo(BigDecimal.ZERO) == 0) {
-			OutboxEvent event = OutboxEvent.create(
+			outboxRepository.save(OutboxEvent.create(
 				"PAYMENT",
 				savedPayment.getId().toString(),
 				EventType.PAYMENT_COMPLETED,
 				toJson(new PaymentCompletedEvent(UUID.randomUUID(), savedPayment.getId(), savedPayment.getOrderId()))
-			);
-
-			outboxRepository.save(event);
+			));
 		}
 
 		return PaymentResponseDto.from(savedPayment);
 	}
 
-	// 외부 PG 호출 포함 — tx 없음, 핸들러에서 각자 tx 처리
+	// [오케스트레이터] @Transactional 없음 — PG 응답 대기 중 DB 커넥션을 점유하지 않기 위해 트랜잭션 분리
+	// PG 호출 결과가 확정된 뒤에만 핸들러(@Transactional)에서 짧은 로컬 트랜잭션으로 DB 상태 변경
 	public PaymentResponseDto confirm(UUID userId, ConfirmPaymentRequestDto request) {
 
 		Payment payment = paymentRepository.findByOrderId(request.orderId())
@@ -96,6 +95,7 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 			throw new PaymentException(PaymentErrorCode.UNAUTHORIZED_PAYMENT_ACCESS);
 		}
 
+		// 이미 결제 완료된 경우 멱등 처리 — 중복 confirm 요청 방어
 		if (payment.isDone()) {
 			return PaymentResponseDto.from(payment);
 		}
@@ -110,39 +110,43 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 		}
 
 		try {
+			// PG 승인 요청 — 이 시점부터 외부 상태 변경 발생
 			paymentGatewayPort.confirm(request.paymentKey(), payment.getOrderId().toString(), request.amount());
+			// 성공: Payment PAID + Outbox PAYMENT_COMPLETED 저장 (같은 트랜잭션)
 			return paymentConfirmHandler.onSuccess(payment.getId(), request.paymentKey());
 		} catch (Exception e) {
+			// 실패: Payment FAILED + Outbox PAYMENT_FAILED 저장 (같은 트랜잭션)
+			// PG 성공 후 DB 저장 실패 케이스는 웹훅/정합성 배치로 별도 복구
 			paymentConfirmHandler.onFailure(payment.getId(), payment.getOrderId(), payment.getDepositAmount());
 			throw new PaymentException(PaymentErrorCode.PAYMENT_CONFIRM_FAILED, e);
 		}
 	}
 
-	// Order 서비스에서 환불 비율을 계산하여 호출 — 외부 PG 호출 포함, tx 없음
-	// Order 서비스가 환불 비율을 계산하여 호출 — 외부 PG 호출 포함, @Transactional 없음
+	// [오케스트레이터] Order 서비스의 동기 HTTP 호출로 진입 — @Transactional 없음
+	// PG 환불 실패 시 예외를 Order로 전파 → Order가 PAID 상태 유지 (보상 불필요)
+	// PG 성공 후 DB 저장 실패는 알려진 한계 — 웹훅/정합성 배치로 별도 복구
 	@Override
 	public InternalRefundResponseDto refundByOrder(InternalRefundRequestDto request) {
 		Payment payment = paymentRepository.findByOrderId(request.orderId())
 			.orElseThrow(() -> new PaymentException(PaymentErrorCode.PAYMENT_NOT_FOUND));
 
-		// 완료된 결제만 환불 가능
 		if (!payment.isDone()) {
 			throw new PaymentException(PaymentErrorCode.PAYMENT_NOT_COMPLETED);
 		}
 
 		try {
-			// 카드 결제 금액이 있는 경우에만 PG 환불 호출 (예치금 100% 결제면 스킵)
+			// 예치금 100% 결제는 PG 환불 스킵 (카드 청구 없음)
 			BigDecimal paymentRefundAmount = payment.getPaymentAmount().multiply(request.refundRate());
 			if (paymentRefundAmount.signum() > 0) {
-				// orderId를 멱등성 키로 사용 — 타임아웃 후 재시도 시 Toss가 이전 결과 반환, 이중 환불 방지
+				// orderId를 멱등키로 전달 — 타임아웃 후 재시도 시 Toss가 이전 결과 반환, 이중 환불 방지
 				paymentGatewayPort.refund(payment.getPaymentKey(), paymentRefundAmount.intValue(), request.orderId().toString());
 			}
-			// PG 성공 후 DB 변경 + Outbox 저장 (독립 트랜잭션)
+			// PG 성공 확정 후 → Payment CANCELLED + Refund 생성 + Outbox PAYMENT_REFUNDED 저장 (같은 트랜잭션)
 			BigDecimal depositRefundAmount = paymentRefundHandler.onSuccess(payment.getId(), request.refundRate());
 			return new InternalRefundResponseDto(depositRefundAmount);
 		} catch (PaymentException e) {
 			throw e;
-		} catch (Exception e) { // PG사 timeout
+		} catch (Exception e) {
 			throw new PaymentException(PaymentErrorCode.PAYMENT_REFUND_FAILED, e);
 		}
 	}
