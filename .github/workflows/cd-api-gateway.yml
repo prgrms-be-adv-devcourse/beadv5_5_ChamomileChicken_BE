@@ -44,7 +44,7 @@ jobs:
         id: meta
         run: |
           IMAGE_TAG=${GITHUB_SHA::7}
-          echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
+          echo "image_tag=$IMAGE_TAG" >> "$GITHUB_OUTPUT"
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
@@ -66,7 +66,7 @@ jobs:
 
   deploy:
     needs: build-and-push
-    runs-on: [self-hosted, ec2, docker]
+    runs-on: [ self-hosted, ec2, docker ]
 
     steps:
       - name: Checkout
@@ -77,7 +77,7 @@ jobs:
           mkdir -p /home/ubuntu/apps/repo
           mkdir -p /home/ubuntu/apps/deploy/env
           mkdir -p /home/ubuntu/apps/deploy/scripts
-          mkdir -p /home/ubuntu/apps/data
+          mkdir -p /home/ubuntu/apps/data/k3s-service
 
       - name: Sync repository to fixed path
         run: |
@@ -85,16 +85,34 @@ jobs:
 
       - name: Copy deploy script to EC2 deploy directory
         run: |
-          cp /home/ubuntu/apps/repo/.github/scripts/deploy-app.sh /home/ubuntu/apps/deploy/scripts/deploy-app.sh
-          chmod +x /home/ubuntu/apps/deploy/scripts/deploy-app.sh
+          cp /home/ubuntu/apps/repo/.github/scripts/deploy_app.sh /home/ubuntu/apps/deploy/scripts/deploy_app.sh
+          chmod +x /home/ubuntu/apps/deploy/scripts/deploy_app.sh
 
-      - name: Create common.env
+      - name: Copy Kubernetes YAML to fixed path
         run: |
-          printf '%s' '${{ secrets.COMMON_ENV }}' > /home/ubuntu/apps/deploy/env/common.env
+          cp /home/ubuntu/apps/repo/api-gateway/api-gateway-service.yml /home/ubuntu/apps/data/k3s-service/api-gateway-service.yml
 
-      - name: Create api-gateway.env
+      - name: Create common_config.env
         run: |
-          printf '%s' '${{ secrets.API_GATEWAY_ENV }}' > /home/ubuntu/apps/deploy/env/api-gateway.env
+          printf '%s\n' '${{ secrets.COMMON_CONFIG_ENV }}' > /home/ubuntu/apps/deploy/env/common_config.env
+
+      - name: Create common_secret.env
+        run: |
+          printf '%s\n' '${{ secrets.COMMON_SECRET_ENV }}' > /home/ubuntu/apps/deploy/env/common_secret.env
+
+      - name: Create api-gateway_config.env
+        run: |
+          printf '%s\n' '${{ secrets.API_GATEWAY_CONFIG_ENV }}' > /home/ubuntu/apps/deploy/env/api-gateway_config.env
+
+      - name: Create api-gateway_secret.env
+        run: |
+          printf '%s\n' '${{ secrets.API_GATEWAY_SECRET_ENV }}' > /home/ubuntu/apps/deploy/env/api-gateway_secret.env
+
+      - name: Verify deploy files exist
+        run: |
+          ls -l /home/ubuntu/apps/deploy/env
+          ls -l /home/ubuntu/apps/deploy/scripts
+          ls -l /home/ubuntu/apps/data/k3s-service
 
       - name: Docker Hub login on EC2
         run: |
@@ -107,28 +125,42 @@ jobs:
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
         run: |
-          /home/ubuntu/apps/deploy/scripts/deploy-app.sh api-gateway
+          /home/ubuntu/apps/deploy/scripts/deploy_app.sh api-gateway
 
-      - name: Debug deploy state
+      - name: Debug Kubernetes state
         run: |
-          echo "===== docker ps -a ====="
-          docker ps -a
-          echo "===== docker compose ps ====="
-          cd /home/ubuntu/apps/data/service && docker compose ps || true
-          echo "===== api-gateway-service logs ====="
-          docker logs api-gateway-service --tail 200 || true
+          echo "===== pods ====="
+          kubectl get pods -o wide
+          echo "===== deployment ====="
+          kubectl get deployment api-gateway-service -o wide
+          echo "===== describe deployment ====="
+          kubectl describe deployment api-gateway-service || true
+          echo "===== recent pod logs ====="
+          POD_NAME=$(kubectl get pods -l app=api-gateway-service -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)
+          if [ -n "$POD_NAME" ]; then
+            kubectl logs "$POD_NAME" --tail=200 || true
+          fi
 
       - name: Health check
         run: |
-          for i in {1..10}; do
-            STATUS_CODE=$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' --max-time 5 "http://localhost:8080/" || echo "000")
-            if [[ "$STATUS_CODE" != "000" && "$STATUS_CODE" -lt 500 ]]; then
-              echo "Health check passed with status $STATUS_CODE"
-              exit 0
-            fi
-            echo "Retrying... status=$STATUS_CODE"
-            sleep 5
-          done
-          echo "Health check failed"
-          docker logs api-gateway-service --tail 200 || true
+          kubectl rollout status deployment/api-gateway-service --timeout=120s
+
+          kubectl port-forward svc/api-gateway-service 8080:8080 >/tmp/api-gateway-portforward.log 2>&1 &
+          PF_PID=$!
+          sleep 5
+          
+          STATUS_CODE=$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' --max-time 5 \
+          "http://localhost:8080/actuator/health/readiness" || echo "000")
+          
+          kill $PF_PID || true
+          
+          if [[ "$STATUS_CODE" != "200" ]]; then
+          echo "Health check failed with status=$STATUS_CODE"
+          POD_NAME=$(kubectl get pods -l app=api-gateway-service -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)
+          if [ -n "$POD_NAME" ]; then
+          kubectl logs "$POD_NAME" --tail=200 || true
+          fi
           exit 1
+          fi
+          
+          echo "Health check passed with status $STATUS_CODE"

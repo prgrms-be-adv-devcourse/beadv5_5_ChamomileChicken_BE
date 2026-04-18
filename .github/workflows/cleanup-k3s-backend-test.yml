@@ -1,0 +1,52 @@
+name: Cleanup K3S Backend Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      service:
+        description: "정리할 서비스 선택"
+        required: true
+        type: choice
+        options:
+          - user
+          - product
+          - settlement
+          - payment
+          - order
+      remove_service_env:
+        description: "서비스별 config/secret도 같이 삭제할지 여부"
+        required: true
+        type: choice
+        options:
+          - "false"
+          - "true"
+
+permissions:
+  contents: read
+
+jobs:
+  cleanup:
+    runs-on: [ self-hosted, ec2, docker ]
+
+    steps:
+      - name: Delete deployment and service
+        run: |
+          SERVICE="${{ github.event.inputs.service }}"
+
+          kubectl delete deployment "${SERVICE}-service" --ignore-not-found=true
+          kubectl delete service "${SERVICE}-service" --ignore-not-found=true
+
+      - name: Delete service configmap and secret
+        if: ${{ github.event.inputs.remove_service_env == 'true' }}
+        run: |
+          SERVICE="${{ github.event.inputs.service }}"
+
+          kubectl delete configmap "${SERVICE}-config" --ignore-not-found=true
+          kubectl delete secret "${SERVICE}-secret" --ignore-not-found=true
+
+      - name: Show remaining resources
+        run: |
+          kubectl get deployment
+          kubectl get service
+          kubectl get configmap
+          kubectl get secret

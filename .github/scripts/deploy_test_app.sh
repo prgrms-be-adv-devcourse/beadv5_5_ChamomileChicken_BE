@@ -3,14 +3,14 @@ set -euo pipefail
 
 SERVICE="${1:-}"
 ENV_DIR=/home/ubuntu/apps/deploy/env
-K3S_DIR=/home/ubuntu/apps/data/k3s-service
+K3S_TEST_DIR=/home/ubuntu/apps/data/k3s-test
 
 if [ -z "$SERVICE" ]; then
-  echo "Usage: deploy-apps.sh <service-name>"
+  echo "Usage: deploy_test_app.sh <service-name>"
   exit 1
 fi
 
-echo "Deploying service: $SERVICE"
+echo "Deploying test service: $SERVICE"
 
 create_configmap_if_exists() {
   local name=$1
@@ -40,29 +40,26 @@ create_secret_if_exists() {
   fi
 }
 
-# 1. 공통 env 적용
 create_configmap_if_exists "common-config" "$ENV_DIR/common_config.env"
 create_secret_if_exists "common-secret" "$ENV_DIR/common_secret.env"
 
-# 2. 서비스별 env 적용
 create_configmap_if_exists "${SERVICE}-config" "$ENV_DIR/${SERVICE}_config.env"
 create_secret_if_exists "${SERVICE}-secret" "$ENV_DIR/${SERVICE}_secret.env"
 
-# 3. deployment yaml 적용
-if [ -f "$K3S_DIR/${SERVICE}-service.yml" ]; then
-  echo "Applying Kubernetes YAML: $K3S_DIR/${SERVICE}-service.yml"
-  kubectl apply -f "$K3S_DIR/${SERVICE}-service.yml"
+TEST_YAML_FILE="$K3S_TEST_DIR/${SERVICE}-service-test.yml"
+
+if [ -f "$TEST_YAML_FILE" ]; then
+  echo "Applying Kubernetes TEST YAML: $TEST_YAML_FILE"
+  envsubst < "$TEST_YAML_FILE" | kubectl apply -f -
 else
-  echo "YAML file not found: $K3S_DIR/${SERVICE}-service.yml"
+  echo "Test YAML file not found: $TEST_YAML_FILE"
   exit 1
 fi
 
-# 4. deployment 재시작
-echo "Restarting deployment: $SERVICE-service"
-kubectl rollout restart deployment/"$SERVICE-service"
+echo "Restarting deployment: ${SERVICE}-service"
+kubectl rollout restart deployment/"${SERVICE}-service"
 
-# 5. rollout 상태 확인
 echo "Waiting for rollout status..."
-kubectl rollout status deployment/"$SERVICE-service" --timeout=120s
+kubectl rollout status deployment/"${SERVICE}-service" --timeout=120s
 
-echo "Deployment completed: $SERVICE"
+echo "Test deployment completed: $SERVICE"

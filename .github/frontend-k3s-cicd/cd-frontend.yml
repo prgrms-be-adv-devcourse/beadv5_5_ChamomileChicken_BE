@@ -1,0 +1,125 @@
+name: CD Frontend Service
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - dev
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/cd-frontend.yml'
+      - '.github/scripts/**'
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    outputs:
+      image_tag: ${{ steps.meta.outputs.image_tag }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set image tag
+        id: meta
+        run: |
+          IMAGE_TAG=${GITHUB_SHA::7}
+          echo "image_tag=$IMAGE_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build Docker image (Vue + Nginx)
+        run: |
+          docker build \
+            -t ${{ secrets.DOCKERHUB_USERNAME }}/chamomile-frontend:latest \
+            -t ${{ secrets.DOCKERHUB_USERNAME }}/chamomile-frontend:${{ steps.meta.outputs.image_tag }} \
+            ./frontend
+
+      - name: Push Docker image
+        run: |
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/chamomile-frontend:latest
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/chamomile-frontend:${{ steps.meta.outputs.image_tag }}
+
+  deploy:
+    needs: build-and-push
+    runs-on: [ self-hosted, ec2, docker ]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare directories
+        run: |
+          mkdir -p /home/ubuntu/apps/repo
+          mkdir -p /home/ubuntu/apps/deploy/env
+          mkdir -p /home/ubuntu/apps/deploy/scripts
+          mkdir -p /home/ubuntu/apps/data/k3s-service
+
+      - name: Sync repository to EC2 path
+        run: |
+          rsync -av --delete ./ /home/ubuntu/apps/repo/
+
+      - name: Copy deploy script
+        run: |
+          cp /home/ubuntu/apps/repo/.github/scripts/deploy_app.sh \
+             /home/ubuntu/apps/deploy/scripts/deploy_app.sh
+          chmod +x /home/ubuntu/apps/deploy/scripts/deploy_app.sh
+
+      - name: Copy frontend Kubernetes YAML
+        run: |
+          cp /home/ubuntu/apps/repo/frontend/frontend-service.yml \
+             /home/ubuntu/apps/data/k3s-service/frontend-service.yml
+
+      - name: Create frontend_config.env
+        run: |
+          printf '%s\n' '${{ secrets.FRONTEND_CONFIG_ENV }}' > /home/ubuntu/apps/deploy/env/frontend_config.env
+
+      - name: Create frontend_secret.env
+        run: |
+          printf '%s\n' '${{ secrets.FRONTEND_SECRET_ENV }}' > /home/ubuntu/apps/deploy/env/frontend_secret.env
+
+      - name: Verify deploy files
+        run: |
+          ls -l /home/ubuntu/apps/deploy/env
+          ls -l /home/ubuntu/apps/data/k3s-service
+
+      - name: Docker Hub login on EC2
+        run: |
+          echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login \
+            -u "${{ secrets.DOCKERHUB_USERNAME }}" \
+            --password-stdin
+
+      - name: Deploy frontend service
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
+        run: |
+          /home/ubuntu/apps/deploy/scripts/deploy_app.sh frontend
+
+      - name: Health check
+        run: |
+          kubectl rollout status deployment/frontend-service --timeout=120s
+
+          kubectl port-forward svc/frontend-service 3000:3000 >/tmp/frontend.log 2>&1 &
+          PF_PID=$!
+          sleep 5
+
+          STATUS_CODE=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+            http://localhost:3000/ || echo "000")
+
+          kill $PF_PID || true
+
+          if [[ "$STATUS_CODE" != "200" && "$STATUS_CODE" != "304" ]]; then
+            echo "Frontend health check failed"
+            exit 1
+          fi
+
+          echo "Frontend is healthy"
