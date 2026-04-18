@@ -30,6 +30,7 @@ import jabaclass.payment.application.port.external.OrderPort;
 import jabaclass.payment.application.port.external.PaymentGatewayPort;
 import jabaclass.payment.application.service.PaymentService;
 import jabaclass.payment.application.service.handler.PaymentConfirmHandler;
+import jabaclass.payment.application.service.handler.PaymentRefundHandler;
 import jabaclass.payment.common.error.PaymentErrorCode;
 import jabaclass.payment.common.error.PaymentException;
 import jabaclass.payment.domain.model.Payment;
@@ -66,6 +67,9 @@ class PaymentTest {
 	@Mock
 	private PaymentConfirmHandler paymentConfirmHandler;
 
+	@Mock
+	private PaymentRefundHandler paymentRefundHandler;
+
 	private PaymentService paymentService;
 
 	@BeforeEach
@@ -77,6 +81,7 @@ class PaymentTest {
 			orderPort,
 			outboxRepository,
 			paymentConfirmHandler,
+			paymentRefundHandler,
 			new ObjectMapper()
 		);
 
