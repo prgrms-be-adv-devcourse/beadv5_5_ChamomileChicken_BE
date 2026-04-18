@@ -70,14 +70,18 @@ FAILED 이벤트는 별도로 모니터링하여 원인 파악 후 수동 재처
 
 ---
 
-## 4. Consumer — ES 삭제 실패 시 보상 트랜잭션
+## 4. Consumer — ES 삭제 실패 처리
 
 ### 문제
 
 product 서비스에서 DB 처리(DISABLE + soft delete)는 성공했으나
 ES 인덱스 삭제가 실패하면 DB에는 삭제된 상품이 ES에는 여전히 노출되는 불일치가 발생한다.
 
-### 설계 결정: ES 삭제 실패 시 보상 트랜잭션 + Kafka 재시도
+### 설계 결정: Kafka 재시도로 위임 (보상 트랜잭션 미적용)
+
+ES 삭제 실패 시 보상 트랜잭션으로 DB 상태를 되돌리지 않는다.
+
+**이유**: ES는 검색 전용이다. DB가 이미 `status=DISABLE`이므로 실제 비즈니스 로직(상품 조회, 주문 등)은 DB 기준으로 차단된다. ES에 잠시 노출되는 것은 허용 가능한 수준의 일시적 불일치이며, 보상 트랜잭션으로 DB를 되돌리는 것은 오히려 "강제 내리기가 취소된 것처럼 보이는" 더 큰 문제를 야기한다.
 
 ```
 [DB 트랜잭션]
@@ -87,13 +91,12 @@ ES 인덱스 삭제가 실패하면 DB에는 삭제된 상품이 ES에는 여전
 
 [ES 삭제 — 트랜잭션 밖]
   성공 → 완료
-  실패 → 보상 트랜잭션 실행
-    product: status=ENABLE, deleteDt=null (복구)
-    schedule: delete_dt=null (복구)
-    RuntimeException 재던짐 → Kafka FixedBackOff 재시도 (1s × 3회)
+  실패 → RuntimeException 재던짐
+           → Kafka FixedBackOff 재시도 (1s × 3회)
+           → 재시도 소진 시 DLQ 전송
 ```
 
-보상 트랜잭션으로 DB 상태를 복구하고, Kafka 재시도로 전체 흐름을 재실행한다.
+DB는 이미 DISABLE 상태이므로 ES 재시도 중에도 상품은 실질적으로 차단된 상태가 유지된다.
 
 ---
 
