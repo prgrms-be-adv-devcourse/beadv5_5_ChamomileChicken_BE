@@ -34,8 +34,11 @@ public class AdminProductEventHandler {
 
 	@Transactional
 	public void restoreProductStatus(UUID productId) {
-		productRepository.findById(productId)
-			.ifPresent(p -> p.changeStatus(ProductStatus.ENABLE));
-		log.info("FORCE_DOWN 보상 트랜잭션 완료 — product status ENABLE 복구. productId={}", productId);
+		productRepository.findById(productId).ifPresent(p -> {
+			p.changeStatus(ProductStatus.ENABLE);
+			p.restoreDelete();
+		});
+		scheduleRepository.restoreDeleteByProductId(productId);
+		log.info("FORCE_DOWN 보상 트랜잭션 완료 — product/schedule 복구. productId={}", productId);
 	}
 }
