@@ -56,24 +56,28 @@ class AdminProductEventHandlerTest {
 	}
 
 	@Test
-	void restoreProductStatus_상품_상태를_ENABLE로_복구한다() {
+	void restoreProductStatus_상품_상태_ENABLE_및_deleteDt_초기화_스케줄_복구() {
 		UUID productId = UUID.randomUUID();
 		Product product = mock(Product.class);
 		given(productRepository.findById(productId)).willReturn(Optional.of(product));
+		given(scheduleRepository.restoreDeleteByProductId(productId)).willReturn(3);
 
 		handler.restoreProductStatus(productId);
 
 		then(product).should().changeStatus(ProductStatus.ENABLE);
+		then(product).should().restoreDelete();
+		then(scheduleRepository).should().restoreDeleteByProductId(productId);
 	}
 
 	@Test
-	void restoreProductStatus_상품이_없으면_아무_작업도_하지_않는다() {
+	void restoreProductStatus_상품이_없어도_스케줄_복구는_실행된다() {
 		UUID productId = UUID.randomUUID();
 		given(productRepository.findById(productId)).willReturn(Optional.empty());
+		given(scheduleRepository.restoreDeleteByProductId(productId)).willReturn(0);
 
 		assertThatCode(() -> handler.restoreProductStatus(productId))
 			.doesNotThrowAnyException();
 
-		then(scheduleRepository).shouldHaveNoInteractions();
+		then(scheduleRepository).should().restoreDeleteByProductId(productId);
 	}
 }
