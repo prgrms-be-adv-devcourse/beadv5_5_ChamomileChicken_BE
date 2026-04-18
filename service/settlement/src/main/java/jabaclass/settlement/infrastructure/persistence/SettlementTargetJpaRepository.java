@@ -1,12 +1,17 @@
 package jabaclass.settlement.infrastructure.persistence;
 
+import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import jabaclass.settlement.domain.model.SettlementTarget;
+import jabaclass.settlement.domain.model.SettlementTargetCalculationStatus;
+import jabaclass.settlement.domain.model.SettlementTargetType;
 
 public interface SettlementTargetJpaRepository extends JpaRepository<SettlementTarget, UUID> {
 
@@ -14,28 +19,27 @@ public interface SettlementTargetJpaRepository extends JpaRepository<SettlementT
 
 	boolean existsByRefundId(UUID refundId);
 
+	Optional<SettlementTarget> findByPaymentIdAndTargetType(UUID paymentId, SettlementTargetType targetType);
+
 	List<SettlementTarget> findBySettlementMonth(String settlementMonth);
 
 	List<SettlementTarget> findBySettlementMonthAndSellerId(String settlementMonth, UUID sellerId);
 
-	@Query("""
-        select
-            st.sellerId as sellerId,
-            st.settlementMonth as settlementMonth,
-            sum(st.settlementAmount) as totalSettlementAmount,
-            count(st.id) as targetCount,
-            count(distinct st.orderId) as orderCount
-        from SettlementTarget st
-        where st.settlementMonth = :settlementMonth
-        group by st.sellerId, st.settlementMonth
-        """)
-	List<SettlementTargetSummaryProjection> findSummaryBySettlementMonth(String settlementMonth);
+	List<SettlementTarget> findByIdIn(List<UUID> ids);
 
-	interface SettlementTargetSummaryProjection {
-		UUID getSellerId();
-		String getSettlementMonth();
-		java.math.BigDecimal getTotalSettlementAmount();
-		Long getTargetCount();
-		Long getOrderCount();
-	}
+	List<SettlementTarget> findBySettlementMonthAndCalculationStatus(
+		String settlementMonth,
+		SettlementTargetCalculationStatus calculationStatus
+	);
+
+	@Query("""
+		select coalesce(sum(st.grossAmount), 0)
+		from SettlementTarget st
+		where st.sellerId = :sellerId
+		  and st.settlementMonth in :settlementMonths
+		""")
+	BigDecimal sumGrossAmountBySellerIdAndSettlementMonths(
+		@Param("sellerId") UUID sellerId,
+		@Param("settlementMonths") List<String> settlementMonths
+	);
 }

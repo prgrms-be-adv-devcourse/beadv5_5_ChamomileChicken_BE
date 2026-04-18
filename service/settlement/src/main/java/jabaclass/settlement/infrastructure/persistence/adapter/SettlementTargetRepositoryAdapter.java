@@ -1,12 +1,15 @@
 package jabaclass.settlement.infrastructure.persistence.adapter;
 
-import org.springframework.stereotype.Repository;
-
+import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
-import jabaclass.settlement.application.dto.SettlementTargetSummary;
+import org.springframework.stereotype.Repository;
+
 import jabaclass.settlement.domain.model.SettlementTarget;
+import jabaclass.settlement.domain.model.SettlementTargetCalculationStatus;
+import jabaclass.settlement.domain.model.SettlementTargetType;
 import jabaclass.settlement.domain.repository.SettlementTargetRepository;
 import jabaclass.settlement.infrastructure.persistence.SettlementTargetJpaRepository;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +41,11 @@ public class SettlementTargetRepositoryAdapter implements SettlementTargetReposi
 	}
 
 	@Override
+	public Optional<SettlementTarget> findByPaymentIdAndTargetType(UUID paymentId, SettlementTargetType targetType) {
+		return settlementTargetJpaRepository.findByPaymentIdAndTargetType(paymentId, targetType);
+	}
+
+	@Override
 	public List<SettlementTarget> findBySettlementMonth(String settlementMonth) {
 		return settlementTargetJpaRepository.findBySettlementMonth(settlementMonth);
 	}
@@ -48,16 +56,28 @@ public class SettlementTargetRepositoryAdapter implements SettlementTargetReposi
 	}
 
 	@Override
-	public List<SettlementTargetSummary> findSummaryBySettlementMonth(String settlementMonth) {
-		return settlementTargetJpaRepository.findSummaryBySettlementMonth(settlementMonth)
-			.stream()
-			.map(it -> new SettlementTargetSummary(
-				it.getSellerId(),
-				it.getSettlementMonth(),
-				it.getTotalSettlementAmount(),
-				it.getTargetCount(),
-				it.getOrderCount()
-			))
-			.toList();
+	public List<SettlementTarget> findAllByIds(List<UUID> ids) {
+		if (ids == null || ids.isEmpty()) {
+			return List.of();
+		}
+
+		return settlementTargetJpaRepository.findByIdIn(ids);
+	}
+
+	@Override
+	public List<SettlementTarget> findBySettlementMonthAndCalculationStatus(
+		String settlementMonth,
+		SettlementTargetCalculationStatus calculationStatus
+	) {
+		return settlementTargetJpaRepository.findBySettlementMonthAndCalculationStatus(settlementMonth, calculationStatus);
+	}
+
+	@Override
+	public BigDecimal sumGrossAmountBySellerIdAndSettlementMonths(UUID sellerId, List<String> settlementMonths) {
+		if (settlementMonths == null || settlementMonths.isEmpty()) {
+			return BigDecimal.ZERO;
+		}
+
+		return settlementTargetJpaRepository.sumGrossAmountBySellerIdAndSettlementMonths(sellerId, settlementMonths);
 	}
 }
