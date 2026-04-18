@@ -86,8 +86,12 @@ jobs:
 
       - name: Copy deploy script to EC2 deploy directory
         run: |
-          cp /home/ubuntu/apps/repo/.github/scripts/deploy_app.sh /home/ubuntu/apps/deploy/scripts/deploy_app.sh
-          chmod +x /home/ubuntu/apps/deploy/scripts/deploy_app.sh
+          cp /home/ubuntu/apps/repo/.github/scripts/deploy-app.sh /home/ubuntu/apps/deploy/scripts/deploy-app.sh
+          chmod +x /home/ubuntu/apps/deploy/scripts/deploy-app.sh
+
+      - name: Check envsubst
+        run: |
+          which envsubst
 
       - name: Copy Kubernetes YAML to fixed path
         run: |
@@ -127,7 +131,7 @@ jobs:
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
         run: |
-          /home/ubuntu/apps/deploy/scripts/deploy_app.sh product
+          /home/ubuntu/apps/deploy/scripts/deploy-app.sh product
 
       - name: Debug Kubernetes state
         run: |

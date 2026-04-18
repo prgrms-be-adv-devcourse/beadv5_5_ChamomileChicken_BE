@@ -69,9 +69,9 @@ jobs:
 
       - name: Copy deploy script
         run: |
-          cp /home/ubuntu/apps/repo/.github/scripts/deploy_app.sh \
+          cp /home/ubuntu/apps/repo/.github/scripts/deploy-app.sh \
              /home/ubuntu/apps/deploy/scripts/deploy_app.sh
-          chmod +x /home/ubuntu/apps/deploy/scripts/deploy_app.sh
+          chmod +x /home/ubuntu/apps/deploy/scripts/deploy-app.sh
 
       - name: Copy frontend Kubernetes YAML
         run: |

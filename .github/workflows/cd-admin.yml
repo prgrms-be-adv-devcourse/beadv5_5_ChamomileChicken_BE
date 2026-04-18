@@ -86,8 +86,12 @@ jobs:
 
       - name: Copy deploy script
         run: |
-          cp /home/ubuntu/apps/repo/.github/scripts/deploy_app.sh /home/ubuntu/apps/deploy/scripts/deploy_app.sh
-          chmod +x /home/ubuntu/apps/deploy/scripts/deploy_app.sh
+          cp /home/ubuntu/apps/repo/.github/scripts/deploy-app.sh /home/ubuntu/apps/deploy/scripts/deploy-app.sh
+          chmod +x /home/ubuntu/apps/deploy/scripts/deploy-app.sh
+
+      - name: Check envsubst
+        run: |
+          which envsubst
 
       - name: Copy Kubernetes YAML
         run: |
@@ -115,7 +119,21 @@ jobs:
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
         run: |
-          /home/ubuntu/apps/deploy/scripts/deploy_app.sh admin
+          /home/ubuntu/apps/deploy/scripts/deploy-app.sh admin
+
+      - name: Debug Kubernetes state
+        run: |
+          echo "===== pods ====="
+          kubectl get pods -o wide
+          echo "===== deployment ====="
+          kubectl get deployment admin-service -o wide
+          echo "===== describe deployment ====="
+          kubectl describe deployment admin-service || true
+          echo "===== recent pod logs ====="
+          POD_NAME=$(kubectl get pods -l app=admin-service -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)
+          if [ -n "$POD_NAME" ]; then
+            kubectl logs "$POD_NAME" --tail=200 || true
+          fi
 
       - name: Health check
         run: |
@@ -125,12 +143,18 @@ jobs:
           PF_PID=$!
           sleep 5
 
-          STATUS_CODE=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+          STATUS_CODE=$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
             http://localhost:9008/actuator/health/readiness || echo "000")
 
           kill $PF_PID || true
 
           if [[ "$STATUS_CODE" != "200" ]]; then
-            echo "Health check failed"
+            echo "Health check failed with status=$STATUS_CODE"
+            POD_NAME=$(kubectl get pods -l app=admin-service -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)
+            if [ -n "$POD_NAME" ]; then
+              kubectl logs "$POD_NAME" --tail=200 || true
+            fi
             exit 1
           fi
+
+          echo "Health check passed with status $STATUS_CODE"

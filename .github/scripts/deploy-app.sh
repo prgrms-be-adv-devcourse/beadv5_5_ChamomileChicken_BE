@@ -51,7 +51,7 @@ create_secret_if_exists "${SERVICE}-secret" "$ENV_DIR/${SERVICE}_secret.env"
 # 3. deployment yaml 적용
 if [ -f "$K3S_DIR/${SERVICE}-service.yml" ]; then
   echo "Applying Kubernetes YAML: $K3S_DIR/${SERVICE}-service.yml"
-  kubectl apply -f "$K3S_DIR/${SERVICE}-service.yml"
+  envsubst < "$K3S_DIR/${SERVICE}-service.yml" | kubectl apply -f -
 else
   echo "YAML file not found: $K3S_DIR/${SERVICE}-service.yml"
   exit 1
