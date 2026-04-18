@@ -64,23 +64,30 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
-        String path = exchange.getRequest().getURI().getPath();
-        HttpMethod httpMethod = exchange.getRequest().getMethod();
+        ServerWebExchange sanitizedExchange = exchange.mutate()
+            .request(r -> r.headers(headers -> {
+                headers.remove("X-User-Id");
+                headers.remove("X-User-Role");
+            }))
+            .build();
+
+        String path = sanitizedExchange.getRequest().getURI().getPath();
+        HttpMethod httpMethod = sanitizedExchange.getRequest().getMethod();
 
         if (httpMethod == null) {
             log.warn("[GATEWAY] Unknown HTTP method for path: {}", path);
-            return onError(exchange, JwtErrorCode.INVALID_TOKEN);
+            return onError(sanitizedExchange, JwtErrorCode.INVALID_TOKEN);
         }
 
         if (isWhitelisted(path, httpMethod)) {
-            return chain.filter(exchange);
+            return chain.filter(sanitizedExchange);
         }
 
-        String token = tokenResolver.resolveToken(exchange);
+        String token = tokenResolver.resolveToken(sanitizedExchange);
 
         if (token == null) {
             log.warn("[GATEWAY] Token is missing for path: {} {}", httpMethod, path);
-            return onError(exchange, JwtErrorCode.EMPTY_TOKEN);
+            return onError(sanitizedExchange, JwtErrorCode.EMPTY_TOKEN);
         }
 
         // 성공 시 비동기 Redis 블랙리스트 조회로 연결
@@ -88,20 +95,20 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
             Claims claims = jwtProvider.parseClaims(token);
 
             if (!jwtProvider.isAccessToken(claims)) {
-                return onError(exchange, JwtErrorCode.INVALID_TOKEN);
+                return onError(sanitizedExchange, JwtErrorCode.INVALID_TOKEN);
             }
 
             return redisTemplate.hasKey(BLACKLIST_PREFIX + token)
                 .flatMap(isBlacklisted -> {
                     if (isBlacklisted) {
                         log.warn("[GATEWAY] Blacklisted token. Path: {} {}", httpMethod, path);
-                        return onError(exchange, JwtErrorCode.INVALID_TOKEN);
+                        return onError(sanitizedExchange, JwtErrorCode.INVALID_TOKEN);
                     }
 
                     UUID userId = jwtProvider.getUserId(claims);
                     String role = jwtProvider.getRole(claims);
 
-                    ServerWebExchange mutatedExchange = exchange.mutate()
+                    ServerWebExchange mutatedExchange = sanitizedExchange.mutate()
                         .request(r -> {
                             r.header("X-User-Id", userId.toString());
                             if (role != null) {
@@ -114,12 +121,12 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
                 })
                 .onErrorResume(e -> {
                     log.error("[GATEWAY] Redis error: {}", e.getMessage());
-                    return onError(exchange, JwtErrorCode.INVALID_TOKEN);
+                    return onError(sanitizedExchange, JwtErrorCode.INVALID_TOKEN);
                 });
 
         } catch (JwtAuthException e) {
             log.error("[GATEWAY] Auth Exception: {} {} - {}", httpMethod, path, e.getErrorCode().getMessage());
-            return onError(exchange, e.getErrorCode());
+            return onError(sanitizedExchange, e.getErrorCode());
         }
     }
 
