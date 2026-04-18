@@ -33,7 +33,6 @@
 
 | Method | Path | Auth | 설명 |
 |--------|------|------|------|
-| POST | `/internal-batch/settlements/load-targets` | ⚙️ Internal | 정산 대상 적재 배치 실행 |
 | POST | `/internal-batch/settlements/calculate` | ⚙️ Internal | 정산 계산 배치 실행 |
 | POST | `/internal-batch/settlements/transfer` | ⚙️ Internal | 정산 송금 배치 실행 |
 
@@ -41,5 +40,18 @@
 
 | 파라미터 | 타입 | 설명 |
 |---------|------|------|
-| targetDate | LocalDate | load-targets: 대상 날짜 (미입력 시 전일) |
 | settlementMonth | String (yyyy-MM) | calculate/transfer: 정산 월 (미입력 시 전월) |
+
+### POST `/internal-batch/settlements/calculate`
+
+`settlementCalculateJob`을 실행한다.
+
+- 1단계: `SettlementTarget`의 `PENDING` 건을 읽어 `SettlementTargetCalculation` 생성
+- 2단계: seller/month 집계 결과로 `Settlement`, `SettlementHistory` 생성
+
+### POST `/internal-batch/settlements/transfer`
+
+`settlementTransferJob`을 실행한다.
+
+- `READY` 상태 정산만 대상으로 송금을 시도
+- 성공 시 `SENT`, 실패 시 `FAILED`, 송금 불가 사유가 있으면 `HOLD`
