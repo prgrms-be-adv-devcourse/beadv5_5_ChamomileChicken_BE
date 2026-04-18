@@ -20,9 +20,6 @@ import lombok.NoArgsConstructor;
 @Table(name = "settlement_targets")
 public class SettlementTarget extends BaseEntity {
 
-	/**
-	 * 형식: yyyy-MM
-	 */
 	@Column(name = "settlement_month", nullable = false, length = 7)
 	private String settlementMonth;
 
@@ -41,77 +38,46 @@ public class SettlementTarget extends BaseEntity {
 	@Column(name = "product_id", nullable = false)
 	private UUID productId;
 
-	@Column(name = "product_schedule_id", nullable = false)
-	private UUID productScheduleId;
-
-	@Column(name = "buyer_id", nullable = false)
-	private UUID buyerId;
-
-	@Column(name = "participant_user_id")
-	private UUID participantUserId;
-
 	@Enumerated(EnumType.STRING)
 	@Column(name = "target_type", nullable = false, length = 20)
 	private SettlementTargetType targetType;
 
-	/**
-	 * 원천 데이터 상태 저장
-	 * PAYMENT -> PAID
-	 * REFUND -> COMPLETED
-	 */
-	@Column(name = "source_status", nullable = false, length = 30)
-	private String sourceStatus;
-
-	@Column(name = "quantity", nullable = false)
-	private Integer quantity;
-
-	@Column(name = "unit_price", nullable = false, precision = 19, scale = 2)
-	private BigDecimal unitPrice;
-
 	@Column(name = "gross_amount", nullable = false, precision = 19, scale = 2)
 	private BigDecimal grossAmount;
-
-	/**
-	 * 정산 반영 금액
-	 * 결제면 양수
-	 * 환불이면 음수
-	 */
-	@Column(name = "settlement_amount", nullable = false, precision = 19, scale = 2)
-	private BigDecimal settlementAmount;
 
 	@Column(name = "occurred_at", nullable = false)
 	private LocalDateTime occurredAt;
 
-	public SettlementTarget(
+	@Enumerated(EnumType.STRING)
+	@Column(name = "calculation_status", nullable = false, length = 20)
+	private SettlementTargetCalculationStatus calculationStatus;
+
+	@Column(name = "calculation_requested_at")
+	private LocalDateTime calculationRequestedAt;
+
+	@Column(name = "calculation_completed_at")
+	private LocalDateTime calculationCompletedAt;
+
+	@Column(name = "calculation_failed_reason", length = 500)
+	private String calculationFailedReason;
+
+	private SettlementTarget(
 		String settlementMonth,
 		UUID sellerId,
 		UUID orderId,
 		UUID paymentId,
 		UUID refundId,
 		UUID productId,
-		UUID productScheduleId,
-		UUID buyerId,
-		UUID participantUserId,
 		SettlementTargetType targetType,
-		String sourceStatus,
-		Integer quantity,
-		BigDecimal unitPrice,
 		BigDecimal grossAmount,
-		BigDecimal settlementAmount,
 		LocalDateTime occurredAt
 	) {
 		validateSettlementMonth(settlementMonth);
-		validateSellerId(sellerId);
-		validateOrderId(orderId);
-		validateProductId(productId);
-		validateProductScheduleId(productScheduleId);
-		validateBuyerId(buyerId);
+		validateRequiredId(sellerId, "판매자 ID");
+		validateRequiredId(orderId, "주문 ID");
+		validateRequiredId(productId, "상품 ID");
 		validateTargetType(targetType);
-		validateSourceStatus(sourceStatus);
-		validateQuantity(quantity);
-		validateAmount(unitPrice, "단가");
-		validateAmount(grossAmount, "총 주문 금액");
-		validateAmount(settlementAmount, "정산 반영 금액");
+		validateAmount(grossAmount, "원천 거래 금액");
 		validateOccurredAt(occurredAt);
 		validateReferenceIds(targetType, paymentId, refundId);
 
@@ -121,16 +87,11 @@ public class SettlementTarget extends BaseEntity {
 		this.paymentId = paymentId;
 		this.refundId = refundId;
 		this.productId = productId;
-		this.productScheduleId = productScheduleId;
-		this.buyerId = buyerId;
-		this.participantUserId = participantUserId;
 		this.targetType = targetType;
-		this.sourceStatus = sourceStatus;
-		this.quantity = quantity;
-		this.unitPrice = unitPrice;
 		this.grossAmount = grossAmount;
-		this.settlementAmount = settlementAmount;
 		this.occurredAt = occurredAt;
+		this.calculationStatus = SettlementTargetCalculationStatus.PENDING;
+		this.calculationRequestedAt = LocalDateTime.now();
 	}
 
 	public static SettlementTarget forPayment(
@@ -139,11 +100,6 @@ public class SettlementTarget extends BaseEntity {
 		UUID orderId,
 		UUID paymentId,
 		UUID productId,
-		UUID productScheduleId,
-		UUID buyerId,
-		UUID participantUserId,
-		Integer quantity,
-		BigDecimal unitPrice,
 		BigDecimal grossAmount,
 		LocalDateTime occurredAt
 	) {
@@ -154,14 +110,7 @@ public class SettlementTarget extends BaseEntity {
 			paymentId,
 			null,
 			productId,
-			productScheduleId,
-			buyerId,
-			participantUserId,
 			SettlementTargetType.PAYMENT,
-			"PAID",
-			quantity,
-			unitPrice,
-			grossAmount,
 			grossAmount,
 			occurredAt
 		);
@@ -174,12 +123,6 @@ public class SettlementTarget extends BaseEntity {
 		UUID paymentId,
 		UUID refundId,
 		UUID productId,
-		UUID productScheduleId,
-		UUID buyerId,
-		UUID participantUserId,
-		Integer quantity,
-		BigDecimal unitPrice,
-		BigDecimal grossAmount,
 		BigDecimal refundAmount,
 		LocalDateTime occurredAt
 	) {
@@ -190,17 +133,22 @@ public class SettlementTarget extends BaseEntity {
 			paymentId,
 			refundId,
 			productId,
-			productScheduleId,
-			buyerId,
-			participantUserId,
 			SettlementTargetType.REFUND,
-			"COMPLETED",
-			quantity,
-			unitPrice,
-			grossAmount,
 			refundAmount.negate(),
 			occurredAt
 		);
+	}
+
+	public void markCalculated() {
+		this.calculationStatus = SettlementTargetCalculationStatus.CALCULATED;
+		this.calculationCompletedAt = LocalDateTime.now();
+		this.calculationFailedReason = null;
+	}
+
+	public void markCalculationFailed(String reason) {
+		this.calculationStatus = SettlementTargetCalculationStatus.FAILED;
+		this.calculationCompletedAt = LocalDateTime.now();
+		this.calculationFailedReason = reason;
 	}
 
 	private void validateSettlementMonth(String settlementMonth) {
@@ -209,51 +157,15 @@ public class SettlementTarget extends BaseEntity {
 		}
 	}
 
-	private void validateSellerId(UUID sellerId) {
-		if (sellerId == null) {
-			throw new IllegalArgumentException("판매자 ID는 null일 수 없습니다.");
-		}
-	}
-
-	private void validateOrderId(UUID orderId) {
-		if (orderId == null) {
-			throw new IllegalArgumentException("주문 ID는 null일 수 없습니다.");
-		}
-	}
-
-	private void validateProductId(UUID productId) {
-		if (productId == null) {
-			throw new IllegalArgumentException("상품 ID는 null일 수 없습니다.");
-		}
-	}
-
-	private void validateProductScheduleId(UUID productScheduleId) {
-		if (productScheduleId == null) {
-			throw new IllegalArgumentException("상품 일정 ID는 null일 수 없습니다.");
-		}
-	}
-
-	private void validateBuyerId(UUID buyerId) {
-		if (buyerId == null) {
-			throw new IllegalArgumentException("구매자 ID는 null일 수 없습니다.");
+	private void validateRequiredId(UUID id, String fieldName) {
+		if (id == null) {
+			throw new IllegalArgumentException(fieldName + "는 null일 수 없습니다.");
 		}
 	}
 
 	private void validateTargetType(SettlementTargetType targetType) {
 		if (targetType == null) {
 			throw new IllegalArgumentException("정산 대상 타입은 null일 수 없습니다.");
-		}
-	}
-
-	private void validateSourceStatus(String sourceStatus) {
-		if (sourceStatus == null || sourceStatus.isBlank()) {
-			throw new IllegalArgumentException("원천 상태는 비어 있을 수 없습니다.");
-		}
-	}
-
-	private void validateQuantity(Integer quantity) {
-		if (quantity == null || quantity <= 0) {
-			throw new IllegalArgumentException("수량은 1 이상이어야 합니다.");
 		}
 	}
 
@@ -269,22 +181,12 @@ public class SettlementTarget extends BaseEntity {
 		}
 	}
 
-	private void validateReferenceIds(
-		SettlementTargetType targetType,
-		UUID paymentId,
-		UUID refundId
-	) {
+	private void validateReferenceIds(SettlementTargetType targetType, UUID paymentId, UUID refundId) {
 		if (targetType == SettlementTargetType.PAYMENT && paymentId == null) {
-			throw new IllegalArgumentException("결제 정산 대상은 paymentId가 필요합니다.");
+			throw new IllegalArgumentException("결제 정산 대상은 결제 ID가 필요합니다.");
 		}
-
-		if (targetType == SettlementTargetType.REFUND) {
-			if (paymentId == null) {
-				throw new IllegalArgumentException("환불 정산 대상은 paymentId가 필요합니다.");
-			}
-			if (refundId == null) {
-				throw new IllegalArgumentException("환불 정산 대상은 refundId가 필요합니다.");
-			}
+		if (targetType == SettlementTargetType.REFUND && refundId == null) {
+			throw new IllegalArgumentException("환불 정산 대상은 환불 ID가 필요합니다.");
 		}
 	}
 

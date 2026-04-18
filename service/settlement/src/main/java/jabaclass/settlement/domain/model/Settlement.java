@@ -33,6 +33,16 @@ public class Settlement extends BaseEntity {
 	@Column(name = "original_amount", nullable = false, precision = 19, scale = 2)
 	private BigDecimal originalAmount;
 
+	@Column(name = "seller_grade_code", nullable = false, length = 30)
+	@Enumerated(EnumType.STRING)
+	private SellerGradeType sellerGradeCode;
+
+	@Column(name = "seller_grade_policy_id", nullable = false)
+	private UUID sellerGradePolicyId;
+
+	@Column(name = "grade_base_amount", nullable = false, precision = 19, scale = 2)
+	private BigDecimal gradeBaseAmount;
+
 	@Column(name = "fee_amount", nullable = false, precision = 19, scale = 2)
 	private BigDecimal feeAmount;
 
@@ -56,6 +66,9 @@ public class Settlement extends BaseEntity {
 		UUID sellerId,
 		String settlementMonth,
 		BigDecimal originalAmount,
+		SellerGradeType sellerGradeCode,
+		UUID sellerGradePolicyId,
+		BigDecimal gradeBaseAmount,
 		BigDecimal feeAmount,
 		BigDecimal feeRate,
 		BigDecimal settlementAmount,
@@ -64,6 +77,9 @@ public class Settlement extends BaseEntity {
 		validateSellerId(sellerId);
 		validateSettlementMonth(settlementMonth);
 		validateAmount(originalAmount, "정산 원금");
+		validateSellerGradeCode(sellerGradeCode);
+		validateSellerGradePolicyId(sellerGradePolicyId);
+		validateAmount(gradeBaseAmount, "등급 산정 기준 금액");
 		validateAmount(feeAmount, "수수료");
 		validateAmount(feeRate, "수수료율");
 		validateAmount(settlementAmount, "최종 정산금");
@@ -72,6 +88,9 @@ public class Settlement extends BaseEntity {
 		this.sellerId = sellerId;
 		this.settlementMonth = settlementMonth;
 		this.originalAmount = originalAmount;
+		this.sellerGradeCode = sellerGradeCode;
+		this.sellerGradePolicyId = sellerGradePolicyId;
+		this.gradeBaseAmount = gradeBaseAmount;
 		this.feeAmount = feeAmount;
 		this.feeRate = feeRate;
 		this.settlementAmount = settlementAmount;
@@ -82,6 +101,9 @@ public class Settlement extends BaseEntity {
 		UUID sellerId,
 		String settlementMonth,
 		BigDecimal originalAmount,
+		SellerGradeType sellerGradeCode,
+		UUID sellerGradePolicyId,
+		BigDecimal gradeBaseAmount,
 		BigDecimal feeAmount,
 		BigDecimal feeRate,
 		BigDecimal settlementAmount
@@ -90,6 +112,9 @@ public class Settlement extends BaseEntity {
 			sellerId,
 			settlementMonth,
 			originalAmount,
+			sellerGradeCode,
+			sellerGradePolicyId,
+			gradeBaseAmount,
 			feeAmount,
 			feeRate,
 			settlementAmount,
@@ -137,6 +162,18 @@ public class Settlement extends BaseEntity {
 	private void validateAmount(BigDecimal amount, String fieldName) {
 		if (amount == null) {
 			throw new IllegalArgumentException(fieldName + "은 null일 수 없습니다.");
+		}
+	}
+
+	private void validateSellerGradeCode(SellerGradeType sellerGradeCode) {
+		if (sellerGradeCode == null) {
+			throw new IllegalArgumentException("판매자 등급 코드는 비어 있을 수 없습니다.");
+		}
+	}
+
+	private void validateSellerGradePolicyId(UUID sellerGradePolicyId) {
+		if (sellerGradePolicyId == null) {
+			throw new IllegalArgumentException("판매자 등급 정책 ID는 null일 수 없습니다.");
 		}
 	}
 
