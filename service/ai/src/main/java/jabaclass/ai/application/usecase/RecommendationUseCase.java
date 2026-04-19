@@ -1,4 +1,9 @@
 package jabaclass.ai.application.usecase;
 
-public class RecommendationUseCase {
+import java.util.UUID;
+
+import jabaclass.ai.presentation.dto.response.RecommendationResponseDto;
+
+public interface RecommendationUseCase {
+	RecommendationResponseDto recommend(UUID userId);
 }
