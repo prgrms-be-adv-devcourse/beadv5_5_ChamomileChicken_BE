@@ -1,5 +1,6 @@
 package jabaclass.apigateway.filter;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.UUID;
 
@@ -45,6 +46,9 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
     private final RbacService rbacService;
 
     private static final String BLACKLIST_PREFIX = "blacklist:";
+
+    private static final byte[] FORBIDDEN_BODY =
+        "{\"message\":\"접근 권한이 없습니다.\"}".getBytes(StandardCharsets.UTF_8);
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
@@ -156,16 +160,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         ServerHttpResponse response = exchange.getResponse();
         response.setStatusCode(HttpStatus.FORBIDDEN);
         response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
-
-        try {
-            byte[] bytes = objectMapper.writeValueAsBytes(
-                Map.of("message", "접근 권한이 없습니다.")
-            );
-            DataBuffer buffer = response.bufferFactory().wrap(bytes);
-            return response.writeWith(Mono.just(buffer));
-        } catch (JsonProcessingException e) {
-            log.error("[GATEWAY] Failed to serialize error response", e);
-            return response.setComplete();
-        }
+        DataBuffer buffer = response.bufferFactory().wrap(FORBIDDEN_BODY);
+        return response.writeWith(Mono.just(buffer));
     }
 }
