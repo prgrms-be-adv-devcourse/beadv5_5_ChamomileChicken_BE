@@ -10,7 +10,8 @@
 | JWT 파싱 위치 | 각 서비스마다 중복 처리 | Gateway 단일 처리 |
 | common 모듈 의존 | 모든 서비스가 JWT 코드 의존 | 의존성 제거 가능 |
 | 인증 일관성 | 서비스마다 구현 방식 상이 | Gateway에서 통일 |
-| 사용자 식별 방식 | SecurityUtil / @AuthenticationPrincipal 혼용 | @CurrentUser 통일 |
+| 화이트리스트 관리 | 코드 하드코딩 | DB 관리 (gateway_whitelist) |
+| 역할 기반 접근 제어 | 없음 | DB 관리 (gateway_route_policy) |
 
 ---
 
@@ -20,10 +21,12 @@
 클라이언트
   → Authorization: Bearer <access_token>
   → API Gateway (:8080)
-      1. 화이트리스트 경로 확인
-      2. JWT 서명 검증
-      3. Redis 블랙리스트 조회 (로그아웃 여부 확인)
-      4. X-User-Id, X-User-Role 헤더 주입
+      1. X-User-Id / X-User-Role 헤더 위조 방지 (sanitize)
+      2. DB(gateway_whitelist) 조회 → 화이트리스트 경로면 바로 통과
+      3. JWT 서명 검증 및 Access Token 타입 확인
+      4. Redis 블랙리스트 조회 (로그아웃 여부 확인)
+      5. DB(gateway_route_policy) 조회 → RBAC 역할 검사
+      6. X-User-Id, X-User-Role 헤더 주입
   → 각 서비스 (내부망)
       @CurrentUser UUID userId       ← X-User-Id 헤더 파싱
       @CurrentUserRole String role   ← X-User-Role 헤더 파싱 (필요한 서비스만)
@@ -37,11 +40,12 @@
 
 요청마다 실행되는 `GlobalFilter`. 처리 순서:
 
-1. 화이트리스트 경로 확인 → 해당하면 JWT 검증 없이 통과
-2. `Authorization` 헤더에서 Access Token 추출
-3. JWT 서명 검증 및 Access Token 타입 확인
-4. Redis 블랙리스트 조회 (로그아웃된 토큰 차단)
-5. claims에서 `userId`, `role` 추출 → 헤더에 주입
+1. **헤더 위조 방지**: 요청의 `X-User-Id`, `X-User-Role` 헤더를 제거 (클라이언트 위조 차단)
+2. **화이트리스트 확인**: `WhitelistService`에서 DB 조회 → 해당하면 JWT 검증 없이 통과
+3. **JWT 검증**: `Authorization` 헤더에서 Access Token 추출, 서명 검증, 토큰 타입 확인
+4. **Redis 블랙리스트 조회**: 로그아웃 처리된 토큰 차단
+5. **RBAC 검사**: `RbacService`에서 DB 조회 → role이 허용되지 않으면 403 반환
+6. **헤더 주입**: claims에서 `userId`, `role` 추출 후 내부 헤더로 주입
 
 ```java
 ServerWebExchange mutatedExchange = exchange.mutate()
@@ -54,16 +58,69 @@ ServerWebExchange mutatedExchange = exchange.mutate()
     .build();
 ```
 
-### 화이트리스트 (JWT 불필요 경로)
+---
 
-| Method | Path |
-|--------|------|
-| POST | /api/v1/auth/login |
-| POST | /api/v1/auth/reissue |
-| POST | /api/v1/users/register |
-| POST | /api/v1/users/email-check |
-| POST | /api/v1/email/** |
-| GET | /api/v1/products/** |
+### WhitelistService — 화이트리스트 (JWT 불필요 경로)
+
+DB(`gateway_whitelist`)에서 조회하며, Caffeine 로컬 캐시(TTL 10분)로 매 요청 DB I/O를 방지한다.
+
+| Method | Path | 설명 |
+|--------|------|------|
+| POST | /api/v1/auth/login | 로그인 |
+| POST | /api/v1/auth/reissue | 토큰 재발급 |
+| POST | /api/v1/users/register | 회원가입 |
+| POST | /api/v1/users/email-check | 이메일 중복 확인 |
+| POST | /api/v1/email/** | 이메일 인증 |
+| GET | /api/v1/products | 상품 목록 조회 |
+| GET | /api/v1/products/* | 상품 상세 조회 |
+| GET | /api/v1/products/*/schedules | 상품 일정 목록 조회 |
+| GET | /api/v1/products/*/availability | 스케줄 예약 가능 여부 |
+| GET | /api/v1/products/*/reviewList | 상품 리뷰 목록 조회 |
+| GET | /api/v1/products/*/reviews/* | 리뷰 단건 조회 |
+
+화이트리스트 정책 변경은 DB 데이터 수정만으로 적용 가능하다. 캐시 TTL(10분) 이내엔 기존 정책이 유지된다.
+
+---
+
+### RbacService — 역할 기반 접근 제어
+
+DB(`gateway_route_policy`)에서 조회하며, Caffeine 로컬 캐시(TTL 3분)를 사용한다.
+
+**매칭 로직**: 경로 패턴이 일치하는 모든 정책 중 **패턴 길이 기준 내림차순 정렬** 후 가장 구체적인 정책 하나를 선택한다.
+- 정책이 없는 경로: 통과 (인증만 되면 허용)
+- 정책이 있는 경로: `allowed_roles`에 포함된 경우만 허용
+
+| Method | Path | allowed_roles | 설명 |
+|--------|------|---------------|------|
+| POST | /api/v1/products | SELLER,ADMIN | 상품 등록 |
+| PUT | /api/v1/products/* | SELLER,ADMIN | 상품 수정 |
+| DELETE | /api/v1/products/* | SELLER,ADMIN | 상품 삭제 |
+| POST | /api/v1/products/*/schedules | SELLER,ADMIN | 일정 등록 |
+| PUT | /api/v1/products/*/schedules/* | SELLER,ADMIN | 일정 수정 |
+| DELETE | /api/v1/products/*/schedules/* | SELLER,ADMIN | 일정 삭제 |
+| GET | /api/v1/settlements | SELLER,ADMIN | 정산 목록 조회 |
+| GET | /api/v1/settlements/ready | SELLER,ADMIN | READY 정산 목록 |
+| GET | /api/v1/settlements/* | SELLER,ADMIN | 정산 단건 조회 |
+| GET | /api/v1/admins/** | ADMIN | 어드민 조회 |
+| POST | /api/v1/admins/** | ADMIN | 어드민 등록 |
+| PATCH | /api/v1/admins/** | ADMIN | 어드민 수정 |
+| DELETE | /api/v1/admins/** | ADMIN | 어드민 삭제 |
+
+---
+
+### DB 연동 — R2DBC
+
+Spring Cloud Gateway는 WebFlux(Netty 이벤트 루프) 기반이므로 JDBC(블로킹)을 사용할 수 없다.
+`spring-boot-starter-data-r2dbc`를 사용하여 DB 조회를 논블로킹으로 처리한다.
+
+| 환경 | Driver | URL |
+|------|--------|-----|
+| dev | r2dbc-h2 (in-memory) | `r2dbc:h2:mem:///gateway` |
+| prod | r2dbc-postgresql | `r2dbc:postgresql://${POSTGRES_HOST}/...` |
+
+`schema.sql` / `data.sql`은 `spring.sql.init.mode=always` 설정으로 dev 환경에서 자동 실행된다.
+
+---
 
 ### RouteConfig — 서비스 라우팅
 
@@ -72,10 +129,23 @@ ServerWebExchange mutatedExchange = exchange.mutate()
 | /api/v1/files/** | File | 9000 |
 | /api/v1/payments/** | Payment | 9001 |
 | /api/v1/settlements/** | Settlement | 9002 |
-| /api/v1/auth/**, /api/v1/users/**, /api/v1/email/**, /api/v1/deposits/** | User | 9003 |
+| /api/v1/email/** | User (Rate Limit 적용) | 9003 |
+| /api/v1/auth/**, /api/v1/users/**, /api/v1/deposits/**, /oauth2/authorization/**, /login/oauth2/code/** | User | 9003 |
 | /api/v1/products/** | Product | 9004 |
 | /api/v1/orders/** | Order | 9005 |
 | /api/v1/admins/** | Admin | 9007 |
+
+---
+
+### GatewayConfig — Rate Limiting
+
+이메일 인증 경로(`/api/v1/email/**`)에 Redis 기반 Rate Limiting이 적용된다.
+`KeyResolver`는 `X-Forwarded-For` 헤더를 우선 확인하여 프록시/로드밸런서 환경에서도 실제 클라이언트 IP를 식별한다.
+
+```
+replenishRate: 1 req/s
+burstCapacity: 3 req
+```
 
 ---
 
@@ -245,6 +315,11 @@ public ResponseEntity<?> create(
 ---
 
 ## 보안 고려사항
+
+### 헤더 위조 방지
+
+클라이언트가 `X-User-Id`, `X-User-Role` 헤더를 임의로 설정해 권한을 위조하는 것을 막기 위해,
+`JwtAuthenticationFilter`가 가장 먼저 해당 헤더를 제거(`sanitize`)한 뒤 JWT 검증 결과로만 재주입한다.
 
 ### anyRequest().permitAll() 보완
 
