@@ -36,6 +36,9 @@ public class SettlementTargetCalculation extends BaseEntity {
 	@Column(name = "applied_promotion_type", length = 50)
 	private String appliedPromotionType;
 
+	@Column(name = "applied_fee_rate", precision = 10, scale = 4)
+	private BigDecimal appliedFeeRate;
+
 	@Column(name = "original_payment_target_calculation_id")
 	private UUID originalPaymentTargetCalculationId;
 
@@ -49,6 +52,7 @@ public class SettlementTargetCalculation extends BaseEntity {
 		BigDecimal settlementBaseAmount,
 		UUID appliedPromotionId,
 		String appliedPromotionType,
+		BigDecimal appliedFeeRate,
 		UUID originalPaymentTargetCalculationId
 	) {
 		this.settlementTargetId = settlementTargetId;
@@ -57,6 +61,7 @@ public class SettlementTargetCalculation extends BaseEntity {
 		this.settlementBaseAmount = settlementBaseAmount;
 		this.appliedPromotionId = appliedPromotionId;
 		this.appliedPromotionType = appliedPromotionType;
+		this.appliedFeeRate = appliedFeeRate;
 		this.originalPaymentTargetCalculationId = originalPaymentTargetCalculationId;
 		this.calculatedAt = LocalDateTime.now();
 	}
@@ -64,7 +69,8 @@ public class SettlementTargetCalculation extends BaseEntity {
 	public static SettlementTargetCalculation forPayment(
 		SettlementTarget target,
 		UUID appliedPromotionId,
-		String appliedPromotionType
+		String appliedPromotionType,
+		BigDecimal appliedFeeRate
 	) {
 		BigDecimal settlementBaseAmount = target.getSettlementBaseAmount();
 
@@ -75,6 +81,7 @@ public class SettlementTargetCalculation extends BaseEntity {
 			settlementBaseAmount,
 			appliedPromotionId,
 			appliedPromotionType,
+			appliedFeeRate,
 			null
 		);
 	}
@@ -99,7 +106,26 @@ public class SettlementTargetCalculation extends BaseEntity {
 			refundSettlementBaseAmount,
 			originalPaymentCalculation.getAppliedPromotionId(),
 			originalPaymentCalculation.getAppliedPromotionType(),
+			originalPaymentCalculation.getAppliedFeeRate(),
 			originalPaymentCalculation.getId()
+		);
+	}
+
+	public static SettlementTargetCalculation forRefundWithPromotion(
+		SettlementTarget target,
+		UUID appliedPromotionId,
+		String appliedPromotionType,
+		BigDecimal appliedFeeRate
+	) {
+		return new SettlementTargetCalculation(
+			target.getId(),
+			target.getSettlementMonth(),
+			target.getSellerId(),
+			target.getSettlementBaseAmount(),
+			appliedPromotionId,
+			appliedPromotionType,
+			appliedFeeRate,
+			null
 		);
 	}
 }

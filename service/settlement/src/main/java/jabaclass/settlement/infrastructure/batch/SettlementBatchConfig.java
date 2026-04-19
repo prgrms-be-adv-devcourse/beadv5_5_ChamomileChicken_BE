@@ -1,8 +1,5 @@
 package jabaclass.settlement.infrastructure.batch;
 
-import java.time.YearMonth;
-import java.util.List;
-
 import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.core.job.Job;
 import org.springframework.batch.core.job.builder.JobBuilder;
@@ -13,7 +10,6 @@ import org.springframework.batch.infrastructure.item.ItemProcessor;
 import org.springframework.batch.infrastructure.item.ItemReader;
 import org.springframework.batch.infrastructure.item.ItemWriter;
 import org.springframework.batch.infrastructure.item.support.ListItemReader;
-import org.springframework.batch.infrastructure.repeat.RepeatStatus;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -21,13 +17,8 @@ import org.springframework.transaction.PlatformTransactionManager;
 
 import jabaclass.settlement.application.dto.SettlementTargetSummary;
 import jabaclass.settlement.application.service.SettlementCalculateService;
-import jabaclass.settlement.application.usecase.SettlementTransferUseCase;
 import jabaclass.settlement.domain.model.SettlementTarget;
-import jabaclass.settlement.domain.model.SettlementTargetCalculation;
-import jabaclass.settlement.domain.repository.SettlementHistoryRepository;
-import jabaclass.settlement.domain.repository.SettlementRepository;
 import jabaclass.settlement.domain.repository.SettlementTargetCalculationRepository;
-import jabaclass.settlement.domain.repository.SettlementTargetRepository;
 
 @Configuration
 public class SettlementBatchConfig {
@@ -53,8 +44,8 @@ public class SettlementBatchConfig {
 		JobRepository jobRepository,
 		PlatformTransactionManager transactionManager,
 		ItemReader<SettlementTarget> settlementTargetItemReader,
-		ItemProcessor<SettlementTarget, SettlementTargetCalculationBatchItem> settlementTargetCalculationItemProcessor,
-		ItemWriter<SettlementTargetCalculationBatchItem> settlementTargetCalculationItemWriter
+		SettlementTargetCalculationItemProcessor settlementTargetCalculationItemProcessor,
+		SettlementTargetCalculationItemWriter settlementTargetCalculationItemWriter
 		) {
 			return new StepBuilder("settlementTargetCalculationStep", jobRepository)
 				.<SettlementTarget, SettlementTargetCalculationBatchItem>chunk(CHUNK_SIZE)
@@ -71,47 +62,8 @@ public class SettlementBatchConfig {
 		SettlementCalculateService settlementCalculateService,
 		@Value("#{jobParameters['settlementMonth']}") String settlementMonthParam
 	) {
-		String settlementMonth = resolveSettlementMonth(settlementMonthParam);
+		String settlementMonth = SettlementMonthResolver.resolve(settlementMonthParam);
 		return new ListItemReader<>(settlementCalculateService.findPendingTargets(settlementMonth));
-	}
-
-	@Bean
-	public ItemProcessor<SettlementTarget, SettlementTargetCalculationBatchItem> settlementTargetCalculationItemProcessor(
-		SettlementCalculateService settlementCalculateService
-	) {
-		return target -> {
-			try {
-				SettlementTargetCalculation calculation = settlementCalculateService.calculateTarget(target);
-				settlementCalculateService.markTargetCalculated(target);
-				return new SettlementTargetCalculationBatchItem(target, calculation);
-			} catch (Exception e) {
-				settlementCalculateService.markTargetCalculationFailed(target, e);
-				return new SettlementTargetCalculationBatchItem(target, null);
-			}
-		};
-	}
-
-	@Bean
-	public ItemWriter<SettlementTargetCalculationBatchItem> settlementTargetCalculationItemWriter(
-		SettlementTargetRepository settlementTargetRepository,
-		SettlementTargetCalculationRepository settlementTargetCalculationRepository
-	) {
-		return items -> {
-			List<SettlementTarget> targets = items.getItems().stream()
-				.map(SettlementTargetCalculationBatchItem::target)
-				.toList();
-			List<SettlementTargetCalculation> calculations = items.getItems().stream()
-				.map(SettlementTargetCalculationBatchItem::calculation)
-				.filter(java.util.Objects::nonNull)
-				.toList();
-
-			if (!calculations.isEmpty()) {
-				settlementTargetCalculationRepository.saveAll(calculations);
-			}
-			if (!targets.isEmpty()) {
-				settlementTargetRepository.saveAll(targets);
-			}
-		};
 	}
 
 	@Bean
@@ -120,7 +72,7 @@ public class SettlementBatchConfig {
 		PlatformTransactionManager transactionManager,
 		ItemReader<SettlementTargetSummary> settlementAggregationReader,
 		ItemProcessor<SettlementTargetSummary, MonthlySettlementBatchItem> settlementAggregationProcessor,
-		ItemWriter<MonthlySettlementBatchItem> settlementAggregationWriter
+		SettlementAggregationItemWriter settlementAggregationWriter
 		) {
 			return new StepBuilder("settlementAggregationStep", jobRepository)
 				.<SettlementTargetSummary, MonthlySettlementBatchItem>chunk(CHUNK_SIZE)
@@ -137,7 +89,7 @@ public class SettlementBatchConfig {
 		SettlementTargetCalculationRepository settlementTargetCalculationRepository,
 		@Value("#{jobParameters['settlementMonth']}") String settlementMonthParam
 	) {
-		String settlementMonth = resolveSettlementMonth(settlementMonthParam);
+		String settlementMonth = SettlementMonthResolver.resolve(settlementMonthParam);
 		return new ListItemReader<>(settlementTargetCalculationRepository.findSummaryBySettlementMonth(settlementMonth));
 	}
 
@@ -147,42 +99,8 @@ public class SettlementBatchConfig {
 		SettlementCalculateService settlementCalculateService,
 		@Value("#{jobParameters['settlementMonth']}") String settlementMonthParam
 	) {
-		String settlementMonth = resolveSettlementMonth(settlementMonthParam);
+		String settlementMonth = SettlementMonthResolver.resolve(settlementMonthParam);
 		return summary -> settlementCalculateService.createMonthlySettlementItem(summary, settlementMonth);
-	}
-
-	@Bean
-	public ItemWriter<MonthlySettlementBatchItem> settlementAggregationWriter(
-		SettlementRepository settlementRepository,
-		SettlementHistoryRepository settlementHistoryRepository,
-		SettlementCalculateService settlementCalculateService
-	) {
-		return items -> {
-			List<MonthlySettlementBatchItem> validItems = items.getItems().stream()
-				.filter(java.util.Objects::nonNull)
-				.map(MonthlySettlementBatchItem.class::cast)
-				.toList();
-
-			if (validItems.isEmpty()) {
-				return;
-			}
-
-			List<jabaclass.settlement.domain.model.Settlement> savedSettlements = settlementRepository.saveAll(validItems.stream()
-				.map(MonthlySettlementBatchItem::settlement)
-				.toList());
-
-			List<jabaclass.settlement.domain.model.SettlementHistory> histories = new java.util.ArrayList<>();
-			for (int i = 0; i < savedSettlements.size(); i++) {
-				histories.addAll(settlementCalculateService.createHistories(
-					savedSettlements.get(i),
-					validItems.get(i).calculations()
-				));
-			}
-
-			if (!histories.isEmpty()) {
-				settlementHistoryRepository.saveAll(histories);
-			}
-		};
 	}
 
 	@Bean
@@ -201,25 +119,10 @@ public class SettlementBatchConfig {
 	public Step settlementTransferStep(
 		JobRepository jobRepository,
 		PlatformTransactionManager transactionManager,
-		SettlementTransferUseCase settlementTransferUseCase
+		SettlementTransferTasklet settlementTransferTasklet
 	) {
 		return new StepBuilder("settlementTransferStep", jobRepository)
-			.tasklet((contribution, chunkContext) -> {
-				String settlementMonthParam = (String) chunkContext.getStepContext()
-					.getJobParameters()
-					.get("settlementMonth");
-
-				String settlementMonth = resolveSettlementMonth(settlementMonthParam);
-
-				settlementTransferUseCase.transferMonthly(settlementMonth);
-				return RepeatStatus.FINISHED;
-			}, transactionManager)
+			.tasklet(settlementTransferTasklet, transactionManager)
 			.build();
-	}
-
-	private static String resolveSettlementMonth(String settlementMonthParam) {
-		return settlementMonthParam == null
-			? YearMonth.now().minusMonths(1).toString()
-			: settlementMonthParam;
 	}
 }

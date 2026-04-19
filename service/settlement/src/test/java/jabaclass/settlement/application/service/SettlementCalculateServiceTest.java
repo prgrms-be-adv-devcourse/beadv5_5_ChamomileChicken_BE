@@ -22,14 +22,19 @@ import jabaclass.settlement.application.exception.BusinessException;
 import jabaclass.settlement.domain.model.SellerGrade;
 import jabaclass.settlement.domain.model.SellerGradePolicy;
 import jabaclass.settlement.domain.model.SellerGradeType;
+import jabaclass.settlement.domain.model.SellerPromotion;
+import jabaclass.settlement.domain.model.PromotionType;
 import jabaclass.settlement.domain.model.Settlement;
 import jabaclass.settlement.domain.model.SettlementHistory;
+import jabaclass.settlement.domain.model.SettlementPromotion;
 import jabaclass.settlement.domain.model.SettlementStatus;
 import jabaclass.settlement.domain.model.SettlementTarget;
 import jabaclass.settlement.domain.model.SettlementTargetCalculation;
 import jabaclass.settlement.domain.model.SettlementTargetType;
 import jabaclass.settlement.domain.repository.SellerGradePolicyRepository;
 import jabaclass.settlement.domain.repository.SellerGradeRepository;
+import jabaclass.settlement.domain.repository.SellerPromotionRepository;
+import jabaclass.settlement.domain.repository.SettlementPromotionRepository;
 import jabaclass.settlement.domain.repository.SettlementHistoryRepository;
 import jabaclass.settlement.domain.repository.SettlementRepository;
 import jabaclass.settlement.domain.repository.SettlementTargetCalculationRepository;
@@ -66,6 +71,12 @@ class SettlementCalculateServiceTest {
 	@Mock
 	private SellerGradePolicyRepository sellerGradePolicyRepository;
 
+	@Mock
+	private SettlementPromotionRepository settlementPromotionRepository;
+
+	@Mock
+	private SellerPromotionRepository sellerPromotionRepository;
+
 	@InjectMocks
 	private SettlementCalculateService settlementCalculateService;
 
@@ -98,6 +109,7 @@ class SettlementCalculateServiceTest {
 
 		SettlementTargetCalculation paymentCalculation = SettlementTargetCalculation.forPayment(
 			paymentTarget,
+			null,
 			null,
 			null
 		);
@@ -265,6 +277,132 @@ class SettlementCalculateServiceTest {
 		Settlement settlement = settlementCaptor.getValue().get(0);
 		assertThat(settlement.getSellerGradeCode()).isEqualTo(SellerGradeType.BASIC);
 		assertThat(settlement.getFeeRate()).isEqualByComparingTo("0.033");
+	}
+
+	@Test
+	void 결제_타겟에_프로모션이_있으면_프로모션_수수료율을_적용한다() {
+		UUID sellerId = UUID.randomUUID();
+		String settlementMonth = "2026-03";
+		SettlementTarget paymentTarget = SettlementTarget.forPayment(
+			settlementMonth,
+			sellerId,
+			UUID.randomUUID(),
+			UUID.randomUUID(),
+			UUID.randomUUID(),
+			new BigDecimal("10000.00"),
+			LocalDateTime.of(2026, 3, 10, 12, 0)
+		);
+		assignId(paymentTarget);
+
+		SettlementPromotion promotion = new SettlementPromotion(
+			"신규 셀러 우대",
+			PromotionType.NEW_SELLER,
+			new BigDecimal("0.0100"),
+			30,
+			true
+		);
+		assignId(promotion);
+		SellerPromotion sellerPromotion = SellerPromotion.assign(
+			sellerId,
+			promotion,
+			LocalDateTime.of(2026, 3, 1, 0, 0)
+		);
+
+		SettlementTargetCalculation calculation = SettlementTargetCalculation.forPayment(
+			paymentTarget,
+			promotion.getId(),
+			promotion.getPromotionType().name(),
+			promotion.getFeeRate()
+		);
+
+		given(sellerPromotionRepository.findActiveApplicablePromotion(sellerId, paymentTarget.getOccurredAt()))
+			.willReturn(java.util.Optional.of(sellerPromotion));
+		given(settlementPromotionRepository.findById(sellerPromotion.getPromotionId()))
+			.willReturn(java.util.Optional.of(promotion));
+		given(settlementTargetCalculationRepository.findSummaryBySettlementMonth(settlementMonth))
+			.willReturn(List.of(new SettlementTargetSummary(
+				sellerId,
+				settlementMonth,
+				new BigDecimal("10000.00")
+			)));
+		given(settlementTargetCalculationRepository.findBySettlementMonthAndSellerId(settlementMonth, sellerId))
+			.willReturn(List.of(calculation));
+		given(settlementTargetRepository.findAllByIds(org.mockito.ArgumentMatchers.anyList()))
+			.willReturn(List.of(paymentTarget));
+		given(settlementTargetRepository.sumSettlementBaseAmountBySellerIdAndSettlementMonths(
+			org.mockito.ArgumentMatchers.eq(sellerId),
+			org.mockito.ArgumentMatchers.anyList()
+		)).willReturn(new BigDecimal("10000"));
+		given(sellerGradePolicyRepository.findActiveApplicablePolicy(new BigDecimal("10000")))
+			.willReturn(java.util.Optional.of(basicPolicy()));
+		given(sellerGradeRepository.findBySellerId(sellerId)).willReturn(java.util.Optional.empty());
+		given(settlementRepository.existsBySellerIdAndSettlementMonth(sellerId, settlementMonth)).willReturn(false);
+		given(settlementRepository.saveAll(anyList())).willAnswer(invocation -> {
+			List<Settlement> settlements = invocation.getArgument(0);
+			settlements.forEach(this::assignId);
+			return settlements;
+		});
+		given(settlementHistoryRepository.saveAll(anyList())).willAnswer(invocation -> invocation.getArgument(0));
+		given(sellerGradeRepository.save(org.mockito.ArgumentMatchers.any(SellerGrade.class)))
+			.willAnswer(invocation -> invocation.getArgument(0));
+
+		ArgumentCaptor<List<Settlement>> settlementCaptor = ArgumentCaptor.forClass(List.class);
+
+		SettlementTargetCalculation calculated = settlementCalculateService.calculateTarget(paymentTarget);
+		settlementCalculateService.calculateMonthly(settlementMonth);
+
+		assertThat(calculated.getAppliedPromotionId()).isEqualTo(promotion.getId());
+		assertThat(calculated.getAppliedFeeRate()).isEqualByComparingTo("0.0100");
+		then(settlementRepository).should().saveAll(settlementCaptor.capture());
+		Settlement settlement = settlementCaptor.getValue().get(0);
+		assertThat(settlement.getFeeAmount()).isEqualByComparingTo("100.00");
+		assertThat(settlement.getSettlementAmount()).isEqualByComparingTo("9900.00");
+	}
+
+	@Test
+	void 환불_원결제_계산이_없어도_셀러_프로모션으로_2차_계산한다() {
+		UUID sellerId = UUID.randomUUID();
+		String settlementMonth = "2026-03";
+		SettlementTarget refundTarget = SettlementTarget.forRefund(
+			settlementMonth,
+			sellerId,
+			UUID.randomUUID(),
+			UUID.randomUUID(),
+			UUID.randomUUID(),
+			UUID.randomUUID(),
+			new BigDecimal("3000.00"),
+			LocalDateTime.of(2026, 3, 15, 12, 0)
+		);
+		assignId(refundTarget);
+
+		SettlementPromotion promotion = new SettlementPromotion(
+			"신규 셀러 우대",
+			PromotionType.NEW_SELLER,
+			new BigDecimal("0.0100"),
+			30,
+			true
+		);
+		assignId(promotion);
+		SellerPromotion sellerPromotion = SellerPromotion.assign(
+			sellerId,
+			promotion,
+			LocalDateTime.of(2026, 3, 1, 0, 0)
+		);
+
+		given(settlementTargetRepository.findByPaymentIdAndTargetType(
+			refundTarget.getPaymentId(),
+			SettlementTargetType.PAYMENT
+		)).willReturn(java.util.Optional.empty());
+		given(sellerPromotionRepository.findActiveApplicablePromotion(sellerId, refundTarget.getOccurredAt()))
+			.willReturn(java.util.Optional.of(sellerPromotion));
+		given(settlementPromotionRepository.findById(promotion.getId()))
+			.willReturn(java.util.Optional.of(promotion));
+
+		SettlementTargetCalculation calculation = settlementCalculateService.calculateTarget(refundTarget);
+
+		assertThat(calculation.getSettlementBaseAmount()).isEqualByComparingTo("-3000.00");
+		assertThat(calculation.getAppliedPromotionId()).isEqualTo(promotion.getId());
+		assertThat(calculation.getAppliedFeeRate()).isEqualByComparingTo("0.0100");
 	}
 
 	private SellerGradePolicy goldPolicy() {
