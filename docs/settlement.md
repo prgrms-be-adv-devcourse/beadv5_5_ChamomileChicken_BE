@@ -76,7 +76,7 @@ Batch Scheduler / Controller
 
 | 엔티티 | 설명 | 핵심 필드 |
 |--------|------|-----------|
-| `SettlementTarget` | 결제/환불 원천에서 적재된 정산 대상 데이터 | `sellerId`, `orderId`, `productId`, `paymentId`, `refundId`, `settlementMonth`, `grossAmount`, `targetType`, `calculationStatus` |
+| `SettlementTarget` | 결제/환불 원천에서 적재된 정산 대상 데이터 | `sellerId`, `orderId`, `productId`, `paymentId`, `refundId`, `settlementMonth`, `settlementBaseAmount`, `targetType`, `calculationStatus` |
 | `SettlementTargetCalculation` | 정산 대상 1건을 월 정산 집계용으로 정규화한 계산 결과 | `settlementTargetId`, `settlementBaseAmount`, `appliedPromotionId`, `appliedPromotionType`, `originalPaymentTargetCalculationId` |
 | `Settlement` | 판매자별 월 정산 결과 스냅샷 | `sellerId`, `settlementMonth`, `sellerGradeCode`, `sellerGradePolicyId`, `gradeBaseAmount`, `feeAmount`, `feeRate`, `settlementAmount`, `status` |
 | `SettlementHistory` | 월 정산에 어떤 정산 대상이 포함되었는지 남기는 상세 이력 | `settlementId`, `settlementTargetId`, `sellerId`, `productId`, `originalAmount`, `feeAmount`, `settlementAmount`, `status` |

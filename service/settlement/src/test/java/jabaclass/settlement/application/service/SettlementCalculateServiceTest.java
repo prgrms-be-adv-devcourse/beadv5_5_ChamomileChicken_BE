@@ -107,7 +107,7 @@ class SettlementCalculateServiceTest {
 			paymentCalculation
 		);
 
-		given(settlementTargetRepository.sumGrossAmountBySellerIdAndSettlementMonths(
+		given(settlementTargetRepository.sumSettlementBaseAmountBySellerIdAndSettlementMonths(
 			org.mockito.ArgumentMatchers.eq(sellerId),
 			org.mockito.ArgumentMatchers.anyList()
 		)).willReturn(new BigDecimal("1200000"));
@@ -176,7 +176,7 @@ class SettlementCalculateServiceTest {
 			)));
 		given(settlementTargetCalculationRepository.findBySettlementMonthAndSellerId(settlementMonth, sellerId))
 			.willReturn(List.of());
-		given(settlementTargetRepository.sumGrossAmountBySellerIdAndSettlementMonths(
+		given(settlementTargetRepository.sumSettlementBaseAmountBySellerIdAndSettlementMonths(
 			org.mockito.ArgumentMatchers.eq(sellerId),
 			org.mockito.ArgumentMatchers.anyList()
 		)).willReturn(new BigDecimal("100000"));
@@ -239,7 +239,7 @@ class SettlementCalculateServiceTest {
 			)));
 		given(settlementTargetCalculationRepository.findBySettlementMonthAndSellerId(settlementMonth, sellerId))
 			.willReturn(List.of());
-		given(settlementTargetRepository.sumGrossAmountBySellerIdAndSettlementMonths(
+		given(settlementTargetRepository.sumSettlementBaseAmountBySellerIdAndSettlementMonths(
 			org.mockito.ArgumentMatchers.eq(sellerId),
 			org.mockito.ArgumentMatchers.anyList()
 		)).willReturn(new BigDecimal("10000"));
