@@ -1,4 +1,9 @@
 package jabaclass.ai.domain.model;
 
-public class UserVector {
+public record UserVector(
+	float[] vector
+) {
+	public boolean isEmpty() {
+		return vector == null || vector.length == 0;
+	}
 }
