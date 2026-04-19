@@ -66,7 +66,7 @@ public class SettlementTargetCalculation extends BaseEntity {
 		UUID appliedPromotionId,
 		String appliedPromotionType
 	) {
-		BigDecimal settlementBaseAmount = target.getGrossAmount();
+		BigDecimal settlementBaseAmount = target.getSettlementBaseAmount();
 
 		return new SettlementTargetCalculation(
 			target.getId(),
@@ -84,9 +84,9 @@ public class SettlementTargetCalculation extends BaseEntity {
 		SettlementTarget originalPaymentTarget,
 		SettlementTargetCalculation originalPaymentCalculation
 	) {
-		BigDecimal refundAmount = target.getGrossAmount().abs();
+		BigDecimal refundAmount = target.getSettlementBaseAmount().abs();
 		BigDecimal ratio = refundAmount
-			.divide(originalPaymentTarget.getGrossAmount(), 8, RoundingMode.HALF_UP);
+			.divide(originalPaymentTarget.getSettlementBaseAmount(), 8, RoundingMode.HALF_UP);
 		BigDecimal refundSettlementBaseAmount = originalPaymentCalculation.getSettlementBaseAmount()
 			.multiply(ratio)
 			.setScale(2, RoundingMode.DOWN)

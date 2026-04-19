@@ -133,7 +133,7 @@ public class SettlementCalculateService implements SettlementCalculateUseCase {
 			baseMonth.toString()
 		);
 
-		return settlementTargetRepository.sumGrossAmountBySellerIdAndSettlementMonths(sellerId, recentThreeMonths);
+		return settlementTargetRepository.sumSettlementBaseAmountBySellerIdAndSettlementMonths(sellerId, recentThreeMonths);
 	}
 
 	public List<SettlementTarget> findPendingTargets(String settlementMonth) {
@@ -288,7 +288,7 @@ public class SettlementCalculateService implements SettlementCalculateUseCase {
 				settlement.getSellerId(),
 				target.getProductId(),
 				settlement.getSettlementMonth(),
-				target.getGrossAmount(),
+				target.getSettlementBaseAmount(),
 				feeAmount,
 				settlementAmount,
 				settlement.getStatus()

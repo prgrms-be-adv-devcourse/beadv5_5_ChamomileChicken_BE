@@ -48,11 +48,11 @@ public class SettlementTargetRepositoryAdapter implements SettlementTargetReposi
 	}
 
 	@Override
-	public BigDecimal sumGrossAmountBySellerIdAndSettlementMonths(UUID sellerId, List<String> settlementMonths) {
+	public BigDecimal sumSettlementBaseAmountBySellerIdAndSettlementMonths(UUID sellerId, List<String> settlementMonths) {
 		if (settlementMonths == null || settlementMonths.isEmpty()) {
 			return BigDecimal.ZERO;
 		}
 
-		return settlementTargetJpaRepository.sumGrossAmountBySellerIdAndSettlementMonths(sellerId, settlementMonths);
+		return settlementTargetJpaRepository.sumSettlementBaseAmountBySellerIdAndSettlementMonths(sellerId, settlementMonths);
 	}
 }

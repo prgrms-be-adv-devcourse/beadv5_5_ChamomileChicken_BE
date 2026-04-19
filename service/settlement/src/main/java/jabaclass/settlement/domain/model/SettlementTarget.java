@@ -41,8 +41,8 @@ public class SettlementTarget extends BaseEntity {
 	@Column(name = "target_type", nullable = false, length = 20)
 	private SettlementTargetType targetType;
 
-	@Column(name = "gross_amount", nullable = false, precision = 19, scale = 2)
-	private BigDecimal grossAmount;
+	@Column(name = "settlement_base_amount", nullable = false, precision = 19, scale = 2)
+	private BigDecimal settlementBaseAmount;
 
 	@Column(name = "occurred_at", nullable = false)
 	private LocalDateTime occurredAt;
@@ -68,7 +68,7 @@ public class SettlementTarget extends BaseEntity {
 		UUID refundId,
 		UUID productId,
 		SettlementTargetType targetType,
-		BigDecimal grossAmount,
+		BigDecimal settlementBaseAmount,
 		LocalDateTime occurredAt
 	) {
 		validateSettlementMonth(settlementMonth);
@@ -76,7 +76,7 @@ public class SettlementTarget extends BaseEntity {
 		validateRequiredId(orderId, "주문 ID");
 		validateRequiredId(productId, "상품 ID");
 		validateTargetType(targetType);
-		validateAmount(grossAmount, "원천 거래 금액");
+		validateAmount(settlementBaseAmount, "정산 기준 금액");
 		validateOccurredAt(occurredAt);
 		validateReferenceIds(targetType, paymentId, refundId);
 
@@ -87,7 +87,7 @@ public class SettlementTarget extends BaseEntity {
 		this.refundId = refundId;
 		this.productId = productId;
 		this.targetType = targetType;
-		this.grossAmount = grossAmount;
+		this.settlementBaseAmount = settlementBaseAmount;
 		this.occurredAt = occurredAt;
 		this.calculationStatus = SettlementTargetCalculationStatus.PENDING;
 		this.calculationRequestedAt = LocalDateTime.now();
@@ -99,7 +99,7 @@ public class SettlementTarget extends BaseEntity {
 		UUID orderId,
 		UUID paymentId,
 		UUID productId,
-		BigDecimal grossAmount,
+		BigDecimal settlementBaseAmount,
 		LocalDateTime occurredAt
 	) {
 		return new SettlementTarget(
@@ -110,7 +110,7 @@ public class SettlementTarget extends BaseEntity {
 			null,
 			productId,
 			SettlementTargetType.PAYMENT,
-			grossAmount,
+			settlementBaseAmount,
 			occurredAt
 		);
 	}
@@ -122,7 +122,7 @@ public class SettlementTarget extends BaseEntity {
 		UUID paymentId,
 		UUID refundId,
 		UUID productId,
-		BigDecimal refundAmount,
+		BigDecimal settlementBaseAmount,
 		LocalDateTime occurredAt
 	) {
 		return new SettlementTarget(
@@ -133,7 +133,7 @@ public class SettlementTarget extends BaseEntity {
 			refundId,
 			productId,
 			SettlementTargetType.REFUND,
-			refundAmount.negate(),
+			settlementBaseAmount.negate(),
 			occurredAt
 		);
 	}

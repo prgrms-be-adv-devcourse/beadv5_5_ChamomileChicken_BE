@@ -26,12 +26,12 @@ public interface SettlementTargetJpaRepository extends JpaRepository<SettlementT
 	);
 
 	@Query("""
-		select coalesce(sum(st.grossAmount), 0)
+		select coalesce(sum(st.settlementBaseAmount), 0)
 		from SettlementTarget st
 		where st.sellerId = :sellerId
 		  and st.settlementMonth in :settlementMonths
 		""")
-	BigDecimal sumGrossAmountBySellerIdAndSettlementMonths(
+	BigDecimal sumSettlementBaseAmountBySellerIdAndSettlementMonths(
 		@Param("sellerId") UUID sellerId,
 		@Param("settlementMonths") List<String> settlementMonths
 	);

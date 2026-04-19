@@ -22,5 +22,5 @@ public interface SettlementTargetRepository {
 		SettlementTargetCalculationStatus calculationStatus
 	);
 
-	BigDecimal sumGrossAmountBySellerIdAndSettlementMonths(UUID sellerId, List<String> settlementMonths);
+	BigDecimal sumSettlementBaseAmountBySellerIdAndSettlementMonths(UUID sellerId, List<String> settlementMonths);
 }
