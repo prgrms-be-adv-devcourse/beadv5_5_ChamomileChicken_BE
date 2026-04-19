@@ -72,7 +72,12 @@ public class HttpCookieOAuth2AuthorizationRequestRepository
 	@Override
 	public OAuth2AuthorizationRequest removeAuthorizationRequest(
 		HttpServletRequest request, HttpServletResponse response) {
-
-		return loadAuthorizationRequest(request);
+		OAuth2AuthorizationRequest authRequest = loadAuthorizationRequest(request);
+		if (authRequest != null) {
+			String key = REDIS_KEY_PREFIX + authRequest.getState();
+			redisTemplate.delete(key);
+			CookieUtils.deleteCookie(request, response, COOKIE_NAME);
+		}
+		return authRequest;
 	}
 }

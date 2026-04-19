@@ -65,9 +65,6 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
 				.toString()
 		);
 
-		CookieUtils.deleteCookie(request, response,
-			HttpCookieOAuth2AuthorizationRequestRepository.COOKIE_NAME);
-
 		// access token은 redirect URL의 fragment로 전달
 		// Vue가 window.location.hash에서 읽고 Pinia에 저장 후 URL 정리
 		response.sendRedirect(redirectUri + "#token=" + tokens.getAccessToken());
