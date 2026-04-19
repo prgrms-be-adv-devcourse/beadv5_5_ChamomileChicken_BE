@@ -57,8 +57,7 @@ public class SettlementCalculateService implements SettlementCalculateUseCase {
 		List<SettlementTargetSummary> summaries =
 			settlementTargetCalculationRepository.findSummaryBySettlementMonth(settlementMonth);
 
-		List<Settlement> createdSettlements = new ArrayList<>();
-		List<SettlementHistory> createdHistories = new ArrayList<>();
+		List<MonthlySettlementBatchItem> monthlyItems = new ArrayList<>();
 
 		for (SettlementTargetSummary summary : summaries) {
 			if (settlementRepository.existsBySellerIdAndSettlementMonth(summary.sellerId(), settlementMonth)) {
@@ -69,8 +68,12 @@ public class SettlementCalculateService implements SettlementCalculateUseCase {
 				summary.sellerId(),
 				settlementMonth
 			);
-			SellerGradePolicy sellerGradePolicy = sellerGradePolicyRepository.findActiveApplicablePolicy(recentThreeMonthSalesAmount)
-				.orElseThrow(() -> new BusinessException(SettlementErrorCode.SELLER_GRADE_POLICY_NOT_FOUND));
+			SellerGradePolicy sellerGradePolicy = resolveSellerGradePolicy(recentThreeMonthSalesAmount);
+			BigDecimal feeAmount = calculateFeeAmount(
+				summary.totalSettlementBaseAmount(),
+				sellerGradePolicy.getFeeRate()
+			);
+			BigDecimal settlementAmount = summary.totalSettlementBaseAmount().subtract(feeAmount);
 			upsertSellerGrade(summary.sellerId(), sellerGradePolicy, settlementMonth);
 			Settlement settlement = Settlement.createReady(
 				summary.sellerId(),
@@ -79,16 +82,14 @@ public class SettlementCalculateService implements SettlementCalculateUseCase {
 				sellerGradePolicy.getGradeCode(),
 				sellerGradePolicy.getId(),
 				recentThreeMonthSalesAmount,
-				summary.totalFeeAmount(),
-				calculateEffectiveFeeRate(summary.totalSettlementBaseAmount(), summary.totalFeeAmount()),
-				summary.totalSettlementAmount()
+				feeAmount,
+				sellerGradePolicy.getFeeRate(),
+				settlementAmount
 			);
 
 			if (!settlement.isTransferable()) {
 				settlement.hold("정산 금액이 0 이하이므로 송금 보류");
 			}
-
-			createdSettlements.add(settlement);
 
 			List<SettlementTargetCalculation> sellerTargets =
 				settlementTargetCalculationRepository.findBySettlementMonthAndSellerId(
@@ -96,18 +97,32 @@ public class SettlementCalculateService implements SettlementCalculateUseCase {
 					summary.sellerId()
 				);
 
-			createdHistories.addAll(createHistories(settlement, sellerTargets));
+			monthlyItems.add(new MonthlySettlementBatchItem(settlement, sellerTargets));
 		}
 
-		if (!createdSettlements.isEmpty()) {
-			settlementRepository.saveAll(createdSettlements);
+		if (monthlyItems.isEmpty()) {
+			return 0;
+		}
+
+		List<Settlement> savedSettlements = settlementRepository.saveAll(
+			monthlyItems.stream()
+				.map(MonthlySettlementBatchItem::settlement)
+				.toList()
+		);
+
+		List<SettlementHistory> createdHistories = new ArrayList<>();
+		for (int i = 0; i < savedSettlements.size(); i++) {
+			createdHistories.addAll(createHistories(
+				savedSettlements.get(i),
+				monthlyItems.get(i).calculations()
+			));
 		}
 
 		if (!createdHistories.isEmpty()) {
 			settlementHistoryRepository.saveAll(createdHistories);
 		}
 
-		return createdSettlements.size();
+		return savedSettlements.size();
 	}
 
 	private BigDecimal calculateRecentThreeMonthSalesAmount(UUID sellerId, String settlementMonth) {
@@ -152,20 +167,10 @@ public class SettlementCalculateService implements SettlementCalculateUseCase {
 			);
 		}
 
-		BigDecimal recentThreeMonthSalesAmount = calculateRecentThreeMonthSalesAmount(
-			target.getSellerId(),
-			target.getSettlementMonth()
-		);
-		SellerGradePolicy sellerGradePolicy = sellerGradePolicyRepository.findActiveApplicablePolicy(recentThreeMonthSalesAmount)
-			.orElseThrow(() -> new BusinessException(SettlementErrorCode.SELLER_GRADE_POLICY_NOT_FOUND));
-		upsertSellerGrade(target.getSellerId(), sellerGradePolicy, target.getSettlementMonth());
-
 		return SettlementTargetCalculation.forPayment(
 			target,
-			sellerGradePolicy,
 			null,
-			null,
-			sellerGradePolicy.getFeeRate()
+			null
 		);
 	}
 
@@ -191,8 +196,12 @@ public class SettlementCalculateService implements SettlementCalculateUseCase {
 			summary.sellerId(),
 			settlementMonth
 		);
-		SellerGradePolicy sellerGradePolicy = sellerGradePolicyRepository.findActiveApplicablePolicy(recentThreeMonthSalesAmount)
-			.orElseThrow(() -> new BusinessException(SettlementErrorCode.SELLER_GRADE_POLICY_NOT_FOUND));
+		SellerGradePolicy sellerGradePolicy = resolveSellerGradePolicy(recentThreeMonthSalesAmount);
+		BigDecimal feeAmount = calculateFeeAmount(
+			summary.totalSettlementBaseAmount(),
+			sellerGradePolicy.getFeeRate()
+		);
+		BigDecimal settlementAmount = summary.totalSettlementBaseAmount().subtract(feeAmount);
 		upsertSellerGrade(summary.sellerId(), sellerGradePolicy, settlementMonth);
 
 		Settlement settlement = Settlement.createReady(
@@ -202,9 +211,9 @@ public class SettlementCalculateService implements SettlementCalculateUseCase {
 			sellerGradePolicy.getGradeCode(),
 			sellerGradePolicy.getId(),
 			recentThreeMonthSalesAmount,
-			summary.totalFeeAmount(),
-			calculateEffectiveFeeRate(summary.totalSettlementBaseAmount(), summary.totalFeeAmount()),
-			summary.totalSettlementAmount()
+			feeAmount,
+			sellerGradePolicy.getFeeRate(),
+			settlementAmount
 		);
 
 		if (!settlement.isTransferable()) {
@@ -219,7 +228,7 @@ public class SettlementCalculateService implements SettlementCalculateUseCase {
 
 		return new MonthlySettlementBatchItem(
 			settlement,
-			createHistories(settlement, sellerTargets)
+			sellerTargets
 		);
 	}
 
@@ -243,7 +252,7 @@ public class SettlementCalculateService implements SettlementCalculateUseCase {
 		sellerGradeRepository.save(sellerGrade);
 	}
 
-	private List<SettlementHistory> createHistories(
+	public List<SettlementHistory> createHistories(
 		Settlement settlement,
 		List<SettlementTargetCalculation> calculations
 	) {
@@ -267,6 +276,12 @@ public class SettlementCalculateService implements SettlementCalculateUseCase {
 				throw new BusinessException(SettlementErrorCode.SETTLEMENT_NOT_FOUND);
 			}
 
+			BigDecimal feeAmount = calculateFeeAmount(
+				calculation.getSettlementBaseAmount(),
+				settlement.getFeeRate()
+			);
+			BigDecimal settlementAmount = calculation.getSettlementBaseAmount().subtract(feeAmount);
+
 			histories.add(SettlementHistory.create(
 				settlement.getId(),
 				calculation.getSettlementTargetId(),
@@ -274,8 +289,8 @@ public class SettlementCalculateService implements SettlementCalculateUseCase {
 				target.getProductId(),
 				settlement.getSettlementMonth(),
 				target.getGrossAmount(),
-				calculation.getFeeAmount(),
-				calculation.getSettlementAmount(),
+				feeAmount,
+				settlementAmount,
 				settlement.getStatus()
 			));
 		}
@@ -283,14 +298,13 @@ public class SettlementCalculateService implements SettlementCalculateUseCase {
 		return histories;
 	}
 
-	private BigDecimal calculateEffectiveFeeRate(
-		BigDecimal totalSettlementBaseAmount,
-		BigDecimal totalFeeAmount
-	) {
-		if (totalSettlementBaseAmount.compareTo(BigDecimal.ZERO) == 0) {
-			return BigDecimal.ZERO;
-		}
+	private SellerGradePolicy resolveSellerGradePolicy(BigDecimal gradeBaseAmount) {
+		return sellerGradePolicyRepository.findActiveApplicablePolicy(gradeBaseAmount)
+			.or(() -> sellerGradePolicyRepository.findActiveApplicablePolicy(BigDecimal.ZERO))
+			.orElseThrow(() -> new BusinessException(SettlementErrorCode.SELLER_GRADE_POLICY_NOT_FOUND));
+	}
 
-		return totalFeeAmount.divide(totalSettlementBaseAmount, 4, java.math.RoundingMode.DOWN);
+	private BigDecimal calculateFeeAmount(BigDecimal settlementBaseAmount, BigDecimal feeRate) {
+		return settlementBaseAmount.multiply(feeRate).setScale(2, java.math.RoundingMode.DOWN);
 	}
 }

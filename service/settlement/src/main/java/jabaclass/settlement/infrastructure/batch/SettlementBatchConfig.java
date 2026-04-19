@@ -154,7 +154,8 @@ public class SettlementBatchConfig {
 	@Bean
 	public ItemWriter<MonthlySettlementBatchItem> settlementAggregationWriter(
 		SettlementRepository settlementRepository,
-		SettlementHistoryRepository settlementHistoryRepository
+		SettlementHistoryRepository settlementHistoryRepository,
+		SettlementCalculateService settlementCalculateService
 	) {
 		return items -> {
 			List<MonthlySettlementBatchItem> validItems = items.getItems().stream()
@@ -166,12 +167,21 @@ public class SettlementBatchConfig {
 				return;
 			}
 
-			settlementRepository.saveAll(validItems.stream()
+			List<jabaclass.settlement.domain.model.Settlement> savedSettlements = settlementRepository.saveAll(validItems.stream()
 				.map(MonthlySettlementBatchItem::settlement)
 				.toList());
-			settlementHistoryRepository.saveAll(validItems.stream()
-				.flatMap(item -> item.histories().stream())
-				.toList());
+
+			List<jabaclass.settlement.domain.model.SettlementHistory> histories = new java.util.ArrayList<>();
+			for (int i = 0; i < savedSettlements.size(); i++) {
+				histories.addAll(settlementCalculateService.createHistories(
+					savedSettlements.get(i),
+					validItems.get(i).calculations()
+				));
+			}
+
+			if (!histories.isEmpty()) {
+				settlementHistoryRepository.saveAll(histories);
+			}
 		};
 	}
 
