@@ -5,7 +5,7 @@ import java.util.UUID;
 
 import org.springframework.stereotype.Repository;
 
-import jabaclass.settlement.domain.model.SettlementPromotion;
+import jabaclass.settlement.domain.model.promotion.SettlementPromotion;
 import jabaclass.settlement.domain.repository.SettlementPromotionRepository;
 import jabaclass.settlement.infrastructure.persistence.SettlementPromotionJpaRepository;
 import lombok.RequiredArgsConstructor;

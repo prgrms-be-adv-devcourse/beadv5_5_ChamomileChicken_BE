@@ -4,7 +4,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-import jabaclass.settlement.domain.model.Settlement;
+import jabaclass.settlement.domain.model.settlement.Settlement;
 
 public record SettlementResponse(
 	UUID id,

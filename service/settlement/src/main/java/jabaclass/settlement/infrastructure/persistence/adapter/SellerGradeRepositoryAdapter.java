@@ -5,7 +5,7 @@ import java.util.UUID;
 
 import org.springframework.stereotype.Repository;
 
-import jabaclass.settlement.domain.model.SellerGrade;
+import jabaclass.settlement.domain.model.grade.SellerGrade;
 import jabaclass.settlement.domain.repository.SellerGradeRepository;
 import jabaclass.settlement.infrastructure.persistence.SellerGradeJpaRepository;
 import lombok.RequiredArgsConstructor;

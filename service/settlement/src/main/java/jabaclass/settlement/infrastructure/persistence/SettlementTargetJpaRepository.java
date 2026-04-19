@@ -8,14 +8,14 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import jabaclass.settlement.domain.model.SettlementTarget;
-import jabaclass.settlement.domain.model.SettlementTargetCalculationStatus;
+import jabaclass.settlement.domain.model.settlement.SettlementTarget;
+import jabaclass.settlement.domain.model.settlement.SettlementTargetCalculationStatus;
 
 public interface SettlementTargetJpaRepository extends JpaRepository<SettlementTarget, UUID> {
 
 	java.util.Optional<SettlementTarget> findByPaymentIdAndTargetType(
 		UUID paymentId,
-		jabaclass.settlement.domain.model.SettlementTargetType targetType
+		jabaclass.settlement.domain.model.settlement.SettlementTargetType targetType
 	);
 
 	List<SettlementTarget> findByIdIn(List<UUID> ids);

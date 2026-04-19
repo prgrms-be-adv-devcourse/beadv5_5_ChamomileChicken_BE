@@ -10,8 +10,8 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import jabaclass.settlement.domain.model.SellerGradePolicy;
-import jabaclass.settlement.domain.model.SellerGradeType;
+import jabaclass.settlement.domain.model.grade.SellerGradePolicy;
+import jabaclass.settlement.domain.model.grade.SellerGradeType;
 import jabaclass.settlement.infrastructure.persistence.SellerGradePolicyJpaRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

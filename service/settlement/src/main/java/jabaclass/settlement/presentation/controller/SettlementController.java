@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import jabaclass.settlement.application.usecase.SettlementUseCase;
-import jabaclass.settlement.domain.model.Settlement;
+import jabaclass.settlement.domain.model.settlement.Settlement;
 import jabaclass.settlement.presentation.dto.response.SettlementResponse;
 
 import lombok.RequiredArgsConstructor;

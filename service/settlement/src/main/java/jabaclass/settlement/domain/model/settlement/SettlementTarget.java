@@ -1,4 +1,4 @@
-package jabaclass.settlement.domain.model;
+package jabaclass.settlement.domain.model.settlement;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -12,6 +12,8 @@ import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+
+import jabaclass.settlement.domain.model.BaseEntity;
 
 @Getter
 @Entity

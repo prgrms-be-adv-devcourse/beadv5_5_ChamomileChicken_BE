@@ -6,7 +6,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import jabaclass.settlement.application.dto.SettlementTargetSummary;
-import jabaclass.settlement.domain.model.SettlementTargetCalculation;
+import jabaclass.settlement.domain.model.settlement.SettlementTargetCalculation;
 
 public interface SettlementTargetCalculationRepository {
 

@@ -1,4 +1,4 @@
-package jabaclass.settlement.domain.model;
+package jabaclass.settlement.domain.model.promotion;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -9,6 +9,8 @@ import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+
+import jabaclass.settlement.domain.model.BaseEntity;
 
 @Getter
 @Entity

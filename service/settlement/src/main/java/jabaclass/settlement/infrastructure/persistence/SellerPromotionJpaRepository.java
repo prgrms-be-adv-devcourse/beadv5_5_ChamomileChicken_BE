@@ -8,7 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import jabaclass.settlement.domain.model.SellerPromotion;
+import jabaclass.settlement.domain.model.promotion.SellerPromotion;
 
 public interface SellerPromotionJpaRepository extends JpaRepository<SellerPromotion, UUID> {
 

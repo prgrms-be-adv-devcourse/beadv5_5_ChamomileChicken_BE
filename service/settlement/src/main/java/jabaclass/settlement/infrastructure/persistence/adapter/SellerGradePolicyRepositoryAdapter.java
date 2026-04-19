@@ -5,7 +5,7 @@ import java.util.Optional;
 
 import org.springframework.stereotype.Repository;
 
-import jabaclass.settlement.domain.model.SellerGradePolicy;
+import jabaclass.settlement.domain.model.grade.SellerGradePolicy;
 import jabaclass.settlement.domain.repository.SellerGradePolicyRepository;
 import jabaclass.settlement.infrastructure.persistence.SellerGradePolicyJpaRepository;
 import lombok.RequiredArgsConstructor;

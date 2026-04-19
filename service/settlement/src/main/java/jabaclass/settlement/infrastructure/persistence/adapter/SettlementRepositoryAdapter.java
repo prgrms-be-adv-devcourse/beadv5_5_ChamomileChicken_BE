@@ -6,8 +6,8 @@ import java.util.UUID;
 
 import org.springframework.stereotype.Repository;
 
-import jabaclass.settlement.domain.model.Settlement;
-import jabaclass.settlement.domain.model.SettlementStatus;
+import jabaclass.settlement.domain.model.settlement.Settlement;
+import jabaclass.settlement.domain.model.settlement.SettlementStatus;
 import jabaclass.settlement.domain.repository.SettlementRepository;
 import jabaclass.settlement.infrastructure.persistence.SettlementJpaRepository;
 import lombok.RequiredArgsConstructor;

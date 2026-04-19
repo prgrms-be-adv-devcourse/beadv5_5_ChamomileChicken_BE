@@ -6,7 +6,7 @@ import java.util.UUID;
 
 import org.springframework.stereotype.Repository;
 
-import jabaclass.settlement.domain.model.SellerPromotion;
+import jabaclass.settlement.domain.model.promotion.SellerPromotion;
 import jabaclass.settlement.domain.repository.SellerPromotionRepository;
 import jabaclass.settlement.infrastructure.persistence.SellerPromotionJpaRepository;
 import lombok.RequiredArgsConstructor;

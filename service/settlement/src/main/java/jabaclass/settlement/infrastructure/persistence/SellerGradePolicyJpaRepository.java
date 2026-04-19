@@ -8,7 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import jabaclass.settlement.domain.model.SellerGradePolicy;
+import jabaclass.settlement.domain.model.grade.SellerGradePolicy;
 
 public interface SellerGradePolicyJpaRepository extends JpaRepository<SellerGradePolicy, UUID> {
 

@@ -5,9 +5,9 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import jabaclass.settlement.domain.model.SettlementTarget;
-import jabaclass.settlement.domain.model.SettlementTargetCalculationStatus;
-import jabaclass.settlement.domain.model.SettlementTargetType;
+import jabaclass.settlement.domain.model.settlement.SettlementTarget;
+import jabaclass.settlement.domain.model.settlement.SettlementTargetCalculationStatus;
+import jabaclass.settlement.domain.model.settlement.SettlementTargetType;
 
 public interface SettlementTargetRepository {
 

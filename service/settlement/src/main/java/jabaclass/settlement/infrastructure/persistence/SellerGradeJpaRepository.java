@@ -5,7 +5,7 @@ import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import jabaclass.settlement.domain.model.SellerGrade;
+import jabaclass.settlement.domain.model.grade.SellerGrade;
 
 public interface SellerGradeJpaRepository extends JpaRepository<SellerGrade, UUID> {
 

@@ -1,4 +1,4 @@
-package jabaclass.settlement.domain.model;
+package jabaclass.settlement.domain.model.settlement;
 
 public enum SettlementTargetType {
 	PAYMENT,    // 결제

@@ -1,4 +1,4 @@
-package jabaclass.settlement.domain.model;
+package jabaclass.settlement.domain.model.settlement;
 
 public enum SettlementStatus {
 	READY,          // 정산 계산 완료, 송금 대기

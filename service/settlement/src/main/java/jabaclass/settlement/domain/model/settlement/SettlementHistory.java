@@ -1,7 +1,6 @@
-package jabaclass.settlement.domain.model;
+package jabaclass.settlement.domain.model.settlement;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.UUID;
 
 import jakarta.persistence.Column;
@@ -13,18 +12,28 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import jabaclass.settlement.domain.model.BaseEntity;
+
 @Getter
 @Entity
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(name = "settlements")
-public class Settlement extends BaseEntity {
+@Table(name = "settlements_history")
+public class SettlementHistory extends BaseEntity {
+
+	@Column(name = "settlement_id", nullable = false)
+	private UUID settlementId;
+
+	@Column(name = "settlement_target_id", nullable = false)
+	private UUID settlementTargetId;
 
 	@Column(name = "seller_id", nullable = false)
 	private UUID sellerId;
 
+	@Column(name = "product_id", nullable = false)
+	private UUID productId;
+
 	/**
 	 * 형식: yyyy-MM
-	 * 예: 2026-03
 	 */
 	@Column(name = "settlement_month", nullable = false, length = 7)
 	private String settlementMonth;
@@ -32,21 +41,8 @@ public class Settlement extends BaseEntity {
 	@Column(name = "original_amount", nullable = false, precision = 19, scale = 2)
 	private BigDecimal originalAmount;
 
-	@Column(name = "seller_grade_code", nullable = false, length = 30)
-	@Enumerated(EnumType.STRING)
-	private SellerGradeType sellerGradeCode;
-
-	@Column(name = "seller_grade_policy_id", nullable = false)
-	private UUID sellerGradePolicyId;
-
-	@Column(name = "grade_base_amount", nullable = false, precision = 19, scale = 2)
-	private BigDecimal gradeBaseAmount;
-
 	@Column(name = "fee_amount", nullable = false, precision = 19, scale = 2)
 	private BigDecimal feeAmount;
-
-	@Column(name = "fee_rate", nullable = false, precision = 10, scale = 4)
-	private BigDecimal feeRate;
 
 	@Column(name = "settlement_amount", nullable = false, precision = 19, scale = 2)
 	private BigDecimal settlementAmount;
@@ -55,100 +51,83 @@ public class Settlement extends BaseEntity {
 	@Column(name = "status", nullable = false, length = 20)
 	private SettlementStatus status;
 
-	@Column(name = "transferred_at")
-	private LocalDateTime transferredAt;
-
-	@Column(name = "fail_reason", length = 500)
-	private String failReason;
-
-	public Settlement(
+	public SettlementHistory(
+		UUID settlementId,
+		UUID settlementTargetId,
 		UUID sellerId,
+		UUID productId,
 		String settlementMonth,
 		BigDecimal originalAmount,
-		SellerGradeType sellerGradeCode,
-		UUID sellerGradePolicyId,
-		BigDecimal gradeBaseAmount,
 		BigDecimal feeAmount,
-		BigDecimal feeRate,
 		BigDecimal settlementAmount,
 		SettlementStatus status
 	) {
+		validateSettlementId(settlementId);
+		validateSettlementTargetId(settlementTargetId);
 		validateSellerId(sellerId);
+		validateProductId(productId);
 		validateSettlementMonth(settlementMonth);
 		validateAmount(originalAmount, "정산 원금");
-		validateSellerGradeCode(sellerGradeCode);
-		validateSellerGradePolicyId(sellerGradePolicyId);
-		validateAmount(gradeBaseAmount, "등급 산정 기준 금액");
 		validateAmount(feeAmount, "수수료");
-		validateAmount(feeRate, "수수료율");
 		validateAmount(settlementAmount, "최종 정산금");
 		validateStatus(status);
 
+		this.settlementId = settlementId;
+		this.settlementTargetId = settlementTargetId;
 		this.sellerId = sellerId;
+		this.productId = productId;
 		this.settlementMonth = settlementMonth;
 		this.originalAmount = originalAmount;
-		this.sellerGradeCode = sellerGradeCode;
-		this.sellerGradePolicyId = sellerGradePolicyId;
-		this.gradeBaseAmount = gradeBaseAmount;
 		this.feeAmount = feeAmount;
-		this.feeRate = feeRate;
 		this.settlementAmount = settlementAmount;
 		this.status = status;
 	}
 
-	public static Settlement createReady(
+	public static SettlementHistory create(
+		UUID settlementId,
+		UUID settlementTargetId,
 		UUID sellerId,
+		UUID productId,
 		String settlementMonth,
 		BigDecimal originalAmount,
-		SellerGradeType sellerGradeCode,
-		UUID sellerGradePolicyId,
-		BigDecimal gradeBaseAmount,
 		BigDecimal feeAmount,
-		BigDecimal feeRate,
-		BigDecimal settlementAmount
+		BigDecimal settlementAmount,
+		SettlementStatus status
 	) {
-		return new Settlement(
+		return new SettlementHistory(
+			settlementId,
+			settlementTargetId,
 			sellerId,
+			productId,
 			settlementMonth,
 			originalAmount,
-			sellerGradeCode,
-			sellerGradePolicyId,
-			gradeBaseAmount,
 			feeAmount,
-			feeRate,
 			settlementAmount,
-			SettlementStatus.READY
+			status
 		);
 	}
 
-	public void hold(String failReason) {
-		this.status = SettlementStatus.HOLD;
-		this.failReason = failReason;
+	private void validateSettlementId(UUID settlementId) {
+		if (settlementId == null) {
+			throw new IllegalArgumentException("정산 ID는 null일 수 없습니다.");
+		}
 	}
 
-	public void markTransferring() {
-		this.status = SettlementStatus.TRANSFERRING;
-		this.failReason = null;
-	}
-
-	public void markSent(LocalDateTime transferredAt) {
-		this.status = SettlementStatus.SENT;
-		this.transferredAt = transferredAt;
-		this.failReason = null;
-	}
-
-	public void markFailed(String failReason) {
-		this.status = SettlementStatus.FAILED;
-		this.failReason = failReason;
-	}
-
-	public boolean isTransferable() {
-		return settlementAmount.compareTo(BigDecimal.ZERO) > 0;
+	private void validateSettlementTargetId(UUID settlementTargetId) {
+		if (settlementTargetId == null) {
+			throw new IllegalArgumentException("정산 대상 ID는 null일 수 없습니다.");
+		}
 	}
 
 	private void validateSellerId(UUID sellerId) {
 		if (sellerId == null) {
 			throw new IllegalArgumentException("판매자 ID는 null일 수 없습니다.");
+		}
+	}
+
+	private void validateProductId(UUID productId) {
+		if (productId == null) {
+			throw new IllegalArgumentException("상품 ID는 null일 수 없습니다.");
 		}
 	}
 
@@ -161,18 +140,6 @@ public class Settlement extends BaseEntity {
 	private void validateAmount(BigDecimal amount, String fieldName) {
 		if (amount == null) {
 			throw new IllegalArgumentException(fieldName + "은 null일 수 없습니다.");
-		}
-	}
-
-	private void validateSellerGradeCode(SellerGradeType sellerGradeCode) {
-		if (sellerGradeCode == null) {
-			throw new IllegalArgumentException("판매자 등급 코드는 비어 있을 수 없습니다.");
-		}
-	}
-
-	private void validateSellerGradePolicyId(UUID sellerGradePolicyId) {
-		if (sellerGradePolicyId == null) {
-			throw new IllegalArgumentException("판매자 등급 정책 ID는 null일 수 없습니다.");
 		}
 	}
 

@@ -7,7 +7,7 @@ import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
-import jabaclass.settlement.domain.model.SettlementTargetCalculation;
+import jabaclass.settlement.domain.model.settlement.SettlementTargetCalculation;
 
 public interface SettlementTargetCalculationJpaRepository extends JpaRepository<SettlementTargetCalculation, UUID> {
 

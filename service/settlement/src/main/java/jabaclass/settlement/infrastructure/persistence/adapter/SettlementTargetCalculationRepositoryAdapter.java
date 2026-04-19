@@ -7,7 +7,7 @@ import java.util.UUID;
 import org.springframework.stereotype.Repository;
 
 import jabaclass.settlement.application.dto.SettlementTargetSummary;
-import jabaclass.settlement.domain.model.SettlementTargetCalculation;
+import jabaclass.settlement.domain.model.settlement.SettlementTargetCalculation;
 import jabaclass.settlement.domain.repository.SettlementTargetCalculationRepository;
 import jabaclass.settlement.infrastructure.persistence.SettlementTargetCalculationJpaRepository;
 import lombok.RequiredArgsConstructor;

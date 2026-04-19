@@ -5,7 +5,7 @@ import java.util.UUID;
 
 import org.springframework.stereotype.Repository;
 
-import jabaclass.settlement.domain.model.SettlementHistory;
+import jabaclass.settlement.domain.model.settlement.SettlementHistory;
 import jabaclass.settlement.domain.repository.SettlementHistoryRepository;
 import jabaclass.settlement.infrastructure.persistence.SettlementHistoryJpaRepository;
 import lombok.RequiredArgsConstructor;

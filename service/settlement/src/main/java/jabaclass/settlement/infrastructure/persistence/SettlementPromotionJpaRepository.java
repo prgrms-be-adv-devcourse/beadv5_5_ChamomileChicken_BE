@@ -4,7 +4,7 @@ import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import jabaclass.settlement.domain.model.SettlementPromotion;
+import jabaclass.settlement.domain.model.promotion.SettlementPromotion;
 
 public interface SettlementPromotionJpaRepository extends JpaRepository<SettlementPromotion, UUID> {
 }
