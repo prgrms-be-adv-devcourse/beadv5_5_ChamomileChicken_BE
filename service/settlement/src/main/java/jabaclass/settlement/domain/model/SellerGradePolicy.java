@@ -1,9 +1,7 @@
 package jabaclass.settlement.domain.model;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDateTime;
-import java.util.Objects;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -71,29 +69,6 @@ public class SellerGradePolicy extends BaseEntity {
 		this.appliedTo = appliedTo;
 	}
 
-	public SettlementAmount calculateSettlementAmount(BigDecimal originalAmount) {
-		validateAmount(originalAmount, "정산 원금");
-
-		BigDecimal feeAmount = originalAmount
-			.multiply(feeRate)
-			.setScale(2, RoundingMode.DOWN);
-
-		return new SettlementAmount(
-			originalAmount,
-			feeAmount,
-			feeRate,
-			originalAmount.subtract(feeAmount)
-		);
-	}
-
-	public boolean matches(BigDecimal salesAmount) {
-		validateAmount(salesAmount, "판매 금액");
-
-		boolean meetsMinimum = salesAmount.compareTo(minSalesAmount) >= 0;
-		boolean withinMaximum = maxSalesAmount == null || salesAmount.compareTo(maxSalesAmount) <= 0;
-		return meetsMinimum && withinMaximum;
-	}
-
 	private void validateGradeCode(SellerGradeType gradeCode) {
 		if (gradeCode == null) {
 			throw new IllegalArgumentException("판매자 등급 코드는 비어 있을 수 없습니다.");
@@ -118,23 +93,4 @@ public class SellerGradePolicy extends BaseEntity {
 		}
 	}
 
-	public record SettlementAmount(
-		BigDecimal originalAmount,
-		BigDecimal feeAmount,
-		BigDecimal feeRate,
-		BigDecimal settlementAmount
-	) {
-	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (!(o instanceof SellerGradePolicy that)) return false;
-		return Objects.equals(getId(), that.getId());
-	}
-
-	@Override
-	public int hashCode() {
-		return Objects.hash(getId());
-	}
 }

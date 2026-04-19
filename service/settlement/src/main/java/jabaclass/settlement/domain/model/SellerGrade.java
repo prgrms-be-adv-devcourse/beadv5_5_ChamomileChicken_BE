@@ -1,6 +1,5 @@
 package jabaclass.settlement.domain.model;
 
-import java.util.Objects;
 import java.util.UUID;
 
 import jakarta.persistence.Column;
@@ -74,17 +73,5 @@ public class SellerGrade extends BaseEntity {
 		if (calculatedMonth == null || calculatedMonth.isBlank()) {
 			throw new IllegalArgumentException("등급 산정 월은 비어 있을 수 없습니다.");
 		}
-	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (!(o instanceof SellerGrade that)) return false;
-		return Objects.equals(getId(), that.getId());
-	}
-
-	@Override
-	public int hashCode() {
-		return Objects.hash(getId());
 	}
 }

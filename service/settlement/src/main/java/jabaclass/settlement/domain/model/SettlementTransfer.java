@@ -2,7 +2,6 @@ package jabaclass.settlement.domain.model;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.Objects;
 import java.util.UUID;
 
 import jakarta.persistence.Column;
@@ -149,17 +148,5 @@ public class SettlementTransfer extends BaseEntity {
 		if (requestedAt == null) {
 			throw new IllegalArgumentException("송금 요청 시각은 null일 수 없습니다.");
 		}
-	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (!(o instanceof SettlementTransfer that)) return false;
-		return Objects.equals(getId(), that.getId());
-	}
-
-	@Override
-	public int hashCode() {
-		return Objects.hash(getId());
 	}
 }

@@ -2,7 +2,6 @@ package jabaclass.settlement.domain.model;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.Objects;
 import java.util.UUID;
 
 import jakarta.persistence.Column;
@@ -188,17 +187,5 @@ public class SettlementTarget extends BaseEntity {
 		if (targetType == SettlementTargetType.REFUND && refundId == null) {
 			throw new IllegalArgumentException("환불 정산 대상은 환불 ID가 필요합니다.");
 		}
-	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (!(o instanceof SettlementTarget that)) return false;
-		return Objects.equals(getId(), that.getId());
-	}
-
-	@Override
-	public int hashCode() {
-		return Objects.hash(getId());
 	}
 }

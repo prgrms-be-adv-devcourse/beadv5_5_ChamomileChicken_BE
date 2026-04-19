@@ -1,7 +1,6 @@
 package jabaclass.settlement.domain.model;
 
 import java.math.BigDecimal;
-import java.util.Objects;
 import java.util.UUID;
 
 import jakarta.persistence.Column;
@@ -146,17 +145,5 @@ public class SettlementHistory extends BaseEntity {
 		if (status == null) {
 			throw new IllegalArgumentException("정산 상태는 null일 수 없습니다.");
 		}
-	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (!(o instanceof SettlementHistory that)) return false;
-		return Objects.equals(getId(), that.getId());
-	}
-
-	@Override
-	public int hashCode() {
-		return Objects.hash(getId());
 	}
 }
