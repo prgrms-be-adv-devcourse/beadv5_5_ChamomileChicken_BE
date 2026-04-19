@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import jabaclass.user.user.domain.model.SocialType;
 import jabaclass.user.user.domain.model.User;
 
 public interface UserRepository {
@@ -23,4 +24,6 @@ public interface UserRepository {
 	List<User> findAllByIds(List<UUID> userIds);
 
 	Optional<User> findByEmail(String email);
+
+	Optional<User> findBySocialTypeAndSocialId(SocialType socialType, String socialId);
 }
