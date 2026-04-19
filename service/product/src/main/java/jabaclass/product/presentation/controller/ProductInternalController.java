@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import jabaclass.product.application.usecase.ProductUseCase;
 import jabaclass.product.presentation.dto.request.ProductBulkReadRequestDto;
-import jabaclass.product.presentation.dto.respose.ProductSettlementItemResponseDto;
+import jabaclass.product.presentation.dto.response.ProductSettlementItemResponseDto;
 import jabaclass.product.presentation.openapi.ProductInternalOpenApi;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

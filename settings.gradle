@@ -5,7 +5,6 @@ include 'api-gateway'
 
 include 'service'
 include 'service:admin'
-include 'service:file'
 include 'service:order'
 include 'service:payment'
 include 'service:product'

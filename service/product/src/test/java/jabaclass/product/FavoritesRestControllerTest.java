@@ -18,7 +18,7 @@ import org.springframework.http.ResponseEntity;
 import jabaclass.product.application.usecase.FavoriteUseCase;
 import jabaclass.product.common.exception.ApiResponseDto;
 import jabaclass.product.presentation.controller.FavoritesRestController;
-import jabaclass.product.presentation.dto.respose.FavoritesResposeDto;
+import jabaclass.product.presentation.dto.response.FavoritesResposeDto;
 
 @ExtendWith(MockitoExtension.class)
 class FavoritesRestControllerTest {

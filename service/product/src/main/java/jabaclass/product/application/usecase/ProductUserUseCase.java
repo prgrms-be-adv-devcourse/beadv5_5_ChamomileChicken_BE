@@ -5,7 +5,7 @@ import java.util.UUID;
 
 import jabaclass.product.domain.model.ProductUser;
 import jabaclass.product.presentation.dto.request.CreateProductUserRequestDto;
-import jabaclass.product.presentation.dto.respose.ProductUserResponseDto;
+import jabaclass.product.presentation.dto.response.ProductUserResponseDto;
 
 public interface ProductUserUseCase {
 

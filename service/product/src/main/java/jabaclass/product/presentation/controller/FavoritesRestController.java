@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 import jabaclass.product.application.usecase.FavoriteUseCase;
 import jabaclass.product.common.auth.CurrentUser;
 import jabaclass.product.common.exception.ApiResponseDto;
-import jabaclass.product.presentation.dto.respose.FavoritesResposeDto;
+import jabaclass.product.presentation.dto.response.FavoritesResposeDto;
 import jabaclass.product.presentation.openapi.FavoritesOpenApi;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

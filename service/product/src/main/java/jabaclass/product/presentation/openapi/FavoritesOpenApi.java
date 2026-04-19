@@ -11,7 +11,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jabaclass.product.common.exception.ApiResponseDto;
-import jabaclass.product.presentation.dto.respose.FavoritesResposeDto;
+import jabaclass.product.presentation.dto.response.FavoritesResposeDto;
 
 @Tag(name = "Favorites", description = "즐겨찾기 API")
 public interface FavoritesOpenApi {

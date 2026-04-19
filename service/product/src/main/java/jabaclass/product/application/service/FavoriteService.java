@@ -11,7 +11,7 @@ import jabaclass.product.application.usecase.FavoriteUseCase;
 import jabaclass.product.common.exception.CommonErrorCode;
 import jabaclass.product.domain.model.Favorite;
 import jabaclass.product.domain.repository.FavoriteRepository;
-import jabaclass.product.presentation.dto.respose.FavoritesResposeDto;
+import jabaclass.product.presentation.dto.response.FavoritesResposeDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 

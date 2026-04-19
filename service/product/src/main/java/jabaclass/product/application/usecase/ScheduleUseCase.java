@@ -7,11 +7,11 @@ import jabaclass.product.domain.model.status.ReservationStatus;
 import jabaclass.product.presentation.dto.request.CreateScheduleRequestDto;
 import jabaclass.product.presentation.dto.request.OrderRequestDto;
 import jabaclass.product.presentation.dto.request.UpdateScheduleRequestDto;
-import jabaclass.product.presentation.dto.respose.AvailabilityScheduleResponseDto;
-import jabaclass.product.presentation.dto.respose.DeleteScheduleResposeDto;
-import jabaclass.product.presentation.dto.respose.OrderResponseDto;
-import jabaclass.product.presentation.dto.respose.OrderValid;
-import jabaclass.product.presentation.dto.respose.SchedulesResponseDto;
+import jabaclass.product.presentation.dto.response.AvailabilityScheduleResponseDto;
+import jabaclass.product.presentation.dto.response.DeleteScheduleResposeDto;
+import jabaclass.product.presentation.dto.response.OrderResponseDto;
+import jabaclass.product.presentation.dto.response.OrderValid;
+import jabaclass.product.presentation.dto.response.SchedulesResponseDto;
 
 public interface ScheduleUseCase {
 

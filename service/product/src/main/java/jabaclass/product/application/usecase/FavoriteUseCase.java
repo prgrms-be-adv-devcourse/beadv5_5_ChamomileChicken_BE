@@ -3,7 +3,7 @@ package jabaclass.product.application.usecase;
 import java.util.List;
 import java.util.UUID;
 
-import jabaclass.product.presentation.dto.respose.FavoritesResposeDto;
+import jabaclass.product.presentation.dto.response.FavoritesResposeDto;
 
 public interface FavoriteUseCase {
 

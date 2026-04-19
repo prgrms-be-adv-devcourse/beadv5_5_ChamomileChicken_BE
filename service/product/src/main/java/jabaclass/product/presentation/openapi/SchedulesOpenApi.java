@@ -14,10 +14,10 @@ import jabaclass.product.common.exception.ApiResponseDto;
 import jabaclass.product.presentation.dto.request.CreateScheduleRequestDto;
 import jabaclass.product.presentation.dto.request.OrderRequestDto;
 import jabaclass.product.presentation.dto.request.UpdateScheduleRequestDto;
-import jabaclass.product.presentation.dto.respose.AvailabilityScheduleResponseDto;
-import jabaclass.product.presentation.dto.respose.DeleteScheduleResposeDto;
-import jabaclass.product.presentation.dto.respose.OrderResponseDto;
-import jabaclass.product.presentation.dto.respose.SchedulesResponseDto;
+import jabaclass.product.presentation.dto.response.AvailabilityScheduleResponseDto;
+import jabaclass.product.presentation.dto.response.DeleteScheduleResposeDto;
+import jabaclass.product.presentation.dto.response.OrderResponseDto;
+import jabaclass.product.presentation.dto.response.SchedulesResponseDto;
 
 @Tag(name = "Schedules", description = "상품 일정 API")
 public interface SchedulesOpenApi {

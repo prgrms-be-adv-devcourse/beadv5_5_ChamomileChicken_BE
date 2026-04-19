@@ -27,11 +27,10 @@ import jabaclass.product.application.service.ProductService;
 import jabaclass.product.domain.model.status.ProductStatus;
 import jabaclass.product.domain.repository.ProductRepository;
 import jabaclass.product.domain.repository.ProductSearchRepository;
-import jabaclass.product.infrastructure.acl.client.FileConfirmClient;
 import jabaclass.product.infrastructure.elasticsearch.ProductDocument;
 import jabaclass.product.presentation.dto.request.SearchProductRequestDto;
-import jabaclass.product.presentation.dto.respose.ProductResponseDto;
-import jabaclass.product.presentation.dto.respose.SearchProductResponseDto;
+import jabaclass.product.presentation.dto.response.ProductResponseDto;
+import jabaclass.product.presentation.dto.response.SearchProductResponseDto;
 
 @ExtendWith(MockitoExtension.class)
 class ProductSearchTest {

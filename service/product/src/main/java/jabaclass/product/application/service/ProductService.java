@@ -6,6 +6,9 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -16,14 +19,13 @@ import org.springframework.transaction.annotation.Transactional;
 import jabaclass.product.application.acl.SellerRepository;
 import jabaclass.product.application.exception.BusinessException;
 import jabaclass.product.application.usecase.ProductUseCase;
+import jabaclass.product.application.usecase.ValidateFileUseCase;
 import jabaclass.product.common.exception.CommonErrorCode;
 import jabaclass.product.domain.model.Product;
 import jabaclass.product.domain.model.ProductImageItem;
 import jabaclass.product.domain.model.status.ProductStatus;
 import jabaclass.product.domain.repository.ProductRepository;
 import jabaclass.product.domain.repository.ProductSearchRepository;
-import jabaclass.product.infrastructure.acl.client.FileConfirmClient;
-import jabaclass.product.infrastructure.acl.client.FileConfirmResponse;
 import jabaclass.product.infrastructure.acl.dto.response.UserResponseDto;
 import jabaclass.product.infrastructure.elasticsearch.ProductDocument;
 import jabaclass.product.infrastructure.event.dto.ProductEsDeleteEvent;
@@ -32,12 +34,11 @@ import jabaclass.product.infrastructure.event.dto.ProductEventResponseDto;
 import jabaclass.product.presentation.dto.request.CreateProductRequestDto;
 import jabaclass.product.presentation.dto.request.SearchProductRequestDto;
 import jabaclass.product.presentation.dto.request.UpdateProductRequestDto;
-import jabaclass.product.presentation.dto.respose.DeleteProductResposeDto;
-import jabaclass.product.presentation.dto.respose.ProductResponseDto;
-import jabaclass.product.presentation.dto.respose.ProductSettlementItemResponseDto;
-import jabaclass.product.presentation.dto.respose.SearchProductResponseDto;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import jabaclass.product.presentation.dto.response.DeleteProductResposeDto;
+import jabaclass.product.presentation.dto.response.FileConfirmResponse;
+import jabaclass.product.presentation.dto.response.ProductResponseDto;
+import jabaclass.product.presentation.dto.response.ProductSettlementItemResponseDto;
+import jabaclass.product.presentation.dto.response.SearchProductResponseDto;
 
 @Service
 @Transactional(readOnly = true)
@@ -48,15 +49,16 @@ public class ProductService implements ProductUseCase {
 	private final ProductSearchRepository productSearchRepository;
 	private final SellerRepository sellerRepository;
 	private final ApplicationEventPublisher publisher;
-	private final FileConfirmClient fileConfirmClient;
+	private final ValidateFileUseCase validateFileUseCase;
 
 	@Override
 	@Transactional
 	public ProductResponseDto create(CreateProductRequestDto requestDto, UUID sellerId) {
 		List<ProductImageItem> images = List.of();
 		if (requestDto.imageIds() != null && !requestDto.imageIds().isEmpty()) {
-			List<FileConfirmResponse> confirmed =
-				fileConfirmClient.confirmBulk(requestDto.imageIds());
+			List<FileConfirmResponse> confirmed = requestDto.imageIds().stream()
+				.map(validateFileUseCase::validateAndConfirm)
+				.toList();
 			images = confirmed.stream()
 				.map(r -> new ProductImageItem(r.fileId(), r.storagePath()))
 				.toList();
@@ -108,8 +110,9 @@ public class ProductService implements ProductUseCase {
 		if (requestDto.imageIds() != null) {
 			List<ProductImageItem> images = List.of();
 			if (!requestDto.imageIds().isEmpty()) {
-				List<FileConfirmResponse> confirmed =
-					fileConfirmClient.confirmBulk(requestDto.imageIds());
+				List<FileConfirmResponse> confirmed = requestDto.imageIds().stream()
+					.map(validateFileUseCase::validateAndConfirm)
+					.toList();
 				images = confirmed.stream()
 					.map(r -> new ProductImageItem(r.fileId(), r.storagePath()))
 					.toList();
