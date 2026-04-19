@@ -5,10 +5,10 @@ import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 
-import jabaclass.ai.application.port.external.ProductPort;
 import jabaclass.ai.domain.model.ActionType;
 import jabaclass.ai.domain.model.UserActivity;
 import jabaclass.ai.domain.model.UserVector;
+import jabaclass.ai.domain.repository.ProductEmbeddingRepository;
 import jabaclass.ai.domain.repository.UserActivityRepository;
 import jabaclass.ai.domain.repository.UserVectorCacheRepository;
 import lombok.RequiredArgsConstructor;
@@ -21,7 +21,7 @@ public class UserVectorService {
 
 	private final UserActivityRepository userActivityRepository;
 	private final UserVectorCacheRepository userVectorCacheRepository;
-	private final ProductPort productPort;
+	private final ProductEmbeddingRepository productEmbeddingRepository;
 
 	// Redis에 있으면 가져오고 없으면 생성
 	public UserVector getOrCreate(UUID userId) {
@@ -47,7 +47,7 @@ public class UserVectorService {
 
 			float weight = getWeight(activity.getActionType());
 
-			float[] itemVector = productPort.getProductVector(activity.getProductId());
+			float[] itemVector = productEmbeddingRepository.findEmbeddingByProductId(activity.getProductId());
 
 			// null 방어
 			if (itemVector == null || itemVector.length != VECTOR_SIZE) {
