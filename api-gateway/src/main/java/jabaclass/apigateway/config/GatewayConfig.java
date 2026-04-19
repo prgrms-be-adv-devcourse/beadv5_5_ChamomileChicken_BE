@@ -11,9 +11,14 @@ public class GatewayConfig {
 
 	@Bean
 	public KeyResolver ipKeyResolver() {
-		return exchange -> Mono.justOrEmpty(
-				exchange.getRequest().getRemoteAddress()
-			).map(addr -> addr.getAddress().getHostAddress())
-			.defaultIfEmpty("unknown");
+		return exchange -> {
+			String xff = exchange.getRequest().getHeaders().getFirst("X-Forwarded-For");
+			String ip = (xff != null && !xff.isBlank())
+				? xff.split(",")[0].trim()
+				: (exchange.getRequest().getRemoteAddress() != null
+				? exchange.getRequest().getRemoteAddress().getAddress().getHostAddress()
+				: "unknown");
+			return Mono.just(ip);
+		};
 	}
 }
