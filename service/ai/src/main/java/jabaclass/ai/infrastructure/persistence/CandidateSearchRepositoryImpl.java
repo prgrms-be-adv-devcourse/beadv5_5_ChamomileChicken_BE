@@ -1,8 +1,7 @@
 package jabaclass.ai.infrastructure.persistence;
 
-import java.sql.Connection;
 import java.util.List;
-import java.sql.Array;
+
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -35,25 +34,16 @@ public class CandidateSearchRepositoryImpl implements CandidateSearchRepository 
                 road_address
             FROM products_ai
             WHERE status = 'ENABLE'
-            ORDER BY embedding <-> ?  -- cosine distance
+            ORDER BY embedding <=> (?::vector)  -- cosine distance (pgvector)
             LIMIT ?
         """;
 
 		return jdbcTemplate.query(
-			connection -> {
-				var ps = connection.prepareStatement(sql);
-
-				// 벡터 바인딩
-				Array vectorArray = createSqlArray(connection, userVector.vector());
+			sql,
+			ps -> {
 				ps.setString(1, toPgVector(userVector.vector()));
-
-				// limit 바인딩
 				ps.setInt(2, k);
-
-				return ps;
 			},
-			// 결과 매핑
-			// : DB 결과 → DTO 변환
 			(rs, rowNum) -> new CandidateClassDto(
 				rs.getObject("id", java.util.UUID.class),
 				rs.getString("title"),
@@ -91,22 +81,6 @@ public class CandidateSearchRepositoryImpl implements CandidateSearchRepository 
 				rs.getString("road_address")
 			)
 		);
-	}
-
-	// Java float[] → PostgreSQL 배열(float8[]) 변환
-	private Array createSqlArray(Connection connection, float[] vector) {
-		try {
-
-			// float → Double 변환
-			Double[] doubleArray = new Double[vector.length];
-			for (int i = 0; i < vector.length; i++) {
-				doubleArray[i] = (double) vector[i];
-			}
-
-			return connection.createArrayOf("float8", doubleArray); // SQL Array 생성
-		} catch (Exception e) {
-			throw new RuntimeException("vector 변환 실패", e);
-		}
 	}
 
 	private String toPgVector(float[] vector) {
