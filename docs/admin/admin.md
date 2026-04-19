@@ -92,11 +92,8 @@ Kafka 토픽: admin.product
       6. scheduleRepository.softDeleteByProductId()
       ↓ DB 커밋
   → productSearchRepository.deleteById()  ← ES 삭제 (트랜잭션 밖)
-      ↓ ES 실패 시
-  → AdminProductEventHandler.restoreProductStatus()  @Transactional  ← 보상 트랜잭션
-      7. product.changeStatus(ENABLE) + product.restoreDelete()
-         scheduleRepository.restoreDeleteByProductId()
-      RuntimeException 재던짐 → Kafka 재시도 (FixedBackOff 1s × 3회)
+      성공 → 완료
+      실패 → RuntimeException 재던짐 → Kafka 재시도 (FixedBackOff 1s × 3회)
 ```
 
 | 처리 대상 | 시점 | 결과 |
@@ -426,14 +423,6 @@ public void processForceDown(UUID productId) {
     scheduleRepository.softDeleteByProductId(productId);
 }
 
-@Transactional
-public void restoreProductStatus(UUID productId) {
-    productRepository.findById(productId).ifPresent(p -> {
-        p.changeStatus(ProductStatus.ENABLE);
-        p.restoreDelete();
-    });
-    scheduleRepository.restoreDeleteByProductId(productId);
-}
 ```
 
 ### 엔티티 정의 주의사항
@@ -475,12 +464,11 @@ service/admin/.../product/
 ```
 service/product/.../infrastructure/kafka/admin/
 ├── AdminProductMessage.java         # 메시지 역직렬화 레코드
-├── AdminProductEventHandler.java    # DB 트랜잭션 처리 (processForceDown, restoreProductStatus)
-└── AdminProductKafkaConsumer.java   # @KafkaListener + ES 삭제 + 보상 오케스트레이션
+├── AdminProductEventHandler.java    # DB 트랜잭션 처리 (processForceDown)
+└── AdminProductKafkaConsumer.java   # @KafkaListener + ES 삭제
 ```
 
 수정된 파일:
-- `EntityBase` — `restoreDelete()` 추가 (deleteDt = null)
-- `ScheduleRepository` — `softDeleteByProductId`, `restoreDeleteByProductId` 추가
+- `ScheduleRepository` — `softDeleteByProductId` 추가
 - `ScheduleJpaRepository` — `@Modifying(clearAutomatically=true, flushAutomatically=true)` bulk 쿼리 추가
 - `ScheduleRepositoryAdapter` — 위 인터페이스 구현 위임

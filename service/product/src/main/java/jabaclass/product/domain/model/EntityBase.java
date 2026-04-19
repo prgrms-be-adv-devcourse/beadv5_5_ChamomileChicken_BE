@@ -41,7 +41,4 @@ public abstract class EntityBase {
 		this.deleteDt = LocalDateTime.now();
 	}
 
-	public void restoreDelete() {
-		this.deleteDt = null;
-	}
 }
