@@ -18,6 +18,8 @@ import jabaclass.ai.domain.model.UserVector;
 import jabaclass.ai.infrastructure.external.openai.dto.request.OpenAiRequestDto;
 import jabaclass.ai.infrastructure.external.openai.dto.response.OpenAiResponseDto;
 import lombok.RequiredArgsConstructor;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Component
 @RequiredArgsConstructor
@@ -36,35 +38,27 @@ public class OpenAiClient implements AiGatewayPort {
 		UserVector userVector,
 		List<CandidateClassDto> candidates
 	) {
+		String prompt = buildBatchPrompt(userVector,candidates);
 
-		Map<UUID, String> result = new HashMap<>();
+		OpenAiRequestDto requestBody = OpenAiRequestDto.of(prompt);
 
-		for (CandidateClassDto c : candidates) {
+		HttpHeaders headers = new HttpHeaders();
+		headers.setContentType(MediaType.APPLICATION_JSON);
+		headers.setBearerAuth(apiKey);
 
-			String prompt = buildPrompt(c);
+		HttpEntity<OpenAiRequestDto> request =
+			new HttpEntity<>(requestBody, headers);
 
-			OpenAiRequestDto requestBody = OpenAiRequestDto.of(prompt);
+		// OpenAI 서버로 요청
+		OpenAiResponseDto response = restTemplate.postForObject(
+			OPENAI_URL,
+			request,
+			OpenAiResponseDto.class
+		);
 
-			HttpHeaders headers = new HttpHeaders();
-			headers.setContentType(MediaType.APPLICATION_JSON);
-			headers.setBearerAuth(apiKey);
+		String content = extractContent(response);
 
-			HttpEntity<OpenAiRequestDto> request =
-				new HttpEntity<>(requestBody, headers);
-
-			// OpenAI 서버로 요청
-			OpenAiResponseDto response = restTemplate.postForObject(
-				OPENAI_URL,
-				request,
-				OpenAiResponseDto.class
-			);
-
-			String content = extractContent(response);
-
-			result.put(c.productId(), content);
-		}
-
-		return result;
+		return parseResult(content);
 	}
 
 	// GPT 결과에서 텍스트만 꺼냄
@@ -78,24 +72,67 @@ public class OpenAiClient implements AiGatewayPort {
 	}
 
 	// 프롬프트 작성
-	private String buildPrompt(CandidateClassDto c) {
-		return """
-            다음 클래스를 사용자에게 추천하는 이유를 한 문장으로 작성해줘.
+	private String buildBatchPrompt(UserVector userVector, List<CandidateClassDto> candidates) {
 
+		String candidateText = candidates.stream()
+			.map(c -> """
+            id: %s
             제목: %s
             설명: %s
             가격: %s
             위치: %s
-
-            조건:
-            - 20자 이상 60자 이하
-            - 자연스럽고 설득력 있게
-            - "~합니다" 형태로 끝날 것
             """.formatted(
-			c.title(),
-			c.description(),
-			c.price(),
-			c.roadAddress()
-		);
+				c.productId(),
+				c.title(),
+				c.description(),
+				c.price(),
+				c.roadAddress()
+			))
+			.reduce("", (a, b) -> a + "\n" + b);
+
+		return """
+        다음 사용자에게 각 클래스의 추천 이유를 작성해줘.
+
+        [사용자 벡터]
+        %s
+
+        [클래스 목록]
+        %s
+
+        조건:
+        - 각 클래스별 추천 이유 작성
+        - 벡터 값은 직접 언급하지 말 것
+        - 사용자 취향을 반영할 것
+        - 20~60자
+        - "~합니다" 형태
+
+        출력 형식(JSON):
+        [
+          {"productId": "...", "reason": "..."},
+          ...
+        ]
+        """.formatted(userVector.toString(), candidateText);
+	}
+
+	private Map<UUID, String> parseResult(String content) {
+		try {
+			ObjectMapper objectMapper = new ObjectMapper();
+
+			List<Map<String, String>> list =
+				objectMapper.readValue(content, new TypeReference<>() {});
+
+			Map<UUID, String> result = new HashMap<>();
+
+			for (Map<String, String> item : list) {
+				UUID productId = UUID.fromString(item.get("productId"));
+				String reason = item.get("reason");
+				result.put(productId, reason);
+			}
+
+			return result;
+
+		} catch (Exception e) {
+			throw new RuntimeException("GPT 응답 파싱 실패", e);
+		}
 	}
 }
