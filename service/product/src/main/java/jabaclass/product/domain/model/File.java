@@ -3,6 +3,7 @@ package jabaclass.product.domain.model;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+import jakarta.persistence.EntityListeners;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -10,6 +11,7 @@ import lombok.AccessLevel;
 
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -20,6 +22,7 @@ import jakarta.persistence.Table;
 
 import jabaclass.product.domain.model.status.FileStatus;
 
+@EntityListeners(AuditingEntityListener.class)
 @Entity
 @Table(name = "files")
 @Getter
