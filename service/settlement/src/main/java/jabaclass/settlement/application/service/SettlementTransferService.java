@@ -1,4 +1,4 @@
-package jabaclass.settlement.application.service.transfer;
+package jabaclass.settlement.application.service;
 
 import java.time.LocalDateTime;
 import java.util.Map;

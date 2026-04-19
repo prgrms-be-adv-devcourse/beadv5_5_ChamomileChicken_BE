@@ -20,7 +20,6 @@ import jabaclass.settlement.application.dto.SettlementTransferResult;
 import jabaclass.settlement.application.exception.BusinessException;
 import jabaclass.settlement.application.port.external.SellerSettlementPort;
 import jabaclass.settlement.application.port.external.SettlementTransferPort;
-import jabaclass.settlement.application.service.transfer.SettlementTransferService;
 import jabaclass.settlement.domain.model.grade.SellerGradeType;
 import jabaclass.settlement.domain.model.settlement.Settlement;
 import jabaclass.settlement.domain.model.settlement.SettlementStatus;

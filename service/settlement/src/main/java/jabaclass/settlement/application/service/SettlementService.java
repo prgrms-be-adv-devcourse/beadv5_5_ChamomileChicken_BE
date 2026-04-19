@@ -1,4 +1,4 @@
-package jabaclass.settlement.application.service.query;
+package jabaclass.settlement.application.service;
 
 import java.util.List;
 import java.util.UUID;
