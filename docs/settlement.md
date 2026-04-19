@@ -76,13 +76,15 @@ Batch Scheduler / Controller
 
 | 엔티티 | 설명 | 핵심 필드 |
 |--------|------|-----------|
-| `SettlementTarget` | 결제/환불 원천에서 적재된 정산 대상 데이터 | `sellerId`, `orderId`, `productId`, `paymentId`, `refundId`, `settlementMonth`, `settlementBaseAmount`, `targetType`, `calculationStatus` |
-| `SettlementTargetCalculation` | 정산 대상 1건을 월 정산 집계용으로 정규화한 계산 결과 | `settlementTargetId`, `settlementBaseAmount`, `appliedPromotionId`, `appliedPromotionType`, `originalPaymentTargetCalculationId` |
+| `SettlementTarget` | 결제/환불 원천에서 적재된 정산 대상 데이터 | `sellerId`, `orderId`, `productId`, `paymentId`, `refundId`, `settlementMonth`, `settlementBaseAmount`, `targetType`, `occurredAt`, `calculationStatus` |
+| `SettlementTargetCalculation` | 정산 대상 1건을 월 정산 집계용으로 정규화한 계산 결과 | `settlementTargetId`, `settlementBaseAmount`, `appliedPromotionId`, `appliedPromotionType`, `appliedFeeRate`, `originalPaymentTargetCalculationId` |
 | `Settlement` | 판매자별 월 정산 결과 스냅샷 | `sellerId`, `settlementMonth`, `sellerGradeCode`, `sellerGradePolicyId`, `gradeBaseAmount`, `feeAmount`, `feeRate`, `settlementAmount`, `status` |
 | `SettlementHistory` | 월 정산에 어떤 정산 대상이 포함되었는지 남기는 상세 이력 | `settlementId`, `settlementTargetId`, `sellerId`, `productId`, `originalAmount`, `feeAmount`, `settlementAmount`, `status` |
 | `SettlementTransfer` | 송금 요청과 결과 이력 | `settlementId`, `transferStatus`, `bankCode`, `accountNumberMasked`, `amount`, `requestedAt`, `completedAt`, `failReason` |
 | `SellerGradePolicy` | 최근 3개월 판매금액 구간별 등급/수수료 정책 | `gradeCode`, `minSalesAmount`, `maxSalesAmount`, `feeRate`, `version`, `active` |
 | `SellerGrade` | 판매자별 마지막 적용 등급 캐시 | `sellerId`, `sellerGradePolicyId`, `calculatedMonth` |
+| `SettlementPromotion` | 프로모션 마스터 정보 | `name`, `promotionType`, `feeRate`, `durationDays`, `active` |
+| `SellerPromotion` | 판매자별 프로모션 적용 이력 | `sellerId`, `settlementPromotionId`, `startedAt`, `endedAt`, `active` |
 
 ### 상태값
 
@@ -106,8 +108,19 @@ presentation/controller/
 
 application/service/
   SettlementService.java
-  SettlementCalculateService.java
   SettlementTransferService.java
+
+application/service/calculation/
+  SettlementCalculateService.java
+  SettlementFeeCalculator.java
+  SettlementPromotionResolver.java
+  SettlementRefundCalculationService.java
+
+application/dto/
+  AppliedPromotion.java
+  SettlementTargetSummary.java
+  SettlementTransferCommand.java
+  SettlementTransferResult.java
 
 application/usecase/
   SettlementUseCase.java
@@ -115,13 +128,24 @@ application/usecase/
   SettlementTransferUseCase.java
 
 domain/model/
+  BaseEntity.java
+
+domain/model/settlement/
   Settlement.java
   SettlementHistory.java
   SettlementTarget.java
   SettlementTargetCalculation.java
   SettlementTransfer.java
+
+domain/model/grade/
   SellerGrade.java
   SellerGradePolicy.java
+  SellerGradeType.java
+
+domain/model/promotion/
+  SettlementPromotion.java
+  SellerPromotion.java
+  PromotionType.java
 
 domain/repository/
   SettlementRepository.java
@@ -131,14 +155,28 @@ domain/repository/
   SettlementTransferRepository.java
   SellerGradeRepository.java
   SellerGradePolicyRepository.java
+  SettlementPromotionRepository.java
+  SellerPromotionRepository.java
 
 infrastructure/client/
   user, settlementTransfer 연동 클라이언트
 
 infrastructure/batch/
-  SettlementBatchConfig.java
-  SettlementScheduler.java
-  SettlementJobExecutionListener.java
+  config/
+    SettlementBatchConfig.java
+    SettlementScheduler.java
+
+  component/
+    SettlementJobExecutionListener.java
+    SettlementMonthResolver.java
+    SettlementTargetCalculationItemProcessor.java
+    SettlementTargetCalculationItemWriter.java
+    SettlementAggregationItemWriter.java
+    SettlementTransferTasklet.java
+
+  dto/
+    SettlementTargetCalculationBatchItem.java
+    MonthlySettlementBatchItem.java
 
 infrastructure/persistence/
   JPA Repository + Adapter
@@ -162,8 +200,10 @@ infrastructure/persistence/
 |------|------|
 | 계산 대상 조회 | `PENDING` 상태의 `SettlementTarget` 조회 |
 | 건별 계산 | 결제/환불 건별 `SettlementTargetCalculation` 생성 |
-| 판매 등급 산정 | 최근 3개월 판매금액 기준 등급 정책 조회 |
-| 월 정산 생성 | seller/month 집계 금액에 월 등급 수수료를 적용해 `Settlement` 생성 |
+| 프로모션 반영 | 판매자 프로모션 기간과 수수료율 적용 여부 판단 |
+| 환불 보정 | 원 결제 계산 결과를 우선 참조하고, 없으면 판매자 프로모션을 2차로 재조회 |
+| 판매 등급 산정 | 최근 3개월 판매금액 기준 등급 정책 조회, 없으면 `BASIC` 등급 우선 적용 |
+| 월 정산 생성 | seller/month 집계 금액에 계산별 적용 수수료 결과를 반영해 `Settlement` 생성 |
 | 구성 이력 생성 | `SettlementHistory` 저장 |
 | 중복 계산 방지 | 동일 정산 대상, 동일 seller/month 정산 중복 방지 |
 
@@ -182,21 +222,28 @@ infrastructure/persistence/
 
 ### 1. 정산 계산
 
-정산 계산 Job은 2개의 step으로 구성된다.
+정산 계산 Job은 2개의 chunk step으로 구성된다.
 
 ```text
 SettlementScheduler or SettlementBatchController
   -> settlementTargetCalculationStep
     -> SettlementTarget(PENDING) 조회
-    -> 건별 SettlementTargetCalculation 생성
-    -> 건별 정산 기준금액만 정규화
-    -> SettlementTarget.calculationStatus 갱신
+    -> SettlementTargetCalculationItemProcessor
+      -> 결제면 seller 프로모션 / 등급 기준 수수료율 계산
+      -> 환불이면 원 결제 계산 결과를 우선 참조
+      -> 원 계산이 없으면 occurredAt 기준 seller 프로모션을 2차 조회
+    -> SettlementTargetCalculationBatchItem 생성
+    -> SettlementTargetCalculationItemWriter
+      -> SettlementTargetCalculation 저장
+      -> SettlementTarget.calculationStatus 갱신
 
   -> settlementAggregationStep
     -> SettlementTargetCalculation seller/month 집계 조회
-    -> 최근 3개월 판매금액 기준 등급 정책 조회
-    -> 월 수수료율 적용 후 Settlement 생성
-    -> 동일 수수료율 기준으로 SettlementHistory 생성
+    -> SettlementCalculateService.createMonthlySettlementItem
+    -> MonthlySettlementBatchItem 생성
+    -> SettlementAggregationItemWriter
+      -> Settlement 저장
+      -> SettlementHistory 생성 및 저장
 ```
 
 핵심 포인트:
@@ -204,19 +251,24 @@ SettlementScheduler or SettlementBatchController
 - 계산 기준 월은 `yyyy-MM` 형식이다.
 - 기본적으로 이전 달 정산을 계산하는 흐름을 가진다.
 - `SettlementTargetCalculation`은 정산 대상 1건당 1건만 생성된다.
+- `SettlementTargetCalculationBatchItem`, `MonthlySettlementBatchItem`은 배치 step 사이에서 오가는 전용 DTO다.
 - 이미 생성된 판매자/월 정산은 중복 생성하지 않는다.
+- `SettlementTargetCalculation`에는 당시 적용한 프로모션 ID, 프로모션 타입, 수수료율이 남는다.
 - `Settlement`에는 당시 적용된 등급 코드, 등급 정책 ID, 기준 금액이 스냅샷으로 남는다.
+- 등급 정보가 없으면 테스트 및 초기 운영 안정성을 위해 `BASIC` 등급을 우선 사용한다.
 
 ### 2. 정산 송금
 
 ```text
 SettlementScheduler or SettlementBatchController
-  -> SettlementTransferService
-    -> READY 상태 정산 조회
-    -> UserClient로 판매자 계좌 조회
-    -> SettlementTransferClient로 송금 요청
-    -> Settlement 상태 갱신
-    -> SettlementTransfer 이력 저장
+  -> settlementTransferStep
+    -> SettlementTransferTasklet
+      -> SettlementTransferService
+        -> READY 상태 정산 조회
+        -> UserClient로 판매자 계좌 조회
+        -> SettlementTransferClient로 송금 요청
+        -> Settlement 상태 갱신
+        -> SettlementTransfer 이력 저장
 ```
 
 핵심 포인트:
@@ -242,6 +294,20 @@ SettlementScheduler or SettlementBatchController
 | 송금 실행 | READY 정산에 대한 실제 이체 요청 |
 
 현재 구현에는 payment/order/product 원천 조회 클라이언트가 포함되어 있지 않으며, `SettlementTarget` 적재는 외부 적재 절차 또는 이벤트 연동을 전제로 한다.
+
+---
+
+## 배치 패키지 정리 기준
+
+현재 배치 코드는 아래 기준으로 정리되어 있다.
+
+| 패키지 | 역할 |
+|------|------|
+| `infrastructure.batch.config` | Job, Step, Scheduler 조립 진입점 |
+| `infrastructure.batch.component` | `ItemProcessor`, `ItemWriter`, `Tasklet`, Listener, Resolver 같은 실행 부품 |
+| `infrastructure.batch.dto` | step 사이에서 전달되는 배치 전용 record |
+
+즉, Spring Batch 설정 진입점, 배치 실행 부품, 배치 중간 데이터가 분리되어 있어 역할 파악과 탐색이 쉬운 구조를 목표로 한다.
 
 ---
 
