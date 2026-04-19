@@ -65,6 +65,9 @@ else
   exit 1
 fi
 
+echo "Checking service: ${SERVICE}-service"
+kubectl --kubeconfig "$KUBECONFIG_PATH" get svc "${SERVICE}-service"
+
 echo "Restarting deployment: $SERVICE-service"
 kubectl --kubeconfig "$KUBECONFIG_PATH" rollout restart deployment/"$SERVICE-service"
 
