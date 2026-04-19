@@ -1,4 +1,4 @@
-package jabaclass.settlement.infrastructure.batch;
+package jabaclass.settlement.infrastructure.batch.component;
 
 import java.util.List;
 import java.util.Objects;
@@ -11,6 +11,7 @@ import jabaclass.settlement.domain.model.settlement.SettlementTarget;
 import jabaclass.settlement.domain.model.settlement.SettlementTargetCalculation;
 import jabaclass.settlement.domain.repository.SettlementTargetCalculationRepository;
 import jabaclass.settlement.domain.repository.SettlementTargetRepository;
+import jabaclass.settlement.infrastructure.batch.dto.SettlementTargetCalculationBatchItem;
 import lombok.RequiredArgsConstructor;
 
 @Component

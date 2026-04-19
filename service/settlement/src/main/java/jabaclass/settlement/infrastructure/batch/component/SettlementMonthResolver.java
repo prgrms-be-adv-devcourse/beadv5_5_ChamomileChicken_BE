@@ -1,4 +1,4 @@
-package jabaclass.settlement.infrastructure.batch;
+package jabaclass.settlement.infrastructure.batch.component;
 
 import java.time.YearMonth;
 

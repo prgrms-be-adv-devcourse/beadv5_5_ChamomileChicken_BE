@@ -1,4 +1,4 @@
-package jabaclass.settlement.infrastructure.batch;
+package jabaclass.settlement.infrastructure.batch.component;
 
 import org.springframework.batch.core.scope.context.ChunkContext;
 import org.springframework.batch.core.step.StepContribution;

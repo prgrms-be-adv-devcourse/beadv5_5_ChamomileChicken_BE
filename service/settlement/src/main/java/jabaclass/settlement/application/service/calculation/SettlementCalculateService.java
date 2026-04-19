@@ -31,7 +31,7 @@ import jabaclass.settlement.domain.repository.SettlementHistoryRepository;
 import jabaclass.settlement.domain.repository.SettlementRepository;
 import jabaclass.settlement.domain.repository.SettlementTargetCalculationRepository;
 import jabaclass.settlement.domain.repository.SettlementTargetRepository;
-import jabaclass.settlement.infrastructure.batch.MonthlySettlementBatchItem;
+import jabaclass.settlement.infrastructure.batch.dto.MonthlySettlementBatchItem;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 

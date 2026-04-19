@@ -1,4 +1,4 @@
-package jabaclass.settlement.infrastructure.batch;
+package jabaclass.settlement.infrastructure.batch.component;
 
 import org.springframework.batch.infrastructure.item.ItemProcessor;
 import org.springframework.stereotype.Component;
@@ -6,6 +6,7 @@ import org.springframework.stereotype.Component;
 import jabaclass.settlement.application.service.calculation.SettlementCalculateService;
 import jabaclass.settlement.domain.model.settlement.SettlementTarget;
 import jabaclass.settlement.domain.model.settlement.SettlementTargetCalculation;
+import jabaclass.settlement.infrastructure.batch.dto.SettlementTargetCalculationBatchItem;
 import lombok.RequiredArgsConstructor;
 
 @Component
