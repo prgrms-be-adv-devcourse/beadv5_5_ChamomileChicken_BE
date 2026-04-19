@@ -13,6 +13,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import jabaclass.settlement.application.dto.SellerSettlementAccount;
 import jabaclass.settlement.application.dto.SettlementTransferResult;
@@ -70,6 +71,7 @@ class SettlementTransferServiceTest {
 			new BigDecimal("0.033"),
 			new BigDecimal("9670.00")
 		);
+		assignId(settlement);
 
 		given(settlementRepository.findBySettlementMonthAndStatus(settlementMonth, SettlementStatus.READY))
 			.willReturn(List.of(settlement));
@@ -117,6 +119,7 @@ class SettlementTransferServiceTest {
 			new BigDecimal("0.033"),
 			new BigDecimal("9670.00")
 		);
+		assignId(settlement);
 
 		given(settlementRepository.findBySettlementMonthAndStatus(settlementMonth, SettlementStatus.READY))
 			.willReturn(List.of(settlement));
@@ -154,6 +157,7 @@ class SettlementTransferServiceTest {
 			new BigDecimal("0.033"),
 			new BigDecimal("9670.00")
 		);
+		assignId(settlement);
 
 		given(settlementRepository.findBySettlementMonthAndStatus(settlementMonth, SettlementStatus.READY))
 			.willReturn(List.of(settlement));
@@ -196,6 +200,7 @@ class SettlementTransferServiceTest {
 			new BigDecimal("0.033"),
 			new BigDecimal("9670.00")
 		);
+		assignId(settlement);
 
 		given(settlementRepository.findBySettlementMonthAndStatus(settlementMonth, SettlementStatus.READY))
 			.willReturn(List.of(settlement));
@@ -231,5 +236,9 @@ class SettlementTransferServiceTest {
 		assertThatThrownBy(() -> settlementTransferService.transferMonthly(""))
 			.isInstanceOf(BusinessException.class)
 			.hasMessage("파라미터 값을 확인해주세요.");
+	}
+
+	private void assignId(Settlement settlement) {
+		ReflectionTestUtils.setField(settlement, "id", UUID.randomUUID());
 	}
 }

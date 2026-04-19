@@ -77,12 +77,12 @@ Batch Scheduler / Controller
 | 엔티티 | 설명 | 핵심 필드 |
 |--------|------|-----------|
 | `SettlementTarget` | 결제/환불 원천에서 적재된 정산 대상 데이터 | `sellerId`, `orderId`, `productId`, `paymentId`, `refundId`, `settlementMonth`, `grossAmount`, `targetType`, `calculationStatus` |
-| `SettlementTargetCalculation` | 정산 대상 1건에 수수료 정책을 적용한 계산 결과 | `settlementTargetId`, `settlementBaseAmount`, `sellerGradeCode`, `sellerGradePolicyId`, `feeRate`, `feeAmount`, `settlementAmount` |
+| `SettlementTargetCalculation` | 정산 대상 1건을 월 정산 집계용으로 정규화한 계산 결과 | `settlementTargetId`, `settlementBaseAmount`, `appliedPromotionId`, `appliedPromotionType`, `originalPaymentTargetCalculationId` |
 | `Settlement` | 판매자별 월 정산 결과 스냅샷 | `sellerId`, `settlementMonth`, `sellerGradeCode`, `sellerGradePolicyId`, `gradeBaseAmount`, `feeAmount`, `feeRate`, `settlementAmount`, `status` |
 | `SettlementHistory` | 월 정산에 어떤 정산 대상이 포함되었는지 남기는 상세 이력 | `settlementId`, `settlementTargetId`, `sellerId`, `productId`, `originalAmount`, `feeAmount`, `settlementAmount`, `status` |
 | `SettlementTransfer` | 송금 요청과 결과 이력 | `settlementId`, `transferStatus`, `bankCode`, `accountNumberMasked`, `amount`, `requestedAt`, `completedAt`, `failReason` |
 | `SellerGradePolicy` | 최근 3개월 판매금액 구간별 등급/수수료 정책 | `gradeCode`, `minSalesAmount`, `maxSalesAmount`, `feeRate`, `version`, `active` |
-| `SellerGrade` | 판매자별 마지막 계산 등급 정보 | `sellerId`, `sellerGradePolicyId`, `calculatedMonth` |
+| `SellerGrade` | 판매자별 마지막 적용 등급 캐시 | `sellerId`, `sellerGradePolicyId`, `calculatedMonth` |
 
 ### 상태값
 
@@ -163,7 +163,7 @@ infrastructure/persistence/
 | 계산 대상 조회 | `PENDING` 상태의 `SettlementTarget` 조회 |
 | 건별 계산 | 결제/환불 건별 `SettlementTargetCalculation` 생성 |
 | 판매 등급 산정 | 최근 3개월 판매금액 기준 등급 정책 조회 |
-| 월 정산 생성 | seller/month 집계 결과로 `Settlement` 생성 |
+| 월 정산 생성 | seller/month 집계 금액에 월 등급 수수료를 적용해 `Settlement` 생성 |
 | 구성 이력 생성 | `SettlementHistory` 저장 |
 | 중복 계산 방지 | 동일 정산 대상, 동일 seller/month 정산 중복 방지 |
 
@@ -189,13 +189,14 @@ SettlementScheduler or SettlementBatchController
   -> settlementTargetCalculationStep
     -> SettlementTarget(PENDING) 조회
     -> 건별 SettlementTargetCalculation 생성
+    -> 건별 정산 기준금액만 정규화
     -> SettlementTarget.calculationStatus 갱신
 
   -> settlementAggregationStep
     -> SettlementTargetCalculation seller/month 집계 조회
     -> 최근 3개월 판매금액 기준 등급 정책 조회
-    -> Settlement 생성
-    -> SettlementHistory 생성
+    -> 월 수수료율 적용 후 Settlement 생성
+    -> 동일 수수료율 기준으로 SettlementHistory 생성
 ```
 
 핵심 포인트:
