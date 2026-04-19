@@ -13,7 +13,7 @@ public class RouteConfig {
 		return builder.routes()
 			// File Service
 			.route("file", r -> r.path("/api/v1/files/**")
-				.uri("http://localhost:9000"))
+				.uri("http://localhost:9004"))
 
 			// Payment Service
 			.route("payment", r -> r.path("/api/v1/payments/**")

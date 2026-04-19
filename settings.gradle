@@ -1,6 +1,5 @@
 rootProject.name = 'jaba'
 
-include 'common'
 include 'api-gateway'
 
 include 'service'
