@@ -4,6 +4,8 @@ set -euo pipefail
 SERVICE="${1:-}"
 ENV_DIR=/home/ubuntu/apps/deploy/env
 K3S_DIR=/home/ubuntu/apps/data/k3s-service
+DOCKERHUB_USERNAME="${DOCKERHUB_USERNAME:?DOCKERHUB_USERNAME is required}"
+IMAGE_TAG="${IMAGE_TAG:?IMAGE_TAG is required}"
 
 if [ -z "$SERVICE" ]; then
   echo "Usage: deploy-apps.sh <service-name>"
@@ -51,7 +53,7 @@ create_secret_if_exists "${SERVICE}-secret" "$ENV_DIR/${SERVICE}_secret.env"
 # 3. deployment yaml 적용
 if [ -f "$K3S_DIR/${SERVICE}-service.yml" ]; then
   echo "Applying Kubernetes YAML: $K3S_DIR/${SERVICE}-service.yml"
-  envsubst < "$K3S_DIR/${SERVICE}-service.yml" | kubectl apply -f -
+  envsubst "$DOCKERHUB_USERNAME $IMAGE_TAG" < "$K3S_DIR/${SERVICE}-service.yml" | kubectl apply -f -
 else
   echo "YAML file not found: $K3S_DIR/${SERVICE}-service.yml"
   exit 1
