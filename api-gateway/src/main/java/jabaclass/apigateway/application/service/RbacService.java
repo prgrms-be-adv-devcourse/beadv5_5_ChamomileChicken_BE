@@ -39,11 +39,19 @@ public class RbacService {
 	}
 
 	private boolean matches(List<RoutePolicy> policies, String path, HttpMethod method, String role) {
-		return policies.stream()
+		List<RoutePolicy> matchedPolicies = policies.stream()
 			.filter(p -> p.getMethod().equalsIgnoreCase(method.name())
 				&& PATH_MATCHER.match(p.getPathPattern(), path))
-			.findFirst()
-			.map(p -> Arrays.asList(p.getAllowedRoles().split(",")).contains(role))
-			.orElse(true); // 정책 없으면 통과 (인증만 되면 허용)
+			.sorted((a, b) -> b.getPathPattern().length() - a.getPathPattern().length()) // 구체적인 패턴 우선
+			.toList();
+
+		if (matchedPolicies.isEmpty()) {
+			return true;
+		}
+
+		RoutePolicy best = matchedPolicies.get(0);
+		return Arrays.stream(best.getAllowedRoles().split(","))
+			.map(String::trim)
+			.anyMatch(r -> role != null && r.equalsIgnoreCase(role));
 	}
 }
