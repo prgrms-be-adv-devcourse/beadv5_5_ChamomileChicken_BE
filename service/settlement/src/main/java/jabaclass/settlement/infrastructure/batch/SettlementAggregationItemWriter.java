@@ -8,9 +8,9 @@ import org.springframework.batch.infrastructure.item.Chunk;
 import org.springframework.batch.infrastructure.item.ItemWriter;
 import org.springframework.stereotype.Component;
 
-import jabaclass.settlement.application.service.SettlementCalculateService;
-import jabaclass.settlement.domain.model.Settlement;
-import jabaclass.settlement.domain.model.SettlementHistory;
+import jabaclass.settlement.application.service.calculation.SettlementCalculateService;
+import jabaclass.settlement.domain.model.settlement.Settlement;
+import jabaclass.settlement.domain.model.settlement.SettlementHistory;
 import jabaclass.settlement.domain.repository.SettlementHistoryRepository;
 import jabaclass.settlement.domain.repository.SettlementRepository;
 import lombok.RequiredArgsConstructor;

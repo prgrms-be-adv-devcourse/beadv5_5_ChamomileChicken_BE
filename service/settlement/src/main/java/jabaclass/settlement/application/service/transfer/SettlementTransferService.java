@@ -1,4 +1,4 @@
-package jabaclass.settlement.application.service;
+package jabaclass.settlement.application.service.transfer;
 
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -18,9 +18,9 @@ import jabaclass.settlement.application.dto.SettlementTransferResult;
 import jabaclass.settlement.application.port.external.SellerSettlementPort;
 import jabaclass.settlement.application.port.external.SettlementTransferPort;
 import jabaclass.settlement.application.usecase.SettlementTransferUseCase;
-import jabaclass.settlement.domain.model.Settlement;
-import jabaclass.settlement.domain.model.SettlementTransfer;
-import jabaclass.settlement.domain.model.SettlementStatus;
+import jabaclass.settlement.domain.model.settlement.Settlement;
+import jabaclass.settlement.domain.model.settlement.SettlementTransfer;
+import jabaclass.settlement.domain.model.settlement.SettlementStatus;
 import jabaclass.settlement.domain.repository.SettlementRepository;
 import jabaclass.settlement.domain.repository.SettlementTransferRepository;
 import lombok.RequiredArgsConstructor;

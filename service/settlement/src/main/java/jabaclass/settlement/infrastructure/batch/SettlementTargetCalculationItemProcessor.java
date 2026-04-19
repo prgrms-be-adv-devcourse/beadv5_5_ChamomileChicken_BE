@@ -3,9 +3,9 @@ package jabaclass.settlement.infrastructure.batch;
 import org.springframework.batch.infrastructure.item.ItemProcessor;
 import org.springframework.stereotype.Component;
 
-import jabaclass.settlement.application.service.SettlementCalculateService;
-import jabaclass.settlement.domain.model.SettlementTarget;
-import jabaclass.settlement.domain.model.SettlementTargetCalculation;
+import jabaclass.settlement.application.service.calculation.SettlementCalculateService;
+import jabaclass.settlement.domain.model.settlement.SettlementTarget;
+import jabaclass.settlement.domain.model.settlement.SettlementTargetCalculation;
 import lombok.RequiredArgsConstructor;
 
 @Component

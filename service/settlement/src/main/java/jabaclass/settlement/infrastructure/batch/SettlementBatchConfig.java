@@ -16,8 +16,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.transaction.PlatformTransactionManager;
 
 import jabaclass.settlement.application.dto.SettlementTargetSummary;
-import jabaclass.settlement.application.service.SettlementCalculateService;
-import jabaclass.settlement.domain.model.SettlementTarget;
+import jabaclass.settlement.application.service.calculation.SettlementCalculateService;
+import jabaclass.settlement.domain.model.settlement.SettlementTarget;
 import jabaclass.settlement.domain.repository.SettlementTargetCalculationRepository;
 
 @Configuration

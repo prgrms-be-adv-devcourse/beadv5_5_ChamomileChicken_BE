@@ -1,7 +1,6 @@
-package jabaclass.settlement.application.service;
+package jabaclass.settlement.application.service.calculation;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -12,26 +11,23 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import jabaclass.settlement.application.dto.AppliedPromotion;
 import jabaclass.settlement.application.dto.SettlementTargetSummary;
 import jabaclass.settlement.application.exception.BusinessException;
 import jabaclass.settlement.application.exception.CommonErrorCode;
 import jabaclass.settlement.application.exception.SettlementErrorCode;
 import jabaclass.settlement.application.usecase.SettlementCalculateUseCase;
-import jabaclass.settlement.domain.model.SellerGrade;
-import jabaclass.settlement.domain.model.SellerGradePolicy;
-import jabaclass.settlement.domain.model.SellerPromotion;
-import jabaclass.settlement.domain.model.Settlement;
-import jabaclass.settlement.domain.model.SettlementHistory;
-import jabaclass.settlement.domain.model.SettlementPromotion;
-import jabaclass.settlement.domain.model.SettlementTarget;
-import jabaclass.settlement.domain.model.SettlementTargetCalculation;
-import jabaclass.settlement.domain.model.SettlementTargetCalculationStatus;
-import jabaclass.settlement.domain.model.SettlementTargetType;
+import jabaclass.settlement.domain.model.grade.SellerGrade;
+import jabaclass.settlement.domain.model.grade.SellerGradePolicy;
+import jabaclass.settlement.domain.model.settlement.Settlement;
+import jabaclass.settlement.domain.model.settlement.SettlementHistory;
+import jabaclass.settlement.domain.model.settlement.SettlementTarget;
+import jabaclass.settlement.domain.model.settlement.SettlementTargetCalculation;
+import jabaclass.settlement.domain.model.settlement.SettlementTargetCalculationStatus;
+import jabaclass.settlement.domain.model.settlement.SettlementTargetType;
 import jabaclass.settlement.domain.repository.SellerGradeRepository;
 import jabaclass.settlement.domain.repository.SellerGradePolicyRepository;
 import jabaclass.settlement.domain.repository.SettlementHistoryRepository;
-import jabaclass.settlement.domain.repository.SellerPromotionRepository;
-import jabaclass.settlement.domain.repository.SettlementPromotionRepository;
 import jabaclass.settlement.domain.repository.SettlementRepository;
 import jabaclass.settlement.domain.repository.SettlementTargetCalculationRepository;
 import jabaclass.settlement.domain.repository.SettlementTargetRepository;
@@ -51,8 +47,9 @@ public class SettlementCalculateService implements SettlementCalculateUseCase {
 	private final SettlementHistoryRepository settlementHistoryRepository;
 	private final SellerGradeRepository sellerGradeRepository;
 	private final SellerGradePolicyRepository sellerGradePolicyRepository;
-	private final SettlementPromotionRepository settlementPromotionRepository;
-	private final SellerPromotionRepository sellerPromotionRepository;
+	private final SettlementPromotionResolver settlementPromotionResolver;
+	private final SettlementRefundCalculationService settlementRefundCalculationService;
+	private final SettlementFeeCalculator settlementFeeCalculator;
 
 	@Override
 	@Transactional
@@ -81,12 +78,12 @@ public class SettlementCalculateService implements SettlementCalculateUseCase {
 					settlementMonth,
 					summary.sellerId()
 				);
-			BigDecimal feeAmount = calculateFeeAmount(
+			BigDecimal feeAmount = settlementFeeCalculator.calculateFeeAmount(
 				summary.totalSettlementBaseAmount(),
 				sellerGradePolicy.getFeeRate(),
 				sellerTargets
 			);
-			BigDecimal settlementAmount = calculateSettlementAmount(
+			BigDecimal settlementAmount = settlementFeeCalculator.calculateSettlementAmount(
 				summary.totalSettlementBaseAmount(),
 				sellerGradePolicy.getFeeRate(),
 				sellerTargets
@@ -161,16 +158,16 @@ public class SettlementCalculateService implements SettlementCalculateUseCase {
 		}
 
 		if (target.getTargetType() == SettlementTargetType.REFUND) {
-			return calculateRefundTarget(target);
+			return settlementRefundCalculationService.calculate(target);
 		}
 
-		ApplicablePromotion applicablePromotion = resolveApplicablePromotion(target.getSellerId(), target.getOccurredAt());
+		AppliedPromotion appliedPromotion = settlementPromotionResolver.resolve(target.getSellerId(), target.getOccurredAt());
 
 		return SettlementTargetCalculation.forPayment(
 			target,
-			applicablePromotion.promotionId(),
-			applicablePromotion.promotionType(),
-			applicablePromotion.feeRate()
+			appliedPromotion.promotionId(),
+			appliedPromotion.promotionType(),
+			appliedPromotion.feeRate()
 		);
 	}
 
@@ -202,12 +199,12 @@ public class SettlementCalculateService implements SettlementCalculateUseCase {
 				settlementMonth,
 				summary.sellerId()
 			);
-		BigDecimal feeAmount = calculateFeeAmount(
+		BigDecimal feeAmount = settlementFeeCalculator.calculateFeeAmount(
 			summary.totalSettlementBaseAmount(),
 			sellerGradePolicy.getFeeRate(),
 			sellerTargets
 		);
-		BigDecimal settlementAmount = calculateSettlementAmount(
+		BigDecimal settlementAmount = settlementFeeCalculator.calculateSettlementAmount(
 			summary.totalSettlementBaseAmount(),
 			sellerGradePolicy.getFeeRate(),
 			sellerTargets
@@ -280,9 +277,9 @@ public class SettlementCalculateService implements SettlementCalculateUseCase {
 				throw new BusinessException(SettlementErrorCode.SETTLEMENT_NOT_FOUND);
 			}
 
-			BigDecimal feeAmount = calculateFeeAmount(
+			BigDecimal feeAmount = settlementFeeCalculator.calculateFeeAmount(
 				calculation.getSettlementBaseAmount(),
-				resolveAppliedFeeRate(calculation, settlement.getFeeRate())
+				settlementFeeCalculator.resolveAppliedFeeRate(calculation, settlement.getFeeRate())
 			);
 			BigDecimal settlementAmount = calculation.getSettlementBaseAmount().subtract(feeAmount);
 
@@ -306,100 +303,5 @@ public class SettlementCalculateService implements SettlementCalculateUseCase {
 		return sellerGradePolicyRepository.findActiveApplicablePolicy(gradeBaseAmount)
 			.or(() -> sellerGradePolicyRepository.findActiveApplicablePolicy(BigDecimal.ZERO))
 			.orElseThrow(() -> new BusinessException(SettlementErrorCode.SELLER_GRADE_POLICY_NOT_FOUND));
-	}
-
-	private BigDecimal calculateFeeAmount(BigDecimal settlementBaseAmount, BigDecimal feeRate) {
-		return settlementBaseAmount.multiply(feeRate).setScale(2, java.math.RoundingMode.DOWN);
-	}
-
-	private SettlementTargetCalculation calculateRefundTarget(SettlementTarget target) {
-		java.util.Optional<SettlementTarget> originalPaymentTarget = settlementTargetRepository.findByPaymentIdAndTargetType(
-			target.getPaymentId(),
-			SettlementTargetType.PAYMENT
-		);
-
-		if (originalPaymentTarget.isPresent()) {
-			java.util.Optional<SettlementTargetCalculation> originalPaymentCalculation =
-				settlementTargetCalculationRepository.findBySettlementTargetId(originalPaymentTarget.get().getId());
-
-			if (originalPaymentCalculation.isPresent()) {
-				return SettlementTargetCalculation.forRefund(
-					target,
-					originalPaymentTarget.get(),
-					originalPaymentCalculation.get()
-				);
-			}
-		}
-
-		ApplicablePromotion applicablePromotion = resolveApplicablePromotion(target.getSellerId(), target.getOccurredAt());
-		if (applicablePromotion.exists()) {
-			return SettlementTargetCalculation.forRefundWithPromotion(
-				target,
-				applicablePromotion.promotionId(),
-				applicablePromotion.promotionType(),
-				applicablePromotion.feeRate()
-			);
-		}
-
-		throw new BusinessException(SettlementErrorCode.SETTLEMENT_NOT_FOUND);
-	}
-
-	private ApplicablePromotion resolveApplicablePromotion(UUID sellerId, LocalDateTime occurredAt) {
-		return sellerPromotionRepository.findActiveApplicablePromotion(sellerId, occurredAt)
-			.flatMap(this::toApplicablePromotion)
-			.orElseGet(ApplicablePromotion::empty);
-	}
-
-	private java.util.Optional<ApplicablePromotion> toApplicablePromotion(SellerPromotion sellerPromotion) {
-		return settlementPromotionRepository.findById(sellerPromotion.getPromotionId())
-			.filter(SettlementPromotion::isActive)
-			.map(promotion -> new ApplicablePromotion(
-				promotion.getId(),
-				promotion.getPromotionType().name(),
-				promotion.getFeeRate()
-			));
-	}
-
-	private BigDecimal calculateFeeAmount(
-		BigDecimal summaryBaseAmount,
-		BigDecimal defaultFeeRate,
-		List<SettlementTargetCalculation> calculations
-	) {
-		if (calculations == null || calculations.isEmpty()) {
-			return calculateFeeAmount(summaryBaseAmount, defaultFeeRate);
-		}
-
-		return calculations.stream()
-			.map(calculation -> calculateFeeAmount(
-				calculation.getSettlementBaseAmount(),
-				resolveAppliedFeeRate(calculation, defaultFeeRate)
-			))
-			.reduce(BigDecimal.ZERO, BigDecimal::add);
-	}
-
-	private BigDecimal calculateSettlementAmount(
-		BigDecimal summaryBaseAmount,
-		BigDecimal defaultFeeRate,
-		List<SettlementTargetCalculation> calculations
-	) {
-		return summaryBaseAmount.subtract(calculateFeeAmount(summaryBaseAmount, defaultFeeRate, calculations));
-	}
-
-	private BigDecimal resolveAppliedFeeRate(SettlementTargetCalculation calculation, BigDecimal defaultFeeRate) {
-		return calculation.getAppliedFeeRate() == null ? defaultFeeRate : calculation.getAppliedFeeRate();
-	}
-
-	private record ApplicablePromotion(
-		UUID promotionId,
-		String promotionType,
-		BigDecimal feeRate
-	) {
-		private static ApplicablePromotion empty() {
-			return new ApplicablePromotion(null, null, null);
-		}
-
-		private boolean exists() {
-			return promotionId != null;
-		}
 	}
 }
