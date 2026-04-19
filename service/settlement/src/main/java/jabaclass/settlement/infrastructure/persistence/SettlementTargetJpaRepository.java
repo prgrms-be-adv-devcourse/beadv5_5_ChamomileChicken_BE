@@ -2,7 +2,6 @@ package jabaclass.settlement.infrastructure.persistence;
 
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -11,19 +10,13 @@ import org.springframework.data.repository.query.Param;
 
 import jabaclass.settlement.domain.model.SettlementTarget;
 import jabaclass.settlement.domain.model.SettlementTargetCalculationStatus;
-import jabaclass.settlement.domain.model.SettlementTargetType;
 
 public interface SettlementTargetJpaRepository extends JpaRepository<SettlementTarget, UUID> {
 
-	boolean existsByPaymentId(UUID paymentId);
-
-	boolean existsByRefundId(UUID refundId);
-
-	Optional<SettlementTarget> findByPaymentIdAndTargetType(UUID paymentId, SettlementTargetType targetType);
-
-	List<SettlementTarget> findBySettlementMonth(String settlementMonth);
-
-	List<SettlementTarget> findBySettlementMonthAndSellerId(String settlementMonth, UUID sellerId);
+	java.util.Optional<SettlementTarget> findByPaymentIdAndTargetType(
+		UUID paymentId,
+		jabaclass.settlement.domain.model.SettlementTargetType targetType
+	);
 
 	List<SettlementTarget> findByIdIn(List<UUID> ids);
 

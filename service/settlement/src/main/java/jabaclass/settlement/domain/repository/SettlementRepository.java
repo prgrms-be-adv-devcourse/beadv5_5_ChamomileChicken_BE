@@ -9,17 +9,11 @@ import jabaclass.settlement.domain.model.SettlementStatus;
 
 public interface SettlementRepository {
 
-	Settlement save(Settlement settlement);
-
 	List<Settlement> saveAll(List<Settlement> settlements);
 
 	Optional<Settlement> findById(UUID settlementId);
 
-	Optional<Settlement> findBySellerIdAndSettlementMonth(UUID sellerId, String settlementMonth);
-
 	boolean existsBySellerIdAndSettlementMonth(UUID sellerId, String settlementMonth);
-
-	List<Settlement> findByStatus(SettlementStatus status);
 
 	List<Settlement> findBySettlementMonth(String settlementMonth);
 

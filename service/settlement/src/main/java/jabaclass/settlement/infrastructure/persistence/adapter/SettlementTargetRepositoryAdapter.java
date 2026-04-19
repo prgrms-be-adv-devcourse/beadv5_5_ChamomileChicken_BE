@@ -21,38 +21,13 @@ public class SettlementTargetRepositoryAdapter implements SettlementTargetReposi
 	private final SettlementTargetJpaRepository settlementTargetJpaRepository;
 
 	@Override
-	public SettlementTarget save(SettlementTarget settlementTarget) {
-		return settlementTargetJpaRepository.save(settlementTarget);
-	}
-
-	@Override
 	public List<SettlementTarget> saveAll(List<SettlementTarget> settlementTargets) {
 		return settlementTargetJpaRepository.saveAll(settlementTargets);
 	}
 
 	@Override
-	public boolean existsByPaymentId(UUID paymentId) {
-		return settlementTargetJpaRepository.existsByPaymentId(paymentId);
-	}
-
-	@Override
-	public boolean existsByRefundId(UUID refundId) {
-		return settlementTargetJpaRepository.existsByRefundId(refundId);
-	}
-
-	@Override
 	public Optional<SettlementTarget> findByPaymentIdAndTargetType(UUID paymentId, SettlementTargetType targetType) {
 		return settlementTargetJpaRepository.findByPaymentIdAndTargetType(paymentId, targetType);
-	}
-
-	@Override
-	public List<SettlementTarget> findBySettlementMonth(String settlementMonth) {
-		return settlementTargetJpaRepository.findBySettlementMonth(settlementMonth);
-	}
-
-	@Override
-	public List<SettlementTarget> findBySettlementMonthAndSellerId(String settlementMonth, UUID sellerId) {
-		return settlementTargetJpaRepository.findBySettlementMonthAndSellerId(settlementMonth, sellerId);
 	}
 
 	@Override

@@ -17,11 +17,6 @@ public class SellerGradePolicyRepositoryAdapter implements SellerGradePolicyRepo
 	private final SellerGradePolicyJpaRepository sellerGradePolicyJpaRepository;
 
 	@Override
-	public SellerGradePolicy save(SellerGradePolicy sellerGradePolicy) {
-		return sellerGradePolicyJpaRepository.save(sellerGradePolicy);
-	}
-
-	@Override
 	public Optional<SellerGradePolicy> findActiveApplicablePolicy(BigDecimal salesAmount) {
 		return sellerGradePolicyJpaRepository.findActiveApplicablePolicies(salesAmount).stream().findFirst();
 	}

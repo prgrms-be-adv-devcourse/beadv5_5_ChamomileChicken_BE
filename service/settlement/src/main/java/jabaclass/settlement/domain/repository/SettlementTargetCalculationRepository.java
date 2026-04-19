@@ -10,19 +10,13 @@ import jabaclass.settlement.domain.model.SettlementTargetCalculation;
 
 public interface SettlementTargetCalculationRepository {
 
-	SettlementTargetCalculation save(SettlementTargetCalculation settlementTargetCalculation);
-
 	List<SettlementTargetCalculation> saveAll(List<SettlementTargetCalculation> settlementTargetCalculations);
 
 	boolean existsBySettlementTargetId(UUID settlementTargetId);
 
 	Optional<SettlementTargetCalculation> findBySettlementTargetId(UUID settlementTargetId);
 
-	List<SettlementTargetCalculation> findBySettlementMonth(String settlementMonth);
-
 	List<SettlementTargetCalculation> findBySettlementMonthAndSellerId(String settlementMonth, UUID sellerId);
 
 	List<SettlementTargetSummary> findSummaryBySettlementMonth(String settlementMonth);
-
-	BigDecimal sumSettlementBaseAmountBySellerIdAndSettlementMonths(UUID sellerId, List<String> settlementMonths);
 }

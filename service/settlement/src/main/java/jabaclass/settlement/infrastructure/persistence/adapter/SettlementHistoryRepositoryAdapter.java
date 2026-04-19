@@ -18,22 +18,7 @@ public class SettlementHistoryRepositoryAdapter implements SettlementHistoryRepo
 	private final SettlementHistoryJpaRepository settlementHistoryJpaRepository;
 
 	@Override
-	public SettlementHistory save(SettlementHistory settlementHistory) {
-		return settlementHistoryJpaRepository.save(settlementHistory);
-	}
-
-	@Override
 	public List<SettlementHistory> saveAll(List<SettlementHistory> settlementHistories) {
 		return settlementHistoryJpaRepository.saveAll(settlementHistories);
-	}
-
-	@Override
-	public List<SettlementHistory> findBySettlementId(UUID settlementId) {
-		return settlementHistoryJpaRepository.findBySettlementId(settlementId);
-	}
-
-	@Override
-	public List<SettlementHistory> findBySellerIdAndSettlementMonth(UUID sellerId, String settlementMonth) {
-		return settlementHistoryJpaRepository.findBySellerIdAndSettlementMonth(sellerId, settlementMonth);
 	}
 }

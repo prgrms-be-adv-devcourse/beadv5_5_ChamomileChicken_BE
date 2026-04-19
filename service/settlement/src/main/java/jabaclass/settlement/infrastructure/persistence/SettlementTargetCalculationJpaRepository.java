@@ -7,8 +7,6 @@ import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
-
 import jabaclass.settlement.domain.model.SettlementTargetCalculation;
 
 public interface SettlementTargetCalculationJpaRepository extends JpaRepository<SettlementTargetCalculation, UUID> {
@@ -17,29 +15,13 @@ public interface SettlementTargetCalculationJpaRepository extends JpaRepository<
 
 	Optional<SettlementTargetCalculation> findBySettlementTargetId(UUID settlementTargetId);
 
-	List<SettlementTargetCalculation> findBySettlementMonth(String settlementMonth);
-
 	List<SettlementTargetCalculation> findBySettlementMonthAndSellerId(String settlementMonth, UUID sellerId);
-
-	@Query("""
-		select coalesce(sum(stc.settlementBaseAmount), 0)
-		from SettlementTargetCalculation stc
-		where stc.sellerId = :sellerId
-		  and stc.settlementMonth in :settlementMonths
-		""")
-	BigDecimal sumSettlementBaseAmountBySellerIdAndSettlementMonths(
-		@Param("sellerId") UUID sellerId,
-		@Param("settlementMonths") List<String> settlementMonths
-	);
 
 	@Query("""
 		select
 			stc.sellerId as sellerId,
 			stc.settlementMonth as settlementMonth,
-			sum(stc.settlementBaseAmount) as totalSettlementBaseAmount,
-			sum(stc.feeAmount) as totalFeeAmount,
-			sum(stc.settlementAmount) as totalSettlementAmount,
-			count(stc.id) as targetCount
+			sum(stc.settlementBaseAmount) as totalSettlementBaseAmount
 		from SettlementTargetCalculation stc
 		where stc.settlementMonth = :settlementMonth
 		group by stc.sellerId, stc.settlementMonth
@@ -50,8 +32,5 @@ public interface SettlementTargetCalculationJpaRepository extends JpaRepository<
 		UUID getSellerId();
 		String getSettlementMonth();
 		BigDecimal getTotalSettlementBaseAmount();
-		BigDecimal getTotalFeeAmount();
-		BigDecimal getTotalSettlementAmount();
-		Long getTargetCount();
 	}
 }

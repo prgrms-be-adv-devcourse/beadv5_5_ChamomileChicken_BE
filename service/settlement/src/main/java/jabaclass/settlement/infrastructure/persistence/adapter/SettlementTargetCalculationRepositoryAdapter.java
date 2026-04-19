@@ -1,6 +1,5 @@
 package jabaclass.settlement.infrastructure.persistence.adapter;
 
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -20,11 +19,6 @@ public class SettlementTargetCalculationRepositoryAdapter implements SettlementT
 	private final SettlementTargetCalculationJpaRepository settlementTargetCalculationJpaRepository;
 
 	@Override
-	public SettlementTargetCalculation save(SettlementTargetCalculation settlementTargetCalculation) {
-		return settlementTargetCalculationJpaRepository.save(settlementTargetCalculation);
-	}
-
-	@Override
 	public List<SettlementTargetCalculation> saveAll(List<SettlementTargetCalculation> settlementTargetCalculations) {
 		return settlementTargetCalculationJpaRepository.saveAll(settlementTargetCalculations);
 	}
@@ -40,11 +34,6 @@ public class SettlementTargetCalculationRepositoryAdapter implements SettlementT
 	}
 
 	@Override
-	public List<SettlementTargetCalculation> findBySettlementMonth(String settlementMonth) {
-		return settlementTargetCalculationJpaRepository.findBySettlementMonth(settlementMonth);
-	}
-
-	@Override
 	public List<SettlementTargetCalculation> findBySettlementMonthAndSellerId(String settlementMonth, UUID sellerId) {
 		return settlementTargetCalculationJpaRepository.findBySettlementMonthAndSellerId(settlementMonth, sellerId);
 	}
@@ -56,23 +45,8 @@ public class SettlementTargetCalculationRepositoryAdapter implements SettlementT
 			.map(it -> new SettlementTargetSummary(
 				it.getSellerId(),
 				it.getSettlementMonth(),
-				it.getTotalSettlementBaseAmount(),
-				it.getTotalFeeAmount(),
-				it.getTotalSettlementAmount(),
-				it.getTargetCount()
+				it.getTotalSettlementBaseAmount()
 			))
 			.toList();
-	}
-
-	@Override
-	public BigDecimal sumSettlementBaseAmountBySellerIdAndSettlementMonths(UUID sellerId, List<String> settlementMonths) {
-		if (settlementMonths == null || settlementMonths.isEmpty()) {
-			return BigDecimal.ZERO;
-		}
-
-		return settlementTargetCalculationJpaRepository.sumSettlementBaseAmountBySellerIdAndSettlementMonths(
-			sellerId,
-			settlementMonths
-		);
 	}
 }

@@ -11,19 +11,9 @@ import jabaclass.settlement.domain.model.SettlementTargetType;
 
 public interface SettlementTargetRepository {
 
-	SettlementTarget save(SettlementTarget settlementTarget);
-
 	List<SettlementTarget> saveAll(List<SettlementTarget> settlementTargets);
 
-	boolean existsByPaymentId(UUID paymentId);
-
-	boolean existsByRefundId(UUID refundId);
-
 	Optional<SettlementTarget> findByPaymentIdAndTargetType(UUID paymentId, SettlementTargetType targetType);
-
-	List<SettlementTarget> findBySettlementMonth(String settlementMonth);
-
-	List<SettlementTarget> findBySettlementMonthAndSellerId(String settlementMonth, UUID sellerId);
 
 	List<SettlementTarget> findAllByIds(List<UUID> ids);
 

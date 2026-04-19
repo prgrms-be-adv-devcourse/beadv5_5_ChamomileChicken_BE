@@ -19,11 +19,6 @@ public class SettlementRepositoryAdapter implements SettlementRepository {
 	private final SettlementJpaRepository settlementJpaRepository;
 
 	@Override
-	public Settlement save(Settlement settlement) {
-		return settlementJpaRepository.save(settlement);
-	}
-
-	@Override
 	public List<Settlement> saveAll(List<Settlement> settlements) {
 		return settlementJpaRepository.saveAll(settlements);
 	}
@@ -34,18 +29,8 @@ public class SettlementRepositoryAdapter implements SettlementRepository {
 	}
 
 	@Override
-	public Optional<Settlement> findBySellerIdAndSettlementMonth(UUID sellerId, String settlementMonth) {
-		return settlementJpaRepository.findBySellerIdAndSettlementMonth(sellerId, settlementMonth);
-	}
-
-	@Override
 	public boolean existsBySellerIdAndSettlementMonth(UUID sellerId, String settlementMonth) {
 		return settlementJpaRepository.existsBySellerIdAndSettlementMonth(sellerId, settlementMonth);
-	}
-
-	@Override
-	public List<Settlement> findByStatus(SettlementStatus status) {
-		return settlementJpaRepository.findByStatus(status);
 	}
 
 	@Override
