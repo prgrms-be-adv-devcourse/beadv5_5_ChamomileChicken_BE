@@ -136,6 +136,8 @@ jobs:
           fi
 
       - name: Health check
+        env:
+          KUBECONFIG: /home/ubuntu/.kube/config
         run: |
           kubectl rollout status deployment/admin-service --timeout=120s
 
