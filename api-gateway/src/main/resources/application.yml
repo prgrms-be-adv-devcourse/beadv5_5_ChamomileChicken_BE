@@ -4,12 +4,8 @@ server:
 spring:
   application:
     name: api-gateway
-
-  # Redis 설정
-  data:
-    redis:
-      host: localhost
-      port: 6379
+  profiles:
+    active: dev
 
   cloud:
     gateway:
@@ -72,15 +68,5 @@ spring:
               predicates:
                 - Path=/api/v1/admins/**
 
-cors:
-  allowed-origins:
-    - http://localhost:3000
-
 jwt:
   secret: ${JWT_SECRET}
-
-logging:
-  level:
-    root: INFO
-    jabaclass.apigateway: DEBUG
-    org.springframework.cloud.gateway: DEBUG
