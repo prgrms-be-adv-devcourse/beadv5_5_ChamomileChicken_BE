@@ -17,17 +17,13 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class OutboxPublisher {
 
-	private final OutboxRepository outboxRepository;
 	private final OutboxService outboxService;
 	private final KafkaTemplate<String, String> kafkaTemplate;
 
 	@Scheduled(fixedDelay = 1000)
 	public void publish() {
 		LocalDateTime threshold = LocalDateTime.now().minusMinutes(5);
-		List<OutboxEvent> events =
-			outboxRepository.findProcessableEvents(threshold, 100);
-
-		outboxService.markSending(events);
+		List<OutboxEvent> events = outboxService.findAndMarkSending(threshold, 100);
 
 		for (OutboxEvent event : events) {
 			if (event.isRetryExceeded()) {
