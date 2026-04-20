@@ -7,7 +7,8 @@ public record ProductReservationResponseDto(
     BigDecimal price,
     int quantity,
     String valid,
-    UUID productUserId
+    UUID productUserId,
+    UUID sellerId
 ) {
     public boolean isOk() {
         return "OK".equals(valid);
