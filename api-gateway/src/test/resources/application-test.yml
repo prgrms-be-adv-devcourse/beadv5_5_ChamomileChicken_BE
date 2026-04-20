@@ -17,7 +17,7 @@ spring:
 
 cors:
   allowed-origins:
-    - http://localhost:3000
+    - ${CORS_ALLOWED_ORIGINS}
 
 jwt:
   secret: "test-environment-secret-key-must-be-32-chars-long-!!!"
