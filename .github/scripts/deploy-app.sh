@@ -2,11 +2,11 @@
 set -euo pipefail
 
 SERVICE="${1:-${SERVICE:-}}"
-ENV_DIR=/home/ubuntu/apps/deploy/env
-K3S_DIR=/home/ubuntu/apps/data/k3s-service
+ENV_DIR="${ENV_DIR:-/home/ubuntu/apps/deploy/env}"
+K3S_DIR="${K3S_DIR:-/home/ubuntu/apps/data/k3s-service}"
 DOCKERHUB_USERNAME="${DOCKERHUB_USERNAME:?DOCKERHUB_USERNAME is required}"
 IMAGE_TAG="${IMAGE_TAG:?IMAGE_TAG is required}"
-KUBECONFIG_PATH="/home/ubuntu/.kube/config"
+KUBECONFIG_PATH="${KUBECONFIG_PATH:-/home/ubuntu/.kube/config}"
 RESTART_ON_CONFIG_CHANGE="${CONFIG_CHANGED:-false}"
 
 if [ -z "$SERVICE" ]; then
@@ -18,6 +18,17 @@ if [ ! -f "$KUBECONFIG_PATH" ]; then
   echo "Kubeconfig not found: $KUBECONFIG_PATH"
   exit 1
 fi
+
+SERVICE_SECRET_FILE="$ENV_DIR/${SERVICE}_secret.env"
+COMMON_SECRET_FILE="$ENV_DIR/common_secret.env"
+SERVICE_CONFIG_FILE="$ENV_DIR/${SERVICE}_config.env"
+COMMON_CONFIG_FILE="$ENV_DIR/common_config.env"
+
+cleanup() {
+  # 공용 파일은 삭제하지 않음
+  rm -f "$SERVICE_SECRET_FILE"
+}
+trap cleanup EXIT
 
 echo "Deploying service: $SERVICE"
 echo "Using kubeconfig: $KUBECONFIG_PATH"
@@ -50,36 +61,37 @@ create_secret_if_exists() {
   fi
 }
 
-create_configmap_if_exists "common-config" "$ENV_DIR/common_config.env"
-create_secret_if_exists "common-secret" "$ENV_DIR/common_secret.env"
+create_configmap_if_exists "common-config" "$COMMON_CONFIG_FILE"
+create_secret_if_exists "common-secret" "$COMMON_SECRET_FILE"
 
-create_configmap_if_exists "${SERVICE}-config" "$ENV_DIR/${SERVICE}_config.env"
-create_secret_if_exists "${SERVICE}-secret" "$ENV_DIR/${SERVICE}_secret.env"
+create_configmap_if_exists "${SERVICE}-config" "$SERVICE_CONFIG_FILE"
+create_secret_if_exists "${SERVICE}-secret" "$SERVICE_SECRET_FILE"
 
-if [ -f "$K3S_DIR/${SERVICE}-service.yml" ]; then
-  echo "Applying Kubernetes YAML: $K3S_DIR/${SERVICE}-service.yml"
+YAML_FILE="$K3S_DIR/${SERVICE}-service.yml"
+if [ -f "$YAML_FILE" ]; then
+  echo "Applying Kubernetes YAML: $YAML_FILE"
   export DOCKERHUB_USERNAME IMAGE_TAG
-  envsubst '$DOCKERHUB_USERNAME $IMAGE_TAG' < "$K3S_DIR/${SERVICE}-service.yml" | \
+  envsubst '$DOCKERHUB_USERNAME $IMAGE_TAG' < "$YAML_FILE" | \
     kubectl --kubeconfig "$KUBECONFIG_PATH" apply -f -
 else
-  echo "YAML file not found: $K3S_DIR/${SERVICE}-service.yml"
+  echo "YAML file not found: $YAML_FILE"
   exit 1
 fi
 
-echo "Checking service: ${SERVICE}-service"
-kubectl --kubeconfig "$KUBECONFIG_PATH" get svc "${SERVICE}-service"
+DEPLOYMENT_NAME="${SERVICE}-service"
+SERVICE_NAME="${SERVICE}-service"
+
+echo "Checking service: $SERVICE_NAME"
+kubectl --kubeconfig "$KUBECONFIG_PATH" get svc "$SERVICE_NAME"
 
 if [ "$RESTART_ON_CONFIG_CHANGE" = "true" ]; then
-  echo "Config changed. Restarting deployment: ${SERVICE}-service"
-  kubectl --kubeconfig "$KUBECONFIG_PATH" rollout restart deployment/"${SERVICE}-service"
+  echo "Config changed. Restarting deployment: $DEPLOYMENT_NAME"
+  kubectl --kubeconfig "$KUBECONFIG_PATH" rollout restart deployment/"$DEPLOYMENT_NAME"
 else
   echo "No config change detected. Skipping restart."
 fi
 
 echo "Waiting for rollout status..."
-kubectl --kubeconfig "$KUBECONFIG_PATH" rollout status deployment/"${SERVICE}-service" --timeout=300s
-
-# secret 파일 정리
-rm -f "$ENV_DIR/common_secret.env" "$ENV_DIR/${SERVICE}_secret.env"
+kubectl --kubeconfig "$KUBECONFIG_PATH" rollout status deployment/"$DEPLOYMENT_NAME" --timeout=300s
 
 echo "Deployment completed: $SERVICE"
