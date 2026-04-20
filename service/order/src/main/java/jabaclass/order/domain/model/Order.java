@@ -1,30 +1,29 @@
 package jabaclass.order.domain.model;
 
-import jabaclass.order.application.exception.OrderErrorCode;
-import jabaclass.order.common.error.BusinessException;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
-import lombok.Getter;
-
 import java.math.BigDecimal;
 import java.util.Objects;
 import java.util.UUID;
 
+import jabaclass.order.application.exception.OrderErrorCode;
+import jabaclass.order.common.error.BusinessException;
+import jabaclass.order.common.model.BaseEntity;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Table;
+import lombok.Getter;
+
 @Entity
 @Table(name = "orders")
 @Getter
-public class Order {
-
-	@Id
-	@Column(name = "id", nullable = false, updatable = false)
-	private UUID id;
+public class Order extends BaseEntity {
 
 	@Column(name = "product_schedule_id", nullable = false)
 	private UUID productScheduleId;
+
+	@Column(name = "seller_id", nullable = false)
+	private UUID sellerId;
 
 	@Column(name = "user_id", nullable = false)
 	private UUID userId;
@@ -46,16 +45,16 @@ public class Order {
 	}
 
 	private Order(
-		UUID id,
 		UUID productScheduleId,
+		UUID sellerId,
 		UUID userId,
 		UUID productUserId,
 		Integer quantity,
 		BigDecimal price,
 		OrderStatus status
 	) {
-		this.id = id;
 		this.productScheduleId = productScheduleId;
+		this.sellerId = sellerId;
 		this.userId = userId;
 		this.productUserId = productUserId;
 		this.quantity = quantity;
@@ -65,18 +64,20 @@ public class Order {
 
 	public static Order create(
 		UUID productScheduleId,
+		UUID sellerId,
 		UUID userId,
 		UUID productUserId,
 		Integer quantity,
 		BigDecimal price
 	) {
 		validateQuantity(quantity);
+		validateSellerId(sellerId);
 		validateProductUserId(productUserId);
 		validatePrice(price);
 
 		return new Order(
-			UUID.randomUUID(),
 			productScheduleId,
+			sellerId,
 			userId,
 			productUserId,
 			quantity,
@@ -133,6 +134,12 @@ public class Order {
 	private static void validateProductUserId(UUID productUserId) {
 		if (Objects.isNull(productUserId)) {
 			throw new BusinessException(OrderErrorCode.ORDER_PRODUCT_USER_ID_REQUIRED);
+		}
+	}
+
+	private static void validateSellerId(UUID sellerId) {
+		if (Objects.isNull(sellerId)) {
+			throw new BusinessException(OrderErrorCode.ORDER_PRODUCT_NOT_AVAILABLE);
 		}
 	}
 
