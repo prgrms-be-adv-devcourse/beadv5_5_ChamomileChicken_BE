@@ -46,9 +46,9 @@ print_rollout_diagnostics() {
     echo "===== describe pod: $pod ====="
     kubectl --kubeconfig "$KUBECONFIG_PATH" describe pod "$pod" || true
     echo "===== logs: $pod ====="
-    kubectl --kubeconfig "$KUBECONFIG_PATH" logs "$pod" --tail=200 || true
+    kubectl --kubeconfig "$KUBECONFIG_PATH" logs "$pod" --all-containers=true --tail=200 || true
     echo "===== previous logs: $pod ====="
-    kubectl --kubeconfig "$KUBECONFIG_PATH" logs "$pod" --previous --tail=200 || true
+    kubectl --kubeconfig "$KUBECONFIG_PATH" logs "$pod" --previous --all-containers=true --tail=200 || true
   done
 }
 
