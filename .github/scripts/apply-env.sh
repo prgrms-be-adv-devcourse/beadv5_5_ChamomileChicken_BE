@@ -2,7 +2,7 @@
 set -euo pipefail
 
 SERVICE="${1:-}"
-ENV_DIR=/home/ubuntu/apps/deploy/env
+ENV_DIR="${ENV_DIR:-/home/ubuntu/apps/deploy/env}"
 
 if [ -z "$SERVICE" ]; then
   echo "Usage: apply-env.sh <service-name>"
