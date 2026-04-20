@@ -4,6 +4,8 @@
 
 > ⚠️ Settlement 서비스 전체가 게이트웨이 미등록 상태이므로 현재 모든 경로는 직접 접근 기준으로 열려 있다.
 
+> 정산 대상(`SettlementTarget`) 적재는 외부 REST 호출이 아니라 Kafka `settlement.events` 소비로 들어온다.
+
 ---
 
 ## 정산 조회 (Settlement)
