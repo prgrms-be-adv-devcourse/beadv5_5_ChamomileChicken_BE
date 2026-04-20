@@ -7,7 +7,7 @@ K3S_DIR=/home/ubuntu/apps/data/k3s-service
 DOCKERHUB_USERNAME="${DOCKERHUB_USERNAME:?DOCKERHUB_USERNAME is required}"
 IMAGE_TAG="${IMAGE_TAG:?IMAGE_TAG is required}"
 KUBECONFIG_PATH="/home/ubuntu/.kube/config"
-RESTART_ON_CONFIG_CHANGE="${RESTART_ON_CONFIG_CHANGE:-false}"
+RESTART_ON_CONFIG_CHANGE="${CONFIG_CHANGED:-false}"
 
 if [ -z "$SERVICE" ]; then
   echo "Usage: deploy-apps.sh <service-name>"

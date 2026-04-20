@@ -19,7 +19,7 @@ write_if_changed() {
   local temp_file
   temp_file=$(mktemp)
 
-  printf "%s" "$content" > "$temp_file"
+  printf -- "%s" "$content" > "$temp_file"
 
   if [ ! -f "$target_file" ]; then
     cp "$temp_file" "$target_file"
