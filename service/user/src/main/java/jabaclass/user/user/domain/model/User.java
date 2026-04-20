@@ -10,6 +10,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import jakarta.persistence.Version;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -23,19 +24,19 @@ import lombok.experimental.SuperBuilder;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @Entity
-@Table(name = "users")
+@Table(name = "users", uniqueConstraints = {@UniqueConstraint(columnNames = {"email", "socialType"})})
 public class User extends BaseEntity {
 
 	@Column(name = "name", nullable = false, length = 50)
 	private String name;
 
-	@Column(name = "email", nullable = false, unique = true, length = 320)
+	@Column(name = "email", nullable = false, length = 320)
 	private String email;
 
-	@Column(name = "password", nullable = false, length = 255)
+	@Column(name = "password", length = 255)
 	private String password;
 
-	@Column(name = "phone", nullable = false, length = 20)
+	@Column(name = "phone", length = 20)
 	private String phone;
 
 	@Enumerated(EnumType.STRING)

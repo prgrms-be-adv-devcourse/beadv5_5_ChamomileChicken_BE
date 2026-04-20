@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 
+import jabaclass.user.user.domain.model.SocialType;
 import jabaclass.user.user.domain.model.User;
 import jakarta.persistence.LockModeType;
 
@@ -19,4 +20,6 @@ public interface UserJpaRepository extends JpaRepository<User, UUID> {
 	Optional<User> findByIdWithLock(UUID id);
 
 	Optional<User> findByEmail(String email);
+
+	Optional<User> findBySocialTypeAndSocialId(SocialType socialType, String socialId);
 }

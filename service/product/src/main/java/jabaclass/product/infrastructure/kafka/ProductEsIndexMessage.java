@@ -14,4 +14,8 @@ public record ProductEsIndexMessage(
 	public static ProductEsIndexMessage delete(String productId) {
 		return new ProductEsIndexMessage("DELETE", null, productId);
 	}
+
+	public String resolveProductId() {
+		return document != null ? document.getId() : productId;
+	}
 }

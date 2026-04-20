@@ -1,6 +1,5 @@
 package jabaclass.settlement.presentation.controller;
 
-import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.time.YearMonth;
 
@@ -27,34 +26,8 @@ import lombok.RequiredArgsConstructor;
 public class SettlementBatchController implements SettlementBatchApi {
 
 	private final JobOperator jobOperator;
-	private final Job settlementTargetLoadJob;
 	private final Job settlementCalculateJob;
 	private final Job settlementTransferJob;
-
-	@PostMapping("/load-targets")
-	@Override
-	public String loadTargets(
-		@RequestParam(required = false) LocalDate targetDate
-	) {
-		LocalDate actualTargetDate = targetDate == null ? LocalDate.now() : targetDate;
-
-		JobParameters jobParameters = new JobParametersBuilder()
-			.addString("targetDate", actualTargetDate.toString())
-			.addLong("requestedAt", System.currentTimeMillis())
-			.toJobParameters();
-
-		try {
-			jobOperator.start(settlementTargetLoadJob, jobParameters);
-		} catch (JobExecutionAlreadyRunningException | JobRestartException | JobInstanceAlreadyCompleteException e) {
-			throw new BusinessException(SettlementBatchErrorCode.SETTLEMENT_BATCH_ALREADY_RUNNING);
-		} catch (InvalidJobParametersException | IllegalArgumentException | DateTimeParseException e) {
-			throw new BusinessException(SettlementBatchErrorCode.SETTLEMENT_BATCH_PARAMETER_INVALID);
-		} catch (Exception e) {
-			throw new BusinessException(SettlementBatchErrorCode.SETTLEMENT_TARGET_LOAD_FAILED);
-		}
-
-		return "정산 대상 적재 배치 실행 요청 완료";
-	}
 
 	@PostMapping("/calculate")
 	@Override

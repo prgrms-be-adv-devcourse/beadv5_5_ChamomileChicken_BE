@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.elasticsearch.annotations.DateFormat;
 import org.springframework.data.elasticsearch.annotations.Document;
 import org.springframework.data.elasticsearch.annotations.Field;
 import org.springframework.data.elasticsearch.annotations.FieldType;
@@ -25,8 +26,10 @@ public class ProductDocument {
 	@Id
 	private String id;
 
+	@Field(type = FieldType.Keyword)
 	private String sellerId;
 
+	@Field(type = FieldType.Keyword)
 	private String sellerName;
 
 	// nori 분석기 적용 — 한국어 형태소 분석으로 부분 검색 지원
@@ -42,13 +45,17 @@ public class ProductDocument {
 	@Field(type = FieldType.Double)
 	private BigDecimal price;
 
+	@Field(type = FieldType.Integer)
 	private int maxCapacity;
 
+	@Field(type = FieldType.Keyword)
 	private String thumbnailPath;
 
 	// deleteDt != null이면 true (소프트 삭제된 상품 필터링용)
+	@Field(type = FieldType.Boolean)
 	private boolean deleted;
 
+	@Field(type = FieldType.Date, format = DateFormat.date_hour_minute_second)
 	private LocalDateTime regDt;
 
 	public static ProductDocument from(Product product, String sellerName) {

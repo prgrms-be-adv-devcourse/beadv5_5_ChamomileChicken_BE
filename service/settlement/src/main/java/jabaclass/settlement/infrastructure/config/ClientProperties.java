@@ -4,11 +4,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "clients")
 public record ClientProperties(
-	Endpoint payment,
-	Endpoint order,
-	Endpoint product,
-	Endpoint user,
-	Endpoint transfer
+	Endpoint user
 ) {
 	public record Endpoint(
 		String baseUrl

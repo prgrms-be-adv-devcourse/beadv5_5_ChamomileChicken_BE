@@ -64,13 +64,17 @@ FOR UPDATE SKIP LOCKED
 Kafka 발행 후 ACK를 받기 전에 네트워크가 끊기면, Producer는 동일 메시지를 재전송한다.  
 브로커는 이미 저장된 메시지를 중복으로 받을 수 있다.
 
-### 설계 결정: enable.idempotence=true
+### 설계 결정: enable.idempotence=true + 명시 설정
 
 Producer에 `enable.idempotence=true`를 설정한다.  
 Producer가 각 메시지에 sequence number를 부여하고, 브로커가 중복 sequence를 감지해 한 번만 저장한다.
 
 ```java
-config.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, true);
+config.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, true); // 자동으로 acks=all, retries=MAX_VALUE, max.in.flight=5 강제
+config.put(ProducerConfig.ACKS_CONFIG, "all");                          // 리더 + 모든 ISR 복제 확인
+config.put(ProducerConfig.RETRIES_CONFIG, Integer.MAX_VALUE);           // DELIVERY_TIMEOUT_MS 내 무한 재시도
+config.put(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, 5);   // idempotence 활성화 시 최대 5까지 순서 보장
+config.put(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG, 120_000);        // 2분 내 미전달 시 Outbox retry 경로로 진입
 ```
 
 Outbox 재시도(앱 레벨) + idempotence(브로커 레벨) 두 계층으로 중복 발행을 최소화한다.
@@ -181,3 +185,24 @@ DB 상태 변경 + Outbox 저장이 필요한 단계만 핸들러로 분리하�
 ```
 
 외부 호출과 DB 트랜잭션이 분리되어 외부 호출 실패가 DB 정합성에 영향을 주지 않는다.
+
+---
+
+## 8. 외부 PG 호출 — 타임아웃 후 재시도 시 이중 처리 문제
+
+### 문제
+
+PG 환불 요청 후 응답 대기 중 타임아웃이 발생하면, PG가 실제로 처리했는지 알 수 없다.  
+이 상태에서 재시도하면 동일 환불이 두 번 처리되어 이중 환불이 발생할 수 있다.
+
+### 설계 결정: Toss Idempotency-Key 헤더
+
+Toss 환불 API 호출 시 `Idempotency-Key` 헤더로 `orderId`를 전달한다.  
+동일 키로 재시도하면 Toss가 이전 처리 결과를 그대로 반환하고 중복 실행하지 않는다.
+
+```java
+headers.set("Idempotency-Key", orderId.toString());
+```
+
+`orderId`를 키로 사용하는 이유: 한 주문에 대한 환불은 1회만 발생하므로 자연스러운 유니크 키가 된다.  
+타임아웃 후 재시도해도 PG 수준에서 이중 환불이 방지된다.
