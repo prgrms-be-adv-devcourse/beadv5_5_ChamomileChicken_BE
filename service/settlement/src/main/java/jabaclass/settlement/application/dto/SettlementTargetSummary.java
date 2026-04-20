@@ -6,8 +6,6 @@ import java.util.UUID;
 public record SettlementTargetSummary(
 	UUID sellerId,
 	String settlementMonth,
-	BigDecimal totalSettlementAmount,
-	Long targetCount,
-	Long orderCount
+	BigDecimal totalSettlementBaseAmount
 ) {
 }

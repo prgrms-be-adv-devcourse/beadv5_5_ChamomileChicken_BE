@@ -18,9 +18,11 @@ import jabaclass.settlement.application.dto.SettlementTransferResult;
 import jabaclass.settlement.application.port.external.SellerSettlementPort;
 import jabaclass.settlement.application.port.external.SettlementTransferPort;
 import jabaclass.settlement.application.usecase.SettlementTransferUseCase;
-import jabaclass.settlement.domain.model.Settlement;
-import jabaclass.settlement.domain.model.SettlementStatus;
+import jabaclass.settlement.domain.model.settlement.Settlement;
+import jabaclass.settlement.domain.model.settlement.SettlementTransfer;
+import jabaclass.settlement.domain.model.settlement.SettlementStatus;
 import jabaclass.settlement.domain.repository.SettlementRepository;
+import jabaclass.settlement.domain.repository.SettlementTransferRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -31,6 +33,7 @@ import lombok.extern.slf4j.Slf4j;
 public class SettlementTransferService implements SettlementTransferUseCase {
 
 	private final SettlementRepository settlementRepository;
+	private final SettlementTransferRepository settlementTransferRepository;
 	private final SellerSettlementPort sellerSettlementPort;
 	private final SettlementTransferPort settlementTransferPort;
 
@@ -51,11 +54,17 @@ public class SettlementTransferService implements SettlementTransferUseCase {
 		).stream().collect(Collectors.toMap(SellerSettlementAccount::sellerId, Function.identity()));
 
 		int successCount = 0;
+		List<SettlementTransfer> transferHistories = new java.util.ArrayList<>();
 
 		for (Settlement settlement : settlements) {
 			try {
 				if (!settlement.isTransferable()) {
 					settlement.hold("정산 금액이 0 이하이므로 송금 보류");
+					transferHistories.add(SettlementTransfer.hold(
+						settlement.getId(),
+						settlement.getSettlementAmount(),
+						"정산 금액이 0 이하이므로 송금 보류"
+					));
 					continue;
 				}
 
@@ -63,15 +72,31 @@ public class SettlementTransferService implements SettlementTransferUseCase {
 
 				if (account == null) {
 					settlement.hold("판매자 정산 계좌 정보가 없습니다.");
+					transferHistories.add(SettlementTransfer.hold(
+						settlement.getId(),
+						settlement.getSettlementAmount(),
+						"판매자 정산 계좌 정보가 없습니다."
+					));
 					continue;
 				}
 
 				if (!account.isTransferable()) {
 					settlement.hold("판매자 정산 계좌가 비활성 상태입니다.");
+					transferHistories.add(SettlementTransfer.hold(
+						settlement.getId(),
+						settlement.getSettlementAmount(),
+						"판매자 정산 계좌가 비활성 상태입니다."
+					));
 					continue;
 				}
 
 				settlement.markTransferring();
+				SettlementTransfer transferHistory = SettlementTransfer.requested(
+					settlement.getId(),
+					account.bankCode(),
+					account.accountNumber(),
+					settlement.getSettlementAmount()
+				);
 
 				SettlementTransferCommand command = new SettlementTransferCommand(
 					settlement.getId(),
@@ -86,17 +111,31 @@ public class SettlementTransferService implements SettlementTransferUseCase {
 
 				if (result.success()) {
 					settlement.markSent(LocalDateTime.now());
+					transferHistory.markSent();
 					successCount++;
 				} else {
 					settlement.markFailed(result.message());
+					transferHistory.markFailed(result.message());
 				}
+				transferHistories.add(transferHistory);
 			} catch (Exception e) {
 				settlement.markFailed(e.getMessage());
+				SettlementTransfer failedTransfer = SettlementTransfer.requested(
+					settlement.getId(),
+					null,
+					null,
+					settlement.getSettlementAmount()
+				);
+				failedTransfer.markFailed(e.getMessage());
+				transferHistories.add(failedTransfer);
 				log.error("[SETTLEMENT_TRANSFER] settlementId={} 송금 실패", settlement.getId(), e);
 			}
 		}
 
 		settlementRepository.saveAll(settlements);
+		if (!transferHistories.isEmpty()) {
+			settlementTransferRepository.saveAll(transferHistories);
+		}
 		return successCount;
 	}
 }

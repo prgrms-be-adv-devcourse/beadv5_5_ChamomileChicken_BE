@@ -13,7 +13,7 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 
 @Entity
-@Table(name = "outbox_events")
+@Table(name = "payment_outbox_events")
 @Getter
 public class OutboxEvent extends BaseEntity {
 

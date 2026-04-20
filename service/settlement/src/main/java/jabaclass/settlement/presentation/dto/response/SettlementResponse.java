@@ -4,13 +4,16 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-import jabaclass.settlement.domain.model.Settlement;
+import jabaclass.settlement.domain.model.settlement.Settlement;
 
 public record SettlementResponse(
 	UUID id,
 	UUID sellerId,
 	String settlementMonth,
 	BigDecimal originalAmount,
+	String sellerGradeCode,
+	UUID sellerGradePolicyId,
+	BigDecimal gradeBaseAmount,
 	BigDecimal feeAmount,
 	BigDecimal feeRate,
 	BigDecimal settlementAmount,
@@ -25,6 +28,9 @@ public record SettlementResponse(
 			settlement.getSellerId(),
 			settlement.getSettlementMonth(),
 			settlement.getOriginalAmount(),
+			settlement.getSellerGradeCode().name(),
+			settlement.getSellerGradePolicyId(),
+			settlement.getGradeBaseAmount(),
 			settlement.getFeeAmount(),
 			settlement.getFeeRate(),
 			settlement.getSettlementAmount(),

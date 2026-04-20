@@ -27,6 +27,15 @@ public class Refund {
 	@Column(name = "deposit_payment_id")
 	private UUID depositPaymentId;
 
+	@Column(name = "original_payment_amount", precision = 19, scale = 2)
+	private BigDecimal originalPaymentAmount;
+
+	@Column(name = "original_deposit_amount", precision = 19, scale = 2)
+	private BigDecimal originalDepositAmount;
+
+	@Column(name = "refund_rate", precision = 5, scale = 4)
+	private BigDecimal refundRate;
+
 	@Column(name = "payment_refund_amount", precision = 19, scale = 2)
 	private BigDecimal paymentRefundAmount;
 
@@ -53,6 +62,9 @@ public class Refund {
 		UUID id,
 		UUID paymentId,
 		UUID depositPaymentId,
+		BigDecimal originalPaymentAmount,
+		BigDecimal originalDepositAmount,
+		BigDecimal refundRate,
 		BigDecimal paymentRefundAmount,
 		BigDecimal depositRefundAmount,
 		BigDecimal totalRefundAmount,
@@ -63,6 +75,9 @@ public class Refund {
 		this.id = id;
 		this.paymentId = paymentId;
 		this.depositPaymentId = depositPaymentId;
+		this.originalPaymentAmount = originalPaymentAmount;
+		this.originalDepositAmount = originalDepositAmount;
+		this.refundRate = refundRate;
 		this.paymentRefundAmount = paymentRefundAmount;
 		this.depositRefundAmount = depositRefundAmount;
 		this.totalRefundAmount = totalRefundAmount;
@@ -74,6 +89,9 @@ public class Refund {
 	public static Refund create(
 		UUID paymentId,
 		UUID depositPaymentId,
+		BigDecimal originalPaymentAmount,
+		BigDecimal originalDepositAmount,
+		BigDecimal refundRate,
 		BigDecimal paymentRefundAmount,
 		BigDecimal depositRefundAmount
 	) {
@@ -83,6 +101,9 @@ public class Refund {
 			UUID.randomUUID(),
 			paymentId,
 			depositPaymentId,
+			originalPaymentAmount,
+			originalDepositAmount,
+			refundRate,
 			paymentRefundAmount,
 			depositRefundAmount,
 			totalRefundAmount,

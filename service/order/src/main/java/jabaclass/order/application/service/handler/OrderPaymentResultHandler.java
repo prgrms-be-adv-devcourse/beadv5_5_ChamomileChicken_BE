@@ -32,32 +32,34 @@ public class OrderPaymentResultHandler {
 	private final ProcessedEventRepository processedEventRepository;
 	private final ObjectMapper objectMapper;
 
+	// [핸들러] PAYMENT_COMPLETED 수신 후 호출 — Order PAID + Outbox 저장을 원자적으로 커밋
 	@Transactional
 	public void onSuccess(UUID eventId, UUID orderId) {
-		// Kafka at-least-once로 인한 중복 이벤트 방어 (eventId 기반 멱등성)
+		// processed_events로 중복 이벤트 차단 (Kafka at-least-once 방어)
 		if (eventId != null && processedEventRepository.existsById(eventId)) {
 			return;
 		}
 		Order order = findOrderOrThrow(orderId);
-		// eventId 없는 경로(컨트롤러) 또는 동시성 race condition 방어
+		// 상태 가드: eventId 없는 경로 또는 동시성 race condition 방어
 		if (order.getStatus() == OrderStatus.PAID) {
 			return;
 		}
 		order.pay();
 		UUID productUserId = requireProductUserId(order);
-		// 재고 확정 이벤트 발행 — order.pay()와 같은 트랜잭션으로 원자성 보장
+		// Product 서비스로 재고 확정 이벤트 발행 — order.pay()와 같은 트랜잭션
 		outboxRepository.save(OutboxEvent.create(
 			"ORDER",
-			productUserId.toString(),
+			orderId.toString(),
 			EventType.ORDER_RESERVATION_CONFIRMED,
 			toJson(new OrderReservationConfirmedEvent(UUID.randomUUID(), order.getId(), productUserId))
 		));
-		// 처리 완료 기록 — 다음 중복 수신 시 위 existsById에서 차단
 		if (eventId != null) {
 			processedEventRepository.save(ProcessedEvent.of(eventId));
 		}
 	}
 
+	// [핸들러] PAYMENT_FAILED 수신 후 호출 — Saga 보상 트랜잭션
+	// Order FAILED + 재고 복구(Product) + 예치금 복구(User) 이벤트를 같은 트랜잭션으로 커밋
 	@Transactional
 	public void onFailed(UUID eventId, UUID orderId, BigDecimal depositAmount) {
 		if (eventId != null && processedEventRepository.existsById(eventId)) {
@@ -69,12 +71,14 @@ public class OrderPaymentResultHandler {
 		}
 		order.failPayment();
 		UUID productUserId = requireProductUserId(order);
+		// 보상 1: Product 서비스로 재고 예약 해제
 		outboxRepository.save(OutboxEvent.create(
 			"ORDER",
-			productUserId.toString(),
+			orderId.toString(),
 			EventType.ORDER_RESERVATION_RELEASED,
 			toJson(new OrderReservationReleasedEvent(UUID.randomUUID(), order.getId(), productUserId))
 		));
+		// 보상 2: User 서비스로 예치금 복구 (예치금을 사용한 경우에만)
 		if (depositAmount != null && depositAmount.signum() > 0) {
 			outboxRepository.save(OutboxEvent.create(
 				"ORDER",

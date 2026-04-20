@@ -11,7 +11,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
 import jabaclass.settlement.application.dto.SellerSettlementAccount;
-import jabaclass.settlement.application.dto.SellerSettlementDetail;
 import jabaclass.settlement.application.port.external.SellerSettlementPort;
 import jabaclass.settlement.infrastructure.config.ClientProperties;
 import lombok.RequiredArgsConstructor;
@@ -22,35 +21,6 @@ public class UserClient implements SellerSettlementPort {
 
 	private final RestTemplate restTemplate;
 	private final ClientProperties clientProperties;
-
-	@Override
-	public List<SellerSettlementDetail> fetchSellers(Set<UUID> sellerIds) {
-		if (sellerIds == null || sellerIds.isEmpty()) {
-			return List.of();
-		}
-
-		SellerBulkRequest request = new SellerBulkRequest(sellerIds.stream().toList());
-
-		List<SellerResponse> responses = restTemplate.exchange(
-			clientProperties.user().baseUrl() + "/api/v1/users/sellers/bulk",
-			HttpMethod.POST,
-			new HttpEntity<>(request),
-			new ParameterizedTypeReference<List<SellerResponse>>() {}
-		).getBody();
-
-		if (responses == null) {
-			return List.of();
-		}
-
-		return responses.stream()
-			.map(item -> new SellerSettlementDetail(
-				item.sellerId(),
-				item.role(),
-				item.accountRegistered(),
-				item.accountActive()
-			))
-			.toList();
-	}
 
 	@Override
 	public List<SellerSettlementAccount> fetchSellerSettlementAccounts(Set<UUID> sellerIds) {
@@ -84,14 +54,6 @@ public class UserClient implements SellerSettlementPort {
 
 	public record SellerBulkRequest(
 		List<UUID> sellerIds
-	) {
-	}
-
-	public record SellerResponse(
-		UUID sellerId,
-		String role,
-		boolean accountRegistered,
-		boolean accountActive
 	) {
 	}
 
