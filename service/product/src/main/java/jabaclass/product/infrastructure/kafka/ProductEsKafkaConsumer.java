@@ -5,6 +5,7 @@ import org.springframework.stereotype.Component;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import jabaclass.product.config.KafkaTopicConfig;
 import jabaclass.product.domain.repository.ProductSearchRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,7 +19,7 @@ public class ProductEsKafkaConsumer {
 	private final ObjectMapper objectMapper;
 
 	@KafkaListener(
-		topics = ProductEsKafkaProducer.TOPIC,
+		topics = KafkaTopicConfig.PRODUCT_ES_TOPIC,
 		groupId = "product-es-indexer"
 	)
 	public void consume(String message) {

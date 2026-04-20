@@ -1,5 +1,6 @@
 package jabaclass.product.application.usecase;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -47,4 +48,7 @@ public interface ScheduleUseCase {
 
 	// 날짜 지나면 스케줄 상태 값 자동 변경
 	int closeExpiredSchedulesOnce();
+
+	// 환불용 스케줄 시작일 조회
+	LocalDate getScheduleStartDate(UUID scheduleId);
 }

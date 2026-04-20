@@ -14,16 +14,8 @@ spring:
       initialize-schema: false
 
 clients:
-  payment:
-    base-url: ${PAYMENT_SERVICE_HOST:http://localhost:9001}
-  order:
-    base-url: ${ORDER_SERVICE_HOST:http://localhost:9005}
-  product:
-    base-url: ${PRODUCT_SERVICE_HOST:http://localhost:9004}
   user:
     base-url: ${USER_SERVICE_HOST:http://localhost:9003}
-  transfer:
-    base-url: ${TRANSFER_SERVICE_HOST:http://localhost:9010}
 
 management:
   endpoints:
@@ -33,13 +25,9 @@ management:
 
 settlement:
   batch:
-    load:
-      cron: "${SETTLEMENT_BATCH_LOAD_CRON:0 0 1 * * *}"
-      target-date-offset-days: ${SETTLEMENT_BATCH_LOAD_TARGET_DATE_OFFSET_DAYS:0}
     calculate:
       cron: "${SETTLEMENT_BATCH_CALCULATE_CRON:0 0 2 1 * *}"
       target-month-offset-months: ${SETTLEMENT_BATCH_CALCULATE_TARGET_MONTH_OFFSET_MONTHS:1}
     transfer:
       cron: "${SETTLEMENT_BATCH_TRANSFER_CRON:0 0 2 2 * *}"
       target-month-offset-months: ${SETTLEMENT_BATCH_TRANSFER_TARGET_MONTH_OFFSET_MONTHS:1}
-

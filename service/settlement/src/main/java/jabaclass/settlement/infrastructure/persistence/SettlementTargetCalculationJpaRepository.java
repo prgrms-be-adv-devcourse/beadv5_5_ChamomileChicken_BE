@@ -1,0 +1,36 @@
+package jabaclass.settlement.infrastructure.persistence;
+
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import jabaclass.settlement.domain.model.settlement.SettlementTargetCalculation;
+
+public interface SettlementTargetCalculationJpaRepository extends JpaRepository<SettlementTargetCalculation, UUID> {
+
+	boolean existsBySettlementTargetId(UUID settlementTargetId);
+
+	Optional<SettlementTargetCalculation> findBySettlementTargetId(UUID settlementTargetId);
+
+	List<SettlementTargetCalculation> findBySettlementMonthAndSellerId(String settlementMonth, UUID sellerId);
+
+	@Query("""
+		select
+			stc.sellerId as sellerId,
+			stc.settlementMonth as settlementMonth,
+			sum(stc.settlementBaseAmount) as totalSettlementBaseAmount
+		from SettlementTargetCalculation stc
+		where stc.settlementMonth = :settlementMonth
+		group by stc.sellerId, stc.settlementMonth
+		""")
+	List<SettlementTargetSummaryProjection> findSummaryBySettlementMonth(String settlementMonth);
+
+	interface SettlementTargetSummaryProjection {
+		UUID getSellerId();
+		String getSettlementMonth();
+		BigDecimal getTotalSettlementBaseAmount();
+	}
+}

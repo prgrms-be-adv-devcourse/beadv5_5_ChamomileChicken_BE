@@ -1,22 +1,27 @@
-server:
-  port: 8080 # Gateway 서비스 포트
-
 spring:
-  application:
-    name: api-gateway
+  r2dbc:
+    url: r2dbc:postgresql://${POSTGRES_HOST}:${POSTGRES_PORT:5432}/${POSTGRES_DB}
+    username: ${POSTGRES_USER:postgres}
+    password: ${POSTGRES_PASSWORD:postgres}
 
-  # Redis 설정 (Issue #3 블랙리스트 확인용)
+  flyway:
+    enabled: true
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:backend5}
+    user: ${POSTGRES_USER:postgres}
+    password: ${POSTGRES_PASSWORD:postgres}
+
+  sql:
+    init:
+      mode: never
+
   data:
     redis:
-      host: localhost
-      port: 6379
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT:6379}
 
 cors:
   allowed-origins:
-    - http://localhost:3000
-
-jwt:
-  secret: ${JWT_SECRET}
+    - ${CORS_ALLOWED_ORIGINS}
 
 logging:
   level:
