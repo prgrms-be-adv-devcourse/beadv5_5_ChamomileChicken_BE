@@ -31,24 +31,26 @@ cleanup() {
 trap cleanup EXIT
 
 print_rollout_diagnostics() {
-  echo "Rollout failed. Collecting Kubernetes diagnostics..."
-  echo "===== deployment ====="
-  kubectl --kubeconfig "$KUBECONFIG_PATH" get deployment "$DEPLOYMENT_NAME" -o wide || true
-  echo "===== describe deployment ====="
-  kubectl --kubeconfig "$KUBECONFIG_PATH" describe deployment "$DEPLOYMENT_NAME" || true
-  echo "===== pods ====="
-  kubectl --kubeconfig "$KUBECONFIG_PATH" get pods -l app="$SERVICE_NAME" -o wide || true
+ local deployment_name="$1"
+   local service_name="$2"
+   echo "Rollout failed. Collecting Kubernetes diagnostics..."
+   echo "===== deployment ====="
+   kubectl --kubeconfig "$KUBECONFIG_PATH" get deployment "$deployment_name" -o wide || true
+   echo "===== describe deployment ====="
+   kubectl --kubeconfig "$KUBECONFIG_PATH" describe deployment "$deployment_name" || true
+   echo "===== pods ====="
+   kubectl --kubeconfig "$KUBECONFIG_PATH" get pods -l app="$service_name" -o wide || true
 
-  POD_NAMES=$(kubectl --kubeconfig "$KUBECONFIG_PATH" get pods -l app="$SERVICE_NAME" \
-    -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' 2>/dev/null || true)
+   POD_NAMES=$(kubectl --kubeconfig "$KUBECONFIG_PATH" get pods -l app="$service_name" \
+     -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' 2>/dev/null || true)
 
-  for pod in $POD_NAMES; do
-    echo "===== describe pod: $pod ====="
-    kubectl --kubeconfig "$KUBECONFIG_PATH" describe pod "$pod" || true
-    echo "===== logs: $pod ====="
-    kubectl --kubeconfig "$KUBECONFIG_PATH" logs "$pod" --all-containers=true --tail=200 || true
-    echo "===== previous logs: $pod ====="
-    kubectl --kubeconfig "$KUBECONFIG_PATH" logs "$pod" --previous --all-containers=true --tail=200 || true
+   for pod in $POD_NAMES; do
+     echo "===== describe pod: $pod ====="
+     kubectl --kubeconfig "$KUBECONFIG_PATH" describe pod "$pod" || true
+     echo "===== logs: $pod ====="
+     kubectl --kubeconfig "$KUBECONFIG_PATH" logs "$pod" --tail=200 || true
+     echo "===== previous logs: $pod ====="
+     kubectl --kubeconfig "$KUBECONFIG_PATH" logs "$pod" --previous --tail=200 || true
   done
 }
 
