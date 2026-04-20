@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import jabaclass.settlement.application.exception.BusinessException;
 import jabaclass.settlement.application.exception.SettlementErrorCode;
@@ -15,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
 @Service
+@Transactional(readOnly = true)
 public class SettlementService implements SettlementUseCase {
 
 	private final SettlementRepository settlementRepository;

@@ -1,6 +1,7 @@
 package jabaclass.settlement.application.service.calculation;
 
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import jabaclass.settlement.application.dto.AppliedPromotion;
 import jabaclass.settlement.application.exception.BusinessException;
@@ -14,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 
 @Component
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class SettlementRefundCalculationService {
 
 	private final SettlementTargetRepository settlementTargetRepository;

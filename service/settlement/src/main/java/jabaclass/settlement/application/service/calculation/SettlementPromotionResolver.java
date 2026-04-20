@@ -5,6 +5,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import jabaclass.settlement.application.dto.AppliedPromotion;
 import jabaclass.settlement.domain.model.promotion.SellerPromotion;
@@ -15,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 
 @Component
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class SettlementPromotionResolver {
 
 	private final SettlementPromotionRepository settlementPromotionRepository;
