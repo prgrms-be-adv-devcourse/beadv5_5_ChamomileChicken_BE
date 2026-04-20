@@ -7,6 +7,6 @@ spring:
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:dev}
 
-product:
-  service:
-    url: ${PRODUCT_SERVICE_HOST:http://localhost:9004}
+openai:
+  api:
+    key: ${OPENAI_API_KEY}
