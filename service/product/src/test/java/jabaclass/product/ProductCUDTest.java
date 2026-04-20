@@ -23,10 +23,10 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import jabaclass.product.application.acl.SellerRepository;
+import jabaclass.product.application.dto.FileConfirmResponse;
 import jabaclass.product.application.exception.BusinessException;
 import jabaclass.product.application.service.ProductService;
 import jabaclass.product.application.usecase.ValidateFileUseCase;
-import jabaclass.product.presentation.dto.response.FileConfirmResponse;
 import jabaclass.product.common.exception.CommonErrorCode;
 import jabaclass.product.domain.model.Product;
 import jabaclass.product.domain.model.status.ProductStatus;
@@ -242,7 +242,7 @@ class ProductCUDTest {
 			"테스트상품",
 			5,
 			"테스트 상품입니다.",
-			List.of(UUID.randomUUID()),
+			null,
 			PRICE,
 			ProductStatus.ENABLE,
 			"경기 성남시 분당구 판교역로 166",
