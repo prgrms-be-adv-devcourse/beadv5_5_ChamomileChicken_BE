@@ -7,7 +7,7 @@ K3S_DIR="${K3S_DIR:-/home/ubuntu/apps/data/k3s-service}"
 DOCKERHUB_USERNAME="${DOCKERHUB_USERNAME:?DOCKERHUB_USERNAME is required}"
 IMAGE_TAG="${IMAGE_TAG:?IMAGE_TAG is required}"
 KUBECONFIG_PATH="${KUBECONFIG_PATH:-/home/ubuntu/.kube/config}"
-RESTART_ON_CONFIG_CHANGE="${CONFIG_CHANGED:-false}"
+RESTART_ON_CONFIG_CHANGE="${RESTART_ON_CONFIG_CHANGE:-${CONFIG_CHANGED:-false}}"
 
 if [ -z "$SERVICE" ]; then
   echo "Usage: deploy-apps.sh <service-name>"
@@ -29,6 +29,28 @@ cleanup() {
   rm -f "$SERVICE_SECRET_FILE"
 }
 trap cleanup EXIT
+
+print_rollout_diagnostics() {
+  echo "Rollout failed. Collecting Kubernetes diagnostics..."
+  echo "===== deployment ====="
+  kubectl --kubeconfig "$KUBECONFIG_PATH" get deployment "$DEPLOYMENT_NAME" -o wide || true
+  echo "===== describe deployment ====="
+  kubectl --kubeconfig "$KUBECONFIG_PATH" describe deployment "$DEPLOYMENT_NAME" || true
+  echo "===== pods ====="
+  kubectl --kubeconfig "$KUBECONFIG_PATH" get pods -l app="$SERVICE_NAME" -o wide || true
+
+  POD_NAMES=$(kubectl --kubeconfig "$KUBECONFIG_PATH" get pods -l app="$SERVICE_NAME" \
+    -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' 2>/dev/null || true)
+
+  for pod in $POD_NAMES; do
+    echo "===== describe pod: $pod ====="
+    kubectl --kubeconfig "$KUBECONFIG_PATH" describe pod "$pod" || true
+    echo "===== logs: $pod ====="
+    kubectl --kubeconfig "$KUBECONFIG_PATH" logs "$pod" --tail=200 || true
+    echo "===== previous logs: $pod ====="
+    kubectl --kubeconfig "$KUBECONFIG_PATH" logs "$pod" --previous --tail=200 || true
+  done
+}
 
 echo "Deploying service: $SERVICE"
 echo "Using kubeconfig: $KUBECONFIG_PATH"
@@ -92,6 +114,9 @@ else
 fi
 
 echo "Waiting for rollout status..."
-kubectl --kubeconfig "$KUBECONFIG_PATH" rollout status deployment/"$DEPLOYMENT_NAME" --timeout=300s
+if ! kubectl --kubeconfig "$KUBECONFIG_PATH" rollout status deployment/"$DEPLOYMENT_NAME" --timeout=300s; then
+  print_rollout_diagnostics
+  exit 1
+fi
 
 echo "Deployment completed: $SERVICE"
