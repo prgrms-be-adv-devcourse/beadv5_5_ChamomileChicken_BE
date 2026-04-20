@@ -118,7 +118,10 @@ Spring Cloud Gateway는 WebFlux(Netty 이벤트 루프) 기반이므로 JDBC(블
 | dev | r2dbc-h2 (in-memory) | `r2dbc:h2:mem:///gateway` |
 | prod | r2dbc-postgresql | `r2dbc:postgresql://${POSTGRES_HOST}/...` |
 
-`schema.sql` / `data.sql`은 `spring.sql.init.mode=always` 설정으로 dev 환경에서 자동 실행된다.
+환경별 초기화 방식이 다르다.
+
+- **dev**: `schema.sql` / `data.sql` (resources 루트)을 `spring.sql.init.mode=always` 설정으로 앱 시작 시 자동 실행. H2 인메모리 특성상 재시작마다 초기화되므로 매번 재실행된다.
+- **prod**: Flyway가 `db/migration/V1__init_schema.sql` / `V2__insert_data.sql`을 순서대로 실행. 이미 적용된 버전은 `flyway_schema_history` 테이블로 추적하여 재실행하지 않는다.
 
 ---
 
@@ -300,14 +303,15 @@ public class WebMvcConfig implements WebMvcConfigurer {
 @GetMapping("/me")
 public ResponseEntity<?> getMyInfo(@CurrentUser UUID userId) { ... }
 
-// role 인가가 필요한 경우
+// role에 따라 비즈니스 로직을 다르게 처리해야 하는 경우
 @PostMapping
 public ResponseEntity<?> create(
     @CurrentUser UUID userId,
     @CurrentUserRole String role,
     @RequestBody ProductRequestDto request
 ) {
-    if (!"SELLER".equals(role)) throw new ForbiddenException();
+    // 역할 기반 접근 제어는 Gateway RBAC에서 처리됨
+    // @CurrentUserRole은 서비스 내 비즈니스 로직 분기 용도로만 사용
     ...
 }
 ```
@@ -345,4 +349,4 @@ networks:
 ### 서비스 간 직접 호출 (Internal API)
 
 Gateway를 거치지 않는 서비스 간 직접 호출은 `X-INTERNAL-KEY` 헤더로 보호한다.
-file 서비스의 `InternalApiFilter` 패턴 참고.
+호출 측에서 헤더에 사전 공유된 키를 포함하고, 수신 측 필터에서 이를 검증한다.
