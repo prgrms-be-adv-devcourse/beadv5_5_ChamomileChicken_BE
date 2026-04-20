@@ -21,7 +21,7 @@ spec:
 
           env:
             - name: JAVA_TOOL_OPTIONS
-              value: "-Xms256m -Xmx512m"
+              value: "-Xms128m -Xmx256m"
 
           envFrom:
             - configMapRef:
@@ -45,11 +45,19 @@ spec:
 
           resources:
             requests:
-              cpu: "250m"
-              memory: "384Mi"
+              cpu: "100m"
+              memory: "256Mi"
             limits:
-              cpu: "500m"
-              memory: "768Mi"
+              cpu: "300m"
+              memory: "512Mi"
+
+          startupProbe:
+            httpGet:
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 24
 
           readinessProbe:
             httpGet:
@@ -58,14 +66,14 @@ spec:
             initialDelaySeconds: 20
             periodSeconds: 10
             timeoutSeconds: 3
-            failureThreshold: 3
+            failureThreshold: 5
 
           livenessProbe:
             httpGet:
               path: /actuator/health/liveness
               port: 8080
             initialDelaySeconds: 40
-            periodSeconds: 15
+            periodSeconds: 20
             timeoutSeconds: 3
             failureThreshold: 3
 ---
@@ -81,7 +89,7 @@ spec:
   ports:
     - port: 8080
       targetPort: 8080
-      nodePort: 20080
+      nodePort: 30100
       protocol: TCP
   type: NodePort
 ---
