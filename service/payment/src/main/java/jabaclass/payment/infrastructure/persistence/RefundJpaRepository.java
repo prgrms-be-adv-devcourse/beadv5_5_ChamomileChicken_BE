@@ -11,6 +11,8 @@ import jabaclass.payment.domain.model.Refund;
 
 public interface RefundJpaRepository extends JpaRepository<Refund, UUID> {
 
+	java.util.Optional<Refund> findByPaymentId(UUID paymentId);
+
 	@Query("""
 		select
 			r.id as refundId,

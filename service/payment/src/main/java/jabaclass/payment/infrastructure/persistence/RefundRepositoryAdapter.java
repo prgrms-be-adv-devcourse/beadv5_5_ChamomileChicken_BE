@@ -2,6 +2,7 @@ package jabaclass.payment.infrastructure.persistence;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.data.domain.PageRequest;
@@ -20,6 +21,11 @@ public class RefundRepositoryAdapter implements RefundRepository {
 	@Override
 	public Refund save(Refund refund) {
 		return refundJpaRepository.save(refund);
+	}
+
+	@Override
+	public Optional<Refund> findByPaymentId(UUID paymentId) {
+		return refundJpaRepository.findByPaymentId(paymentId);
 	}
 
 	@Override
