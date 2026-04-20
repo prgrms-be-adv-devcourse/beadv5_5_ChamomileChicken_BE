@@ -53,6 +53,7 @@ spec:
 
           startupProbe:
             httpGet:
+              path: /actuator/health
               port: 9004
             initialDelaySeconds: 10
             periodSeconds: 10
@@ -66,14 +67,14 @@ spec:
             initialDelaySeconds: 20
             periodSeconds: 10
             timeoutSeconds: 3
-            failureThreshold: 3
+            failureThreshold: 5
 
           livenessProbe:
             httpGet:
               path: /actuator/health/liveness
               port: 9004
             initialDelaySeconds: 40
-            periodSeconds: 15
+            periodSeconds: 20
             timeoutSeconds: 3
             failureThreshold: 3
 
