@@ -21,7 +21,7 @@ spec:
 
           env:
             - name: JAVA_TOOL_OPTIONS
-              value: "-Xms256m -Xmx512m"
+              value: "-Xms256m -Xmx384m"
 
           envFrom:
             - configMapRef:
@@ -45,11 +45,11 @@ spec:
 
           resources:
             requests:
-              cpu: "250m"
-              memory: "384Mi"
+              cpu: "100m"
+              memory: "512Mi"
             limits:
-              cpu: "500m"
-              memory: "768Mi"
+              cpu: "300m"
+              memory: "640Mi"
 
           readinessProbe:
             httpGet:

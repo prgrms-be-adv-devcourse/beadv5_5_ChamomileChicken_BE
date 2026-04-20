@@ -84,10 +84,12 @@ jobs:
         run: |
           rsync -av --delete ./ /home/ubuntu/apps/repo/
 
-      - name: Copy deploy script to EC2 deploy directory
+      - name: Copy deploy scripts to EC2 deploy directory
         run: |
           cp /home/ubuntu/apps/repo/.github/scripts/deploy-app.sh /home/ubuntu/apps/deploy/scripts/deploy-app.sh
+          cp /home/ubuntu/apps/repo/.github/scripts/apply-env.sh /home/ubuntu/apps/deploy/scripts/apply-env.sh
           chmod +x /home/ubuntu/apps/deploy/scripts/deploy-app.sh
+          chmod +x /home/ubuntu/apps/deploy/scripts/apply-env.sh
 
       - name: Check envsubst
         run: |
@@ -98,21 +100,14 @@ jobs:
           cp /home/ubuntu/apps/repo/.github/k3s/user-service.yml \
              /home/ubuntu/apps/data/k3s-service/user-service.yml
 
-      - name: Create common_config.env
+      - name: Apply env files and detect changes
+        env:
+          COMMON_CONFIG_ENV: ${{ secrets.COMMON_CONFIG_ENV }}
+          COMMON_SECRET_ENV: ${{ secrets.COMMON_SECRET_ENV }}
+          SERVICE_CONFIG_ENV: ${{ secrets.USER_CONFIG_ENV }}
+          SERVICE_SECRET_ENV: ${{ secrets.USER_SECRET_ENV }}
         run: |
-          printf '%s\n' '${{ secrets.COMMON_CONFIG_ENV }}' > /home/ubuntu/apps/deploy/env/common_config.env
-
-      - name: Create common_secret.env
-        run: |
-          printf '%s\n' '${{ secrets.COMMON_SECRET_ENV }}' > /home/ubuntu/apps/deploy/env/common_secret.env
-
-      - name: Create user_config.env
-        run: |
-          printf '%s\n' '${{ secrets.USER_CONFIG_ENV }}' > /home/ubuntu/apps/deploy/env/user_config.env
-
-      - name: Create user_secret.env
-        run: |
-          printf '%s\n' '${{ secrets.USER_SECRET_ENV }}' > /home/ubuntu/apps/deploy/env/user_secret.env
+          /home/ubuntu/apps/deploy/scripts/apply-env.sh user
 
       - name: Verify deploy files exist
         run: |
@@ -130,10 +125,12 @@ jobs:
         env:
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
+          RESTART_ON_CONFIG_CHANGE: ${{ env.CONFIG_CHANGED }}
         run: |
           /home/ubuntu/apps/deploy/scripts/deploy-app.sh user
 
       - name: Debug Kubernetes state
+        if: always()
         run: |
           echo "===== pods ====="
           kubectl get pods -o wide
