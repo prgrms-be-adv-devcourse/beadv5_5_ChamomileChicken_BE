@@ -146,7 +146,8 @@
 - 결제 건이면 판매자 프로모션과 등급 기준 수수료율을 반영해 `SettlementTargetCalculation`을 생성한다.
 - 환불 건이면 원 결제의 계산 결과를 우선 참조해 환불 비율만큼 음수 계산을 만든다.
 - 원 결제 계산 결과가 없으면 `SettlementTarget.occurredAt` 기준으로 판매자 프로모션을 다시 조회하는 2차 방어 로직을 수행한다.
-- seller/month 기준으로 집계해 `Settlement`, `SettlementHistory`를 생성한다.
+- seller/month 기준으로 집계해 `Settlement`를 생성한다.
+- 정산 상세가 필요할 때는 `SettlementTargetCalculation`과 `SettlementTarget`을 조합해 조회한다.
 - 판매자 등급 정보가 없으면 `BASIC` 등급을 우선 사용한다.
 
 **Response** `200 OK`

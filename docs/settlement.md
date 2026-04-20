@@ -34,7 +34,7 @@ Batch Scheduler / Controller
   -> Application Service
     -> Domain Repository
     -> External Client (user, transfer)
-    -> SettlementTargetCalculation / Settlement / SettlementHistory / SettlementTransfer 저장
+    -> SettlementTargetCalculation / Settlement / SettlementTransfer 저장
 ```
 
 ### 현재 핵심 특징
@@ -79,7 +79,6 @@ Batch Scheduler / Controller
 | `SettlementTarget` | 결제/환불 원천에서 적재된 정산 대상 데이터 | `sellerId`, `orderId`, `productId`, `paymentId`, `refundId`, `settlementMonth`, `settlementBaseAmount`, `targetType`, `occurredAt`, `calculationStatus` |
 | `SettlementTargetCalculation` | 정산 대상 1건을 월 정산 집계용으로 정규화한 계산 결과 | `settlementTargetId`, `settlementBaseAmount`, `appliedPromotionId`, `appliedPromotionType`, `appliedFeeRate`, `originalPaymentTargetCalculationId` |
 | `Settlement` | 판매자별 월 정산 결과 스냅샷 | `sellerId`, `settlementMonth`, `sellerGradeCode`, `sellerGradePolicyId`, `gradeBaseAmount`, `feeAmount`, `feeRate`, `settlementAmount`, `status` |
-| `SettlementHistory` | 월 정산에 어떤 정산 대상이 포함되었는지 남기는 상세 이력 | `settlementId`, `settlementTargetId`, `sellerId`, `productId`, `originalAmount`, `feeAmount`, `settlementAmount`, `status` |
 | `SettlementTransfer` | 송금 요청과 결과 이력 | `settlementId`, `transferStatus`, `bankCode`, `accountNumberMasked`, `amount`, `requestedAt`, `completedAt`, `failReason` |
 | `SellerGradePolicy` | 최근 3개월 판매금액 구간별 등급/수수료 정책 | `gradeCode`, `minSalesAmount`, `maxSalesAmount`, `feeRate`, `version`, `active` |
 | `SellerGrade` | 판매자별 마지막 적용 등급 캐시 | `sellerId`, `sellerGradePolicyId`, `calculatedMonth` |
@@ -132,7 +131,6 @@ domain/model/
 
 domain/model/settlement/
   Settlement.java
-  SettlementHistory.java
   SettlementTarget.java
   SettlementTargetCalculation.java
   SettlementTransfer.java
@@ -149,7 +147,6 @@ domain/model/promotion/
 
 domain/repository/
   SettlementRepository.java
-  SettlementHistoryRepository.java
   SettlementTargetRepository.java
   SettlementTargetCalculationRepository.java
   SettlementTransferRepository.java
@@ -204,7 +201,7 @@ infrastructure/persistence/
 | 환불 보정 | 원 결제 계산 결과를 우선 참조하고, 없으면 판매자 프로모션을 2차로 재조회 |
 | 판매 등급 산정 | 최근 3개월 판매금액 기준 등급 정책 조회, 없으면 `BASIC` 등급 우선 적용 |
 | 월 정산 생성 | seller/month 집계 금액에 계산별 적용 수수료 결과를 반영해 `Settlement` 생성 |
-| 구성 이력 생성 | `SettlementHistory` 저장 |
+| 상세 조회 기준 보존 | 상세는 `SettlementTargetCalculation + SettlementTarget` 조합으로 재구성 |
 | 중복 계산 방지 | 동일 정산 대상, 동일 seller/month 정산 중복 방지 |
 
 ### SettlementTransferService
@@ -243,7 +240,7 @@ SettlementScheduler or SettlementBatchController
     -> MonthlySettlementBatchItem 생성
     -> SettlementAggregationItemWriter
       -> Settlement 저장
-      -> SettlementHistory 생성 및 저장
+      -> 월 정산 헤더만 저장
 ```
 
 핵심 포인트:
@@ -255,6 +252,7 @@ SettlementScheduler or SettlementBatchController
 - 이미 생성된 판매자/월 정산은 중복 생성하지 않는다.
 - `SettlementTargetCalculation`에는 당시 적용한 프로모션 ID, 프로모션 타입, 수수료율이 남는다.
 - `Settlement`에는 당시 적용된 등급 코드, 등급 정책 ID, 기준 금액이 스냅샷으로 남는다.
+- 정산 상세가 필요하면 `Settlement`의 `sellerId + settlementMonth` 기준으로 `SettlementTargetCalculation`과 `SettlementTarget`을 조합해 조회한다.
 - 등급 정보가 없으면 테스트 및 초기 운영 안정성을 위해 `BASIC` 등급을 우선 사용한다.
 
 ### 2. 정산 송금

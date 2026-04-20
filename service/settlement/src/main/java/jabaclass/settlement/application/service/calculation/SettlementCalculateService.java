@@ -3,9 +3,7 @@ package jabaclass.settlement.application.service.calculation;
 import java.math.BigDecimal;
 import java.time.YearMonth;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
@@ -20,14 +18,12 @@ import jabaclass.settlement.application.usecase.SettlementCalculateUseCase;
 import jabaclass.settlement.domain.model.grade.SellerGrade;
 import jabaclass.settlement.domain.model.grade.SellerGradePolicy;
 import jabaclass.settlement.domain.model.settlement.Settlement;
-import jabaclass.settlement.domain.model.settlement.SettlementHistory;
 import jabaclass.settlement.domain.model.settlement.SettlementTarget;
 import jabaclass.settlement.domain.model.settlement.SettlementTargetCalculation;
 import jabaclass.settlement.domain.model.settlement.SettlementTargetCalculationStatus;
 import jabaclass.settlement.domain.model.settlement.SettlementTargetType;
 import jabaclass.settlement.domain.repository.SellerGradeRepository;
 import jabaclass.settlement.domain.repository.SellerGradePolicyRepository;
-import jabaclass.settlement.domain.repository.SettlementHistoryRepository;
 import jabaclass.settlement.domain.repository.SettlementRepository;
 import jabaclass.settlement.domain.repository.SettlementTargetCalculationRepository;
 import jabaclass.settlement.domain.repository.SettlementTargetRepository;
@@ -44,7 +40,6 @@ public class SettlementCalculateService implements SettlementCalculateUseCase {
 	private final SettlementTargetRepository settlementTargetRepository;
 	private final SettlementTargetCalculationRepository settlementTargetCalculationRepository;
 	private final SettlementRepository settlementRepository;
-	private final SettlementHistoryRepository settlementHistoryRepository;
 	private final SellerGradeRepository sellerGradeRepository;
 	private final SellerGradePolicyRepository sellerGradePolicyRepository;
 	private final SettlementPromotionResolver settlementPromotionResolver;
@@ -117,18 +112,6 @@ public class SettlementCalculateService implements SettlementCalculateUseCase {
 				.map(MonthlySettlementBatchItem::settlement)
 				.toList()
 		);
-
-		List<SettlementHistory> createdHistories = new ArrayList<>();
-		for (int i = 0; i < savedSettlements.size(); i++) {
-			createdHistories.addAll(createHistories(
-				savedSettlements.get(i),
-				monthlyItems.get(i).calculations()
-			));
-		}
-
-		if (!createdHistories.isEmpty()) {
-			settlementHistoryRepository.saveAll(createdHistories);
-		}
 
 		return savedSettlements.size();
 	}
@@ -251,52 +234,6 @@ public class SettlementCalculateService implements SettlementCalculateUseCase {
 		);
 
 		sellerGradeRepository.save(sellerGrade);
-	}
-
-	public List<SettlementHistory> createHistories(
-		Settlement settlement,
-		List<SettlementTargetCalculation> calculations
-	) {
-		if (calculations.isEmpty()) {
-			return List.of();
-		}
-
-		List<UUID> targetIds = calculations.stream()
-			.map(SettlementTargetCalculation::getSettlementTargetId)
-			.toList();
-		Map<UUID, SettlementTarget> targetMap = new LinkedHashMap<>();
-		for (SettlementTarget target : settlementTargetRepository.findAllByIds(targetIds)) {
-			targetMap.put(target.getId(), target);
-		}
-
-		List<SettlementHistory> histories = new ArrayList<>();
-
-		for (SettlementTargetCalculation calculation : calculations) {
-			SettlementTarget target = targetMap.get(calculation.getSettlementTargetId());
-			if (target == null) {
-				throw new BusinessException(SettlementErrorCode.SETTLEMENT_NOT_FOUND);
-			}
-
-			BigDecimal feeAmount = settlementFeeCalculator.calculateFeeAmount(
-				calculation.getSettlementBaseAmount(),
-				settlementFeeCalculator.resolveAppliedFeeRate(calculation, settlement.getFeeRate())
-			);
-			BigDecimal settlementAmount = calculation.getSettlementBaseAmount().subtract(feeAmount);
-
-			histories.add(SettlementHistory.create(
-				settlement.getId(),
-				calculation.getSettlementTargetId(),
-				settlement.getSellerId(),
-				target.getProductId(),
-				settlement.getSettlementMonth(),
-				target.getSettlementBaseAmount(),
-				feeAmount,
-				settlementAmount,
-				settlement.getStatus()
-			));
-		}
-
-		return histories;
 	}
 
 	private SellerGradePolicy resolveSellerGradePolicy(BigDecimal gradeBaseAmount) {

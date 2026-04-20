@@ -29,14 +29,12 @@ import jabaclass.settlement.domain.model.grade.SellerGradePolicy;
 import jabaclass.settlement.domain.model.grade.SellerGradeType;
 import jabaclass.settlement.domain.model.promotion.PromotionType;
 import jabaclass.settlement.domain.model.settlement.Settlement;
-import jabaclass.settlement.domain.model.settlement.SettlementHistory;
 import jabaclass.settlement.domain.model.settlement.SettlementStatus;
 import jabaclass.settlement.domain.model.settlement.SettlementTarget;
 import jabaclass.settlement.domain.model.settlement.SettlementTargetCalculation;
 import jabaclass.settlement.domain.model.settlement.SettlementTargetType;
 import jabaclass.settlement.domain.repository.SellerGradePolicyRepository;
 import jabaclass.settlement.domain.repository.SellerGradeRepository;
-import jabaclass.settlement.domain.repository.SettlementHistoryRepository;
 import jabaclass.settlement.domain.repository.SettlementRepository;
 import jabaclass.settlement.domain.repository.SettlementTargetCalculationRepository;
 import jabaclass.settlement.domain.repository.SettlementTargetRepository;
@@ -64,9 +62,6 @@ class SettlementCalculateServiceTest {
 	private SettlementRepository settlementRepository;
 
 	@Mock
-	private SettlementHistoryRepository settlementHistoryRepository;
-
-	@Mock
 	private SellerGradeRepository sellerGradeRepository;
 
 	@Mock
@@ -85,7 +80,7 @@ class SettlementCalculateServiceTest {
 	private SettlementCalculateService settlementCalculateService;
 
 	@Test
-	void 월_정산을_계산하고_정산_이력을_생성한다() {
+	void 월_정산을_계산한다() {
 		UUID sellerId = UUID.randomUUID();
 		String settlementMonth = "2026-03";
 		UUID paymentId = UUID.randomUUID();
@@ -148,53 +143,29 @@ class SettlementCalculateServiceTest {
 			new BigDecimal("0.025"),
 			List.of(paymentCalculation, refundCalculation)
 		)).willReturn(new BigDecimal("6825.00"));
-		given(settlementFeeCalculator.resolveAppliedFeeRate(paymentCalculation, new BigDecimal("0.025")))
-			.willReturn(new BigDecimal("0.025"));
-		given(settlementFeeCalculator.resolveAppliedFeeRate(refundCalculation, new BigDecimal("0.025")))
-			.willReturn(new BigDecimal("0.025"));
-		given(settlementFeeCalculator.calculateFeeAmount(new BigDecimal("10000"), new BigDecimal("0.025")))
-			.willReturn(new BigDecimal("250.00"));
-		given(settlementFeeCalculator.calculateFeeAmount(new BigDecimal("-3000.00"), new BigDecimal("0.025")))
-			.willReturn(new BigDecimal("-75.00"));
-		given(settlementTargetRepository.findAllByIds(org.mockito.ArgumentMatchers.anyList()))
-			.willReturn(List.of(paymentTarget, refundTarget));
 		given(settlementRepository.existsBySellerIdAndSettlementMonth(sellerId, settlementMonth)).willReturn(false);
 		given(settlementRepository.saveAll(anyList())).willAnswer(invocation -> {
 			List<Settlement> settlements = invocation.getArgument(0);
 			settlements.forEach(this::assignId);
 			return settlements;
 		});
-		given(settlementHistoryRepository.saveAll(anyList())).willAnswer(invocation -> invocation.getArgument(0));
 		given(settlementTargetRepository.saveAll(anyList())).willAnswer(invocation -> invocation.getArgument(0));
 		given(settlementTargetCalculationRepository.saveAll(anyList())).willAnswer(invocation -> invocation.getArgument(0));
 		given(sellerGradeRepository.save(org.mockito.ArgumentMatchers.any(SellerGrade.class)))
 			.willAnswer(invocation -> invocation.getArgument(0));
 
 		ArgumentCaptor<List<Settlement>> settlementCaptor = ArgumentCaptor.forClass(List.class);
-		ArgumentCaptor<List<SettlementHistory>> historyCaptor = ArgumentCaptor.forClass(List.class);
 
 		int actual = settlementCalculateService.calculateMonthly(settlementMonth);
 
 		assertThat(actual).isEqualTo(1);
 		then(settlementRepository).should().saveAll(settlementCaptor.capture());
-		then(settlementHistoryRepository).should().saveAll(historyCaptor.capture());
 
 		Settlement settlement = settlementCaptor.getValue().get(0);
 		assertThat(settlement.getOriginalAmount()).isEqualByComparingTo("7000.00");
 		assertThat(settlement.getSellerGradeCode()).isEqualTo(SellerGradeType.GOLD);
 		assertThat(settlement.getFeeAmount()).isEqualByComparingTo("175.00");
 		assertThat(settlement.getSettlementAmount()).isEqualByComparingTo("6825.00");
-
-		List<SettlementHistory> histories = historyCaptor.getValue();
-		assertThat(histories).hasSize(2);
-		assertThat(histories.stream()
-			.map(SettlementHistory::getOriginalAmount)
-			.map(BigDecimal::stripTrailingZeros)
-			.toList())
-			.containsExactlyInAnyOrder(
-				new BigDecimal("10000").stripTrailingZeros(),
-				new BigDecimal("-3000").stripTrailingZeros()
-			);
 	}
 
 	@Test
@@ -367,12 +338,6 @@ class SettlementCalculateServiceTest {
 			new BigDecimal("0.033"),
 			List.of(calculation)
 		)).willReturn(new BigDecimal("9900.00"));
-		given(settlementFeeCalculator.resolveAppliedFeeRate(calculation, new BigDecimal("0.033")))
-			.willReturn(new BigDecimal("0.0100"));
-		given(settlementFeeCalculator.calculateFeeAmount(new BigDecimal("10000.00"), new BigDecimal("0.0100")))
-			.willReturn(new BigDecimal("100.00"));
-		given(settlementTargetRepository.findAllByIds(org.mockito.ArgumentMatchers.anyList()))
-			.willReturn(List.of(paymentTarget));
 		given(settlementTargetRepository.sumSettlementBaseAmountBySellerIdAndSettlementMonths(
 			org.mockito.ArgumentMatchers.eq(sellerId),
 			org.mockito.ArgumentMatchers.anyList()
@@ -386,7 +351,6 @@ class SettlementCalculateServiceTest {
 			settlements.forEach(this::assignId);
 			return settlements;
 		});
-		given(settlementHistoryRepository.saveAll(anyList())).willAnswer(invocation -> invocation.getArgument(0));
 		given(sellerGradeRepository.save(org.mockito.ArgumentMatchers.any(SellerGrade.class)))
 			.willAnswer(invocation -> invocation.getArgument(0));
 
