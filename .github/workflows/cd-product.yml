@@ -95,7 +95,7 @@ jobs:
 
       - name: Copy Kubernetes YAML to fixed path
         run: |
-          cp /home/ubuntu/apps/repo/service/product/product-service.yml \
+          cp /home/ubuntu/apps/repo/.github/k3s/product-service.yml \
              /home/ubuntu/apps/data/k3s-service/product-service.yml
 
       - name: Create common_config.env

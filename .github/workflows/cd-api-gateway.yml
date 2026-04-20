@@ -94,7 +94,7 @@ jobs:
 
       - name: Copy Kubernetes YAML to fixed path
         run: |
-          cp /home/ubuntu/apps/repo/api-gateway/api-gateway-service.yml /home/ubuntu/apps/data/k3s-service/api-gateway-service.yml
+          cp /home/ubuntu/apps/repo/.github/k3s/api-gateway-service.yml /home/ubuntu/apps/data/k3s-service/api-gateway-service.yml
 
       - name: Create common_config.env
         run: |
