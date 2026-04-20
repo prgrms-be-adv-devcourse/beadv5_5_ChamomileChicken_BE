@@ -75,7 +75,7 @@ infrastructure/outbox/
 | 주문 생성 (`create`) | 재고 예약 → 예치금 차감 → Order 저장 (tx 없음, 외부 호출 포함) |
 | 주문 조회 | 단건/목록/정산용 다건 조회 |
 | 금액 검증 | Payment 서비스가 confirm 전 호출하는 내부 API |
-| 상태 변경 위임 | `updatePaymentStatus` → 핸들러 위임 |
+| 결제 결과 반영 | Kafka `payment.events` 수신 후 성공/실패 핸들러 위임 |
 
 ### OrderPaymentResultHandler
 

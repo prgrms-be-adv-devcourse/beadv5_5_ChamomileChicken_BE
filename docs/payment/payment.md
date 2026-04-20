@@ -220,9 +220,7 @@ sequenceDiagram
 | 메서드 | 엔드포인트 | 용도 |
 |--------|-----------|------|
 | `validateOrder` | `GET /api/v1/orders/{orderId}/payment-amount/validate` | 결제 승인 전 금액 검증 |
-| `updatePaymentStatus` | `PUT /api/v1/orders/{orderId}/payment-status` | 결제 결과 전달 (미사용 — Kafka로 대체) |
-
-> 현재 결제 결과는 Kafka(PAYMENT_COMPLETED/FAILED)로 전달한다. `updatePaymentStatus`는 레거시 HTTP 경로로 현재 미사용 상태다.
+> 현재 결제 결과 반영은 HTTP 내부 호출이 아니라 Kafka(`payment.events`)로만 전달한다.
 
 ### User 서비스 — `UserClient` (`UserPort` 구현)
 
