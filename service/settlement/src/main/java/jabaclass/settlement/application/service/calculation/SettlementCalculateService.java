@@ -59,48 +59,10 @@ public class SettlementCalculateService implements SettlementCalculateUseCase {
 		List<MonthlySettlementBatchItem> monthlyItems = new ArrayList<>();
 
 		for (SettlementTargetSummary summary : summaries) {
-			if (settlementRepository.existsBySellerIdAndSettlementMonth(summary.sellerId(), settlementMonth)) {
-				continue;
+			MonthlySettlementBatchItem monthlyItem = createMonthlySettlementItem(summary, settlementMonth);
+			if (monthlyItem != null) {
+				monthlyItems.add(monthlyItem);
 			}
-
-			BigDecimal recentThreeMonthSalesAmount = calculateRecentThreeMonthSalesAmount(
-				summary.sellerId(),
-				settlementMonth
-			);
-			SellerGradePolicy sellerGradePolicy = resolveSellerGradePolicy(recentThreeMonthSalesAmount);
-			List<SettlementTargetCalculation> sellerTargets =
-				settlementTargetCalculationRepository.findBySettlementMonthAndSellerId(
-					settlementMonth,
-					summary.sellerId()
-				);
-			BigDecimal feeAmount = settlementFeeCalculator.calculateFeeAmount(
-				summary.totalSettlementBaseAmount(),
-				sellerGradePolicy.getFeeRate(),
-				sellerTargets
-			);
-			BigDecimal settlementAmount = settlementFeeCalculator.calculateSettlementAmount(
-				summary.totalSettlementBaseAmount(),
-				sellerGradePolicy.getFeeRate(),
-				sellerTargets
-			);
-			upsertSellerGrade(summary.sellerId(), sellerGradePolicy, settlementMonth);
-			Settlement settlement = Settlement.createReady(
-				summary.sellerId(),
-				settlementMonth,
-				summary.totalSettlementBaseAmount(),
-				sellerGradePolicy.getGradeCode(),
-				sellerGradePolicy.getId(),
-				recentThreeMonthSalesAmount,
-				feeAmount,
-				sellerGradePolicy.getFeeRate(),
-				settlementAmount
-			);
-
-			if (!settlement.isTransferable()) {
-				settlement.hold("정산 금액이 0 이하이므로 송금 보류");
-			}
-
-			monthlyItems.add(new MonthlySettlementBatchItem(settlement, sellerTargets));
 		}
 
 		if (monthlyItems.isEmpty()) {
@@ -171,6 +133,14 @@ public class SettlementCalculateService implements SettlementCalculateUseCase {
 		if (settlementRepository.existsBySellerIdAndSettlementMonth(summary.sellerId(), settlementMonth)) {
 			return null;
 		}
+
+		return buildMonthlySettlementItem(summary, settlementMonth);
+	}
+
+	private MonthlySettlementBatchItem buildMonthlySettlementItem(
+		SettlementTargetSummary summary,
+		String settlementMonth
+	) {
 
 		BigDecimal recentThreeMonthSalesAmount = calculateRecentThreeMonthSalesAmount(
 			summary.sellerId(),

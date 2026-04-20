@@ -1,15 +1,19 @@
 package jabaclass.settlement.infrastructure.batch.config;
 
+import java.util.Map;
+
+import jakarta.persistence.EntityManagerFactory;
+
 import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.core.job.Job;
 import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.Step;
 import org.springframework.batch.core.step.builder.StepBuilder;
+import org.springframework.batch.infrastructure.item.database.builder.JpaPagingItemReaderBuilder;
 import org.springframework.batch.infrastructure.item.ItemProcessor;
 import org.springframework.batch.infrastructure.item.ItemReader;
 import org.springframework.batch.infrastructure.item.ItemWriter;
-import org.springframework.batch.infrastructure.item.support.ListItemReader;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -18,7 +22,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import jabaclass.settlement.application.dto.SettlementTargetSummary;
 import jabaclass.settlement.application.service.calculation.SettlementCalculateService;
 import jabaclass.settlement.domain.model.settlement.SettlementTarget;
-import jabaclass.settlement.domain.repository.SettlementTargetCalculationRepository;
+import jabaclass.settlement.domain.model.settlement.SettlementTargetCalculationStatus;
 import jabaclass.settlement.infrastructure.batch.component.SettlementAggregationItemWriter;
 import jabaclass.settlement.infrastructure.batch.component.SettlementJobExecutionListener;
 import jabaclass.settlement.infrastructure.batch.component.SettlementMonthResolver;
@@ -67,11 +71,26 @@ public class SettlementBatchConfig {
 	@Bean
 	@StepScope
 	public ItemReader<SettlementTarget> settlementTargetItemReader(
-		SettlementCalculateService settlementCalculateService,
+		EntityManagerFactory entityManagerFactory,
 		@Value("#{jobParameters['settlementMonth']}") String settlementMonthParam
 	) {
 		String settlementMonth = SettlementMonthResolver.resolve(settlementMonthParam);
-		return new ListItemReader<>(settlementCalculateService.findPendingTargets(settlementMonth));
+		return new JpaPagingItemReaderBuilder<SettlementTarget>()
+			.name("settlementTargetItemReader")
+			.entityManagerFactory(entityManagerFactory)
+			.pageSize(CHUNK_SIZE)
+			.parameterValues(Map.of(
+				"settlementMonth", settlementMonth,
+				"calculationStatus", SettlementTargetCalculationStatus.PENDING
+			))
+			.queryString("""
+				select st
+				from SettlementTarget st
+				where st.settlementMonth = :settlementMonth
+				  and st.calculationStatus = :calculationStatus
+				order by st.id
+				""")
+			.build();
 	}
 
 	@Bean
@@ -94,11 +113,27 @@ public class SettlementBatchConfig {
 	@Bean
 	@StepScope
 	public ItemReader<SettlementTargetSummary> settlementAggregationReader(
-		SettlementTargetCalculationRepository settlementTargetCalculationRepository,
+		EntityManagerFactory entityManagerFactory,
 		@Value("#{jobParameters['settlementMonth']}") String settlementMonthParam
 	) {
 		String settlementMonth = SettlementMonthResolver.resolve(settlementMonthParam);
-		return new ListItemReader<>(settlementTargetCalculationRepository.findSummaryBySettlementMonth(settlementMonth));
+		return new JpaPagingItemReaderBuilder<SettlementTargetSummary>()
+			.name("settlementAggregationReader")
+			.entityManagerFactory(entityManagerFactory)
+			.pageSize(CHUNK_SIZE)
+			.parameterValues(Map.of("settlementMonth", settlementMonth))
+			.queryString("""
+				select new jabaclass.settlement.application.dto.SettlementTargetSummary(
+					stc.sellerId,
+					stc.settlementMonth,
+					sum(stc.settlementBaseAmount)
+				)
+				from SettlementTargetCalculation stc
+				where stc.settlementMonth = :settlementMonth
+				group by stc.sellerId, stc.settlementMonth
+				order by stc.sellerId
+				""")
+			.build();
 	}
 
 	@Bean

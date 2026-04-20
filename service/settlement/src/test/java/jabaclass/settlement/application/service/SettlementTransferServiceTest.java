@@ -23,6 +23,7 @@ import jabaclass.settlement.application.port.external.SettlementTransferPort;
 import jabaclass.settlement.domain.model.grade.SellerGradeType;
 import jabaclass.settlement.domain.model.settlement.Settlement;
 import jabaclass.settlement.domain.model.settlement.SettlementStatus;
+import jabaclass.settlement.domain.model.settlement.SettlementTransfer;
 import jabaclass.settlement.domain.repository.SettlementRepository;
 import jabaclass.settlement.domain.repository.SettlementTransferRepository;
 
@@ -228,6 +229,30 @@ class SettlementTransferServiceTest {
 		Settlement savedSettlement = settlementCaptor.getValue().get(0);
 		assertThat(savedSettlement.getStatus()).isEqualTo(SettlementStatus.FAILED);
 		assertThat(savedSettlement.getFailReason()).isEqualTo("송금 실패");
+	}
+
+	@Test
+	void 계좌번호는_뒤_4자리를_제외하고_마스킹한다() {
+		SettlementTransfer transfer = SettlementTransfer.requested(
+			UUID.randomUUID(),
+			"088",
+			"1234567890",
+			new BigDecimal("10000")
+		);
+
+		assertThat(transfer.getAccountNumberMasked()).isEqualTo("******7890");
+	}
+
+	@Test
+	void 계좌번호가_4자리_이하이면_전체를_마스킹한다() {
+		SettlementTransfer transfer = SettlementTransfer.requested(
+			UUID.randomUUID(),
+			"088",
+			"1234",
+			new BigDecimal("10000")
+		);
+
+		assertThat(transfer.getAccountNumberMasked()).isEqualTo("****");
 	}
 
 	@Test

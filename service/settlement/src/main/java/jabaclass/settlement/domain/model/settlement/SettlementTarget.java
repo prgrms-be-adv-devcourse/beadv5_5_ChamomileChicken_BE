@@ -135,7 +135,7 @@ public class SettlementTarget extends BaseEntity {
 			refundId,
 			productId,
 			SettlementTargetType.REFUND,
-			settlementBaseAmount.negate(),
+			settlementBaseAmount.abs().negate(),
 			occurredAt
 		);
 	}
