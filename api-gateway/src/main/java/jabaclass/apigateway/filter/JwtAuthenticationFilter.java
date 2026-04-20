@@ -52,7 +52,14 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         new WhiteListEntry(HttpMethod.POST,  "/api/v1/users/register"),
         new WhiteListEntry(HttpMethod.POST,  "/api/v1/users/email-check"),
         new WhiteListEntry(HttpMethod.POST,  "/api/v1/email/**"),
-        new WhiteListEntry(HttpMethod.GET,   "/api/v1/products/**")
+        new WhiteListEntry(HttpMethod.GET,  "/api/v1/products"),
+        new WhiteListEntry(HttpMethod.GET,  "/api/v1/products/*"),
+        new WhiteListEntry(HttpMethod.GET,  "/api/v1/products/*/schedules"),
+        new WhiteListEntry(HttpMethod.GET,  "/api/v1/products/*/availability"),
+        new WhiteListEntry(HttpMethod.GET,  "/api/v1/products/*/reviewList"),
+        new WhiteListEntry(HttpMethod.GET,  "/api/v1/products/*/reviews/*"),
+        new WhiteListEntry(HttpMethod.GET, "/oauth2/authorization/**"),
+        new WhiteListEntry(HttpMethod.GET, "/login/oauth2/code/**")
     );
 
     private static final AntPathMatcher PATH_MATCHER = new AntPathMatcher();

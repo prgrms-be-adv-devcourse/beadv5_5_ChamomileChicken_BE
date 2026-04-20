@@ -8,33 +8,11 @@ import org.springframework.kafka.config.TopicBuilder;
 @Configuration
 public class KafkaTopicConfig {
 
-	@Bean
-	public NewTopic paymentCompleted() {
-		return TopicBuilder.name("payment.completed")
-			.partitions(3)
-			.replicas(1)
-			.build();
-	}
+	public static final String TOPIC = "payment.events";
 
 	@Bean
-	public NewTopic paymentFailed() {
-		return TopicBuilder.name("payment.failed")
-			.partitions(3)
-			.replicas(1)
-			.build();
-	}
-
-	@Bean
-	public NewTopic paymentExpired() {
-		return TopicBuilder.name("payment.expired")
-			.partitions(3)
-			.replicas(1)
-			.build();
-	}
-
-	@Bean
-	public NewTopic paymentRefunded() {
-		return TopicBuilder.name("payment.refunded")
+	public NewTopic paymentEventsTopic() {
+		return TopicBuilder.name(TOPIC)
 			.partitions(3)
 			.replicas(1)
 			.build();

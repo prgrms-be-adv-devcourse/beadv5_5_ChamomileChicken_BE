@@ -17,17 +17,19 @@ public interface OrderUseCase {
 
     CreateOrderResponseDto create(UUID userId, CreateOrderRequestDto requestDto);
 
-    OrderResponseDto getById(UUID orderId);
+    OrderResponseDto getById(UUID userId, UUID orderId);
 
     List<OrderResponseDto> getOrders(UUID userId, OrderStatus status);
 
     boolean validatePaymentAmount(UUID orderId, BigDecimal amount);
 
-    void updatePaymentStatus(UUID orderId, UpdateOrderPaymentStatusRequestDto requestDto);
+    void updatePaymentStatus(UUID eventId, UUID orderId, UpdateOrderPaymentStatusRequestDto requestDto);
 
-    void expireOrder(UUID orderId, BigDecimal depositAmount);
+    void expireOrder(UUID eventId, UUID orderId, BigDecimal depositAmount);
 
-    void refund(UUID orderId);
+    void completeRefund(UUID eventId, UUID orderId, BigDecimal depositRefundAmount);
+
+    void refund(UUID userId, UUID orderId);
 
     List<OrderSettlementItemResponseDto> getOrdersByIds(OrderBulkReadRequestDto requestDto);
 }

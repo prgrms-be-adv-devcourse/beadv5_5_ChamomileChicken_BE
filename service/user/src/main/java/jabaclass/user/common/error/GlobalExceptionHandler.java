@@ -6,7 +6,6 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import jabaclass.auth.exception.JwtAuthException;
 import jabaclass.user.auth.application.exception.AuthException;
 import jabaclass.user.common.dto.ApiResponseDto;
 import lombok.extern.slf4j.Slf4j;
@@ -37,16 +36,6 @@ public class GlobalExceptionHandler {
 	public ResponseEntity<ApiResponseDto<Void>> handleBusinessException(BusinessException ex) {
 		return ResponseEntity.status(ex.getStatus())
 			.body(ApiResponseDto.fail(ex.getStatus(), ex.getMessage()));
-	}
-
-	/**
-	 * JwtAuthException 처리
-	 * JWT 인증 관련 예외를 처리합니다.
-	 */
-	@ExceptionHandler(JwtAuthException.class)
-	public ResponseEntity<ApiResponseDto<Void>> handleJwtAuthException(JwtAuthException ex) {
-		return ResponseEntity.status(ex.getErrorCode().getStatus())
-			.body(ApiResponseDto.fail(ex.getErrorCode().getStatus(), ex.getErrorCode().getMessage()));
 	}
 
 	/**

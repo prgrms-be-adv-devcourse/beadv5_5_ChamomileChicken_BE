@@ -29,6 +29,8 @@ import static org.mockito.Mockito.lenient;
 import jabaclass.payment.application.port.external.OrderPort;
 import jabaclass.payment.application.port.external.PaymentGatewayPort;
 import jabaclass.payment.application.service.PaymentService;
+import jabaclass.payment.application.service.handler.PaymentConfirmHandler;
+import jabaclass.payment.application.service.handler.PaymentRefundHandler;
 import jabaclass.payment.common.error.PaymentErrorCode;
 import jabaclass.payment.common.error.PaymentException;
 import jabaclass.payment.domain.model.Payment;
@@ -62,6 +64,12 @@ class PaymentTest {
 	@Mock
 	private OutboxRepository outboxRepository;
 
+	@Mock
+	private PaymentConfirmHandler paymentConfirmHandler;
+
+	@Mock
+	private PaymentRefundHandler paymentRefundHandler;
+
 	private PaymentService paymentService;
 
 	@BeforeEach
@@ -72,6 +80,8 @@ class PaymentTest {
 			paymentGatewayPort,
 			orderPort,
 			outboxRepository,
+			paymentConfirmHandler,
+			paymentRefundHandler,
 			new ObjectMapper()
 		);
 
@@ -150,7 +160,8 @@ class PaymentTest {
 		assertEquals(payment.getOrderId(), response.orderId());
 		verify(orderPort, never()).validateOrder(any(), anyInt());
 		verify(paymentGatewayPort, never()).confirm(any(), any(), anyInt());
-		verify(outboxRepository, never()).save(any(OutboxEvent.class));
+		verify(paymentConfirmHandler, never()).onSuccess(any(), any());
+		verify(paymentConfirmHandler, never()).onFailure(any(), any(), any());
 	}
 
 	@Test
@@ -168,7 +179,7 @@ class PaymentTest {
 
 		assertEquals(PaymentErrorCode.INVALID_ORDER_AMOUNT, exception.getErrorCode());
 		verify(paymentGatewayPort, never()).confirm(any(), any(), anyInt());
-		verify(outboxRepository, never()).save(any(OutboxEvent.class));
+		verify(paymentConfirmHandler, never()).onSuccess(any(), any());
 	}
 
 	@Test
@@ -186,36 +197,31 @@ class PaymentTest {
 
 		assertEquals(PaymentErrorCode.INVALID_PAYMENT_AMOUNT, exception.getErrorCode());
 		verify(paymentGatewayPort, never()).confirm(any(), any(), anyInt());
-		verify(outboxRepository, never()).save(any(OutboxEvent.class));
+		verify(paymentConfirmHandler, never()).onSuccess(any(), any());
 	}
 
 	@Test
-	void confirm_성공하면_결제완료와_완료아웃박스저장() {
+	void confirm_성공하면_paymentConfirmHandler_onSuccess_호출() {
 		UUID orderId = UUID.randomUUID();
 		Payment payment = createPayment(TEST_USER_ID, orderId, BigDecimal.valueOf(10000), BigDecimal.ZERO);
 		assignPaymentId(payment);
 		when(paymentRepository.findByOrderId(orderId)).thenReturn(Optional.of(payment));
 		when(orderPort.validateOrder(orderId, 10000)).thenReturn(true);
+		when(paymentConfirmHandler.onSuccess(payment.getId(), "pay-key"))
+			.thenReturn(PaymentResponseDto.from(payment));
 
 		PaymentResponseDto response = paymentService.confirm(
 			TEST_USER_ID,
 			new ConfirmPaymentRequestDto(orderId, "pay-key", 10000)
 		);
 
-		assertTrue(payment.isDone());
-		assertEquals(PaymentStatus.PAID, payment.getStatus());
-		assertEquals("pay-key", payment.getPaymentKey());
 		assertEquals(orderId, response.orderId());
-
 		verify(paymentGatewayPort).confirm("pay-key", orderId.toString(), 10000);
-
-		ArgumentCaptor<OutboxEvent> outboxCaptor = ArgumentCaptor.forClass(OutboxEvent.class);
-		verify(outboxRepository).save(outboxCaptor.capture());
-		assertEquals(EventType.PAYMENT_COMPLETED, outboxCaptor.getValue().getEventType());
+		verify(paymentConfirmHandler).onSuccess(payment.getId(), "pay-key");
 	}
 
 	@Test
-	void confirm_PG승인실패면_결제실패와_실패아웃박스저장() {
+	void confirm_PG승인실패면_paymentConfirmHandler_onFailure_호출() {
 		UUID orderId = UUID.randomUUID();
 		Payment payment = createPayment(TEST_USER_ID, orderId, BigDecimal.valueOf(10000), BigDecimal.ZERO);
 		assignPaymentId(payment);
@@ -230,16 +236,11 @@ class PaymentTest {
 		);
 
 		assertEquals(PaymentErrorCode.PAYMENT_CONFIRM_FAILED, exception.getErrorCode());
-		assertEquals(PaymentStatus.FAILED, payment.getStatus());
-
-		ArgumentCaptor<OutboxEvent> outboxCaptor = ArgumentCaptor.forClass(OutboxEvent.class);
-		verify(outboxRepository).save(outboxCaptor.capture());
-		assertEquals(EventType.PAYMENT_FAILED, outboxCaptor.getValue().getEventType());
+		verify(paymentConfirmHandler).onFailure(payment.getId(), orderId, payment.getDepositAmount());
 	}
 
 	private PreparePaymentRequestDto prepareRequest(BigDecimal paymentAmount, BigDecimal depositAmount) {
 		return new PreparePaymentRequestDto(
-			UUID.randomUUID(),
 			UUID.randomUUID(),
 			UUID.randomUUID(),
 			UUID.randomUUID(),
@@ -254,7 +255,6 @@ class PaymentTest {
 			userId,
 			UUID.randomUUID(),
 			orderId,
-			UUID.randomUUID(),
 			PaymentMethod.TOSS,
 			paymentAmount,
 			depositAmount

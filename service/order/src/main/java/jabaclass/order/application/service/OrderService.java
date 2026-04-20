@@ -1,6 +1,8 @@
 package jabaclass.order.application.service;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -8,16 +10,26 @@ import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import jabaclass.order.common.error.BusinessException;
-import jabaclass.order.application.port.external.DepositPort;
-import jabaclass.order.application.port.external.ProductPort;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import jabaclass.order.application.exception.OrderErrorCode;
+import jabaclass.order.application.port.external.DepositPort;
+import jabaclass.order.application.port.external.PaymentPort;
+import jabaclass.order.application.port.external.ProductPort;
 import jabaclass.order.application.port.internal.OrderUseCase;
+import jabaclass.order.application.service.handler.OrderExpireHandler;
+import jabaclass.order.application.service.handler.OrderPaymentResultHandler;
+import jabaclass.order.application.service.handler.OrderRefundHandler;
+import jabaclass.order.common.error.BusinessException;
 import jabaclass.order.domain.model.Order;
 import jabaclass.order.domain.model.OrderStatus;
+import jabaclass.order.domain.model.RefundPolicy;
 import jabaclass.order.domain.repository.OrderRepository;
 import jabaclass.order.infrastructure.client.product.dto.ProductReservationResponseDto;
-import jabaclass.order.infrastructure.kafka.OrderEventPublisher;
+import jabaclass.order.infrastructure.kafka.product.dto.OrderReservationReleasedEvent;
+import jabaclass.order.infrastructure.outbox.EventType;
+import jabaclass.order.infrastructure.outbox.OutboxEvent;
+import jabaclass.order.infrastructure.outbox.OutboxRepository;
 import jabaclass.order.presentation.dto.request.CreateOrderRequestDto;
 import jabaclass.order.presentation.dto.request.OrderBulkReadRequestDto;
 import jabaclass.order.presentation.dto.request.UpdateOrderPaymentStatusRequestDto;
@@ -30,192 +42,192 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class OrderService implements OrderUseCase {
 
-    private final OrderRepository orderRepository;
-    private final DepositPort depositClient;
-    private final ProductPort productClient;
-    private final OrderEventPublisher eventPublisher;
+	private final OrderRepository orderRepository;
+	private final DepositPort depositClient;
+	private final ProductPort productClient;
+	private final PaymentPort paymentClient;
+	private final OutboxRepository outboxRepository;
+	private final ObjectMapper objectMapper;
+	private final OrderPaymentResultHandler orderPaymentResultHandler;
+	private final OrderExpireHandler orderExpireHandler;
+	private final OrderRefundHandler orderRefundHandler;
 
-    // -------------------------------------------------------------------------
-    // 주문 생성
-    // -------------------------------------------------------------------------
+	// 주문 생성 (외부 호출 포함 — tx 없음)
+	@Override
+	public CreateOrderResponseDto create(UUID userId, CreateOrderRequestDto requestDto) {
+		validateCreateRequest(requestDto);
 
-    @Override
-    @Transactional
-    public CreateOrderResponseDto create(UUID userId, CreateOrderRequestDto requestDto) {
-        validateCreateRequest(requestDto);
+		//재고 차감
+		ProductReservationResponseDto reservation = reserveProduct(userId, requestDto);
+		BigDecimal totalAmount = calculateTotalAmount(reservation.price(), requestDto.quantity());
 
-        ProductReservationResponseDto reservation = reserveProduct(userId, requestDto);
-        BigDecimal totalAmount = calculateTotalAmount(reservation.price(), requestDto.quantity());
+		try {
+			//예치금 차감
+			useDeposit(userId, requestDto.depositAmount(), totalAmount);
+		} catch (RuntimeException e) {
+			// 예치금 차감 실패 → 재고 예약 해제 (단순 outbox 저장, save() 자체 @Transactional로 충분)
+			outboxRepository.save(OutboxEvent.create(
+				"ORDER",
+				reservation.productUserId().toString(),
+				EventType.ORDER_RESERVATION_RELEASED,
+				toJson(new OrderReservationReleasedEvent(UUID.randomUUID(), null, reservation.productUserId()))
+			));
+			throw e;
+		}
 
-        try {
-            useDeposit(userId, requestDto.depositAmount(), totalAmount);
-        } catch (RuntimeException e) {
-            eventPublisher.publishReservationReleased(reservation.productUserId());
-            throw e;
-        }
+		Order order = Order.create(
+			requestDto.productScheduleId(),
+			userId,
+			reservation.productUserId(),
+			requestDto.quantity(),
+			totalAmount
+		);
+		return CreateOrderResponseDto.of(orderRepository.save(order), requestDto.productId(), requestDto.depositAmount());
+	}
 
-        Order order = Order.create(
-            requestDto.productScheduleId(),
-            userId,
-            reservation.productUserId(),
-            requestDto.quantity(),
-            totalAmount
-        );
+	// [오케스트레이터] @Transactional 없음 — 외부 HTTP 호출(Product, Payment) 포함
+	// Payment 서비스 호출이 동기이므로 PG 환불 실패 시 예외가 여기로 전파 → Order PAID 유지 (보상 불필요)
+	@Override
+	public void refund(UUID userId, UUID orderId) {
+		Order order = orderRepository.findById(orderId)
+			.orElseThrow(() -> new BusinessException(OrderErrorCode.ORDER_NOT_FOUND));
 
-        return CreateOrderResponseDto.of(orderRepository.save(order), requestDto.productId(), requestDto.depositAmount());
-    }
+		if (!order.isOwnedBy(userId)) {
+			throw new BusinessException(OrderErrorCode.ORDER_ACCESS_DENIED);
+		}
+		// PAID 상태 가드 — Eventual Consistency로 인해 결제 직후 이 시점에 아직 PENDING일 수 있음
+		if (order.getStatus() != OrderStatus.PAID) {
+			throw new BusinessException(OrderErrorCode.ORDER_REFUND_NOT_ALLOWED);
+		}
 
-    // -------------------------------------------------------------------------
-    // 조회
-    // -------------------------------------------------------------------------
+		// Product 서비스에서 스케줄 시작일 조회 → 환불 비율 계산
+		LocalDate startDate = productClient.getScheduleStartDate(order.getProductScheduleId());
+		long days = ChronoUnit.DAYS.between(LocalDate.now(), startDate);
+		BigDecimal refundRate = RefundPolicy.rateOf(days);
+		if (refundRate.signum() == 0) {
+			throw new BusinessException(OrderErrorCode.ORDER_REFUND_POLICY_EXPIRED);
+		}
 
-    @Override
-    public OrderResponseDto getById(UUID orderId) {
-        return OrderResponseDto.from(findOrderOrThrow(orderId));
-    }
+		// Payment 서비스로 환불 요청 (PG 호출 포함) — 성공 시 예치금 환불 금액 반환
+		// orderId를 PG 멱등키로 사용하므로 타임아웃 후 재시도해도 이중 환불 없음
+		BigDecimal depositRefundAmount = paymentClient.refund(orderId, refundRate);
 
-    @Override
-    public List<OrderResponseDto> getOrders(UUID userId, OrderStatus status) {
-        List<Order> orders = (status == null)
-            ? orderRepository.findAllByUserId(userId)
-            : orderRepository.findAllByUserIdAndStatus(userId, status);
+		// Payment 커밋 완료 후 → Order REFUNDED + Outbox 저장 (독립 트랜잭션)
+		orderRefundHandler.onSuccess(orderId, depositRefundAmount);
+	}
 
-        return orders.stream().map(OrderResponseDto::from).toList();
-    }
+	// 조회
+	@Override
+	@Transactional(readOnly = true)
+	public OrderResponseDto getById(UUID userId, UUID orderId) {
+		Order order = orderRepository.findById(orderId)
+			.orElseThrow(() -> new BusinessException(OrderErrorCode.ORDER_NOT_FOUND));
+		if (!order.isOwnedBy(userId)) {
+			throw new BusinessException(OrderErrorCode.ORDER_ACCESS_DENIED);
+		}
+		return OrderResponseDto.from(order);
+	}
 
-    @Override
-    public List<OrderSettlementItemResponseDto> getOrdersByIds(OrderBulkReadRequestDto requestDto) {
-        if (requestDto == null || requestDto.orderIds() == null || requestDto.orderIds().isEmpty()) {
-            return List.of();
-        }
+	@Override
+	@Transactional(readOnly = true)
+	public List<OrderResponseDto> getOrders(UUID userId, OrderStatus status) {
+		List<Order> orders = (status == null)
+			? orderRepository.findAllByUserId(userId)
+			: orderRepository.findAllByUserIdAndStatus(userId, status);
+		return orders.stream().map(OrderResponseDto::from).toList();
+	}
 
-        List<UUID> distinctIds = requestDto.orderIds().stream().distinct().toList();
-        Map<UUID, Order> orderMap = orderRepository.findAllByIds(distinctIds).stream()
-            .collect(Collectors.toMap(Order::getId, Function.identity()));
+	@Override
+	@Transactional(readOnly = true)
+	public List<OrderSettlementItemResponseDto> getOrdersByIds(OrderBulkReadRequestDto requestDto) {
+		if (requestDto == null || requestDto.orderIds() == null || requestDto.orderIds().isEmpty()) {
+			return List.of();
+		}
+		List<UUID> distinctIds = requestDto.orderIds().stream().distinct().toList();
+		Map<UUID, Order> orderMap = orderRepository.findAllByIds(distinctIds).stream()
+			.collect(Collectors.toMap(Order::getId, Function.identity()));
+		return distinctIds.stream()
+			.map(orderMap::get)
+			.filter(Objects::nonNull)
+			.map(OrderSettlementItemResponseDto::from)
+			.toList();
+	}
 
-        return distinctIds.stream()
-            .map(orderMap::get)
-            .filter(Objects::nonNull)
-            .map(OrderSettlementItemResponseDto::from)
-            .toList();
-    }
+	// 주문 상태 변경
+	@Override
+	@Transactional(readOnly = true)
+	public boolean validatePaymentAmount(UUID orderId, BigDecimal amount) {
+		return orderRepository.findById(orderId)
+			.orElseThrow(() -> new BusinessException(OrderErrorCode.ORDER_NOT_FOUND))
+			.isPaymentAmountValid(amount);
+	}
 
-    // -------------------------------------------------------------------------
-    // 주문 상태 변경
-    // -------------------------------------------------------------------------
+	@Override
+	public void updatePaymentStatus(UUID eventId, UUID orderId, UpdateOrderPaymentStatusRequestDto requestDto) {
+		switch (requestDto.paymentStatus()) {
+			case SUCCESS -> orderPaymentResultHandler.onSuccess(eventId, orderId);
+			case FAILED -> orderPaymentResultHandler.onFailed(eventId, orderId, requestDto.depositAmount());
+		}
+	}
 
-    @Override
-    public boolean validatePaymentAmount(UUID orderId, BigDecimal amount) {
-        return findOrderOrThrow(orderId).isPaymentAmountValid(amount);
-    }
+	@Override
+	public void expireOrder(UUID eventId, UUID orderId, BigDecimal depositAmount) {
+		orderExpireHandler.expire(eventId, orderId, depositAmount);
+	}
 
-    @Override
-    @Transactional
-    public void updatePaymentStatus(UUID orderId, UpdateOrderPaymentStatusRequestDto requestDto) {
-        Order order = findOrderOrThrow(orderId);
-        switch (requestDto.paymentStatus()) {
-            case SUCCESS -> onPaymentSuccess(order);
-            case FAILED -> onPaymentFailed(order, requestDto.depositAmount());
-        }
-    }
+	@Override
+	public void completeRefund(UUID eventId, UUID orderId, BigDecimal depositRefundAmount) {
+		orderRefundHandler.onSuccess(orderId, depositRefundAmount);
+	}
 
-    @Override
-    @Transactional
-    public void expireOrder(UUID orderId, BigDecimal depositAmount) {
-        Order order = findOrderOrThrow(orderId);
-        if (order.getStatus() == OrderStatus.EXPIRED) {
-            return;
-        }
-        order.expire();
-        eventPublisher.publishReservationReleased(requireProductUserId(order));
-        eventPublisher.publishOrderExpired(order, depositAmount);
-    }
+	private ProductReservationResponseDto reserveProduct(UUID userId, CreateOrderRequestDto requestDto) {
+		ProductReservationResponseDto response = productClient.reserve(
+			requestDto.productScheduleId(),
+			userId,
+			requestDto.quantity(),
+			requestDto.productPrice()
+		);
+		if (response == null || !response.isOk() || response.productUserId() == null) {
+			throw new BusinessException(OrderErrorCode.ORDER_PRODUCT_NOT_AVAILABLE);
+		}
+		return response;
+	}
 
-    @Override
-    @Transactional
-    public void refund(UUID orderId) {
-        findOrderOrThrow(orderId).refund();
-    }
+	private void useDeposit(UUID userId, BigDecimal depositAmount, BigDecimal totalAmount) {
+		if (depositAmount.compareTo(totalAmount) > 0) {
+			throw new BusinessException(OrderErrorCode.ORDER_DEPOSIT_AMOUNT_EXCEEDS_PRICE);
+		}
+		if (depositAmount.signum() == 0) {
+			return;
+		}
+		if (!depositClient.validateAndUse(userId, depositAmount)) {
+			throw new BusinessException(OrderErrorCode.ORDER_DEPOSIT_NOT_AVAILABLE);
+		}
+	}
 
-    // -------------------------------------------------------------------------
-    // 결제 결과 처리
-    // -------------------------------------------------------------------------
+	private void validateCreateRequest(CreateOrderRequestDto requestDto) {
+		if (requestDto.quantity() == null || requestDto.quantity() <= 0) {
+			throw new BusinessException(OrderErrorCode.ORDER_QUANTITY_INVALID);
+		}
+		if (requestDto.depositAmount() == null || requestDto.depositAmount().signum() < 0) {
+			throw new BusinessException(OrderErrorCode.ORDER_DEPOSIT_AMOUNT_INVALID);
+		}
+		if (requestDto.productPrice() == null || requestDto.productPrice().signum() < 0) {
+			throw new BusinessException(OrderErrorCode.ORDER_PRODUCT_PRICE_INVALID);
+		}
+	}
 
-    private void onPaymentSuccess(Order order) {
-        order.pay();
-        eventPublisher.publishReservationConfirmed(requireProductUserId(order));
-    }
+	private BigDecimal calculateTotalAmount(BigDecimal unitPrice, Integer quantity) {
+		return unitPrice.multiply(BigDecimal.valueOf(quantity));
+	}
 
-    private void onPaymentFailed(Order order, BigDecimal depositAmount) {
-        if (order.getStatus() == OrderStatus.FAILED || order.getStatus() == OrderStatus.EXPIRED) {
-            return;
-        }
-        order.failPayment();
-        eventPublisher.publishReservationReleased(requireProductUserId(order));
-        eventPublisher.publishDepositRefundRequested(order, depositAmount);
-    }
-
-    // -------------------------------------------------------------------------
-    // 내부 헬퍼
-    // -------------------------------------------------------------------------
-
-    private Order findOrderOrThrow(UUID orderId) {
-        return orderRepository.findById(orderId)
-            .orElseThrow(() -> new BusinessException(OrderErrorCode.ORDER_NOT_FOUND));
-    }
-
-    private ProductReservationResponseDto reserveProduct(UUID userId, CreateOrderRequestDto requestDto) {
-        ProductReservationResponseDto response = productClient.reserve(
-            requestDto.productScheduleId(),
-            userId,
-            requestDto.quantity(),
-            requestDto.productPrice()
-        );
-
-        if (response == null || !response.isOk() || response.productUserId() == null) {
-            throw new BusinessException(OrderErrorCode.ORDER_PRODUCT_NOT_AVAILABLE);
-        }
-
-        return response;
-    }
-
-    private void useDeposit(UUID userId, BigDecimal depositAmount, BigDecimal totalAmount) {
-        if (depositAmount.compareTo(totalAmount) > 0) {
-            throw new BusinessException(OrderErrorCode.ORDER_DEPOSIT_AMOUNT_EXCEEDS_PRICE);
-        }
-
-        if (depositAmount.signum() == 0) {
-            return;
-        }
-
-        if (!depositClient.validateAndUse(userId, depositAmount)) {
-            throw new BusinessException(OrderErrorCode.ORDER_DEPOSIT_NOT_AVAILABLE);
-        }
-    }
-
-    private void validateCreateRequest(CreateOrderRequestDto requestDto) {
-        if (requestDto.quantity() == null || requestDto.quantity() <= 0) {
-            throw new BusinessException(OrderErrorCode.ORDER_QUANTITY_INVALID);
-        }
-        if (requestDto.depositAmount() == null || requestDto.depositAmount().signum() < 0) {
-            throw new BusinessException(OrderErrorCode.ORDER_DEPOSIT_AMOUNT_INVALID);
-        }
-        if (requestDto.productPrice() == null || requestDto.productPrice().signum() < 0) {
-            throw new BusinessException(OrderErrorCode.ORDER_PRODUCT_PRICE_INVALID);
-        }
-    }
-
-    private BigDecimal calculateTotalAmount(BigDecimal unitPrice, Integer quantity) {
-        return unitPrice.multiply(BigDecimal.valueOf(quantity));
-    }
-
-    private UUID requireProductUserId(Order order) {
-        if (order.getProductUserId() == null) {
-            throw new BusinessException(OrderErrorCode.ORDER_PRODUCT_USER_ID_REQUIRED);
-        }
-        return order.getProductUserId();
-    }
+	private String toJson(Object obj) {
+		try {
+			return objectMapper.writeValueAsString(obj);
+		} catch (Exception e) {
+			throw new RuntimeException("Outbox 직렬화 실패", e);
+		}
+	}
 }

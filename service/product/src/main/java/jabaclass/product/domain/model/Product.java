@@ -63,6 +63,21 @@ public class Product extends EntityBase {
 	@Column(nullable = false, length = 20)
 	private ProductStatus status;
 
+	@Column(nullable = false, length = 255)
+	private String roadAddress;
+
+	@Column(length = 255)
+	private String detailAddress;
+
+	@Column(length = 10)
+	private String zonecode;
+
+	@Column(nullable = false, precision = 10, scale = 7)
+	private BigDecimal latitude;
+
+	@Column(nullable = false, precision = 10, scale = 7)
+	private BigDecimal longitude;
+
 	@PrePersist
 	public void prePersist() {
 		if (this.status == null) {
@@ -105,6 +120,26 @@ public class Product extends EntityBase {
 
 	public void changeStatus(ProductStatus status) {
 		this.status = status;
+	}
+
+	public void changeRoadAddress(String roadAddress) {
+		this.roadAddress = roadAddress;
+	}
+
+	public void changeDetailAddress(String detailAddress) {
+		this.detailAddress = detailAddress;
+	}
+
+	public void changeZonecode(String zonecode) {
+		this.zonecode = zonecode;
+	}
+
+	public void changeLatitude(BigDecimal latitude) {
+		this.latitude = latitude;
+	}
+
+	public void changeLongitude(BigDecimal longitude) {
+		this.longitude = longitude;
 	}
 
 }

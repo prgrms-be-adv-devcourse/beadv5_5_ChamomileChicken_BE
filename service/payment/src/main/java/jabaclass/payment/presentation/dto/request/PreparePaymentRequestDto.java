@@ -9,7 +9,6 @@ public record PreparePaymentRequestDto(
 	UUID productId,
 	UUID orderId,
 	UUID userId,
-	UUID productUserId,
 	PaymentMethod paymentMethod,
 	BigDecimal paymentAmount,
 	BigDecimal depositAmount
