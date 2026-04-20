@@ -119,8 +119,9 @@ jobs:
 
       - name: Debug Kubernetes state
         if: always()
+        env:
+          KUBECONFIG: /home/ubuntu/.kube/config
         run: |
-          export KUBECONFIG=/home/ubuntu/.kube/config
           echo "===== pods ====="
           kubectl get pods -o wide
           echo "===== deployment ====="
