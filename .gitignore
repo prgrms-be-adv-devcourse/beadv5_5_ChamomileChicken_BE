@@ -18,6 +18,8 @@ build/
 bin/
 !**/src/main/**/bin/
 !**/src/test/**/bin/
+**/src/main/**/application-dev.yml
+
 
 ### IntelliJ IDEA ###
 .idea
@@ -37,3 +39,27 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### macOS ###
+.DS_Store
+
+### Gradle Cache###
+caches/
+daemon/
+wrapper/dists/
+
+### Gradle & Build ###
+.gradle/
+build/
+out/
+CLAUDE.md
+.claude/
+
+# common local env
+/common.local.env
+
+# service local env
+/service/*/*.local.env
+
+CLAUDE.md
+GEMINI.md

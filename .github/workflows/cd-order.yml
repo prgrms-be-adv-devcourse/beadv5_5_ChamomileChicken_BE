@@ -1,0 +1,174 @@
+name: CD Order Service
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - dev
+    paths:
+      - 'service/order/**'
+      - 'common/**'
+      - 'build.gradle'
+      - 'settings.gradle'
+      - 'gradle/**'
+      - 'gradlew'
+      - '.github/workflows/cd-order.yml'
+      - '.github/scripts/**'
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    outputs:
+      image_tag: ${{ steps.meta.outputs.image_tag }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x ./gradlew
+
+      - name: Build order bootJar
+        run: ./gradlew :service:order:clean :service:order:bootJar --no-daemon
+
+      - name: Set image tag
+        id: meta
+        run: |
+          IMAGE_TAG=${GITHUB_SHA::7}
+          echo "image_tag=$IMAGE_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            -t ${{ secrets.DOCKERHUB_USERNAME }}/chamomile-order:latest \
+            -t ${{ secrets.DOCKERHUB_USERNAME }}/chamomile-order:${{ steps.meta.outputs.image_tag }} \
+            ./service/order
+
+      - name: Push Docker image
+        run: |
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/chamomile-order:latest
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/chamomile-order:${{ steps.meta.outputs.image_tag }}
+
+  deploy:
+    needs: build-and-push
+    runs-on: [ self-hosted, ec2, docker ]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare directories
+        run: |
+          mkdir -p /home/ubuntu/apps/repo
+          mkdir -p /home/ubuntu/apps/deploy/env
+          mkdir -p /home/ubuntu/apps/deploy/scripts
+          mkdir -p /home/ubuntu/apps/data/k3s-service
+
+      - name: Sync repository to fixed path
+        run: |
+          rsync -av --delete ./ /home/ubuntu/apps/repo/
+
+      - name: Copy deploy script to EC2 deploy directory
+        run: |
+          cp /home/ubuntu/apps/repo/.github/scripts/deploy-app.sh /home/ubuntu/apps/deploy/scripts/deploy-app.sh
+          chmod +x /home/ubuntu/apps/deploy/scripts/deploy-app.sh
+
+      - name: Check envsubst
+        run: |
+          which envsubst
+
+      - name: Copy Kubernetes YAML to fixed path
+        run: |
+          cp /home/ubuntu/apps/repo/.github/k3s/order-service.yml \
+             /home/ubuntu/apps/data/k3s-service/order-service.yml
+
+      - name: Create common_config.env
+        run: |
+          printf '%s\n' '${{ secrets.COMMON_CONFIG_ENV }}' > /home/ubuntu/apps/deploy/env/common_config.env
+
+      - name: Create common_secret.env
+        run: |
+          printf '%s\n' '${{ secrets.COMMON_SECRET_ENV }}' > /home/ubuntu/apps/deploy/env/common_secret.env
+
+      - name: Create order_config.env
+        run: |
+          printf '%s\n' '${{ secrets.ORDER_CONFIG_ENV }}' > /home/ubuntu/apps/deploy/env/order_config.env
+
+      - name: Create order_secret.env
+        run: |
+          printf '%s\n' '${{ secrets.ORDER_SECRET_ENV }}' > /home/ubuntu/apps/deploy/env/order_secret.env
+
+      - name: Verify deploy files exist
+        run: |
+          ls -l /home/ubuntu/apps/deploy/env
+          ls -l /home/ubuntu/apps/deploy/scripts
+          ls -l /home/ubuntu/apps/data/k3s-service
+
+      - name: Docker Hub login on EC2
+        run: |
+          echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login \
+            -u "${{ secrets.DOCKERHUB_USERNAME }}" \
+            --password-stdin
+
+      - name: Deploy order service
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
+        run: |
+          /home/ubuntu/apps/deploy/scripts/deploy-app.sh order
+
+      - name: Debug Kubernetes state
+        run: |
+          echo "===== pods ====="
+          kubectl get pods -o wide
+          echo "===== deployment ====="
+          kubectl get deployment order-service -o wide
+          echo "===== describe deployment ====="
+          kubectl describe deployment order-service || true
+          echo "===== recent pod logs ====="
+          POD_NAME=$(kubectl get pods -l app=order-service -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)
+          if [ -n "$POD_NAME" ]; then
+            kubectl logs "$POD_NAME" --tail=200 || true
+          fi
+
+      - name: Health check
+        env:
+          KUBECONFIG: /home/ubuntu/.kube/config
+        run: |
+          kubectl rollout status deployment/order-service --timeout=120s
+
+          kubectl port-forward svc/order-service 9005:9005 >/tmp/order-portforward.log 2>&1 &
+          PF_PID=$!
+          sleep 5
+
+          STATUS_CODE=$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' --max-time 5 \
+            "http://localhost:9005/actuator/health/readiness" || echo "000")
+
+          kill $PF_PID || true
+
+          if [[ "$STATUS_CODE" != "200" ]]; then
+            echo "Health check failed with status=$STATUS_CODE"
+            POD_NAME=$(kubectl get pods -l app=order-service -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)
+            if [ -n "$POD_NAME" ]; then
+              kubectl logs "$POD_NAME" --tail=200 || true
+            fi
+            exit 1
+          fi
+
+          echo "Health check passed with status $STATUS_CODE"

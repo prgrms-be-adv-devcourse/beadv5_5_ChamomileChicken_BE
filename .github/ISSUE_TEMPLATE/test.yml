@@ -1,0 +1,46 @@
+name: "Test"
+description: "테스트 작업"
+title: "test: "
+labels: ["test"]
+body:
+  - type: input
+    id: package_name
+    attributes:
+      label: "Package name"
+      description: "테스트 대상 모듈/패키지명"
+      placeholder: "user"
+    validations:
+      required: true
+
+  - type: input
+    id: branch_keyword
+    attributes:
+      label: "Branch keyword"
+      description: "브랜치 기능 키워드"
+      placeholder: "service-test"
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: "테스트 범위"
+      description: "어떤 테스트를 추가/수정하는지"
+      placeholder: |
+        예)
+        - 단위 테스트 추가
+        - 통합 테스트 보강
+    validations:
+      required: true
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: "비고"
+      description: "테스트 데이터/주의사항"
+      placeholder: |
+        예)
+        - Mock 설정 변경 필요
+        - 테스트 실행 시간 증가 가능
+    validations:
+      required: false

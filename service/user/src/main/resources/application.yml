@@ -1,3 +1,42 @@
-server.port: 9003
+server:
+  port: 9003
+
 spring:
-  application: name:user
+  application:
+    name: user
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}  # 환경변수로 변경
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: deposit-service
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    listener:
+      ack-mode: record
+
+oauth2:
+  redirect-uri: ${OAUTH2_REDIRECT_URI:http://localhost:3000/oauth2/callback}
+
+jwt:
+  secret: ${JWT_SECRET}
+  access-token-validity: 1800000
+  refresh-token-validity: 604800000
+
+cookie:
+  secure: false
+
+payment:
+  service:
+    url: http://localhost:9001
+
+app:
+  mail:
+    from: ${MAIL_FROM}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health

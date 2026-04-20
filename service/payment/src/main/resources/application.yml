@@ -1,3 +1,31 @@
-server.port: 9001
+server:
+  port: 9001
+
 spring:
-  application: name:payment
+  application:
+    name: payment
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+
+order:
+  service:
+    url: ${ORDER_SERVICE_HOST:http://localhost:9005}
+
+user:
+  service:
+    url: ${USER_SERVICE_HOST:http://localhost:9003}
+
+toss:
+  secret-key: ${TOSS_SECRET_KEY}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health

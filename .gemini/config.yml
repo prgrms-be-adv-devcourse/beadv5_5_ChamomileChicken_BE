@@ -1,0 +1,31 @@
+# Gemini Code Assist 전체 동작 설정
+have_fun: false
+
+code_review:
+  disable: false
+
+  comment_severity_threshold: MEDIUM
+
+  # PR 하나당 최대 리뷰 코멘트 수
+  max_review_comments: 12
+
+  pull_request_opened:
+    help: false
+
+    # PR이 열릴 때 변경사항 요약(summary)을 자동 생성할지 여부
+    summary: true
+
+    # PR이 열릴 때 자동 코드 리뷰를 수행할지 여부
+    code_review: true
+
+    include_drafts: false
+
+# 아래 패턴에 해당하는 파일/디렉터리는 리뷰 대상에서 제외
+# 생성 파일, 빌드 산출물, 로그 파일 등
+ignore_patterns:
+  - ".gradle/**"
+  - "**/build/**"
+  - "**/out/**"
+  - "**/generated/**"
+  - "**/*.log"
+  - "**/*.lock"

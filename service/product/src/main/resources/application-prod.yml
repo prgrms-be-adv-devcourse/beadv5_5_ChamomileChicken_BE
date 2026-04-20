@@ -1,0 +1,31 @@
+api:
+  user-host: ${USER_SERVICE_HOST}
+
+internal:
+  file:
+    url: ${FILE_SERVICE_HOST}
+  api:
+    key: ${INTERNAL_KEY:test-internal-key}
+
+
+spring:
+  elasticsearch:
+    uris: ${ES_URIS:http://localhost:9200}
+
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:backend5}
+    username: ${POSTGRES_USER:postgres}
+    password: ${POSTGRES_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+
+logging:
+  level:
+    org.hibernate.SQL: WARN

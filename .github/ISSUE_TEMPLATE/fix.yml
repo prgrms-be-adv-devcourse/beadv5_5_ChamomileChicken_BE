@@ -1,0 +1,45 @@
+name: "Fix"
+description: "수정 작업"
+title: "fix: "
+labels: ["fix"]
+body:
+  - type: input
+    id: package_name
+    attributes:
+      label: "Package name"
+      description: "수정 대상 모듈/패키지명"
+      placeholder: "auth"
+    validations:
+      required: true
+
+  - type: input
+    id: branch_keyword
+    attributes:
+      label: "Branch keyword"
+      description: "브랜치 기능 키워드"
+      placeholder: "validation-fix"
+    validations:
+      required: true
+
+  - type: textarea
+    id: bug
+    attributes:
+      label: "버그/이슈 내용"
+      description: "무엇이 잘못됐는지"
+      placeholder: |
+        예)
+        - 닉네임 변경 API에서 길이 제한이 적용되지 않음
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: "수정 방향"
+      description: "어떻게 고칠지 (선택)"
+      placeholder: |
+        예)
+        - DTO validation 추가
+        - 서비스 레벨에서 예외 처리
+    validations:
+      required: false

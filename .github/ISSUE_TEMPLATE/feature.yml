@@ -1,0 +1,34 @@
+name: "Feature"
+description: "새로운 기능 추가"
+title: "feature: "
+labels: ["feature"]
+body:
+  - type: input
+    id: package_name
+    attributes:
+      label: "Package name"
+      description: "기능이 들어갈 모듈/패키지명"
+      placeholder: "user"
+    validations:
+      required: true
+
+  - type: input
+    id: branch_keyword
+    attributes:
+      label: "Branch keyword"
+      description: "브랜치 기능 키워드 (예: login-api, signup)"
+      placeholder: "login-api"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: "이슈 설명"
+      description: "구현할 내용 / 요구사항 / 배경"
+      placeholder: |
+        예)
+        - user crud 구현
+        - 회원가입/로그인 API 추가
+    validations:
+      required: true
