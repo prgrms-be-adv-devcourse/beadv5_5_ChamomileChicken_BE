@@ -26,6 +26,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import jabaclass.product.application.acl.SellerRepository;
 import jabaclass.product.application.exception.BusinessException;
 import jabaclass.product.application.service.ProductService;
+import jabaclass.product.application.usecase.ValidateFileUseCase;
 import jabaclass.product.common.exception.CommonErrorCode;
 import jabaclass.product.domain.model.Product;
 import jabaclass.product.domain.model.status.ProductStatus;
@@ -56,7 +57,7 @@ class ProductSelectTest {
 	private ApplicationEventPublisher publisher;
 
 	@Mock
-	private FileConfirmClient fileConfirmClient;
+	private ValidateFileUseCase validateFileUseCase;
 
 	private static final BigDecimal PRICE = new BigDecimal("1000.50");
 	private static final UUID SELLER_ID = UUID.fromString("123e4567-e89b-12d3-a456-426614174000");

@@ -23,7 +23,7 @@ import jabaclass.product.application.exception.FileErrorCode;
 import jabaclass.product.domain.model.status.FileStatus;
 import jabaclass.product.infrastructure.s3.S3Uploader;
 import jabaclass.product.presentation.dto.request.UploadRequestDto;
-import jabaclass.product.presentation.dto.response.FileConfirmResponse;
+import jabaclass.product.application.dto.FileConfirmResponse;
 import jabaclass.product.presentation.dto.response.UploadResponseDto;
 
 @Service

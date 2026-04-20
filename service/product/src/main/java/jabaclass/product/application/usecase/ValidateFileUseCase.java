@@ -1,6 +1,6 @@
 package jabaclass.product.application.usecase;
 
-import jabaclass.product.presentation.dto.response.FileConfirmResponse;
+import jabaclass.product.application.dto.FileConfirmResponse;
 import java.util.UUID;
 
 public interface ValidateFileUseCase {

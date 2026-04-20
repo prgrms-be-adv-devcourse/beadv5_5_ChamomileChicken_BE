@@ -1,4 +1,4 @@
-package jabaclass.product.presentation.dto.response;
+package jabaclass.product.application.dto;
 
 import java.util.UUID;
 

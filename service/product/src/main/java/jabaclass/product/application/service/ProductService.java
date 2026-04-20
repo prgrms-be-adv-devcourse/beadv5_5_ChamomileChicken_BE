@@ -35,7 +35,7 @@ import jabaclass.product.presentation.dto.request.CreateProductRequestDto;
 import jabaclass.product.presentation.dto.request.SearchProductRequestDto;
 import jabaclass.product.presentation.dto.request.UpdateProductRequestDto;
 import jabaclass.product.presentation.dto.response.DeleteProductResponseDto;
-import jabaclass.product.presentation.dto.response.FileConfirmResponse;
+import jabaclass.product.application.dto.FileConfirmResponse;
 import jabaclass.product.presentation.dto.response.ProductResponseDto;
 import jabaclass.product.presentation.dto.response.ProductSettlementItemResponseDto;
 import jabaclass.product.presentation.dto.response.SearchProductResponseDto;

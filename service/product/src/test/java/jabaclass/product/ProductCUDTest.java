@@ -25,6 +25,8 @@ import org.springframework.test.util.ReflectionTestUtils;
 import jabaclass.product.application.acl.SellerRepository;
 import jabaclass.product.application.exception.BusinessException;
 import jabaclass.product.application.service.ProductService;
+import jabaclass.product.application.usecase.ValidateFileUseCase;
+import jabaclass.product.presentation.dto.response.FileConfirmResponse;
 import jabaclass.product.common.exception.CommonErrorCode;
 import jabaclass.product.domain.model.Product;
 import jabaclass.product.domain.model.status.ProductStatus;
@@ -60,7 +62,7 @@ class ProductCUDTest {
 	private ApplicationEventPublisher publisher;
 
 	@Mock
-	private FileConfirmClient fileConfirmClient;
+	private ValidateFileUseCase validateFileUseCase;
 
 	private static final UUID SELLER_ID = UUID.fromString("123e4567-e89b-12d3-a456-426614174000");
 	private static final UUID PRODUCT_ID = UUID.fromString("223e4567-e89b-12d3-a456-426614174000");
@@ -108,7 +110,7 @@ class ProductCUDTest {
 			LONGITUDE
 		);
 		UUID fileId = UUID.randomUUID();
-		given(fileConfirmClient.confirmBulk(any())).willReturn(List.of(new FileConfirmResponse(fileId, "user/file/image.jpg")));
+		given(validateFileUseCase.validateAndConfirm(any())).willReturn(new FileConfirmResponse(fileId, "user/file/image.jpg"));
 		given(sellerRepository.findSeller(SELLER_ID))
 			.willReturn(Optional.of(new UserResponseDto(SELLER_ID, "테스트판매자", "SELLER")));
 		given(productRepository.save(any(Product.class))).willAnswer(invocation -> {
@@ -272,7 +274,7 @@ class ProductCUDTest {
 			new BigDecimal("127.7654321")
 		);
 		UUID fileId = UUID.randomUUID();
-		given(fileConfirmClient.confirmBulk(any())).willReturn(List.of(new FileConfirmResponse(fileId, "user/file/image.jpg")));
+		given(validateFileUseCase.validateAndConfirm(any())).willReturn(new FileConfirmResponse(fileId, "user/file/image.jpg"));
 		given(sellerRepository.findSeller(SELLER_ID))
 			.willReturn(Optional.of(new UserResponseDto(SELLER_ID, "테스트판매자", "SELLER")));
 		given(productRepository.findById(PRODUCT_ID)).willReturn(Optional.of(product));
