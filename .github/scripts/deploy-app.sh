@@ -21,17 +21,32 @@ fi
 echo "Deploying service: $SERVICE"
 echo "Using kubeconfig: $KUBECONFIG_PATH"
 
+validate_env_file() {
+  local file=$1
+
+  if [ ! -f "$file" ]; then
+    return 1
+  fi
+
+  if [ ! -s "$file" ]; then
+    echo "Env file is empty: $file"
+    return 1
+  fi
+
+  return 0
+}
+
 create_configmap_if_exists() {
   local name=$1
   local file=$2
 
-  if [ -f "$file" ]; then
+  if validate_env_file "$file"; then
     echo "Applying ConfigMap: $name from $file"
     kubectl --kubeconfig "$KUBECONFIG_PATH" create configmap "$name" \
       --from-env-file="$file" \
       --dry-run=client -o yaml | kubectl --kubeconfig "$KUBECONFIG_PATH" apply -f -
   else
-    echo "ConfigMap file not found, skipping: $file"
+    echo "ConfigMap file missing or empty, skipping: $file"
   fi
 }
 
@@ -39,13 +54,13 @@ create_secret_if_exists() {
   local name=$1
   local file=$2
 
-  if [ -f "$file" ]; then
+  if validate_env_file "$file"; then
     echo "Applying Secret: $name from $file"
     kubectl --kubeconfig "$KUBECONFIG_PATH" create secret generic "$name" \
       --from-env-file="$file" \
       --dry-run=client -o yaml | kubectl --kubeconfig "$KUBECONFIG_PATH" apply -f -
   else
-    echo "Secret file not found, skipping: $file"
+    echo "Secret file missing or empty, skipping: $file"
   fi
 }
 
@@ -65,11 +80,11 @@ else
   exit 1
 fi
 
+echo "Checking deployment: ${SERVICE}-service"
+kubectl --kubeconfig "$KUBECONFIG_PATH" get deployment "${SERVICE}-service"
+
 echo "Checking service: ${SERVICE}-service"
 kubectl --kubeconfig "$KUBECONFIG_PATH" get svc "${SERVICE}-service"
-
-echo "Restarting deployment: $SERVICE-service"
-kubectl --kubeconfig "$KUBECONFIG_PATH" rollout restart deployment/"$SERVICE-service"
 
 echo "Waiting for rollout status..."
 kubectl --kubeconfig "$KUBECONFIG_PATH" rollout status deployment/"$SERVICE-service" --timeout=300s
