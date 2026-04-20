@@ -3,6 +3,7 @@ package jabaclass.product.infrastructure.outbox;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -43,7 +44,7 @@ public class OutboxPublisher {
 					event.getEventType().name().getBytes(StandardCharsets.UTF_8)
 				);
 
-				kafkaTemplate.send(record).get();
+				kafkaTemplate.send(record).get(10, TimeUnit.SECONDS);
 				outboxService.markPublished(event);
 
 			} catch (Exception e) {

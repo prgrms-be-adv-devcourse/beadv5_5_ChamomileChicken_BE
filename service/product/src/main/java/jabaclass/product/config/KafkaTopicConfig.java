@@ -9,10 +9,19 @@ import org.springframework.kafka.config.TopicBuilder;
 public class KafkaTopicConfig {
 
 	public static final String PRODUCT_ES_TOPIC = "product.es.index";
+	public static final String PRODUCT_ES_DLQ_TOPIC = "product.es.index.dlq";
 
 	@Bean
 	public NewTopic productEsTopic() {
 		return TopicBuilder.name(PRODUCT_ES_TOPIC)
+			.partitions(3)
+			.replicas(1)
+			.build();
+	}
+
+	@Bean
+	public NewTopic productEsDlqTopic() {
+		return TopicBuilder.name(PRODUCT_ES_DLQ_TOPIC)
 			.partitions(3)
 			.replicas(1)
 			.build();

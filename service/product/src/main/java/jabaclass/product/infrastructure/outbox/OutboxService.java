@@ -41,7 +41,11 @@ public class OutboxService {
 	@Transactional
 	public void retry(OutboxEvent event) {
 		event.increaseRetry();
-		event.markPending();
+		if (event.isRetryExceeded()) {
+			event.markFailed();
+		} else {
+			event.markPending();
+		}
 		outboxRepository.save(event);
 	}
 }
