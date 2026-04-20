@@ -9,12 +9,9 @@ import org.springframework.stereotype.Component;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import jabaclass.order.application.port.internal.OrderUseCase;
-import jabaclass.order.domain.model.PaymentResultStatus;
 import jabaclass.order.infrastructure.kafka.payment.dto.PaymentCompletedEvent;
 import jabaclass.order.infrastructure.kafka.payment.dto.PaymentExpiredEvent;
 import jabaclass.order.infrastructure.kafka.payment.dto.PaymentFailedEvent;
-import jabaclass.order.infrastructure.kafka.payment.dto.PaymentRefundCompletedEvent;
-import jabaclass.order.presentation.dto.request.UpdateOrderPaymentStatusRequestDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -40,7 +37,6 @@ public class PaymentEventsConsumer {
 				case "PAYMENT_COMPLETED" -> handlePaymentCompleted(message);
 				case "PAYMENT_FAILED" -> handlePaymentFailed(message);
 				case "PAYMENT_EXPIRED" -> handlePaymentExpired(message);
-				case "PAYMENT_REFUNDED" -> handlePaymentRefunded(message);
 				default -> log.warn("알 수 없는 eventType: {}", eventType);
 			}
 		} catch (Exception e) {
@@ -52,21 +48,13 @@ public class PaymentEventsConsumer {
 
 	private void handlePaymentCompleted(String message) throws Exception {
 		PaymentCompletedEvent event = objectMapper.readValue(message, PaymentCompletedEvent.class);
-		orderUseCase.updatePaymentStatus(
-			event.eventId(),
-			event.orderId(),
-			new UpdateOrderPaymentStatusRequestDto(PaymentResultStatus.SUCCESS, null)
-		);
+		orderUseCase.completePayment(event);
 		log.info("PAYMENT_COMPLETED 처리 완료. orderId={}", event.orderId());
 	}
 
 	private void handlePaymentFailed(String message) throws Exception {
 		PaymentFailedEvent event = objectMapper.readValue(message, PaymentFailedEvent.class);
-		orderUseCase.updatePaymentStatus(
-			event.eventId(),
-			event.orderId(),
-			new UpdateOrderPaymentStatusRequestDto(PaymentResultStatus.FAILED, event.depositAmount())
-		);
+		orderUseCase.failPayment(event.eventId(), event.orderId(), event.depositAmount());
 		log.info("PAYMENT_FAILED 처리 완료. orderId={}", event.orderId());
 	}
 
@@ -74,11 +62,5 @@ public class PaymentEventsConsumer {
 		PaymentExpiredEvent event = objectMapper.readValue(message, PaymentExpiredEvent.class);
 		orderUseCase.expireOrder(event.eventId(), event.orderId(), event.depositAmount());
 		log.info("PAYMENT_EXPIRED 처리 완료. orderId={}", event.orderId());
-	}
-
-	private void handlePaymentRefunded(String message) throws Exception {
-		PaymentRefundCompletedEvent event = objectMapper.readValue(message, PaymentRefundCompletedEvent.class);
-		orderUseCase.completeRefund(event.eventId(), event.orderId(), event.depositRefundAmount());
-		log.info("PAYMENT_REFUNDED 처리 완료. orderId={}", event.orderId());
 	}
 }
