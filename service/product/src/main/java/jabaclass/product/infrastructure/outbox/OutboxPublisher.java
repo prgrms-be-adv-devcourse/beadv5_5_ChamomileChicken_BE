@@ -47,6 +47,10 @@ public class OutboxPublisher {
 				kafkaTemplate.send(record).get(10, TimeUnit.SECONDS);
 				outboxService.markPublished(event);
 
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+				log.error("Outbox 발행 중 인터럽트 발생. eventId={}", event.getId(), e);
+				break;
 			} catch (Exception e) {
 				log.error("Outbox 발행 실패. eventId={}, eventType={}, error={}",
 					event.getId(), event.getEventType(), e.getMessage());

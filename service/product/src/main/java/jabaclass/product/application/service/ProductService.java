@@ -248,26 +248,23 @@ public class ProductService implements ProductUseCase {
 		return totalIndexed;
 	}
 
-	private void saveEsSaveOutbox(Product product, String sellerName) {
+	private void saveEsOutbox(String aggregateId, EsEventType eventType, Object message) {
 		try {
-			String payload = objectMapper.writeValueAsString(
-				ProductEsIndexMessage.save(ProductDocument.from(product, sellerName)));
-			outboxRepository.save(OutboxEvent.create(
-				"PRODUCT", product.getId().toString(), EsEventType.ES_SAVE, payload));
+			String payload = objectMapper.writeValueAsString(message);
+			outboxRepository.save(OutboxEvent.create("PRODUCT", aggregateId, eventType, payload));
 		} catch (JsonProcessingException e) {
-			log.error("ES SAVE outbox 직렬화 실패: productId={}", product.getId(), e);
+			log.error("ES outbox 직렬화 실패: type={}, id={}", eventType, aggregateId, e);
+			throw new RuntimeException("ES outbox 직렬화 실패", e);
 		}
 	}
 
+	private void saveEsSaveOutbox(Product product, String sellerName) {
+		saveEsOutbox(product.getId().toString(), EsEventType.ES_SAVE,
+			ProductEsIndexMessage.save(ProductDocument.from(product, sellerName)));
+	}
+
 	private void saveEsDeleteOutbox(String productId) {
-		try {
-			String payload = objectMapper.writeValueAsString(
-				ProductEsIndexMessage.delete(productId));
-			outboxRepository.save(OutboxEvent.create(
-				"PRODUCT", productId, EsEventType.ES_DELETE, payload));
-		} catch (JsonProcessingException e) {
-			log.error("ES DELETE outbox 직렬화 실패: productId={}", productId, e);
-		}
+		saveEsOutbox(productId, EsEventType.ES_DELETE, ProductEsIndexMessage.delete(productId));
 	}
 
 	// 로그인 계정 여부
