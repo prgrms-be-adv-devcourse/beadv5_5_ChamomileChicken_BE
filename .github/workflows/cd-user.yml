@@ -68,6 +68,8 @@ jobs:
   deploy:
     needs: build-and-push
     runs-on: [ self-hosted, ec2, docker ]
+    env:
+      KUBECONFIG: /home/ubuntu/.kube/config
 
     steps:
       - name: Checkout
@@ -131,6 +133,8 @@ jobs:
 
       - name: Debug Kubernetes state
         if: always()
+        env:
+          KUBECONFIG: /home/ubuntu/.kube/config
         run: |
           echo "===== pods ====="
           kubectl get pods -o wide
