@@ -34,7 +34,7 @@ import jabaclass.product.infrastructure.event.dto.ProductEventResponseDto;
 import jabaclass.product.presentation.dto.request.CreateProductRequestDto;
 import jabaclass.product.presentation.dto.request.SearchProductRequestDto;
 import jabaclass.product.presentation.dto.request.UpdateProductRequestDto;
-import jabaclass.product.presentation.dto.response.DeleteProductResposeDto;
+import jabaclass.product.presentation.dto.response.DeleteProductResponseDto;
 import jabaclass.product.presentation.dto.response.FileConfirmResponse;
 import jabaclass.product.presentation.dto.response.ProductResponseDto;
 import jabaclass.product.presentation.dto.response.ProductSettlementItemResponseDto;
@@ -126,7 +126,7 @@ public class ProductService implements ProductUseCase {
 
 	@Override
 	@Transactional
-	public DeleteProductResposeDto delete(UUID productId, UUID sellerId) {
+	public DeleteProductResponseDto delete(UUID productId, UUID sellerId) {
 		// 상품 존재하는지 확인
 		Product product = findByIdOrThrow(productId);
 		// 본인 상품인지 확인
@@ -136,7 +136,7 @@ public class ProductService implements ProductUseCase {
 		product.changeDelete();
 		publisher.publishEvent(new ProductEsDeleteEvent(productId.toString()));
 
-		return DeleteProductResposeDto.from(productId, ProductStatus.DISABLE);
+		return DeleteProductResponseDto.from(productId, ProductStatus.DISABLE);
 	}
 
 	// es 추가

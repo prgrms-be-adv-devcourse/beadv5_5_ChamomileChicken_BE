@@ -21,7 +21,7 @@ import jabaclass.product.presentation.dto.request.CreateScheduleRequestDto;
 import jabaclass.product.presentation.dto.request.OrderRequestDto;
 import jabaclass.product.presentation.dto.request.UpdateScheduleRequestDto;
 import jabaclass.product.presentation.dto.response.AvailabilityScheduleResponseDto;
-import jabaclass.product.presentation.dto.response.DeleteScheduleResposeDto;
+import jabaclass.product.presentation.dto.response.DeleteScheduleResponseDto;
 import jabaclass.product.presentation.dto.response.OrderResponseDto;
 import jabaclass.product.presentation.dto.response.SchedulesResponseDto;
 import jabaclass.product.presentation.openapi.SchedulesOpenApi;
@@ -76,10 +76,10 @@ public class SchdulesRestController implements SchedulesOpenApi {
 
 	@Override
 	@DeleteMapping("/{productId}/schedules/{scheduleId}")
-	public ResponseEntity<ApiResponseDto<DeleteScheduleResposeDto>> schedulesDelete(@PathVariable UUID productId,
+	public ResponseEntity<ApiResponseDto<DeleteScheduleResponseDto>> schedulesDelete(@PathVariable UUID productId,
 		@PathVariable UUID scheduleId,
 		@CurrentUser UUID userId) {
-		DeleteScheduleResposeDto response = scheduleUseCase.delete(productId, scheduleId, userId);
+		DeleteScheduleResponseDto response = scheduleUseCase.delete(productId, scheduleId, userId);
 
 		return ResponseEntity.ok()
 			.body(ApiResponseDto.success(HttpStatus.OK, "성공적으로 삭제 되었습니다.", response));

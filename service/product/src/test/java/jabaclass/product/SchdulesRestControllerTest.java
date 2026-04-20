@@ -28,7 +28,7 @@ import jabaclass.product.presentation.dto.request.CreateScheduleRequestDto;
 import jabaclass.product.presentation.dto.request.OrderRequestDto;
 import jabaclass.product.presentation.dto.request.UpdateScheduleRequestDto;
 import jabaclass.product.presentation.dto.response.AvailabilityScheduleResponseDto;
-import jabaclass.product.presentation.dto.response.DeleteScheduleResposeDto;
+import jabaclass.product.presentation.dto.response.DeleteScheduleResponseDto;
 import jabaclass.product.presentation.dto.response.OrderResponseDto;
 import jabaclass.product.presentation.dto.response.OrderValid;
 import jabaclass.product.presentation.dto.response.SchedulesResponseDto;
@@ -128,10 +128,10 @@ class SchdulesRestControllerTest {
 
 	@Test
 	void 일정_삭제_요청이_들어오면_유스케이스를_호출한다() {
-		DeleteScheduleResposeDto response = DeleteScheduleResposeDto.from(SCHEDULE_ID, ReservedStatus.CLOSED);
+		DeleteScheduleResponseDto response = DeleteScheduleResponseDto.from(SCHEDULE_ID, ReservedStatus.CLOSED);
 		given(scheduleUseCase.delete(PRODUCT_ID, SCHEDULE_ID, USER_ID)).willReturn(response);
 
-		ResponseEntity<ApiResponseDto<DeleteScheduleResposeDto>> result = schdulesRestController.schedulesDelete(
+		ResponseEntity<ApiResponseDto<DeleteScheduleResponseDto>> result = schdulesRestController.schedulesDelete(
 			PRODUCT_ID,
 			SCHEDULE_ID,
 			USER_ID

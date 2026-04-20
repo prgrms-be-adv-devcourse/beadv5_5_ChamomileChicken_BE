@@ -7,7 +7,7 @@ import jabaclass.product.domain.model.status.ReservedStatus;
 import jakarta.validation.constraints.NotNull;
 
 @Schema(description = "상품 일정 삭제 응답")
-public record DeleteScheduleResposeDto(
+public record DeleteScheduleResponseDto(
 	@NotNull(message = "상품 Id를 입력해주세요.")
 	@Schema(description = "상품 일정 ID", example = "11111111-1111-1111-1111-111111111111")
 	UUID scheduleId,
@@ -16,8 +16,8 @@ public record DeleteScheduleResposeDto(
 	ReservedStatus status
 ) {
 
-	public static DeleteScheduleResposeDto from(UUID scheduleId, ReservedStatus status) {
-		return new DeleteScheduleResposeDto(
+	public static DeleteScheduleResponseDto from(UUID scheduleId, ReservedStatus status) {
+		return new DeleteScheduleResponseDto(
 			scheduleId, status
 		);
 	}

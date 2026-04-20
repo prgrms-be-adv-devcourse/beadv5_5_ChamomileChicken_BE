@@ -28,7 +28,7 @@ import jabaclass.product.presentation.dto.request.CreateScheduleRequestDto;
 import jabaclass.product.presentation.dto.request.OrderRequestDto;
 import jabaclass.product.presentation.dto.request.UpdateScheduleRequestDto;
 import jabaclass.product.presentation.dto.response.AvailabilityScheduleResponseDto;
-import jabaclass.product.presentation.dto.response.DeleteScheduleResposeDto;
+import jabaclass.product.presentation.dto.response.DeleteScheduleResponseDto;
 import jabaclass.product.presentation.dto.response.OrderResponseDto;
 import jabaclass.product.presentation.dto.response.OrderValid;
 import jabaclass.product.presentation.dto.response.ProductUserResponseDto;
@@ -92,7 +92,7 @@ public class ScheduleService implements ScheduleUseCase {
 
 	@Override
 	@Transactional
-	public DeleteScheduleResposeDto delete(UUID productId, UUID scheduleId, UUID sellerId) {
+	public DeleteScheduleResponseDto delete(UUID productId, UUID scheduleId, UUID sellerId) {
 		// 상품 존재하는지 확인
 		Product product = productUseCase.findByIdOrThrow(productId);
 		// 상품 일자가 존재하는지
@@ -107,7 +107,7 @@ public class ScheduleService implements ScheduleUseCase {
 		schedule.changeStatus(ReservedStatus.CLOSED);
 		schedule.changeDelete();
 
-		return DeleteScheduleResposeDto.from(scheduleId, ReservedStatus.CLOSED);
+		return DeleteScheduleResponseDto.from(scheduleId, ReservedStatus.CLOSED);
 	}
 
 	@Override

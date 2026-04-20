@@ -18,7 +18,7 @@ import org.springframework.http.ResponseEntity;
 import jabaclass.product.application.usecase.FavoriteUseCase;
 import jabaclass.product.common.exception.ApiResponseDto;
 import jabaclass.product.presentation.controller.FavoritesRestController;
-import jabaclass.product.presentation.dto.response.FavoritesResposeDto;
+import jabaclass.product.presentation.dto.response.FavoritesResponseDto;
 
 @ExtendWith(MockitoExtension.class)
 class FavoritesRestControllerTest {
@@ -35,10 +35,10 @@ class FavoritesRestControllerTest {
 
 	@Test
 	void 즐겨찾기_생성_요청이_들어오면_유스케이스를_호출한다() {
-		FavoritesResposeDto response = new FavoritesResposeDto(FAVORITE_ID, SCHEDULE_ID, 2);
+		FavoritesResponseDto response = new FavoritesResponseDto(FAVORITE_ID, SCHEDULE_ID, 2);
 		given(favoriteUseCase.createFavorite(2, SCHEDULE_ID, USER_ID)).willReturn(response);
 
-		ResponseEntity<ApiResponseDto<FavoritesResposeDto>> result = favoritesRestController.create(2, SCHEDULE_ID, USER_ID);
+		ResponseEntity<ApiResponseDto<FavoritesResponseDto>> result = favoritesRestController.create(2, SCHEDULE_ID, USER_ID);
 
 		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.CREATED);
 		assertThat(result.getBody()).isNotNull();
@@ -48,7 +48,7 @@ class FavoritesRestControllerTest {
 
 	@Test
 	void 즐겨찾기_삭제_요청이_들어오면_유스케이스를_호출한다() {
-		ResponseEntity<ApiResponseDto<FavoritesResposeDto>> result = favoritesRestController.delete(FAVORITE_ID, USER_ID);
+		ResponseEntity<ApiResponseDto<FavoritesResponseDto>> result = favoritesRestController.delete(FAVORITE_ID, USER_ID);
 
 		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
 		then(favoriteUseCase).should().deleteFavorite(FAVORITE_ID, USER_ID);
@@ -56,10 +56,10 @@ class FavoritesRestControllerTest {
 
 	@Test
 	void 즐겨찾기_목록_조회_요청이_들어오면_유스케이스를_호출한다() {
-		List<FavoritesResposeDto> response = List.of(new FavoritesResposeDto(FAVORITE_ID, SCHEDULE_ID, 2));
+		List<FavoritesResponseDto> response = List.of(new FavoritesResponseDto(FAVORITE_ID, SCHEDULE_ID, 2));
 		given(favoriteUseCase.findByUserIdAndDeleteDtIsNull(USER_ID)).willReturn(response);
 
-		ResponseEntity<ApiResponseDto<List<FavoritesResposeDto>>> result = favoritesRestController.getList(USER_ID);
+		ResponseEntity<ApiResponseDto<List<FavoritesResponseDto>>> result = favoritesRestController.getList(USER_ID);
 
 		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
 		assertThat(result.getBody()).isNotNull();

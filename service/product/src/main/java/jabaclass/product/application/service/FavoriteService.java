@@ -11,7 +11,7 @@ import jabaclass.product.application.usecase.FavoriteUseCase;
 import jabaclass.product.common.exception.CommonErrorCode;
 import jabaclass.product.domain.model.Favorite;
 import jabaclass.product.domain.repository.FavoriteRepository;
-import jabaclass.product.presentation.dto.response.FavoritesResposeDto;
+import jabaclass.product.presentation.dto.response.FavoritesResponseDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -24,7 +24,7 @@ public class FavoriteService implements FavoriteUseCase {
 
 	@Override
 	@Transactional
-	public FavoritesResposeDto createFavorite(int quantity, UUID scheduleId, UUID userId) {
+	public FavoritesResponseDto createFavorite(int quantity, UUID scheduleId, UUID userId) {
 		Favorite favorite = Favorite.builder()
 			.productScheduleId(scheduleId)
 			.userId(userId)
@@ -33,7 +33,7 @@ public class FavoriteService implements FavoriteUseCase {
 
 		Favorite savedFavorite = favoriteRepository.save(favorite);
 
-		return FavoritesResposeDto.from(savedFavorite);
+		return FavoritesResponseDto.from(savedFavorite);
 	}
 
 	@Override
@@ -51,12 +51,12 @@ public class FavoriteService implements FavoriteUseCase {
 	}
 
 	@Override
-	public List<FavoritesResposeDto> findByUserIdAndDeleteDtIsNull(UUID userId) {
+	public List<FavoritesResponseDto> findByUserIdAndDeleteDtIsNull(UUID userId) {
 		// 본인 상품 리스트
 		List<Favorite> favorite = favoriteRepository.findByUserIdAndDeleteDtIsNull(userId);
 
 		return favorite.stream()
-			.map(FavoritesResposeDto::from)
+			.map(FavoritesResponseDto::from)
 			.toList();
 	}
 }

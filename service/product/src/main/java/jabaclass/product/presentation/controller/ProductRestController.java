@@ -22,7 +22,7 @@ import jabaclass.product.common.exception.ApiResponseDto;
 import jabaclass.product.presentation.dto.request.CreateProductRequestDto;
 import jabaclass.product.presentation.dto.request.SearchProductRequestDto;
 import jabaclass.product.presentation.dto.request.UpdateProductRequestDto;
-import jabaclass.product.presentation.dto.response.DeleteProductResposeDto;
+import jabaclass.product.presentation.dto.response.DeleteProductResponseDto;
 import jabaclass.product.presentation.dto.response.ProductResponseDto;
 import jabaclass.product.presentation.dto.response.ProductUserResponseDto;
 import jabaclass.product.presentation.dto.response.SearchProductResponseDto;
@@ -70,9 +70,9 @@ public class ProductRestController implements ProductOpenApi {
 	// 상품 삭제
 	@Override
 	@DeleteMapping("/{productId}")
-	public ResponseEntity<ApiResponseDto<DeleteProductResposeDto>> delete(@PathVariable UUID productId,
+	public ResponseEntity<ApiResponseDto<DeleteProductResponseDto>> delete(@PathVariable UUID productId,
 		@CurrentUser UUID userId) {
-		DeleteProductResposeDto response = productUseCase.delete(productId, userId);
+		DeleteProductResponseDto response = productUseCase.delete(productId, userId);
 
 		return ResponseEntity.ok()
 			.body(ApiResponseDto.success(HttpStatus.OK, "성공적으로 삭제 되었습니다.", response));

@@ -44,7 +44,7 @@ import jabaclass.product.presentation.dto.request.CreateScheduleRequestDto;
 import jabaclass.product.presentation.dto.request.OrderRequestDto;
 import jabaclass.product.presentation.dto.request.UpdateScheduleRequestDto;
 import jabaclass.product.presentation.dto.response.AvailabilityScheduleResponseDto;
-import jabaclass.product.presentation.dto.response.DeleteScheduleResposeDto;
+import jabaclass.product.presentation.dto.response.DeleteScheduleResponseDto;
 import jabaclass.product.presentation.dto.response.OrderResponseDto;
 import jabaclass.product.presentation.dto.response.OrderValid;
 import jabaclass.product.presentation.dto.response.ProductUserResponseDto;
@@ -238,7 +238,7 @@ class ScheduleTest {
 		given(productUseCase.matchProductAndSellerId(PRODUCT_ID, SELLER_ID)).willReturn(product);
 		given(scheduleRepository.findByIdAndDeleteDtIsNull(SCHEDULE_ID)).willReturn(Optional.of(schedule));
 
-		DeleteScheduleResposeDto result = scheduleService.delete(PRODUCT_ID, SCHEDULE_ID, SELLER_ID);
+		DeleteScheduleResponseDto result = scheduleService.delete(PRODUCT_ID, SCHEDULE_ID, SELLER_ID);
 
 		assertThat(result.scheduleId()).isEqualTo(SCHEDULE_ID);
 		assertThat(result.status()).isEqualTo(ReservedStatus.CLOSED);
