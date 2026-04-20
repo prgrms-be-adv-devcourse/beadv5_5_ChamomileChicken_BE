@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.lenient;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -31,12 +32,14 @@ import jabaclass.product.domain.model.ProductImageItem;
 import jabaclass.product.domain.model.status.ProductStatus;
 import jabaclass.product.domain.repository.ProductRepository;
 import jabaclass.product.domain.repository.ProductSearchRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import jabaclass.product.infrastructure.acl.client.FileConfirmClient;
 import jabaclass.product.infrastructure.acl.client.FileConfirmResponse;
 import jabaclass.product.infrastructure.acl.dto.response.UserResponseDto;
-import jabaclass.product.infrastructure.event.dto.ProductEsDeleteEvent;
-import jabaclass.product.infrastructure.event.dto.ProductEsSaveEvent;
 import jabaclass.product.infrastructure.event.dto.ProductEventResponseDto;
+import jabaclass.product.infrastructure.outbox.OutboxEvent;
+import jabaclass.product.infrastructure.outbox.OutboxRepository;
 import jabaclass.product.presentation.dto.request.CreateProductRequestDto;
 import jabaclass.product.presentation.dto.request.UpdateProductRequestDto;
 import jabaclass.product.presentation.dto.respose.ProductResponseDto;
@@ -65,6 +68,12 @@ class ProductCUDTest {
 	@Mock
 	private FileConfirmClient fileConfirmClient;
 
+	@Mock
+	private OutboxRepository outboxRepository;
+
+	@Mock
+	private ObjectMapper objectMapper;
+
 	private static final UUID SELLER_ID = UUID.fromString("123e4567-e89b-12d3-a456-426614174000");
 	private static final UUID PRODUCT_ID = UUID.fromString("223e4567-e89b-12d3-a456-426614174000");
 	private static final BigDecimal PRICE = new BigDecimal("1000.50");
@@ -75,8 +84,9 @@ class ProductCUDTest {
 	private Product product;
 
 	@BeforeEach
-	void setUp() {
+	void setUp() throws Exception {
 		validator = Validation.buildDefaultValidatorFactory().getValidator();
+		lenient().when(objectMapper.writeValueAsString(any())).thenReturn("{}");
 
 		product = Product.builder()
 			.sellerId(SELLER_ID)
@@ -141,7 +151,7 @@ class ProductCUDTest {
 		assertThat(saved.latitude()).isEqualByComparingTo(LATITUDE);
 		assertThat(saved.longitude()).isEqualByComparingTo(LONGITUDE);
 		then(publisher).should().publishEvent(any(ProductEventResponseDto.class));
-		then(publisher).should().publishEvent(any(ProductEsSaveEvent.class));
+		then(outboxRepository).should().save(any(OutboxEvent.class));
 	}
 
 	@Test
@@ -295,7 +305,7 @@ class ProductCUDTest {
 		assertThat(updated.zonecode()).isEqualTo("06234");
 		assertThat(updated.latitude()).isEqualByComparingTo("37.1234567");
 		assertThat(updated.longitude()).isEqualByComparingTo("127.7654321");
-		then(publisher).should().publishEvent(any(ProductEsSaveEvent.class));
+		then(outboxRepository).should().save(any(OutboxEvent.class));
 	}
 
 	@Test
@@ -329,7 +339,7 @@ class ProductCUDTest {
 
 		assertThat(product.getDeleteDt()).isNotNull();
 		assertThat(product.getStatus()).isEqualTo(ProductStatus.DISABLE);
-		then(publisher).should().publishEvent(any(ProductEsDeleteEvent.class));
+		then(outboxRepository).should().save(any(OutboxEvent.class));
 	}
 
 	@Test

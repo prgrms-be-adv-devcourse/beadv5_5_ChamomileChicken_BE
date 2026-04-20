@@ -13,6 +13,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import jabaclass.product.application.acl.SellerRepository;
 import jabaclass.product.application.exception.BusinessException;
 import jabaclass.product.application.usecase.ProductUseCase;
@@ -26,9 +29,11 @@ import jabaclass.product.infrastructure.acl.client.FileConfirmClient;
 import jabaclass.product.infrastructure.acl.client.FileConfirmResponse;
 import jabaclass.product.infrastructure.acl.dto.response.UserResponseDto;
 import jabaclass.product.infrastructure.elasticsearch.ProductDocument;
-import jabaclass.product.infrastructure.event.dto.ProductEsDeleteEvent;
-import jabaclass.product.infrastructure.event.dto.ProductEsSaveEvent;
 import jabaclass.product.infrastructure.event.dto.ProductEventResponseDto;
+import jabaclass.product.infrastructure.kafka.ProductEsIndexMessage;
+import jabaclass.product.infrastructure.outbox.EsEventType;
+import jabaclass.product.infrastructure.outbox.OutboxEvent;
+import jabaclass.product.infrastructure.outbox.OutboxRepository;
 import jabaclass.product.presentation.dto.request.CreateProductRequestDto;
 import jabaclass.product.presentation.dto.request.SearchProductRequestDto;
 import jabaclass.product.presentation.dto.request.UpdateProductRequestDto;
@@ -49,6 +54,8 @@ public class ProductService implements ProductUseCase {
 	private final SellerRepository sellerRepository;
 	private final ApplicationEventPublisher publisher;
 	private final FileConfirmClient fileConfirmClient;
+	private final OutboxRepository outboxRepository;
+	private final ObjectMapper objectMapper;
 
 	@Override
 	@Transactional
@@ -82,7 +89,7 @@ public class ProductService implements ProductUseCase {
 		UserResponseDto seller = findBySellerIdOrThrow(sellerId);
 
 		publisher.publishEvent(new ProductEventResponseDto(saved.getId()));
-		publisher.publishEvent(new ProductEsSaveEvent(ProductDocument.from(saved, seller.name())));
+		saveEsSaveOutbox(saved, seller.name());
 		return ProductResponseDto.from(saved, seller.name());
 	}
 
@@ -117,7 +124,7 @@ public class ProductService implements ProductUseCase {
 			product.changeImages(images);
 		}
 		UserResponseDto seller = findBySellerIdOrThrow(sellerId);
-		publisher.publishEvent(new ProductEsSaveEvent(ProductDocument.from(product, seller.name())));
+		saveEsSaveOutbox(product, seller.name());
 		return ProductResponseDto.from(product, seller.name());
 	}
 
@@ -131,7 +138,7 @@ public class ProductService implements ProductUseCase {
 
 		product.changeStatus(ProductStatus.DISABLE);
 		product.changeDelete();
-		publisher.publishEvent(new ProductEsDeleteEvent(productId.toString()));
+		saveEsDeleteOutbox(productId.toString());
 
 		return DeleteProductResposeDto.from(productId, ProductStatus.DISABLE);
 	}
@@ -239,6 +246,25 @@ public class ProductService implements ProductUseCase {
 
 		log.info("ES 마이그레이션 완료: 총 {}건", totalIndexed);
 		return totalIndexed;
+	}
+
+	private void saveEsOutbox(String aggregateId, EsEventType eventType, Object message) {
+		try {
+			String payload = objectMapper.writeValueAsString(message);
+			outboxRepository.save(OutboxEvent.create("PRODUCT", aggregateId, eventType, payload));
+		} catch (JsonProcessingException e) {
+			log.error("ES outbox 직렬화 실패: type={}, id={}", eventType, aggregateId, e);
+			throw new RuntimeException("ES outbox 직렬화 실패", e);
+		}
+	}
+
+	private void saveEsSaveOutbox(Product product, String sellerName) {
+		saveEsOutbox(product.getId().toString(), EsEventType.ES_SAVE,
+			ProductEsIndexMessage.save(ProductDocument.from(product, sellerName)));
+	}
+
+	private void saveEsDeleteOutbox(String productId) {
+		saveEsOutbox(productId, EsEventType.ES_DELETE, ProductEsIndexMessage.delete(productId));
 	}
 
 	// 로그인 계정 여부
