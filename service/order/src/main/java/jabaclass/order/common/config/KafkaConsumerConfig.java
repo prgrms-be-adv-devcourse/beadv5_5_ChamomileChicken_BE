@@ -53,12 +53,16 @@ public class KafkaConsumerConfig {
 
 	@Bean
 	public DefaultErrorHandler errorHandler() {
+		// 재시도 초과 메시지를 {topic}.dlq 토픽으로 전송
+		// DLQ 격리로 실패 메시지가 뒤의 정상 메시지를 블로킹하지 않음
 		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(kafkaTemplate,
 			(record, ex) -> {
 				log.error("Kafka 재시도 초과 - DLQ 전송. topic: {}, key: {}, error: {}",
 					record.topic(), record.key(), ex.getMessage());
 				return new TopicPartition(record.topic() + ".dlq", 0);
 			});
+		// 1초 간격으로 최대 3회 재시도 → 초과 시 DLQ 전송
+		// 일시적 장애(DB 다운 등)는 재시도로 복구, 영구 오류(파싱 실패 등)는 DLQ로 격리
 		DefaultErrorHandler handler = new DefaultErrorHandler(recoverer, new FixedBackOff(1000L, 3L));
 		handler.setRetryListeners((record, ex, deliveryAttempt) ->
 			log.warn("Kafka 재시도 - topic: {}, attempt: {}, error: {}",

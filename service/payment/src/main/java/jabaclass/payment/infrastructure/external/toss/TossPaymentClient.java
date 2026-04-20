@@ -46,12 +46,14 @@ public class TossPaymentClient implements PaymentGatewayPort {
 	}
 
 	@Override
-	public void refund(String paymentKey, int cancelAmount) {
+	public void refund(String paymentKey, int cancelAmount, String idempotencyKey) {
 		String url = "https://api.tosspayments.com/v1/payments/" + paymentKey + "/cancel";
 
 		HttpHeaders headers = new HttpHeaders();
 		headers.setBasicAuth(secretKey, "");
 		headers.setContentType(MediaType.APPLICATION_JSON);
+		// 동일 키로 재시도 시 Toss가 이전 결과를 그대로 반환 — 타임아웃 후 재시도 시 이중 환불 방지
+		headers.set("Idempotency-Key", idempotencyKey);
 
 		Map<String, Object> body = Map.of(
 			"cancelReason", "order refund",

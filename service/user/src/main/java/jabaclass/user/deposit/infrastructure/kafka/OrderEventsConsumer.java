@@ -31,7 +31,7 @@ public class OrderEventsConsumer {
 			switch (eventType) {
 				case "ORDER_DEPOSIT_REFUND_REQUESTED" -> handleDepositRefundRequested(message);
 				case "ORDER_EXPIRED" -> handleOrderExpired(message);
-				default -> log.warn("알 수 없는 eventType: {}", eventType);
+					default -> log.warn("알 수 없는 eventType: {}", eventType);
 			}
 		} catch (Exception e) {
 			log.error("order.events 처리 실패. eventType={}, message={}", eventType, message, e);

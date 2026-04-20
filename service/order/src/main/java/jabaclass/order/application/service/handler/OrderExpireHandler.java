@@ -31,6 +31,8 @@ public class OrderExpireHandler {
 	private final ProcessedEventRepository processedEventRepository;
 	private final ObjectMapper objectMapper;
 
+	// [핸들러] PAYMENT_EXPIRED 수신 후 호출 — Saga 보상 트랜잭션
+	// Order EXPIRED + 재고 복구(Product) + 예치금 복구(User) 이벤트를 같은 트랜잭션으로 커밋
 	@Transactional
 	public void expire(UUID eventId, UUID orderId, BigDecimal depositAmount) {
 		if (eventId != null && processedEventRepository.existsById(eventId)) {
@@ -42,12 +44,14 @@ public class OrderExpireHandler {
 		}
 		order.expire();
 		UUID productUserId = requireProductUserId(order);
+		// 보상 1: Product 서비스로 재고 예약 해제
 		outboxRepository.save(OutboxEvent.create(
 			"ORDER",
-			productUserId.toString(),
+			orderId.toString(),
 			EventType.ORDER_RESERVATION_RELEASED,
 			toJson(new OrderReservationReleasedEvent(UUID.randomUUID(), order.getId(), productUserId))
 		));
+		// 보상 2: User 서비스로 예치금 복구
 		outboxRepository.save(OutboxEvent.create(
 			"ORDER",
 			order.getId().toString(),

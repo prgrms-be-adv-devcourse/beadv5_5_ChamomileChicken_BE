@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.DeleteMapping;
 
 @CrossOrigin(origins = "*")
 @RestController
@@ -42,23 +43,11 @@ public class OrderController implements OrderOpenApi {
         return ResponseEntity.status(HttpStatus.CREATED).body(responseDto);
     }
 
-    // html 테스트용
-    /*PostMapping
-    public ResponseEntity<CreateOrderResponseDto> create(
-        @Valid @RequestBody CreateOrderRequestDto requestDto
-    ) {
-        UUID userId = UUID.fromString("22222222-2222-2222-2222-222222222222"); // ⭐ 임시
-
-        CreateOrderResponseDto responseDto = orderUseCase.create(userId, requestDto);
-
-        return ResponseEntity.status(HttpStatus.CREATED).body(responseDto);
-    }*/
-
     @Override
     @GetMapping("/{orderId}")
     public ResponseEntity<OrderResponseDto> getById(@CurrentUser UUID userId,
 			@PathVariable UUID orderId) {
-        OrderResponseDto responseDto = orderUseCase.getById(orderId);
+        OrderResponseDto responseDto = orderUseCase.getById(userId, orderId);
 
         return ResponseEntity.ok(responseDto);
     }
@@ -72,6 +61,15 @@ public class OrderController implements OrderOpenApi {
         List<OrderResponseDto> responseDto = orderUseCase.getOrders(userId, status);
 
         return ResponseEntity.ok(responseDto);
+    }
+
+    @DeleteMapping("/{orderId}/refund")
+    public ResponseEntity<Void> refund(
+        @CurrentUser UUID userId,
+        @PathVariable UUID orderId
+    ) {
+        orderUseCase.refund(userId, orderId);
+        return ResponseEntity.noContent().build();
     }
 
 }

@@ -58,20 +58,4 @@ public class PaymentController implements PaymentApi {
 		);
 	}
 
-	@Override
-	@PostMapping("/refunds")
-	public ResponseEntity<ApiResponseDto<Void>> refundPayment(
-		@RequestBody RefundPaymentRequestDto request,
-		@CurrentUser UUID userId) {
-
-		paymentUseCase.refund(userId,request);
-
-		return ResponseEntity.status(HttpStatus.ACCEPTED).body(
-			ApiResponseDto.success(
-				HttpStatus.ACCEPTED,
-				"환불 요청이 접수되었습니다.",
-				null
-			)
-		);
-	}
 }
