@@ -115,7 +115,7 @@ fi
 
 echo "Waiting for rollout status..."
 if ! kubectl --kubeconfig "$KUBECONFIG_PATH" rollout status deployment/"$DEPLOYMENT_NAME" --timeout=300s; then
-  print_rollout_diagnostics
+  print_rollout_diagnostics "$DEPLOYMENT_NAME" "$SERVICE_NAME"
   exit 1
 fi
 
