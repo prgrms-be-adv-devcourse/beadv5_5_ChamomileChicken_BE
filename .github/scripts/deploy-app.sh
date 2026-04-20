@@ -109,7 +109,7 @@ echo "Checking service: $SERVICE_NAME"
 kubectl --kubeconfig "$KUBECONFIG_PATH" get svc "$SERVICE_NAME"
 
 if [ "$RESTART_ON_CONFIG_CHANGE" = "true" ]; then
-  echo "Config changed. Restarting deployment: $DEPLOYMENT_NAME"
+  echo "Config changed.  Restarting deployment: $DEPLOYMENT_NAME"
   kubectl --kubeconfig "$KUBECONFIG_PATH" rollout restart deployment/"$DEPLOYMENT_NAME"
 else
   echo "No config change detected. Skipping restart."

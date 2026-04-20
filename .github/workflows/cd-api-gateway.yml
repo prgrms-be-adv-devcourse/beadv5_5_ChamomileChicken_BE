@@ -67,6 +67,8 @@ jobs:
   deploy:
     needs: build-and-push
     runs-on: [ self-hosted, ec2, docker ]
+    env:
+      KUBECONFIG: /home/ubuntu/.kube/config
 
     steps:
       - name: Checkout
