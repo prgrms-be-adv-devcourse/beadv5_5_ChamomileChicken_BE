@@ -1,6 +1,7 @@
 package jabaclass.order.application.service;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -8,9 +9,11 @@ import java.util.UUID;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import jabaclass.order.application.port.external.DepositPort;
+import jabaclass.order.application.port.external.PaymentPort;
 import jabaclass.order.application.port.external.ProductPort;
 import jabaclass.order.application.service.handler.OrderExpireHandler;
 import jabaclass.order.application.service.handler.OrderPaymentResultHandler;
+import jabaclass.order.application.service.handler.OrderRefundHandler;
 import jabaclass.order.common.error.BusinessException;
 import jabaclass.order.domain.model.Order;
 import jabaclass.order.domain.model.OrderStatus;
@@ -36,6 +39,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
@@ -61,10 +65,16 @@ class OrderServiceTest {
     private ObjectMapper objectMapper;
 
     @Mock
+    private PaymentPort paymentPort;
+
+    @Mock
     private OrderPaymentResultHandler orderPaymentResultHandler;
 
     @Mock
     private OrderExpireHandler orderExpireHandler;
+
+    @Mock
+    private OrderRefundHandler orderRefundHandler;
 
     @InjectMocks
     private OrderService orderService;
@@ -164,11 +174,12 @@ class OrderServiceTest {
     @Test
     void 주문을_조회한다() {
         // given
-        Order order = Order.create(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), 1, new BigDecimal("5000"));
+        UUID userId = UUID.randomUUID();
+        Order order = Order.create(UUID.randomUUID(), userId, UUID.randomUUID(), 1, new BigDecimal("5000"));
         given(orderRepository.findById(order.getId())).willReturn(Optional.of(order));
 
         // when
-        OrderResponseDto actual = orderService.getById(order.getId());
+        OrderResponseDto actual = orderService.getById(userId, order.getId());
 
         // then
         assertThat(actual.id()).isEqualTo(order.getId());
@@ -182,11 +193,12 @@ class OrderServiceTest {
     @Test
     void 없는_주문을_조회하면_예외가_발생한다() {
         // given
+        UUID userId = UUID.randomUUID();
         UUID orderId = UUID.randomUUID();
         given(orderRepository.findById(orderId)).willReturn(Optional.empty());
 
         // when & then
-        assertThatThrownBy(() -> orderService.getById(orderId))
+        assertThatThrownBy(() -> orderService.getById(userId, orderId))
             .isInstanceOf(BusinessException.class)
             .hasMessage("주문을 찾을 수 없습니다.");
     }
@@ -264,14 +276,20 @@ class OrderServiceTest {
     @Test
     void 환불을_반영한다() {
         // given
-        Order order = Order.create(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), 2, new BigDecimal("15000"));
+        UUID userId = UUID.randomUUID();
+        Order order = Order.create(UUID.randomUUID(), userId, UUID.randomUUID(), 2, new BigDecimal("15000"));
         order.pay();
+        BigDecimal depositRefundAmount = new BigDecimal("15000");
         given(orderRepository.findById(order.getId())).willReturn(Optional.of(order));
+        given(productPort.getScheduleStartDate(order.getProductScheduleId()))
+            .willReturn(LocalDate.now().plusDays(8));
+        given(paymentPort.refund(eq(order.getId()), any(BigDecimal.class)))
+            .willReturn(depositRefundAmount);
 
         // when
-        orderService.refund(order.getId());
+        orderService.refund(userId, order.getId());
 
-        // then
-        assertThat(order.getStatus()).isEqualTo(OrderStatus.REFUNDED);
+        // then — 환불 핸들러에 위임됨
+        then(orderRefundHandler).should().onSuccess(order.getId(), depositRefundAmount);
     }
 }

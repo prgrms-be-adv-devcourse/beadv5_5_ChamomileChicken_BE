@@ -3,11 +3,10 @@ package jabaclass.payment;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -18,7 +17,6 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -29,23 +27,19 @@ import jabaclass.payment.application.port.external.OrderPort;
 import jabaclass.payment.application.port.external.PaymentGatewayPort;
 import jabaclass.payment.application.service.PaymentService;
 import jabaclass.payment.application.service.handler.PaymentConfirmHandler;
+import jabaclass.payment.application.service.handler.PaymentRefundHandler;
 import jabaclass.payment.common.error.PaymentErrorCode;
 import jabaclass.payment.common.error.PaymentException;
 import jabaclass.payment.domain.model.Payment;
 import jabaclass.payment.domain.model.PaymentMethod;
-import jabaclass.payment.domain.model.PaymentStatus;
-import jabaclass.payment.domain.model.Refund;
-import jabaclass.payment.domain.model.RefundStatus;
 import jabaclass.payment.domain.repository.PaymentRepository;
 import jabaclass.payment.domain.repository.RefundRepository;
-import jabaclass.payment.infrastructure.outbox.EventType;
-import jabaclass.payment.infrastructure.outbox.OutboxEvent;
 import jabaclass.payment.infrastructure.outbox.OutboxRepository;
-import jabaclass.payment.presentation.dto.request.RefundPaymentRequestDto;
+import jabaclass.payment.presentation.dto.request.InternalRefundRequestDto;
+import jabaclass.payment.presentation.dto.response.InternalRefundResponseDto;
 
 @ExtendWith(MockitoExtension.class)
 class PaymentRefundTest {
-	private static final UUID TEST_USER_ID = UUID.randomUUID();
 
 	@Mock
 	private PaymentRepository paymentRepository;
@@ -65,7 +59,12 @@ class PaymentRefundTest {
 	@Mock
 	private PaymentConfirmHandler paymentConfirmHandler;
 
+	@Mock
+	private PaymentRefundHandler paymentRefundHandler;
+
 	private PaymentService paymentService;
+
+	private static final BigDecimal FULL_REFUND_RATE = BigDecimal.ONE;
 
 	@BeforeEach
 	void setUp() {
@@ -76,118 +75,108 @@ class PaymentRefundTest {
 			orderPort,
 			outboxRepository,
 			paymentConfirmHandler,
+			paymentRefundHandler,
 			new ObjectMapper()
 		);
 
-		lenient().when(refundRepository.save(any(Refund.class)))
-			.thenAnswer(invocation -> invocation.getArgument(0));
-		lenient().when(outboxRepository.save(any(OutboxEvent.class)))
+		lenient().when(outboxRepository.save(any()))
 			.thenAnswer(invocation -> invocation.getArgument(0));
 	}
 
 	@Test
-	void refund_결제가없으면_예외() {
+	void refundByOrder_결제가없으면_예외() {
 		UUID orderId = UUID.randomUUID();
 		when(paymentRepository.findByOrderId(orderId)).thenReturn(Optional.empty());
 
 		PaymentException exception = assertThrows(
 			PaymentException.class,
-			() -> paymentService.refund(TEST_USER_ID, new RefundPaymentRequestDto(orderId))
+			() -> paymentService.refundByOrder(new InternalRefundRequestDto(orderId, FULL_REFUND_RATE))
 		);
 
 		assertEquals(PaymentErrorCode.PAYMENT_NOT_FOUND, exception.getErrorCode());
-		verify(refundRepository, never()).save(any(Refund.class));
-		verify(outboxRepository, never()).save(any(OutboxEvent.class));
+		verify(paymentRefundHandler, never()).onSuccess(any(), any());
 	}
 
 	@Test
-	void refund_완료되지않은결제면_예외() {
+	void refundByOrder_완료되지않은결제면_예외() {
 		UUID orderId = UUID.randomUUID();
-		Payment payment = createPayment(TEST_USER_ID, orderId, BigDecimal.valueOf(10000), BigDecimal.ZERO);
+		Payment payment = createPayment(orderId, BigDecimal.valueOf(10000), BigDecimal.ZERO);
 		assignPaymentId(payment);
 		when(paymentRepository.findByOrderId(orderId)).thenReturn(Optional.of(payment));
 
 		PaymentException exception = assertThrows(
 			PaymentException.class,
-			() -> paymentService.refund(TEST_USER_ID, new RefundPaymentRequestDto(orderId))
+			() -> paymentService.refundByOrder(new InternalRefundRequestDto(orderId, FULL_REFUND_RATE))
 		);
 
 		assertEquals(PaymentErrorCode.PAYMENT_NOT_COMPLETED, exception.getErrorCode());
-		verify(refundRepository, never()).save(any(Refund.class));
-		verify(outboxRepository, never()).save(any(OutboxEvent.class));
+		verify(paymentRefundHandler, never()).onSuccess(any(), any());
 	}
 
 	@Test
-	void refund_일반결제환불성공시_PG호출후_환불완료() {
+	void refundByOrder_일반결제_성공시_PG호출후_핸들러위임() {
 		UUID orderId = UUID.randomUUID();
-		Payment payment = createPayment(TEST_USER_ID, orderId, BigDecimal.valueOf(10000), BigDecimal.ZERO);
+		Payment payment = createPayment(orderId, BigDecimal.valueOf(10000), BigDecimal.ZERO);
 		assignPaymentId(payment);
 		payment.markDone("pay-key");
+		BigDecimal depositRefundAmount = BigDecimal.ZERO;
 		when(paymentRepository.findByOrderId(orderId)).thenReturn(Optional.of(payment));
+		when(paymentRefundHandler.onSuccess(payment.getId(), FULL_REFUND_RATE)).thenReturn(depositRefundAmount);
 
-		paymentService.refund(TEST_USER_ID, new RefundPaymentRequestDto(orderId));
+		InternalRefundResponseDto response = paymentService.refundByOrder(
+			new InternalRefundRequestDto(orderId, FULL_REFUND_RATE)
+		);
 
-		verify(paymentGatewayPort).refund("pay-key", 10000);
-		assertEquals(PaymentStatus.CANCELLED, payment.getStatus());
-
-		ArgumentCaptor<Refund> refundCaptor = ArgumentCaptor.forClass(Refund.class);
-		verify(refundRepository, times(2)).save(refundCaptor.capture());
-		assertEquals(RefundStatus.COMPLETED, refundCaptor.getAllValues().get(1).getStatus());
-
-		ArgumentCaptor<OutboxEvent> outboxCaptor = ArgumentCaptor.forClass(OutboxEvent.class);
-		verify(outboxRepository).save(outboxCaptor.capture());
-		assertEquals(EventType.PAYMENT_REFUNDED, outboxCaptor.getValue().getEventType());
+		// PG 환불 호출 시 orderId를 멱등키로 전달
+		verify(paymentGatewayPort).refund(eq("pay-key"), eq(10000), eq(orderId.toString()));
+		verify(paymentRefundHandler).onSuccess(payment.getId(), FULL_REFUND_RATE);
+		assertEquals(depositRefundAmount, response.depositRefundAmount());
 	}
 
 	@Test
-	void refund_예치금전액결제환불이면_PG호출없음() {
+	void refundByOrder_예치금전액결제_PG호출없이_핸들러위임() {
 		UUID orderId = UUID.randomUUID();
-		Payment payment = createPayment(TEST_USER_ID, orderId, BigDecimal.ZERO, BigDecimal.valueOf(10000));
+		Payment payment = createPayment(orderId, BigDecimal.ZERO, BigDecimal.valueOf(10000));
 		assignPaymentId(payment);
 		payment.markDone("DEPOSIT_ONLY");
+		BigDecimal depositRefundAmount = BigDecimal.valueOf(10000);
 		when(paymentRepository.findByOrderId(orderId)).thenReturn(Optional.of(payment));
+		when(paymentRefundHandler.onSuccess(payment.getId(), FULL_REFUND_RATE)).thenReturn(depositRefundAmount);
 
-		paymentService.refund(TEST_USER_ID, new RefundPaymentRequestDto(orderId));
+		InternalRefundResponseDto response = paymentService.refundByOrder(
+			new InternalRefundRequestDto(orderId, FULL_REFUND_RATE)
+		);
 
-		verify(paymentGatewayPort, never()).refund(any(), anyInt());
-		assertEquals(PaymentStatus.CANCELLED, payment.getStatus());
-
-		ArgumentCaptor<Refund> refundCaptor = ArgumentCaptor.forClass(Refund.class);
-		verify(refundRepository, times(2)).save(refundCaptor.capture());
-		assertEquals(RefundStatus.COMPLETED, refundCaptor.getAllValues().get(1).getStatus());
-		verify(outboxRepository).save(any(OutboxEvent.class));
+		// paymentAmount == 0 이므로 PG 호출 없음
+		verify(paymentGatewayPort, never()).refund(any(), any(Integer.class), any());
+		verify(paymentRefundHandler).onSuccess(payment.getId(), FULL_REFUND_RATE);
+		assertEquals(depositRefundAmount, response.depositRefundAmount());
 	}
 
 	@Test
-	void refund_PG실패면_환불실패로저장하고_예외() {
+	void refundByOrder_PG실패면_REFUND_FAILED예외() {
 		UUID orderId = UUID.randomUUID();
-		Payment payment = createPayment(TEST_USER_ID, orderId, BigDecimal.valueOf(10000), BigDecimal.ZERO);
+		Payment payment = createPayment(orderId, BigDecimal.valueOf(10000), BigDecimal.ZERO);
 		assignPaymentId(payment);
 		payment.markDone("pay-key");
 		when(paymentRepository.findByOrderId(orderId)).thenReturn(Optional.of(payment));
-		doThrow(new RuntimeException("refund failed"))
-			.when(paymentGatewayPort).refund("pay-key", 10000);
+		doThrow(new RuntimeException("pg error"))
+			.when(paymentGatewayPort).refund(any(), any(Integer.class), any());
 
 		PaymentException exception = assertThrows(
 			PaymentException.class,
-			() -> paymentService.refund(TEST_USER_ID, new RefundPaymentRequestDto(orderId))
+			() -> paymentService.refundByOrder(new InternalRefundRequestDto(orderId, FULL_REFUND_RATE))
 		);
 
 		assertEquals(PaymentErrorCode.PAYMENT_REFUND_FAILED, exception.getErrorCode());
-		assertEquals(PaymentStatus.PAID, payment.getStatus());
-
-		ArgumentCaptor<Refund> refundCaptor = ArgumentCaptor.forClass(Refund.class);
-		verify(refundRepository, times(2)).save(refundCaptor.capture());
-		assertEquals(RefundStatus.FAILED, refundCaptor.getAllValues().get(1).getStatus());
-		verify(outboxRepository, never()).save(any(OutboxEvent.class));
+		verify(paymentRefundHandler, never()).onSuccess(any(), any());
 	}
 
-	private Payment createPayment(UUID userId, UUID orderId, BigDecimal paymentAmount, BigDecimal depositAmount) {
+	private Payment createPayment(UUID orderId, BigDecimal paymentAmount, BigDecimal depositAmount) {
 		return Payment.create(
-			userId,
+			UUID.randomUUID(),
 			UUID.randomUUID(),
 			orderId,
-			UUID.randomUUID(),
 			PaymentMethod.TOSS,
 			paymentAmount,
 			depositAmount

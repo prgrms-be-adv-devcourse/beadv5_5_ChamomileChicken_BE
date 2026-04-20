@@ -35,9 +35,6 @@ public class Payment extends BaseEntity{
 	@Column(name = "order_id", nullable = false)
 	private UUID orderId;
 
-	@Column(name = "product_user_id", nullable = false)
-	private UUID productUserId;
-
 	@Enumerated(EnumType.STRING)
 	@Column(name = "payment_method", length = 20)
 	private PaymentMethod paymentMethod;
@@ -70,7 +67,6 @@ public class Payment extends BaseEntity{
 		UUID userId,
 		UUID productId,
 		UUID orderId,
-		UUID productUserId,
 		PaymentMethod paymentMethod,
 		BigDecimal paymentAmount,
 		BigDecimal depositAmount,
@@ -81,7 +77,6 @@ public class Payment extends BaseEntity{
 		this.userId = userId;
 		this.productId = productId;
 		this.orderId = orderId;
-		this.productUserId = productUserId;
 		this.paymentMethod = paymentMethod;
 		this.paymentAmount = paymentAmount;
 		this.depositAmount = depositAmount;
@@ -93,12 +88,11 @@ public class Payment extends BaseEntity{
 		UUID userId,
 		UUID productId,
 		UUID orderId,
-		UUID productUserId,
 		PaymentMethod paymentMethod,
 		BigDecimal paymentAmount,
 		BigDecimal depositAmount
 	) {
-		validate(paymentAmount, depositAmount, productUserId);
+		validate(paymentAmount, depositAmount);
 
 		BigDecimal totalAmount = paymentAmount.add(depositAmount);
 
@@ -107,7 +101,6 @@ public class Payment extends BaseEntity{
 			userId,
 			productId,
 			orderId,
-			productUserId,
 			paymentMethod,
 			paymentAmount,
 			depositAmount,
@@ -116,17 +109,9 @@ public class Payment extends BaseEntity{
 		);
 	}
 
-	private static void validate(
-		BigDecimal paymentAmount,
-		BigDecimal depositAmount,
-		UUID productUserId
-	) {
+	private static void validate(BigDecimal paymentAmount, BigDecimal depositAmount) {
 		if (paymentAmount == null || depositAmount == null) {
 			throw new PaymentException(PaymentErrorCode.INVALID_AMOUNT);
-		}
-
-		if (productUserId == null) {
-			throw new PaymentException(PaymentErrorCode.INVALID_PRODUCT_USER);
 		}
 
 		if (paymentAmount.compareTo(BigDecimal.ZERO) < 0) {
