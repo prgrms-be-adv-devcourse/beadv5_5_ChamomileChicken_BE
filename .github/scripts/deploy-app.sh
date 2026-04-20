@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-SERVICE="${1:-}"
+SERVICE="${1:-${SERVICE:-}}"
 ENV_DIR=/home/ubuntu/apps/deploy/env
 K3S_DIR=/home/ubuntu/apps/data/k3s-service
 DOCKERHUB_USERNAME="${DOCKERHUB_USERNAME:?DOCKERHUB_USERNAME is required}"

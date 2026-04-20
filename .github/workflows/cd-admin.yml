@@ -95,7 +95,7 @@ jobs:
 
       - name: Copy Kubernetes YAML
         run: |
-          cp /home/ubuntu/apps/repo/service/admin/admin-service.yml \
+          cp /home/ubuntu/apps/repo/.github/k3s/admin-service.yml \
              /home/ubuntu/apps/data/k3s-service/admin-service.yml
 
       - name: Create common_config.env

@@ -81,7 +81,7 @@ spec:
   ports:
     - port: 8080
       targetPort: 8080
-      nodePort: 50080
+      nodePort: 20080
       protocol: TCP
   type: NodePort
 ---
