@@ -77,6 +77,9 @@ else
 fi
 
 echo "Waiting for rollout status..."
-kubectl --kubeconfig "$KUBECONFIG_PATH" rollout status deployment/"$SERVICE-service" --timeout=300s
+kubectl --kubeconfig "$KUBECONFIG_PATH" rollout status deployment/"${SERVICE}-service" --timeout=300s
+
+# secret 파일 정리
+rm -f "$ENV_DIR/common_secret.env" "$ENV_DIR/${SERVICE}_secret.env"
 
 echo "Deployment completed: $SERVICE"

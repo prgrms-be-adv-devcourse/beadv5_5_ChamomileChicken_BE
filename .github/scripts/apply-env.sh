@@ -10,6 +10,8 @@ if [ -z "$SERVICE" ]; then
 fi
 
 mkdir -p "$ENV_DIR"
+chmod 700 "$ENV_DIR"
+
 CONFIG_CHANGED=false
 
 write_if_changed() {
@@ -40,6 +42,14 @@ write_if_changed "$ENV_DIR/common_config.env" "${COMMON_CONFIG_ENV:-}"
 write_if_changed "$ENV_DIR/common_secret.env" "${COMMON_SECRET_ENV:-}"
 write_if_changed "$ENV_DIR/${SERVICE}_config.env" "${SERVICE_CONFIG_ENV:-}"
 write_if_changed "$ENV_DIR/${SERVICE}_secret.env" "${SERVICE_SECRET_ENV:-}"
+
+# secret 파일 권한 제한
+[ -f "$ENV_DIR/common_secret.env" ] && chmod 600 "$ENV_DIR/common_secret.env"
+[ -f "$ENV_DIR/${SERVICE}_secret.env" ] && chmod 600 "$ENV_DIR/${SERVICE}_secret.env"
+
+# config 파일도 필요하면 조금 제한
+[ -f "$ENV_DIR/common_config.env" ] && chmod 600 "$ENV_DIR/common_config.env"
+[ -f "$ENV_DIR/${SERVICE}_config.env" ] && chmod 600 "$ENV_DIR/${SERVICE}_config.env"
 
 echo "CONFIG_CHANGED=$CONFIG_CHANGED"
 
