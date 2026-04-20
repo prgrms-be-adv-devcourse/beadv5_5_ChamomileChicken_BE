@@ -15,8 +15,10 @@ import jabaclass.order.domain.model.OrderStatus;
 import jabaclass.order.domain.repository.OrderRepository;
 import jabaclass.order.infrastructure.idempotency.ProcessedEvent;
 import jabaclass.order.infrastructure.idempotency.ProcessedEventRepository;
+import jabaclass.order.infrastructure.kafka.payment.dto.PaymentCompletedEvent;
 import jabaclass.order.infrastructure.kafka.product.dto.OrderReservationConfirmedEvent;
 import jabaclass.order.infrastructure.kafka.product.dto.OrderReservationReleasedEvent;
+import jabaclass.order.infrastructure.kafka.settlement.dto.SettlementPaymentCompletedEvent;
 import jabaclass.order.infrastructure.kafka.user.dto.DepositRefundRequestedEvent;
 import jabaclass.order.infrastructure.outbox.EventType;
 import jabaclass.order.infrastructure.outbox.OutboxEvent;
@@ -34,7 +36,9 @@ public class OrderPaymentResultHandler {
 
 	// [핸들러] PAYMENT_COMPLETED 수신 후 호출 — Order PAID + Outbox 저장을 원자적으로 커밋
 	@Transactional
-	public void onSuccess(UUID eventId, UUID orderId) {
+	public void onSuccess(PaymentCompletedEvent event) {
+		UUID eventId = event.eventId();
+		UUID orderId = event.orderId();
 		// processed_events로 중복 이벤트 차단 (Kafka at-least-once 방어)
 		if (eventId != null && processedEventRepository.existsById(eventId)) {
 			return;
@@ -52,6 +56,22 @@ public class OrderPaymentResultHandler {
 			orderId.toString(),
 			EventType.ORDER_RESERVATION_CONFIRMED,
 			toJson(new OrderReservationConfirmedEvent(UUID.randomUUID(), order.getId(), productUserId))
+		));
+
+		// 정산에게 이벤트 발행
+		outboxRepository.save(OutboxEvent.create(
+			"ORDER",
+			orderId.toString(),
+			EventType.SETTLEMENT_PAYMENT_COMPLETED,
+			toJson(new SettlementPaymentCompletedEvent(
+				UUID.randomUUID(),
+				order.getId(),
+				event.paymentId(),
+				order.getSellerId(),
+				event.productId(),
+				event.totalAmount(),
+				event.occurredAt()
+			))
 		));
 		if (eventId != null) {
 			processedEventRepository.save(ProcessedEvent.of(eventId));
@@ -106,6 +126,7 @@ public class OrderPaymentResultHandler {
 
 	private String toJson(Object obj) {
 		try {
+			objectMapper.findAndRegisterModules();
 			return objectMapper.writeValueAsString(obj);
 		} catch (Exception e) {
 			throw new RuntimeException("Outbox 직렬화 실패", e);
