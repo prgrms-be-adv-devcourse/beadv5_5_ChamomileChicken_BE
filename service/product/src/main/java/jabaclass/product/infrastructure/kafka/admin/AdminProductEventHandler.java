@@ -26,6 +26,12 @@ public class AdminProductEventHandler {
 	public void processForceDown(UUID productId) {
 		Product product = productRepository.findById(productId)
 			.orElseThrow(() -> new BusinessException(CommonErrorCode.PRODUCT_NOT_FOUND));
+
+		if (product.getStatus() == ProductStatus.DISABLE && product.getDeleteDt() != null) {
+			log.info("FORCE_DOWN DB 이미 처리된 상품. productId={}", productId);
+			return;
+		}
+
 		product.changeStatus(ProductStatus.DISABLE);
 		product.changeDelete();
 		int deletedCount = scheduleRepository.softDeleteByProductId(productId);

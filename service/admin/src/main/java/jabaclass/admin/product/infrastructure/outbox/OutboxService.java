@@ -1,5 +1,6 @@
 package jabaclass.admin.product.infrastructure.outbox;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
@@ -16,13 +17,15 @@ public class OutboxService {
 	private final OutboxEventRepository outboxEventRepository;
 
 	@Transactional(transactionManager = "productTransactionManager")
-	public void markSending(List<OutboxEvent> events) {
+	public List<OutboxEvent> findAndMarkSending(LocalDateTime threshold, int limit) {
+		List<OutboxEvent> events = outboxEventRepository.findProcessableEvents(threshold, limit);
 		for (OutboxEvent event : events) {
 			if (!event.isRetryExceeded()) {
 				event.markSending();
 			}
 		}
 		outboxEventRepository.saveAll(events);
+		return events;
 	}
 
 	@Transactional(transactionManager = "productTransactionManager")

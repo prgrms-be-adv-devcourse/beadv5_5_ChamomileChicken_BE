@@ -10,7 +10,6 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import jabaclass.admin.product.domain.model.OutboxEvent;
-import jabaclass.admin.product.domain.repository.OutboxEventRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -19,16 +18,13 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class OutboxEventPoller {
 
-	private final OutboxEventRepository outboxEventRepository;
 	private final OutboxService outboxService;
 	private final KafkaTemplate<String, String> kafkaTemplate;
 
 	@Scheduled(fixedDelay = 1000)
 	public void publish() {
 		LocalDateTime threshold = LocalDateTime.now().minusMinutes(5);
-		List<OutboxEvent> events = outboxEventRepository.findProcessableEvents(threshold, 100);
-
-		outboxService.markSending(events);
+		List<OutboxEvent> events = outboxService.findAndMarkSending(threshold, 100);
 
 		for (OutboxEvent event : events) {
 			if (event.isRetryExceeded()) {
