@@ -34,6 +34,10 @@ public class OrderEventsConsumer {
 					OrderReservationReleasedEvent event = objectMapper.readValue(message, OrderReservationReleasedEvent.class);
 					orderEventHandler.handleReservationReleased(event.eventId(), event.productUserId());
 				}
+				case "ORDER_REFUNDED" -> {
+					OrderRefundedEvent event = objectMapper.readValue(message, OrderRefundedEvent.class);
+					orderEventHandler.handleOrderRefunded(event.eventId(), event.productUserId());
+				}
 				default -> log.warn("알 수 없는 eventType: {}", eventType);
 			}
 		} catch (Exception e) {

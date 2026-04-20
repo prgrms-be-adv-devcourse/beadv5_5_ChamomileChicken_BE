@@ -53,23 +53,56 @@ Admin은 보안 최상급 영역이므로 이중 검증 구조를 채택한다.
 > 연쇄 처리가 필요하다. Internal API(동기 호출) 방식은 product 서비스 장애 시 Admin도 실패하는
 > 강한 결합이 생긴다.
 >
-> `@TransactionalEventListener(AFTER_COMMIT)`으로 트랜잭션 커밋 이후에만 Kafka 이벤트를 발행하고,
-> product 서비스가 이를 수신해 나머지 연쇄 처리를 담당한다.
-> 트랜잭션 롤백 시에는 이벤트가 발행되지 않아 안전하며, 실패 시 보상 트랜잭션으로 복구한다.
+> **Outbox 패턴**을 적용해 product soft delete와 outbox 이벤트 저장을 같은 트랜잭션으로 묶어 원자적으로 커밋한다.
+> 별도 스케줄러(`OutboxEventPoller`)가 Kafka에 발행하며, Kafka 장애 시에도 이벤트 유실 없이 재발행이 보장된다.
+> 신뢰성 설계 상세는 [force-down-reliability.md](force-down-reliability.md)를 참고한다.
 
 ### 상품 강제 내리기 흐름
 
 ```
-Admin 서비스
-  1. Product soft delete (DB 직접)
-  2. @TransactionalEventListener(AFTER_COMMIT) → Kafka: ProductForceDownEvent 발행
+[Admin 서비스 — 동기, HTTP 응답 전]
 
-Product 서비스
-  3. ProductForceDownEvent 수신
-  4. 연관 Schedule 전체 soft delete
-  5. ES 인덱스 삭제
-  6. 실패 시 → 보상 트랜잭션으로 Product 상태 복구 이벤트 발행
+PATCH /api/v1/admins/products/{productId}/force-down
+  → AdminRoleInterceptor: X-User-Role == ADMIN 검증
+  → ProductAdminService.forceDownProduct()  @Transactional(productTransactionManager)
+      1. Admin DB products 조회 (없으면 404)
+      2. product.forceDown() → Admin DB: status=DISABLE, deleteDt=now()
+      3. OutboxEvent.create() 저장 → admin_outbox_events: status=PENDING
+      ↓ DB 커밋 (products + outbox 원자적)
+  → HTTP 200 응답 반환
+
+[Admin 서비스 — 비동기, OutboxEventPoller]
+
+OutboxEventPoller  @Scheduled(fixedDelay=1000)
+  → admin_outbox_events PENDING 조회 (FOR UPDATE SKIP LOCKED)
+  → OutboxService.markSending() → status=SENDING
+  → kafkaTemplate.send(ProducerRecord).get()  ← 동기 발행
+      성공: OutboxService.markPublished() → status=PUBLISHED
+      실패: OutboxService.retry() → retryCount++, status=PENDING
+            retryCount >= 5: OutboxService.markFailed() → status=FAILED
+
+[Product 서비스 — 비동기, Kafka]
+
+Kafka 토픽: admin.product
+  → AdminProductKafkaConsumer.consume()
+      ↓ type == "FORCE_DOWN"
+  → AdminProductEventHandler.processForceDown()  @Transactional
+      4. Product DB products 조회
+      5. product.changeStatus(DISABLE) + product.changeDelete()
+      6. scheduleRepository.softDeleteByProductId()
+      ↓ DB 커밋
+  → productSearchRepository.deleteById()  ← ES 삭제 (트랜잭션 밖)
+      성공 → 완료
+      실패 → RuntimeException 재던짐 → Kafka 재시도 (FixedBackOff 1s × 3회)
 ```
+
+| 처리 대상 | 시점 | 결과 |
+|-----------|------|------|
+| Admin DB `products` | HTTP 응답 전 (동기) | status=DISABLE, deleteDt=now() |
+| Admin DB `admin_outbox_events` | 위와 같은 트랜잭션 | status=PENDING |
+| Product DB `products` | Kafka 소비 후 (비동기) | status=DISABLE, deleteDt=now() |
+| Product DB `products_schedule` | 위와 같은 트랜잭션 | delete_dt=now() (soft-delete) |
+| Elasticsearch | DB 커밋 직후 | 인덱스 삭제 |
 
 ### Multi-DataSource 구성
 
@@ -186,10 +219,15 @@ service/admin/src/main/java/jabaclass/admin/
 │   ├── infrastructure/
 │   │   ├── persistence/
 │   │   │   ├── ProductAdminJpaRepository.java
-│   │   │   └── ProductAdminRepositoryAdapter.java
-│   │   └── kafka/
-│   │       ├── AdminProductEvent.java          # 강제 내리기 이벤트 (type + productId)
-│   │       └── AdminProductEventPublisher.java # AFTER_COMMIT 이벤트 발행
+│   │   │   ├── ProductAdminRepositoryAdapter.java
+│   │   │   ├── OutboxEventJpaRepository.java   # FOR UPDATE SKIP LOCKED 쿼리
+│   │   │   └── OutboxEventRepositoryAdapter.java
+│   │   ├── kafka/
+│   │   │   └── AdminProductEvent.java          # 강제 내리기 이벤트 payload (type + productId)
+│   │   └── outbox/
+│   │       ├── EventType.java                  # PRODUCT_FORCE_DOWN("admin.product")
+│   │       ├── OutboxService.java              # 상태 전환 전용 @Transactional
+│   │       └── OutboxEventPoller.java          # @Scheduled 폴러
 │   └── presentation/
 │       ├── controller/
 │       │   ├── ProductAdminApi.java
@@ -319,10 +357,11 @@ public class WebMvcConfig implements WebMvcConfigurer {
 }
 ```
 
-### 상품 강제 내리기 — 이벤트 기반 처리
+### 상품 강제 내리기 — Outbox 패턴 기반 처리
 
-Admin 서비스에서 product soft delete 후 `@TransactionalEventListener(AFTER_COMMIT)`으로
-Kafka 이벤트를 발행한다. product 서비스가 이를 수신해 schedule 삭제와 ES 인덱스 삭제를 처리한다.
+Admin 서비스에서 product soft delete와 outbox 이벤트 저장을 같은 트랜잭션으로 묶는다.
+`OutboxEventPoller`가 주기적으로 폴링하여 Kafka에 발행한다.
+신뢰성 설계 상세(재시도, SKIP LOCKED, 보상 트랜잭션 등)는 [force-down-reliability.md](force-down-reliability.md)를 참고한다.
 
 #### Kafka 토픽 전략
 
@@ -335,56 +374,55 @@ payload: { "type": "FORCE_DOWN", "productId": "..." }
 ```
 
 ```java
-// Admin 서비스 - AdminProductEvent (payload)
-public record AdminProductEvent(String type, String productId) {
-    public static AdminProductEvent forceDown(UUID productId) {
-        return new AdminProductEvent("FORCE_DOWN", productId.toString());
-    }
+// Admin 서비스 - ProductAdminService
+@Transactional(transactionManager = "productTransactionManager")
+public void forceDownProduct(UUID productId) {
+    productAdminRepository.findById(productId)
+        .orElseThrow(() -> new BusinessException(AdminErrorCode.PRODUCT_NOT_FOUND))
+        .forceDown();
+
+    String payload = objectMapper.writeValueAsString(AdminProductEvent.forceDown(productId));
+    outboxEventRepository.save(OutboxEvent.create(
+        "product", productId.toString(), EventType.PRODUCT_FORCE_DOWN, payload
+    ));
 }
 
-// Admin 서비스 - AdminProductEventPublisher
-@Component
-@RequiredArgsConstructor
-public class AdminProductEventPublisher {
+// Admin 서비스 - OutboxEventPoller
+@Scheduled(fixedDelay = 1000)
+public void publish() {
+    LocalDateTime threshold = LocalDateTime.now().minusMinutes(5);
+    List<OutboxEvent> events = outboxEventRepository.findProcessableEvents(threshold, 100);
+    outboxService.markSending(events);
 
-    public static final String TOPIC = "admin.product";
-
-    private final KafkaTemplate<String, String> kafkaTemplate;
-    private final ObjectMapper objectMapper;
-
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    public void publish(AdminProductEvent event) {
+    for (OutboxEvent event : events) {
+        if (event.isRetryExceeded()) {
+            outboxService.markFailed(event);
+            continue;
+        }
         try {
-            kafkaTemplate.send(TOPIC, event.productId(), objectMapper.writeValueAsString(event));
+            ProducerRecord<String, String> record = new ProducerRecord<>(
+                event.getEventType().getTopic(), event.getAggregateId(), event.getPayload()
+            );
+            kafkaTemplate.send(record).get();
+            outboxService.markPublished(event);
         } catch (Exception e) {
-            throw new RuntimeException("AdminProductEvent 발행 실패", e);
+            outboxService.retry(event);
         }
     }
-}
-
-// Admin 서비스 - ProductAdminService
-@Transactional
-public void forceDownProduct(UUID productId) {
-    Product product = productAdminRepository.findById(productId)
-        .orElseThrow(() -> new BusinessException(AdminErrorCode.PRODUCT_NOT_FOUND));
-    product.forceDown();  // soft delete
-    applicationEventPublisher.publishEvent(AdminProductEvent.forceDown(productId));
 }
 ```
 
 ```java
-// Product 서비스 - AdminProductEventConsumer (product 서비스 담당자 구현)
-@KafkaListener(topics = AdminProductEventConsumer.TOPIC)
-public void consume(String message) {
-    AdminProductEvent event = objectMapper.readValue(message, AdminProductEvent.class);
-    switch (event.type()) {
-        case "FORCE_DOWN" -> {
-            // 1. 연관 Schedule 전체 soft delete
-            // 2. ES 인덱스 삭제
-            // 실패 시 보상 트랜잭션으로 Product 상태 복구
-        }
-    }
+// Product 서비스 - AdminProductEventHandler
+@Transactional
+public void processForceDown(UUID productId) {
+    Product product = productRepository.findById(productId)
+        .orElseThrow(() -> new BusinessException(CommonErrorCode.PRODUCT_NOT_FOUND));
+    product.changeStatus(ProductStatus.DISABLE);
+    product.changeDelete();
+    scheduleRepository.softDeleteByProductId(productId);
 }
+
 ```
 
 ### 엔티티 정의 주의사항
@@ -395,8 +433,42 @@ Admin 기능에 필요한 필드만 포함한 **읽기 전용에 가까운 가�
 
 ---
 
-## 협의 필요 사항
+## 구현 현황
 
-| 항목 | 담당 서비스 | 내용 |
-|------|------------|------|
-| 상품 강제 내리기 Kafka Consumer 구현 | product 서비스 | `admin.product` 토픽 수신 후 type=FORCE_DOWN 처리 → schedule soft delete + ES 삭제 + 보상 트랜잭션 구현 필요 |
+| 항목 | 상태 | 브랜치 |
+|------|------|--------|
+| Admin 모듈 전체 구현 (유저/상품/주문/정산/리뷰) | ✅ 완료 | `feature/admin/admin-init/218` |
+| 상품 강제 내리기 Kafka Consumer + Outbox 패턴 | ✅ 완료 | `feature/product/product-admin-delete-product/231` |
+
+### Admin 서비스 추가/수정 파일
+
+```
+service/admin/.../product/
+├── domain/model/
+│   ├── OutboxEvent.java              # admin_outbox_events 엔티티 (retryCount, SENDING 상태 등)
+│   └── OutboxStatus.java            # PENDING / SENDING / PUBLISHED / FAILED
+├── domain/repository/
+│   └── OutboxEventRepository.java
+└── infrastructure/
+    ├── persistence/
+    │   ├── OutboxEventJpaRepository.java    # FOR UPDATE SKIP LOCKED 네이티브 쿼리
+    │   └── OutboxEventRepositoryAdapter.java
+    └── outbox/
+        ├── EventType.java                   # PRODUCT_FORCE_DOWN("admin.product")
+        ├── OutboxService.java               # 상태 전환 전용 @Transactional
+        └── OutboxEventPoller.java           # @Scheduled(fixedDelay=1000) 폴러
+```
+
+### Product 서비스 추가/수정 파일
+
+```
+service/product/.../infrastructure/kafka/admin/
+├── AdminProductMessage.java         # 메시지 역직렬화 레코드
+├── AdminProductEventHandler.java    # DB 트랜잭션 처리 (processForceDown)
+└── AdminProductKafkaConsumer.java   # @KafkaListener + ES 삭제
+```
+
+수정된 파일:
+- `ScheduleRepository` — `softDeleteByProductId` 추가
+- `ScheduleJpaRepository` — `@Modifying(clearAutomatically=true, flushAutomatically=true)` bulk 쿼리 추가
+- `ScheduleRepositoryAdapter` — 위 인터페이스 구현 위임

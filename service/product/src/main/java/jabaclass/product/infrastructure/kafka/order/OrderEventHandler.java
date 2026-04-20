@@ -43,4 +43,16 @@ public class OrderEventHandler {
 		}
 		log.info("ORDER_RESERVATION_RELEASED 처리 완료. productUserId={}", productUserId);
 	}
+
+	@Transactional
+	public void handleOrderRefunded(UUID eventId, UUID productUserId) {
+		if (eventId != null && processedEventRepository.existsById(eventId)) {
+			return;
+		}
+		scheduleUseCase.restoringInventory(productUserId, ReservationStatus.REFUNDED);
+		if (eventId != null) {
+			processedEventRepository.save(ProcessedEvent.of(eventId));
+		}
+		log.info("ORDER_REFUNDED 처리 완료. productUserId={}", productUserId);
+	}
 }

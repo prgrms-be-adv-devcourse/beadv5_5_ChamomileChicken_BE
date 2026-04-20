@@ -26,6 +26,10 @@ public class PaymentEventsConsumer {
 	private final OrderUseCase orderUseCase;
 	private final ObjectMapper objectMapper;
 
+	// Kafka at-least-once 특성상 같은 메시지가 중복 수신될 수 있음
+	// 각 핸들러는 processed_events(eventId PK) 또는 상태 가드로 중복 처리 방어
+	// 예외 throw 시 → KafkaConsumerConfig의 DefaultErrorHandler가 1초 간격 3회 재시도
+	// 3회 초과 시 → payment.events.dlq 토픽으로 전송 (오프셋은 정상 커밋되어 다음 메시지 처리 계속)
 	@KafkaListener(topics = "payment.events", groupId = "order-service")
 	public void consume(ConsumerRecord<String, String> record) {
 		String eventType = new String(record.headers().lastHeader("eventType").value(), StandardCharsets.UTF_8);
@@ -41,6 +45,7 @@ public class PaymentEventsConsumer {
 			}
 		} catch (Exception e) {
 			log.error("payment.events 처리 실패. eventType={}, message={}", eventType, message, e);
+			// RuntimeException으로 전파해야 Spring Kafka가 재시도/DLQ 처리를 수행함
 			throw new RuntimeException("payment.events 이벤트 처리 실패: " + eventType, e);
 		}
 	}
@@ -73,7 +78,7 @@ public class PaymentEventsConsumer {
 
 	private void handlePaymentRefunded(String message) throws Exception {
 		PaymentRefundCompletedEvent event = objectMapper.readValue(message, PaymentRefundCompletedEvent.class);
-		log.info("PAYMENT_REFUNDED 수신. orderId={} (환불 미구현)", event.orderId());
-		// orderUseCase.refund(event.orderId());
+		orderUseCase.completeRefund(event.eventId(), event.orderId(), event.depositRefundAmount());
+		log.info("PAYMENT_REFUNDED 처리 완료. orderId={}", event.orderId());
 	}
 }

@@ -9,9 +9,14 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import jabaclass.payment.application.usecase.PaymentSettlementQueryUseCase;
+import jabaclass.payment.application.usecase.PaymentUseCase;
+import jabaclass.payment.presentation.dto.request.InternalRefundRequestDto;
+import jabaclass.payment.presentation.dto.response.InternalRefundResponseDto;
 import jabaclass.payment.presentation.dto.response.PaymentSettlementSliceResponseDto;
 import jabaclass.payment.presentation.dto.response.RefundSettlementSliceResponseDto;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 
 @RestController
 @RequestMapping("/api/v1/payments")
@@ -19,6 +24,12 @@ import lombok.RequiredArgsConstructor;
 public class PaymentInternalController implements PaymentInternalApi {
 
 	private final PaymentSettlementQueryUseCase paymentSettlementQueryUseCase;
+	private final PaymentUseCase paymentUseCase;
+
+	@PostMapping("/internal/refunds")
+	public InternalRefundResponseDto refundByOrder(@RequestBody InternalRefundRequestDto request) {
+		return paymentUseCase.refundByOrder(request);
+	}
 
 	@Override
 	@GetMapping("/settlement-targets")

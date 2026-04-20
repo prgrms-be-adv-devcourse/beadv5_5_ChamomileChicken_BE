@@ -326,4 +326,10 @@ public class ScheduleService implements ScheduleUseCase {
 		}
 	}
 
+	@Override
+	@Transactional(readOnly = true)
+	public LocalDate getScheduleStartDate(UUID scheduleId) {
+		return findByIdOrThrow(scheduleId).getScheduleDt();
+	}
+
 }

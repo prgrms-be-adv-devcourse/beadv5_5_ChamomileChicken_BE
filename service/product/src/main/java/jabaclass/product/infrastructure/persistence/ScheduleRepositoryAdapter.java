@@ -91,4 +91,9 @@ public class ScheduleRepositoryAdapter implements ScheduleRepository {
 		return scheduleJpaRepository.bulkClose(ids, status, closedStatus);
 	}
 
+	@Override
+	public int softDeleteByProductId(UUID productId) {
+		return scheduleJpaRepository.softDeleteByProductId(productId);
+	}
+
 }
