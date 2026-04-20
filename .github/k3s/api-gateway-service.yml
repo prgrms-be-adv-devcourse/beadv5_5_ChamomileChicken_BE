@@ -52,7 +52,7 @@ spec:
               memory: "640Mi"
 
           startupProbe:
-            tcpSocket:
+            httpGet:
               port: 8080
             initialDelaySeconds: 10
             periodSeconds: 10

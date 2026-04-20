@@ -31,7 +31,7 @@ cleanup() {
 trap cleanup EXIT
 
 print_rollout_diagnostics() {
- local deployment_name="$1"
+   local deployment_name="$1"
    local service_name="$2"
    echo "Rollout failed. Collecting Kubernetes diagnostics..."
    echo "===== deployment ====="
