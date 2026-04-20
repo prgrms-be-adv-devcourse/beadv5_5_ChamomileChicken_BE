@@ -6,6 +6,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 import jabaclass.ai.domain.repository.ProductEmbeddingRepository;
+import jabaclass.ai.infrastructure.persistence.command.ProductEmbeddingUpsertCommand;
 import lombok.RequiredArgsConstructor;
 
 @Repository
@@ -19,7 +20,7 @@ public class ProductEmbeddingRepositoryImpl implements ProductEmbeddingRepositor
 
 		String sql = """
             SELECT embedding
-            FROM products_ai
+            FROM product_embeddings
             WHERE id = ?
         """;
 
@@ -34,6 +35,52 @@ public class ProductEmbeddingRepositoryImpl implements ProductEmbeddingRepositor
 
 				return parseVector(vectorStr);
 			}
+		);
+	}
+
+	@Override
+	public void upsert(ProductEmbeddingUpsertCommand command) {
+		String sql = """
+			INSERT INTO product_embeddings (
+				id,
+				title,
+				description,
+				price,
+				road_address,
+				status,
+				popularity,
+				embedding
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?::vector)
+			ON CONFLICT (id) DO UPDATE SET
+				title = EXCLUDED.title,
+				description = EXCLUDED.description,
+				price = EXCLUDED.price,
+				road_address = EXCLUDED.road_address,
+				status = EXCLUDED.status,
+				popularity = EXCLUDED.popularity,
+				embedding = EXCLUDED.embedding
+		""";
+
+		jdbcTemplate.update(
+			sql,
+			ps -> {
+				ps.setObject(1, command.productId());
+				ps.setString(2, command.title());
+				ps.setString(3, command.description());
+				ps.setBigDecimal(4, command.price());
+				ps.setString(5, command.roadAddress());
+				ps.setString(6, command.status());
+				ps.setObject(7, command.popularity());
+				ps.setString(8, toPgVector(command.embedding()));
+			}
+		);
+	}
+
+	@Override
+	public void deleteByProductId(UUID productId) {
+		jdbcTemplate.update(
+			"DELETE FROM product_embeddings WHERE id = ?",
+			ps -> ps.setObject(1, productId)
 		);
 	}
 
@@ -52,5 +99,15 @@ public class ProductEmbeddingRepositoryImpl implements ProductEmbeddingRepositor
 		}
 
 		return result;
+	}
+
+	private String toPgVector(float[] vector) {
+		StringBuilder sb = new StringBuilder("[");
+		for (int i = 0; i < vector.length; i++) {
+			sb.append(vector[i]);
+			if (i < vector.length - 1) sb.append(",");
+		}
+		sb.append("]");
+		return sb.toString();
 	}
 }

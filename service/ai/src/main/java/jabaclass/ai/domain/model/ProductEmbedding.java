@@ -1,5 +1,6 @@
 package jabaclass.ai.domain.model;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
 import jakarta.persistence.Column;
@@ -16,22 +17,22 @@ import lombok.NoArgsConstructor;
 public class ProductEmbedding {
 
 	@Id
-	@Column(name = "product_id", nullable = false)
-	private UUID productId;
+	private UUID id;
 
-	@Column(name = "embedding", nullable = false, columnDefinition = "vector(768)")
+	private String title;
+
+	@Column(columnDefinition = "TEXT")
+	private String description;
+
+	private BigDecimal price;
+
+	@Column(name = "road_address")
+	private String roadAddress;
+
+	private String status;
+
+	private Integer popularity;
+
+	@Column(columnDefinition = "vector(768)", nullable = false)
 	private String embedding;
-
-	public ProductEmbedding(UUID productId, String embedding) {
-		this.productId = productId;
-		this.embedding = embedding;
-	}
-
-	public static ProductEmbedding create(UUID productId, String embedding) {
-		return new ProductEmbedding(productId, embedding);
-	}
-
-	public void changeEmbedding(String embedding) {
-		this.embedding = embedding;
-	}
 }
