@@ -44,10 +44,11 @@ GET  /api/v1/products/**
 /api/v1/email/**       → :9003 (User)
 /api/v1/products/**    → :9004 (Product)
 /api/v1/orders/**      → :9005 (Order)
+/api/v1/internal-batch/settlements/** → :9002 (Settlement)
 /api/v1/admins/**      → :9007 (Admin)
 ```
 
-> `/api/v1/deposits/**`, `/api/v1/refunds`, `/settlements/**`, `/internal-batch/**`는 게이트웨이 미등록
+> `/api/v1/deposits/**`, `/api/v1/refunds`는 게이트웨이 미등록
 
 ---
 

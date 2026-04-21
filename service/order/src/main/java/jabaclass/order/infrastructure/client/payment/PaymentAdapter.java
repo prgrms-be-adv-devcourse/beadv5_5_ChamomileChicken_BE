@@ -25,7 +25,7 @@ public class PaymentAdapter implements PaymentPort {
 	private String paymentBaseUrl;
 
 	@Override
-	public BigDecimal refund(UUID orderId, BigDecimal refundRate) {
+	public InternalRefundResponseDto refund(UUID orderId, BigDecimal refundRate) {
 		InternalRefundResponseDto response = restTemplate.postForObject(
 			paymentBaseUrl + "/api/v1/payments/internal/refunds",
 			new InternalRefundRequestDto(orderId, refundRate),
@@ -34,7 +34,7 @@ public class PaymentAdapter implements PaymentPort {
 		if (response == null) {
 			throw new BusinessException(OrderErrorCode.EXTERNAL_PAYMENT_ERROR);
 		}
-		return response.depositRefundAmount();
+		return response;
 	}
 
 	@Override

@@ -11,6 +11,8 @@ import jabaclass.payment.domain.model.Refund;
 public interface RefundRepository {
 	Refund save(Refund refund);
 
+	Optional<Refund> findByPaymentId(UUID paymentId);
+
 	Optional<Refund> findLatestCompletedByPaymentId(UUID paymentId);
 
 	List<SettlementRefundSource> findSettlementRefundSources(

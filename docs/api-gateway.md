@@ -103,6 +103,10 @@ DB(`gateway_route_policy`)에서 조회하며, Caffeine 로컬 캐시(TTL 3분)�
 | GET | /api/v1/settlements | SELLER,ADMIN | 정산 목록 조회 |
 | GET | /api/v1/settlements/ready | SELLER,ADMIN | READY 정산 목록 |
 | GET | /api/v1/settlements/* | SELLER,ADMIN | 정산 단건 조회 |
+| GET | /api/v1/settlements/me | SELLER,ADMIN | 판매자 정산 목록 조회 |
+| GET | /api/v1/settlements/me/*/details | SELLER,ADMIN | 판매자 정산 상세 항목 조회 |
+| POST | /api/v1/internal-batch/settlements/calculate | ADMIN | 정산 계산 배치 수동 실행 |
+| POST | /api/v1/internal-batch/settlements/transfer | ADMIN | 정산 송금 배치 수동 실행 |
 | GET | /api/v1/admins/** | ADMIN | 어드민 조회 |
 | POST | /api/v1/admins/** | ADMIN | 어드민 등록 |
 | PATCH | /api/v1/admins/** | ADMIN | 어드민 수정 |
@@ -134,6 +138,7 @@ Spring Cloud Gateway는 WebFlux(Netty 이벤트 루프) 기반이므로 JDBC(블
 | /api/v1/files/** | File | 9000 |
 | /api/v1/payments/** | Payment | 9001 |
 | /api/v1/settlements/** | Settlement | 9002 |
+| /api/v1/internal-batch/settlements/** | Settlement | 9002 |
 | /api/v1/email/** | User (Rate Limit 적용) | 9003 |
 | /api/v1/auth/**, /api/v1/users/**, /api/v1/deposits/**, /oauth2/authorization/**, /login/oauth2/code/** | User | 9003 |
 | /api/v1/products/** | Product | 9004 |

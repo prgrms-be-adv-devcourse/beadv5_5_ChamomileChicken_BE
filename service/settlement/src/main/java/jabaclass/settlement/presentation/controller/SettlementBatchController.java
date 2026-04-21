@@ -21,7 +21,7 @@ import jabaclass.settlement.application.exception.SettlementBatchErrorCode;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/internal-batch/settlements")
+@RequestMapping("/api/v1/internal-batch/settlements")
 @RequiredArgsConstructor
 public class SettlementBatchController implements SettlementBatchApi {
 

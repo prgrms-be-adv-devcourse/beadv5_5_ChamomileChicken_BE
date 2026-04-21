@@ -2,7 +2,9 @@
 
 > 인증 범례 및 공통 응답 형식 → [API_SPEC.md](../API_SPEC.md)
 
-> ⚠️ Settlement 서비스 전체가 게이트웨이 미등록 상태이므로 현재 모든 경로는 직접 접근 기준으로 열려 있다.
+> 외부 호출은 API Gateway 기준 경로(`/api/v1/...`)를 사용한다.
+
+> 정산 대상(`SettlementTarget`) 적재는 외부 REST 호출이 아니라 Kafka `settlement.events` 소비로 들어온다.
 
 ---
 
@@ -10,11 +12,13 @@
 
 | Method | Path | Auth | 설명 |
 |--------|------|------|------|
-| GET | `/settlements` | ❌ 미등록 | 특정 월의 전체 정산 목록 조회 |
-| GET | `/settlements/ready` | ❌ 미등록 | 특정 월의 `READY` 상태 정산 목록 조회 |
-| GET | `/settlements/{settlementId}` | ❌ 미등록 | 정산 단건 조회 |
+| GET | `/api/v1/settlements` | ✅ JWT | 특정 월의 전체 정산 목록 조회 |
+| GET | `/api/v1/settlements/ready` | ✅ JWT | 특정 월의 `READY` 상태 정산 목록 조회 |
+| GET | `/api/v1/settlements/{settlementId}` | ✅ JWT | 정산 단건 조회 |
+| GET | `/api/v1/settlements/me` | ✅ JWT | 헤더의 판매자 ID 기준 정산 목록 페이지 조회 |
+| GET | `/api/v1/settlements/me/{settlementId}/details` | ✅ JWT | 헤더의 판매자 ID 기준 정산 상세 항목 페이지 조회 |
 
-### GET `/settlements`
+### GET `/api/v1/settlements`
 
 특정 월의 전체 정산 목록을 조회한다.
 
@@ -48,7 +52,7 @@
 
 응답은 래핑 객체 없이 `SettlementResponse` 배열을 그대로 반환한다.
 
-### GET `/settlements/ready`
+### GET `/api/v1/settlements/ready`
 
 특정 월의 `READY` 상태 정산 목록만 조회한다.
 
@@ -80,7 +84,7 @@
 ]
 ```
 
-### GET `/settlements/{settlementId}`
+### GET `/api/v1/settlements/{settlementId}`
 
 정산 ID로 단건 정산을 조회한다.
 
@@ -116,14 +120,136 @@
 |------|------|------|
 | `404` | `SETTLEMENT_NOT_FOUND` | 정산 정보를 찾을 수 없음 |
 
+### GET `/api/v1/settlements/me`
+
+헤더의 `X-User-Id`를 판매자 ID로 사용해 자신의 정산 목록을 페이지 조회한다.
+
+**Headers**
+
+| 헤더 | 필수 | 설명 |
+|------|------|------|
+| `X-User-Id` | O | 판매자 ID |
+
+**Query Parameters**
+
+| 파라미터 | 타입 | 필수 | 설명 |
+|---------|------|------|------|
+| `page` | Number | X | 페이지 번호, 기본값 `0` |
+| `size` | Number | X | 페이지 크기, 기본값 `20`, 최대 `100` |
+
+**Response** `200 OK`
+
+```json
+{
+  "items": [
+    {
+      "id": "8a4a3d3e-fc3c-4a82-a861-8cf9e9f0e111",
+      "sellerId": "8d6c6d4f-5cb8-45b3-a0e7-24b4d227d111",
+      "settlementMonth": "2026-03",
+      "originalAmount": 150000,
+      "sellerGradeCode": "BASIC",
+      "sellerGradePolicyId": "3cb8a7a4-b48e-4e60-b4c0-7b13c54f1111",
+      "gradeBaseAmount": 420000,
+      "feeAmount": 12000,
+      "feeRate": 0.08,
+      "settlementAmount": 138000,
+      "status": "READY",
+      "transferredAt": null,
+      "failReason": null
+    }
+  ],
+  "page": 0,
+  "size": 20,
+  "totalElements": 1,
+  "totalPages": 1,
+  "hasNext": false
+}
+```
+
+### GET `/api/v1/settlements/me/{settlementId}/details`
+
+헤더의 `X-User-Id`를 판매자 ID로 사용해 자신의 정산 상세 항목을 페이지 조회한다.
+
+**Headers**
+
+| 헤더 | 필수 | 설명 |
+|------|------|------|
+| `X-User-Id` | O | 판매자 ID |
+
+**Path Parameters**
+
+| 파라미터 | 타입 | 설명 |
+|---------|------|------|
+| `settlementId` | UUID | 조회할 정산 ID |
+
+**Query Parameters**
+
+| 파라미터 | 타입 | 필수 | 설명 |
+|---------|------|------|------|
+| `page` | Number | X | 페이지 번호, 기본값 `0` |
+| `size` | Number | X | 페이지 크기, 기본값 `20`, 최대 `100` |
+
+**Response** `200 OK`
+
+```json
+{
+  "settlement": {
+    "id": "8a4a3d3e-fc3c-4a82-a861-8cf9e9f0e111",
+    "sellerId": "8d6c6d4f-5cb8-45b3-a0e7-24b4d227d111",
+    "settlementMonth": "2026-03",
+    "originalAmount": 150000,
+    "sellerGradeCode": "BASIC",
+    "sellerGradePolicyId": "3cb8a7a4-b48e-4e60-b4c0-7b13c54f1111",
+    "gradeBaseAmount": 420000,
+    "feeAmount": 12000,
+    "feeRate": 0.08,
+    "settlementAmount": 138000,
+    "status": "READY",
+    "transferredAt": null,
+    "failReason": null
+  },
+  "items": [
+    {
+      "settlementTargetCalculationId": "f1d9a913-2c4d-4f53-85cf-f31d8d5d1111",
+      "settlementTargetId": "c43c4223-4567-49f1-b4ff-3a6b2e7c1111",
+      "orderId": "7780d5d3-7d8d-49a2-b2ad-c0fd71ef1111",
+      "paymentId": "2a3e7c40-d317-49a8-a61f-13d6b92f1111",
+      "refundId": null,
+      "productId": "c527ca4e-d334-4b4e-9f11-a479ef7d1111",
+      "targetType": "PAYMENT",
+      "targetSettlementBaseAmount": 150000,
+      "calculatedSettlementBaseAmount": 150000,
+      "calculationStatus": "CALCULATED",
+      "appliedPromotionId": null,
+      "appliedPromotionType": null,
+      "appliedFeeRate": null,
+      "originalPaymentTargetCalculationId": null,
+      "occurredAt": "2026-03-10T10:00:00",
+      "calculatedAt": "2026-04-01T02:10:00"
+    }
+  ],
+  "page": 0,
+  "size": 20,
+  "totalElements": 1,
+  "totalPages": 1,
+  "hasNext": false
+}
+```
+
+**주요 에러**
+
+| HTTP | 코드 | 설명 |
+|------|------|------|
+| `404` | `SETTLEMENT_NOT_FOUND` | 정산 정보를 찾을 수 없거나 다른 판매자의 정산임 |
+
 ---
 
 ## 배치 API (Internal Batch)
 
 | Method | Path | Auth | 설명 |
 |--------|------|------|------|
-| POST | `/internal-batch/settlements/calculate` | ⚙️ Internal | 정산 계산 배치 수동 실행 |
-| POST | `/internal-batch/settlements/transfer` | ⚙️ Internal | 정산 송금 배치 수동 실행 |
+| POST | `/api/v1/internal-batch/settlements/calculate` | ⚙️ Internal | 정산 계산 배치 수동 실행 |
+| POST | `/api/v1/internal-batch/settlements/transfer` | ⚙️ Internal | 정산 송금 배치 수동 실행 |
 
 **공통 Query Parameters**
 
@@ -131,7 +257,7 @@
 |---------|------|------|------|
 | `settlementMonth` | String (`yyyy-MM`) | X | 미입력 시 전월 기준 실행 |
 
-### POST `/internal-batch/settlements/calculate`
+### POST `/api/v1/internal-batch/settlements/calculate`
 
 `settlementCalculateJob`을 실행한다.
 
@@ -150,6 +276,12 @@
 - 정산 상세가 필요할 때는 `SettlementTargetCalculation`과 `SettlementTarget`을 조합해 조회한다.
 - 판매자 등급 정보가 없으면 `BASIC` 등급을 우선 사용한다.
 
+정산 타겟 적재 메모:
+
+- `settlement.events` 소비로 `SettlementTarget`이 저장된다.
+- 이벤트 payload의 `eventId`는 `SettlementTarget.sourceEventId`로 저장된다.
+- `sourceEventId` 유니크 제약으로 동일 이벤트 재수신을 멱등 처리한다.
+
 **Response** `200 OK`
 
 ```text
@@ -164,7 +296,7 @@
 | `409` | `SETTLEMENT_BATCH_ALREADY_RUNNING` | 이미 같은 배치가 실행 중 |
 | `500` | `SETTLEMENT_CALCULATE_FAILED` | 정산 계산 배치 실행 실패 |
 
-### POST `/internal-batch/settlements/transfer`
+### POST `/api/v1/internal-batch/settlements/transfer`
 
 `settlementTransferJob`을 실행한다.
 

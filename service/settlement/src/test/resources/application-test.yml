@@ -20,6 +20,12 @@ spring:
       enabled: false
     jdbc:
       initialize-schema: always
+  kafka:
+    bootstrap-servers: ${spring.embedded.kafka.brokers:localhost:9092}
+    consumer:
+      auto-offset-reset: earliest
+
+spring.task.scheduling.enabled: false
 
 clients:
   payment:

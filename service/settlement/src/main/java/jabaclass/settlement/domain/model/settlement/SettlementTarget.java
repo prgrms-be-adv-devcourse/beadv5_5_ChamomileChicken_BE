@@ -21,6 +21,9 @@ import jabaclass.settlement.domain.model.BaseEntity;
 @Table(name = "settlement_targets")
 public class SettlementTarget extends BaseEntity {
 
+	@Column(name = "source_event_id", nullable = false, unique = true, updatable = false)
+	private UUID sourceEventId;
+
 	@Column(name = "settlement_month", nullable = false, length = 7)
 	private String settlementMonth;
 
@@ -63,6 +66,7 @@ public class SettlementTarget extends BaseEntity {
 	private String calculationFailedReason;
 
 	private SettlementTarget(
+		UUID sourceEventId,
 		String settlementMonth,
 		UUID sellerId,
 		UUID orderId,
@@ -73,6 +77,7 @@ public class SettlementTarget extends BaseEntity {
 		BigDecimal settlementBaseAmount,
 		LocalDateTime occurredAt
 	) {
+		validateRequiredId(sourceEventId, "이벤트 ID");
 		validateSettlementMonth(settlementMonth);
 		validateRequiredId(sellerId, "판매자 ID");
 		validateRequiredId(orderId, "주문 ID");
@@ -82,6 +87,7 @@ public class SettlementTarget extends BaseEntity {
 		validateOccurredAt(occurredAt);
 		validateReferenceIds(targetType, paymentId, refundId);
 
+		this.sourceEventId = sourceEventId;
 		this.settlementMonth = settlementMonth;
 		this.sellerId = sellerId;
 		this.orderId = orderId;
@@ -96,6 +102,7 @@ public class SettlementTarget extends BaseEntity {
 	}
 
 	public static SettlementTarget forPayment(
+		UUID sourceEventId,
 		String settlementMonth,
 		UUID sellerId,
 		UUID orderId,
@@ -105,6 +112,7 @@ public class SettlementTarget extends BaseEntity {
 		LocalDateTime occurredAt
 	) {
 		return new SettlementTarget(
+			sourceEventId,
 			settlementMonth,
 			sellerId,
 			orderId,
@@ -118,6 +126,7 @@ public class SettlementTarget extends BaseEntity {
 	}
 
 	public static SettlementTarget forRefund(
+		UUID sourceEventId,
 		String settlementMonth,
 		UUID sellerId,
 		UUID orderId,
@@ -128,6 +137,7 @@ public class SettlementTarget extends BaseEntity {
 		LocalDateTime occurredAt
 	) {
 		return new SettlementTarget(
+			sourceEventId,
 			settlementMonth,
 			sellerId,
 			orderId,

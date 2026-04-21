@@ -1,14 +1,13 @@
 package jabaclass.order.application.port.internal;
 
-
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
-import java.math.BigDecimal;
 
 import jabaclass.order.domain.model.OrderStatus;
+import jabaclass.order.infrastructure.kafka.payment.dto.PaymentCompletedEvent;
 import jabaclass.order.presentation.dto.request.CreateOrderRequestDto;
 import jabaclass.order.presentation.dto.request.OrderBulkReadRequestDto;
-import jabaclass.order.presentation.dto.request.UpdateOrderPaymentStatusRequestDto;
 import jabaclass.order.presentation.dto.response.CreateOrderResponseDto;
 import jabaclass.order.presentation.dto.response.OrderRefundInfoResponseDto;
 import jabaclass.order.presentation.dto.response.OrderSettlementItemResponseDto;
@@ -26,11 +25,11 @@ public interface OrderUseCase {
 
     boolean validatePaymentAmount(UUID orderId, BigDecimal amount);
 
-    void updatePaymentStatus(UUID eventId, UUID orderId, UpdateOrderPaymentStatusRequestDto requestDto);
+    void completePayment(PaymentCompletedEvent event);
+
+    void failPayment(UUID eventId, UUID orderId, BigDecimal depositAmount);
 
     void expireOrder(UUID eventId, UUID orderId, BigDecimal depositAmount);
-
-    void completeRefund(UUID eventId, UUID orderId, BigDecimal depositRefundAmount);
 
     void refund(UUID userId, UUID orderId);
 

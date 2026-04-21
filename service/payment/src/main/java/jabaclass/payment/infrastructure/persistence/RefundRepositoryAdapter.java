@@ -25,6 +25,11 @@ public class RefundRepositoryAdapter implements RefundRepository {
 	}
 
 	@Override
+	public Optional<Refund> findByPaymentId(UUID paymentId) {
+		return refundJpaRepository.findByPaymentId(paymentId);
+	}
+
+	@Override
 	public Optional<Refund> findLatestCompletedByPaymentId(UUID paymentId) {
 		return refundJpaRepository.findFirstByPaymentIdAndStatusOrderByProcessedAtDesc(
 			paymentId,

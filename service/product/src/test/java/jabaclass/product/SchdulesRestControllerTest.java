@@ -46,6 +46,7 @@ class SchdulesRestControllerTest {
 	private static final UUID SCHEDULE_ID = UUID.fromString("223e4567-e89b-12d3-a456-426614174000");
 	private static final UUID USER_ID = UUID.fromString("323e4567-e89b-12d3-a456-426614174000");
 	private static final UUID PRODUCT_USER_ID = UUID.fromString("423e4567-e89b-12d3-a456-426614174000");
+	private static final UUID SELLER_ID = UUID.fromString("523e4567-e89b-12d3-a456-426614174000");
 
 	private CreateScheduleRequestDto createRequest;
 	private UpdateScheduleRequestDto updateRequest;
@@ -116,7 +117,13 @@ class SchdulesRestControllerTest {
 	@Test
 	void 예약_검증_요청이_들어오면_유스케이스를_호출한다() {
 		OrderRequestDto request = new OrderRequestDto(SCHEDULE_ID, USER_ID, 2, new BigDecimal("10000"));
-		OrderResponseDto response = new OrderResponseDto(new BigDecimal("10000"), 2, OrderValid.OK, PRODUCT_USER_ID);
+		OrderResponseDto response = new OrderResponseDto(
+			new BigDecimal("10000"),
+			2,
+			OrderValid.OK,
+			PRODUCT_USER_ID,
+			SELLER_ID
+		);
 		given(scheduleUseCase.verification(request)).willReturn(response);
 
 		ResponseEntity<OrderResponseDto> result = schdulesRestController.schedulesReservations(request);
