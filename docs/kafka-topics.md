@@ -34,7 +34,6 @@
 | `PAYMENT_COMPLETED` | 결제 완료 | order-service |
 | `PAYMENT_FAILED` | 결제 실패 | order-service |
 | `PAYMENT_EXPIRED` | 결제 만료 | order-service |
-| `PAYMENT_REFUNDED` | 환불 완료 | order-service |
 
 ### `order.events` (order-service → 여러 서비스)
 
@@ -84,6 +83,12 @@ header  = eventType: PAYMENT_COMPLETED
 value   = {"eventId":"...","paymentId":"p1","orderId":"o1","productId":"prd1","totalAmount":10000,"occurredAt":"2026-04-20T12:00:00"}
 ```
 
+정산 이벤트 적재 규칙:
+
+- `settlement-service`는 payload의 `eventId`를 `SettlementTarget.sourceEventId`로 저장한다.
+- `source_event_id` 유니크 제약으로 동일 이벤트 재수신을 멱등 처리한다.
+- Kafka `key`는 파티션 순서 보장을 위한 `orderId`이며, 멱등키는 payload의 `eventId`다.
+
 ---
 
 ## 현재 → 변경 매핑
@@ -93,7 +98,6 @@ value   = {"eventId":"...","paymentId":"p1","orderId":"o1","productId":"prd1","t
 | `payment.completed` | `payment.events` | `PAYMENT_COMPLETED` |
 | `payment.failed` | `payment.events` | `PAYMENT_FAILED` |
 | `payment.expired` | `payment.events` | `PAYMENT_EXPIRED` |
-| `payment.refund.completed` | `payment.events` | `PAYMENT_REFUNDED` |
 | `order.reservation.confirmed` | `order.events` | `ORDER_RESERVATION_CONFIRMED` |
 | `order.reservation.released` | `order.events` | `ORDER_RESERVATION_RELEASED` |
 | `order.expired` | `order.events` | `ORDER_EXPIRED` |
@@ -121,7 +125,7 @@ Kafka는 같은 파티션 키를 가진 메시지만 순서를 보장한다. 파
 
 ### payment.events 파티션 키: `paymentId`
 
-모든 `payment.events` 이벤트는 `paymentId`를 파티션 키로 사용한다. 같은 결제의 이벤트(COMPLETED, REFUNDED 등)가 항상 같은 파티션에서 처리된다.
+모든 `payment.events` 이벤트는 `paymentId`를 파티션 키로 사용한다. 같은 결제의 이벤트(COMPLETED, FAILED, EXPIRED 등)가 항상 같은 파티션에서 처리된다.
 
 ### Eventual Consistency — 결제 완료 후 즉시 환불 시도 문제
 

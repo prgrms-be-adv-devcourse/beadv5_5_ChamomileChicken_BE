@@ -10,6 +10,7 @@
 |------|------|
 | 정산 계산 | 건별 정산 계산 후 판매자 월 정산 생성 |
 | 정산 조회 | 특정 월 정산 목록, READY 상태 정산, 단건 정산 조회 |
+| 판매자 정산 조회 | 헤더의 판매자 ID 기준 정산 목록/상세 항목 페이지 조회 |
 | 송금 처리 | 판매자 정산 계좌를 조회한 뒤 송금 어댑터를 통해 이체 요청 |
 | 배치 스케줄링 | 정산 계산, 송금 배치의 스케줄 실행 |
 
@@ -24,6 +25,8 @@
 | 정산 조회 | `GET /settlements` | 월별 정산 목록 조회 |
 | 정산 조회 | `GET /settlements/ready` | READY 상태 정산 목록 조회 |
 | 정산 조회 | `GET /settlements/{settlementId}` | 정산 단건 조회 |
+| 판매자 정산 조회 | `GET /seller/settlements` | 헤더의 판매자 ID 기준 정산 목록 페이지 조회 |
+| 판매자 정산 조회 | `GET /seller/settlements/{settlementId}/details` | 헤더의 판매자 ID 기준 정산 상세 항목 페이지 조회 |
 | 배치 실행 | `POST /internal-batch/settlements/calculate` | 정산 계산 배치 수동 실행 |
 | 배치 실행 | `POST /internal-batch/settlements/transfer` | 정산 송금 배치 수동 실행 |
 
@@ -41,7 +44,9 @@ Batch Scheduler / Controller
 
 - 실시간 트랜잭션 처리보다 배치 처리 중심 성격이 강하다.
 - 정산 계산의 기준 키는 `sellerId + settlementMonth` 조합이다.
-- `SettlementTarget`은 외부 이벤트나 별도 적재 절차로 이미 저장되어 있다고 가정한다.
+- `SettlementTarget`은 `settlement.events` Kafka 소비를 통해 적재된다.
+- `SettlementTarget`에는 이벤트 고유 식별자 `sourceEventId`가 함께 저장된다.
+- 동일 이벤트 재수신은 `SettlementTarget.sourceEventId` 유니크 제약으로 멱등 처리한다.
 - 정산 계산은 `SettlementTarget -> SettlementTargetCalculation -> Settlement` 순서로 진행된다.
 - 송금 단계에서는 user 서비스의 정산 계좌 조회와 transfer 서비스 호출이 함께 동작한다.
 
@@ -55,7 +60,8 @@ Batch Scheduler / Controller
 
 - JWT 검증 자체는 서비스 내부 책임이 아니다.
 - API Gateway가 인증에 성공하면 `X-User-Id`, `X-User-Role` 헤더를 downstream 서비스로 전달할 수 있다.
-- 다만 현재 정산 API는 요청자의 `userId`를 실제 비즈니스 조건으로 사용하지 않는다.
+- 운영/배치용 정산 API는 요청자의 `userId`를 비즈니스 조건으로 사용하지 않는다.
+- 판매자 전용 조회 API는 `X-User-Id`를 판매자 ID로 해석해 자신의 정산만 조회한다.
 
 즉 현재 정산 서비스는 아래 상태로 이해하면 된다.
 
@@ -76,7 +82,7 @@ Batch Scheduler / Controller
 
 | 엔티티 | 설명 | 핵심 필드 |
 |--------|------|-----------|
-| `SettlementTarget` | 결제/환불 원천에서 적재된 정산 대상 데이터 | `sellerId`, `orderId`, `productId`, `paymentId`, `refundId`, `settlementMonth`, `settlementBaseAmount`, `targetType`, `occurredAt`, `calculationStatus` |
+| `SettlementTarget` | 결제/환불 원천 이벤트에서 적재된 정산 대상 데이터 | `sourceEventId`, `sellerId`, `orderId`, `productId`, `paymentId`, `refundId`, `settlementMonth`, `settlementBaseAmount`, `targetType`, `occurredAt`, `calculationStatus` |
 | `SettlementTargetCalculation` | 정산 대상 1건을 월 정산 집계용으로 정규화한 계산 결과 | `settlementTargetId`, `settlementBaseAmount`, `appliedPromotionId`, `appliedPromotionType`, `appliedFeeRate`, `originalPaymentTargetCalculationId` |
 | `Settlement` | 판매자별 월 정산 결과 스냅샷 | `sellerId`, `settlementMonth`, `sellerGradeCode`, `sellerGradePolicyId`, `gradeBaseAmount`, `feeAmount`, `feeRate`, `settlementAmount`, `status` |
 | `SettlementTransfer` | 송금 요청과 결과 이력 | `settlementId`, `transferStatus`, `bankCode`, `accountNumberMasked`, `amount`, `requestedAt`, `completedAt`, `failReason` |
@@ -103,6 +109,7 @@ Batch Scheduler / Controller
 ```text
 presentation/controller/
   SettlementController.java
+  SellerSettlementController.java
   SettlementBatchController.java
 
 application/service/
@@ -190,6 +197,8 @@ infrastructure/persistence/
 | 월별 정산 조회 | `settlementMonth` 기준 전체 정산 조회 |
 | READY 정산 조회 | 송금 전 상태의 정산만 조회 |
 | 정산 단건 조회 | 정산 ID 기준 상세 조회 |
+| 판매자 정산 목록 조회 | 헤더 판매자 ID 기준 정산 목록 페이지 조회 |
+| 판매자 정산 상세 조회 | 헤더 판매자 ID 기준 `SettlementTargetCalculation + SettlementTarget` 상세 항목 페이지 조회 |
 
 ### SettlementCalculateService
 
@@ -255,6 +264,25 @@ SettlementScheduler or SettlementBatchController
 - 정산 상세가 필요하면 `Settlement`의 `sellerId + settlementMonth` 기준으로 `SettlementTargetCalculation`과 `SettlementTarget`을 조합해 조회한다.
 - 등급 정보가 없으면 테스트 및 초기 운영 안정성을 위해 `BASIC` 등급을 우선 사용한다.
 
+### 1-1. 정산 타겟 적재
+
+정산 타겟 적재는 배치가 아니라 Kafka 소비로 수행된다.
+
+```text
+order-service
+  -> settlement.events 발행
+    -> settlement-service / SettlementEventsConsumer
+      -> SettlementTargetEventHandler
+        -> SettlementTarget 저장
+```
+
+핵심 포인트:
+
+- `SETTLEMENT_PAYMENT_COMPLETED`, `SETTLEMENT_REFUND_COMPLETED` 두 이벤트를 소비한다.
+- 이벤트 payload의 `eventId`를 `SettlementTarget.sourceEventId`로 저장한다.
+- `sourceEventId`는 유니크 제약을 가지며, 동일 이벤트 재수신 시 중복 insert를 막는다.
+- 결제/환불 정산 타겟은 모두 `SettlementTarget` 테이블에 적재된 뒤 후속 배치 계산 대상이 된다.
+
 ### 2. 정산 송금
 
 ```text
@@ -291,7 +319,7 @@ SettlementScheduler or SettlementBatchController
 |------|------|
 | 송금 실행 | READY 정산에 대한 실제 이체 요청 |
 
-현재 구현에는 payment/order/product 원천 조회 클라이언트가 포함되어 있지 않으며, `SettlementTarget` 적재는 외부 적재 절차 또는 이벤트 연동을 전제로 한다.
+현재 구현에서 `SettlementTarget` 적재는 order-service의 `settlement.events` 발행을 전제로 하며, 별도 REST 적재 API는 없다.
 
 ---
 
