@@ -64,7 +64,6 @@
 | Method | Path | Auth | 설명 |
 |--------|------|------|------|
 | GET | `/api/v1/orders/{orderId}/payment-amount/validate` | ⚙️ Internal | 결제 금액 검증 |
-| PUT | `/api/v1/orders/{orderId}/payment-status` | ⚙️ Internal | 결제 상태 업데이트 |
 | POST | `/api/v1/orders/bulk` | ⚙️ Internal | 주문 다건 조회 (정산용) |
 
 ---
@@ -83,14 +82,3 @@
 ```
 
 ---
-
-### PUT `/api/v1/orders/{orderId}/payment-status`
-
-**Request Body**
-```json
-{
-  "paymentStatus": "SUCCESS | FAILURE"
-}
-```
-
-**Response** `204 No Content`

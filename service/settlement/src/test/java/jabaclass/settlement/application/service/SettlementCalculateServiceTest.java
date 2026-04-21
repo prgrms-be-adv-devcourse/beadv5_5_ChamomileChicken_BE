@@ -85,6 +85,7 @@ class SettlementCalculateServiceTest {
 		String settlementMonth = "2026-03";
 		UUID paymentId = UUID.randomUUID();
 		SettlementTarget paymentTarget = SettlementTarget.forPayment(
+			UUID.randomUUID(),
 			settlementMonth,
 			sellerId,
 			UUID.randomUUID(),
@@ -95,6 +96,7 @@ class SettlementCalculateServiceTest {
 		);
 		assignId(paymentTarget);
 		SettlementTarget refundTarget = SettlementTarget.forRefund(
+			UUID.randomUUID(),
 			settlementMonth,
 			sellerId,
 			UUID.randomUUID(),
@@ -297,6 +299,7 @@ class SettlementCalculateServiceTest {
 		UUID sellerId = UUID.randomUUID();
 		String settlementMonth = "2026-03";
 		SettlementTarget paymentTarget = SettlementTarget.forPayment(
+			UUID.randomUUID(),
 			settlementMonth,
 			sellerId,
 			UUID.randomUUID(),
@@ -372,6 +375,7 @@ class SettlementCalculateServiceTest {
 		UUID sellerId = UUID.randomUUID();
 		String settlementMonth = "2026-03";
 		SettlementTarget refundTarget = SettlementTarget.forRefund(
+			UUID.randomUUID(),
 			settlementMonth,
 			sellerId,
 			UUID.randomUUID(),

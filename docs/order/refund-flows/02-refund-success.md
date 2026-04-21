@@ -7,11 +7,10 @@ PaymentService: PG 환불 승인 성공
   └─ PaymentRefundHandler.onSuccess() [트랜잭션]
        ├─ Payment.status → CANCELLED
        ├─ Refund 저장 (원본 금액 스냅샷 + refundRate + COMPLETED)
-       └─ Outbox 저장 (PAYMENT_REFUNDED)
-            └─ OutboxPublisher → Kafka: payment.events (PAYMENT_REFUNDED)
-                 [현재 소비자 없음 — 정산 등 향후 확장 용도]
+       └─ 환불 상세 응답 생성
+            └─ { refundId, paymentId, productId, depositRefundAmount, totalRefundAmount, occurredAt }
 
-PaymentService → OrderService: { depositRefundAmount } 반환
+PaymentService → OrderService: 환불 상세 응답 반환
 
 OrderService
 └─ OrderRefundHandler.onSuccess() [트랜잭션]
@@ -21,10 +20,14 @@ OrderService
      │         └─ ProductService (OrderEventsConsumer)
      │              eventId 중복 체크 → ProductUser.status: CONFIRMED → REFUNDED
      │              processed_events 저장
-     └─ Outbox 저장 (ORDER_DEPOSIT_REFUND_REQUESTED) [depositRefundAmount > 0]
-          └─ OutboxPublisher → Kafka: order.events (ORDER_DEPOSIT_REFUND_REQUESTED)
-               └─ UserService (OrderEventsConsumer)
-                    eventId 중복 체크 → 예치금 복구 → processed_events 저장
+     ├─ Outbox 저장 (ORDER_DEPOSIT_REFUND_REQUESTED) [depositRefundAmount > 0]
+     │    └─ OutboxPublisher → Kafka: order.events (ORDER_DEPOSIT_REFUND_REQUESTED)
+     │         └─ UserService (OrderEventsConsumer)
+     │              eventId 중복 체크 → 예치금 복구 → processed_events 저장
+     └─ Outbox 저장 (SETTLEMENT_REFUND_COMPLETED)
+          └─ OutboxPublisher → Kafka: settlement.events (SETTLEMENT_REFUND_COMPLETED)
+               └─ settlement-service
+                    sourceEventId 유니크 제약으로 멱등 적재
 
 OrderService → User: 환불 성공 응답
 ```
@@ -44,15 +47,15 @@ sequenceDiagram
 
     Pay->>Pay: Payment.status → CANCELLED
     Pay->>Pay: Refund 저장 (스냅샷 + COMPLETED)
-    Pay->>Pay: Outbox 저장 (PAYMENT_REFUNDED)
-    Pay->>Kafka: payment.events (PAYMENT_REFUNDED)
-    Pay-->>Order: { depositRefundAmount }
+    Pay-->>Order: { refundId, paymentId, productId, depositRefundAmount, totalRefundAmount, occurredAt }
 
     Order->>Order: Order.status → REFUNDED
     Order->>Order: Outbox 저장 (ORDER_REFUNDED)
     Order->>Order: Outbox 저장 (ORDER_DEPOSIT_REFUND_REQUESTED)
+    Order->>Order: Outbox 저장 (SETTLEMENT_REFUND_COMPLETED)
     Order->>Kafka: order.events (ORDER_REFUNDED)
     Order->>Kafka: order.events (ORDER_DEPOSIT_REFUND_REQUESTED)
+    Order->>Kafka: settlement.events (SETTLEMENT_REFUND_COMPLETED)
     Order-->>User: 환불 성공 응답
 
     Kafka->>Product: ORDER_REFUNDED 수신 (OrderEventsConsumer)
@@ -83,15 +86,7 @@ sequenceDiagram
 4. `Refund.create()` — 원본 금액 스냅샷 포함
    - `originalPaymentAmount`, `originalDepositAmount`, `refundRate` 저장
 5. `refund.markCompleted()` → `COMPLETED`
-6. Outbox 저장 (`PAYMENT_REFUNDED`)
-7. `depositRefundAmount` 반환 → OrderService로 전달
-
-Kafka 이벤트:
-```
-Topic:  payment.events
-Header: eventType = PAYMENT_REFUNDED
-Body:   { "eventId": "UUID", "paymentId": "UUID", "orderId": "UUID" }
-```
+6. `InternalRefundResponseDto` 반환 → OrderService로 전달
 
 ### OrderService — `OrderRefundHandler.onSuccess()`
 
@@ -102,6 +97,7 @@ Body:   { "eventId": "UUID", "paymentId": "UUID", "orderId": "UUID" }
 3. `order.refund()` → `PAID → REFUNDED`
 4. Outbox 저장 (`ORDER_REFUNDED`) — Product 재고 복구 트리거
 5. `depositRefundAmount > 0`이면 Outbox 저장 (`ORDER_DEPOSIT_REFUND_REQUESTED`) — User 예치금 복구 트리거
+6. Outbox 저장 (`SETTLEMENT_REFUND_COMPLETED`) — settlement 정산 타겟 적재 트리거
 
 Kafka 이벤트:
 ```
@@ -112,6 +108,10 @@ Body:   { "eventId": "UUID", "orderId": "UUID", "productUserId": "UUID" }
 Topic:  order.events
 Header: eventType = ORDER_DEPOSIT_REFUND_REQUESTED
 Body:   { "eventId": "UUID", "orderId": "UUID", "userId": "UUID", "depositAmount": ... }
+
+Topic:  settlement.events
+Header: eventType = SETTLEMENT_REFUND_COMPLETED
+Body:   { "eventId": "UUID", "orderId": "UUID", "paymentId": "UUID", "refundId": "UUID", "sellerId": "UUID", "productId": "UUID", "settlementBaseAmount": ..., "occurredAt": "..." }
 ```
 
 ### ProductService — `OrderEventsConsumer` → `OrderEventHandler.handleOrderRefunded()`
@@ -141,5 +141,6 @@ Body:   { "eventId": "UUID", "orderId": "UUID", "userId": "UUID", "depositAmount
 | `Refund.status` | `COMPLETED` |
 | `Order.status` | `REFUNDED` |
 | `ProductUser.status` | `REFUNDED` |
+| `SettlementTarget` | `REFUND` 타입 정산 타겟 적재 |
 | Schedule 잔여 인원 | 복구됨 |
 | 예치금 잔액 | 비율만큼 복구됨 |

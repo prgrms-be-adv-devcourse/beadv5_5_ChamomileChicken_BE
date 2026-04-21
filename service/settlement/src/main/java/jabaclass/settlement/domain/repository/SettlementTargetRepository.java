@@ -13,7 +13,11 @@ public interface SettlementTargetRepository {
 
 	List<SettlementTarget> saveAll(List<SettlementTarget> settlementTargets);
 
+	SettlementTarget save(SettlementTarget settlementTarget);
+
 	Optional<SettlementTarget> findByPaymentIdAndTargetType(UUID paymentId, SettlementTargetType targetType);
+
+	Optional<SettlementTarget> findByRefundId(UUID refundId);
 
 	List<SettlementTarget> findAllByIds(List<UUID> ids);
 

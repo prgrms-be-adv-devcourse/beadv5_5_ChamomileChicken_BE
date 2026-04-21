@@ -18,14 +18,18 @@ public record OrderResponseDto(
 	OrderValid valid,
 
 	@Schema(description = "예약자 테이블 ID", example = "550e8400-e29b-41d4-a716-446655440000")
-	UUID productUserId
+	UUID productUserId,
+
+	@Schema(description = "판매자 ID", example = "550e8400-e29b-41d4-a716-446655440000")
+	UUID sellerId
 ) {
 	public static OrderResponseDto from(Product product, int quantity, OrderValid valid, UUID id) {
 		return new OrderResponseDto(
 			product.getPrice(),
 			quantity,
 			valid,
-			id
+			id,
+			product.getSellerId()
 		);
 	}
 }

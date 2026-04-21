@@ -14,6 +14,8 @@ public interface RefundJpaRepository extends JpaRepository<Refund, UUID> {
 
 	java.util.Optional<Refund> findFirstByPaymentIdAndStatusOrderByProcessedAtDesc(UUID paymentId, RefundStatus status);
 
+	java.util.Optional<Refund> findByPaymentId(UUID paymentId);
+
 	@Query("""
 		select
 			r.id as refundId,

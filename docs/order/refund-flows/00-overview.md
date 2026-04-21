@@ -29,7 +29,7 @@ OrderService: 환불 비율 계산 (시작일 00시 기준)
      ├─ paymentRefundAmount = 원본카드결제금액 × 비율
      └─ depositRefundAmount = 원본예치금 × 비율
 
-OrderService → PaymentService: 환불 요청 (orderId, paymentRefundAmount, depositRefundAmount, refundRate)
+OrderService → PaymentService: 환불 요청 (orderId, refundRate)
 
 PaymentService → PG(Toss): 환불 승인 요청 (paymentKey, paymentRefundAmount)
 
@@ -37,12 +37,12 @@ alt 환불 성공
   PG → PaymentService: 환불 성공
   PaymentService: Payment.status → CANCELLED
   PaymentService: Refund 저장 (스냅샷 포함, COMPLETED)
-  PaymentService: Outbox 저장 (PAYMENT_REFUNDED)
-  PaymentService → OrderService: 환불 성공 응답
+  PaymentService → OrderService: 환불 성공 응답 (refundId, paymentId, productId, depositRefundAmount, totalRefundAmount, occurredAt)
 
   OrderService: Order.status → REFUNDED
   OrderService: Outbox 저장 (ORDER_REFUNDED)
   OrderService: Outbox 저장 (ORDER_DEPOSIT_REFUND_REQUESTED) [depositRefundAmount > 0]
+  OrderService: Outbox 저장 (SETTLEMENT_REFUND_COMPLETED)
 
   OutboxPublisher → Kafka: order.events (ORDER_REFUNDED)
     └─ ProductService: eventId 중복 체크 → ProductUser.status: CONFIRMED → REFUNDED → processed_events 저장
@@ -89,14 +89,15 @@ sequenceDiagram
         PG-->>Pay: 환불 성공
         Pay->>Pay: Payment.status → CANCELLED
         Pay->>Pay: Refund 저장 (스냅샷 포함, COMPLETED)
-        Pay->>Pay: Outbox 저장 (PAYMENT_REFUNDED)
-        Pay-->>Order: { depositRefundAmount }
+        Pay-->>Order: { refundId, paymentId, productId, depositRefundAmount, totalRefundAmount, occurredAt }
 
         Order->>Order: Order.status → REFUNDED
         Order->>Order: Outbox 저장 (ORDER_REFUNDED)
         Order->>Order: Outbox 저장 (ORDER_DEPOSIT_REFUND_REQUESTED)
+        Order->>Order: Outbox 저장 (SETTLEMENT_REFUND_COMPLETED)
         Order->>Kafka: order.events (ORDER_REFUNDED)
         Order->>Kafka: order.events (ORDER_DEPOSIT_REFUND_REQUESTED)
+        Order->>Kafka: settlement.events (SETTLEMENT_REFUND_COMPLETED)
 
         Kafka->>ProductSvc: ORDER_REFUNDED 수신
         ProductSvc->>ProductSvc: eventId 중복 체크 → ProductUser.status: CONFIRMED → REFUNDED → processed_events 저장
@@ -147,8 +148,8 @@ sequenceDiagram
 
 | EventType | 발행 서비스 | 토픽 | 발행 시점 |
 |-----------|------------|------|-----------|
-| `PAYMENT_REFUNDED` | PaymentService | `payment.events` | PG 환불 성공 |
 | `ORDER_REFUNDED` | OrderService | `order.events` | 주문 상태 REFUNDED 변경 |
+| `SETTLEMENT_REFUND_COMPLETED` | OrderService | `settlement.events` | 환불 정산 타겟 적재 요청 |
 
 ### 멱등성
 
@@ -169,18 +170,18 @@ sequenceDiagram
 1. 환불 요청 수신 (orderId)
 2. ProductService HTTP 호출 → 스케줄 시작일 조회
 3. 시작일 00시 기준 환불 비율 계산
-4. PaymentService HTTP 호출 → 환불 요청 (환불금액, 비율 전달)
+4. PaymentService HTTP 호출 → 환불 요청 (`orderId`, `refundRate` 전달)
 5. 환불 성공 시 Order.status → `REFUNDED`
-6. Outbox 저장 (`ORDER_REFUNDED`) — 재고/예치금 복구 트리거
+6. Outbox 저장 (`ORDER_REFUNDED`, `ORDER_DEPOSIT_REFUND_REQUESTED`, `SETTLEMENT_REFUND_COMPLETED`)
 7. 환불 실패 시 에러 응답 반환
 
 ### PaymentService
 
-1. 환불 요청 수신 (orderId, paymentRefundAmount, depositRefundAmount, refundRate)
+1. 환불 요청 수신 (`orderId`, `refundRate`)
 2. Payment 조회 → `PAID` 상태 검증
 3. Refund 생성 (원본 금액 스냅샷 + 비율 저장, 상태: `PENDING`)
 4. `paymentRefundAmount > 0`이면 PG 환불 호출
-5. 성공: Payment.status → `CANCELLED`, Refund → `COMPLETED`, Outbox(`PAYMENT_REFUNDED`) 저장
+5. 성공: Payment.status → `CANCELLED`, Refund → `COMPLETED`, 상세 환불 응답 반환
 6. 실패: Refund → `FAILED`, 에러 응답 반환
 
 ### UserService

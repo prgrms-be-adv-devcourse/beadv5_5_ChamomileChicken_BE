@@ -2,6 +2,7 @@ package jabaclass.order.application.service;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -19,11 +20,11 @@ import jabaclass.order.domain.model.Order;
 import jabaclass.order.domain.model.OrderStatus;
 import jabaclass.order.domain.model.PaymentResultStatus;
 import jabaclass.order.domain.repository.OrderRepository;
+import jabaclass.order.infrastructure.client.payment.dto.InternalRefundResponseDto;
 import jabaclass.order.infrastructure.client.product.dto.ProductReservationResponseDto;
 import jabaclass.order.infrastructure.outbox.EventType;
 import jabaclass.order.infrastructure.outbox.OutboxRepository;
 import jabaclass.order.presentation.dto.request.CreateOrderRequestDto;
-import jabaclass.order.presentation.dto.request.UpdateOrderPaymentStatusRequestDto;
 import jabaclass.order.presentation.dto.response.CreateOrderResponseDto;
 import jabaclass.order.presentation.dto.response.OrderResponseDto;
 import org.junit.jupiter.api.DisplayNameGeneration;
@@ -34,6 +35,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -48,6 +50,8 @@ import static org.mockito.Mockito.never;
 @ExtendWith(MockitoExtension.class)
 @DisplayNameGeneration(ReplaceUnderscores.class)
 class OrderServiceTest {
+
+    private static final UUID SELLER_ID = UUID.randomUUID();
 
     @Mock
     private OrderRepository orderRepository;
@@ -93,7 +97,7 @@ class OrderServiceTest {
         );
         given(depositPort.validateAndUse(userId, requestDto.depositAmount())).willReturn(true);
         given(productPort.reserve(requestDto.productScheduleId(), userId, requestDto.quantity(), requestDto.productPrice()))
-            .willReturn(new ProductReservationResponseDto(new BigDecimal("10000"), 2, "OK", productUserId));
+            .willReturn(new ProductReservationResponseDto(new BigDecimal("10000"), 2, "OK", productUserId, SELLER_ID));
         given(orderRepository.save(any(Order.class)))
             .willAnswer(invocation -> invocation.getArgument(0));
 
@@ -112,7 +116,7 @@ class OrderServiceTest {
         then(productPort).should().reserve(requestDto.productScheduleId(), userId, requestDto.quantity(), requestDto.productPrice());
         then(depositPort).should().validateAndUse(userId, requestDto.depositAmount());
         then(orderRepository).should().save(argThat(order ->
-            productUserId.equals(order.getProductUserId())
+            productUserId.equals(order.getProductUserId()) && SELLER_ID.equals(order.getSellerId())
         ));
     }
 
@@ -140,7 +144,7 @@ class OrderServiceTest {
             UUID.randomUUID(), UUID.randomUUID(), 1, new BigDecimal("10000"), new BigDecimal("10000")
         );
         given(productPort.reserve(requestDto.productScheduleId(), userId, requestDto.quantity(), requestDto.productPrice()))
-            .willReturn(new ProductReservationResponseDto(new BigDecimal("10000"), 1, "OK", productUserId));
+            .willReturn(new ProductReservationResponseDto(new BigDecimal("10000"), 1, "OK", productUserId, SELLER_ID));
         given(depositPort.validateAndUse(userId, requestDto.depositAmount())).willReturn(false);
 
         // when & then
@@ -161,7 +165,7 @@ class OrderServiceTest {
             UUID.randomUUID(), UUID.randomUUID(), 1, new BigDecimal("10000"), new BigDecimal("1000")
         );
         given(productPort.reserve(requestDto.productScheduleId(), userId, requestDto.quantity(), requestDto.productPrice()))
-            .willReturn(new ProductReservationResponseDto(new BigDecimal("10000"), 0, "OUT_OF_STOCK", null));
+            .willReturn(new ProductReservationResponseDto(new BigDecimal("10000"), 0, "OUT_OF_STOCK", null, null));
 
         // when & then
         assertThatThrownBy(() -> orderService.create(userId, requestDto))
@@ -175,7 +179,7 @@ class OrderServiceTest {
     void 주문을_조회한다() {
         // given
         UUID userId = UUID.randomUUID();
-        Order order = Order.create(UUID.randomUUID(), userId, UUID.randomUUID(), 1, new BigDecimal("5000"));
+        Order order = savedOrder(UUID.randomUUID(), userId, UUID.randomUUID(), 1, new BigDecimal("5000"));
         given(orderRepository.findById(order.getId())).willReturn(Optional.of(order));
 
         // when
@@ -184,6 +188,7 @@ class OrderServiceTest {
         // then
         assertThat(actual.id()).isEqualTo(order.getId());
         assertThat(actual.productScheduleId()).isEqualTo(order.getProductScheduleId());
+        assertThat(actual.sellerId()).isEqualTo(order.getSellerId());
         assertThat(actual.buyerId()).isEqualTo(order.getUserId());
         assertThat(actual.quantity()).isEqualTo(order.getQuantity());
         assertThat(actual.totalAmount()).isEqualByComparingTo(order.getPrice());
@@ -207,8 +212,8 @@ class OrderServiceTest {
     void 주문_목록을_조회한다() {
         // given
         UUID userId = UUID.randomUUID();
-        Order firstOrder = Order.create(UUID.randomUUID(), userId, UUID.randomUUID(), 1, new BigDecimal("5000"));
-        Order secondOrder = Order.create(UUID.randomUUID(), userId, UUID.randomUUID(), 2, new BigDecimal("10000"));
+        Order firstOrder = savedOrder(UUID.randomUUID(), userId, UUID.randomUUID(), 1, new BigDecimal("5000"));
+        Order secondOrder = savedOrder(UUID.randomUUID(), userId, UUID.randomUUID(), 2, new BigDecimal("10000"));
         given(orderRepository.findAllByUserId(userId)).willReturn(List.of(firstOrder, secondOrder));
 
         // when
@@ -224,7 +229,7 @@ class OrderServiceTest {
     void 상태로_필터링하여_주문_목록을_조회한다() {
         // given
         UUID userId = UUID.randomUUID();
-        Order order = Order.create(UUID.randomUUID(), userId, UUID.randomUUID(), 1, new BigDecimal("7000"));
+        Order order = savedOrder(UUID.randomUUID(), userId, UUID.randomUUID(), 1, new BigDecimal("7000"));
         given(orderRepository.findAllByUserIdAndStatus(userId, OrderStatus.PENDING)).willReturn(List.of(order));
 
         // when
@@ -238,7 +243,7 @@ class OrderServiceTest {
     @Test
     void 결제_금액이_일치하면_true를_반환한다() {
         // given
-        Order order = Order.create(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), 1, new BigDecimal("15000"));
+        Order order = savedOrder(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), 1, new BigDecimal("15000"));
         given(orderRepository.findById(order.getId())).willReturn(Optional.of(order));
 
         // when
@@ -249,47 +254,35 @@ class OrderServiceTest {
     }
 
     @Test
-    void 결제_성공을_반영한다() {
-        // given
-        UUID orderId = UUID.randomUUID();
-
-        // when
-        orderService.updatePaymentStatus(null, orderId, new UpdateOrderPaymentStatusRequestDto(PaymentResultStatus.SUCCESS, null));
-
-        // then
-        then(orderPaymentResultHandler).should().onSuccess(null, orderId);
-    }
-
-    @Test
-    void 결제_실패를_반영한다() {
-        // given
-        UUID orderId = UUID.randomUUID();
-        BigDecimal depositAmount = new BigDecimal("3000");
-
-        // when
-        orderService.updatePaymentStatus(null, orderId, new UpdateOrderPaymentStatusRequestDto(PaymentResultStatus.FAILED, depositAmount));
-
-        // then
-        then(orderPaymentResultHandler).should().onFailed(null, orderId, depositAmount);
-    }
-
-    @Test
     void 환불을_반영한다() {
         // given
         UUID userId = UUID.randomUUID();
-        Order order = Order.create(UUID.randomUUID(), userId, UUID.randomUUID(), 2, new BigDecimal("15000"));
+        Order order = savedOrder(UUID.randomUUID(), userId, UUID.randomUUID(), 2, new BigDecimal("15000"));
         order.pay();
-        BigDecimal depositRefundAmount = new BigDecimal("15000");
+        InternalRefundResponseDto refundResponse = new InternalRefundResponseDto(
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            new BigDecimal("15000"),
+            new BigDecimal("15000"),
+            LocalDateTime.of(2026, 4, 20, 18, 0)
+        );
         given(orderRepository.findById(order.getId())).willReturn(Optional.of(order));
         given(productPort.getScheduleStartDate(order.getProductScheduleId()))
             .willReturn(LocalDate.now().plusDays(8));
         given(paymentPort.refund(eq(order.getId()), any(BigDecimal.class)))
-            .willReturn(depositRefundAmount);
+            .willReturn(refundResponse);
 
         // when
         orderService.refund(userId, order.getId());
 
         // then — 환불 핸들러에 위임됨
-        then(orderRefundHandler).should().onSuccess(order.getId(), depositRefundAmount);
+        then(orderRefundHandler).should().onSuccess(order.getId(), refundResponse);
+    }
+
+    private Order savedOrder(UUID productScheduleId, UUID userId, UUID productUserId, int quantity, BigDecimal price) {
+        Order order = Order.create(productScheduleId, SELLER_ID, userId, productUserId, quantity, price);
+        ReflectionTestUtils.setField(order, "id", UUID.randomUUID());
+        return order;
     }
 }
