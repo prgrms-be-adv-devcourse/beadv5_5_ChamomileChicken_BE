@@ -10,9 +10,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.jsonwebtoken.Claims;
 
-import jabaclass.apigateway.application.service.RbacService;
-import jabaclass.apigateway.application.service.WhitelistService;
-import jabaclass.apigateway.exception.RedisBlacklistException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -34,6 +31,12 @@ import jabaclass.apigateway.exception.JwtAuthException;
 import jabaclass.apigateway.exception.JwtErrorCode;
 import jabaclass.apigateway.security.JwtProvider;
 import jabaclass.apigateway.security.JwtTokenResolver;
+import jabaclass.apigateway.application.service.RbacService;
+import jabaclass.apigateway.application.service.WhitelistService;
+import jabaclass.apigateway.exception.AuthorizationServiceException;
+import jabaclass.apigateway.exception.ErrorCode;
+import jabaclass.apigateway.exception.RedisBlacklistException;
+import jabaclass.apigateway.exception.SystemErrorCode;
 
 @Component
 @RequiredArgsConstructor
@@ -148,10 +151,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
                 return onError(exchange, JwtErrorCode.INVALID_TOKEN);
             }
 
-            long start = System.currentTimeMillis();
             return redisTemplate.hasKey(BLACKLIST_PREFIX + token)
-                .doOnNext(result -> log.info("[REDIS] blacklist check took {}ms",
-                    System.currentTimeMillis() - start))
                 .timeout(Duration.ofMillis(200))
                 .onErrorMap(RedisBlacklistException::new)
                 .flatMap(isBlacklisted -> {
@@ -164,6 +164,8 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
                     String role = jwtProvider.getRole(claims);
 
                     return rbacService.isAllowed(path, httpMethod, role)
+                        .timeout(Duration.ofMillis(300))
+                        .onErrorMap(AuthorizationServiceException::new)
                         .flatMap(isAllowed -> {
                             if (!isAllowed) {
                                 log.warn("[GATEWAY] Role not allowed. Path: {} {}, Role: {}", httpMethod, path, role);
@@ -183,8 +185,19 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
                         });
                 })
                 .onErrorResume(RedisBlacklistException.class, e -> {
-                    log.error("[GATEWAY] Redis blacklist check failed: {}", e.getCause().getMessage());
-                    return onError(exchange, JwtErrorCode.REDIS_UNAVAILABLE);
+                    String errorMessage = (e.getCause() != null) ? e.getCause().getMessage() : e.getMessage();
+                    log.error("[GATEWAY] Redis blacklist check failed: {}", errorMessage);
+                    return onError(exchange, SystemErrorCode.AUTH_SERVICE_UNAVAILABLE);
+                })
+                .onErrorResume(AuthorizationServiceException.class, e -> {
+                    String msg = (e.getCause() != null) ? e.getCause().getMessage() : e.getMessage();
+                    log.error("[GATEWAY] RBAC system error: {}", msg);
+                    return onError(exchange, SystemErrorCode.INTERNAL_ERROR);
+                })
+                .onErrorResume(e -> {
+                    String msg = (e.getCause() != null) ? e.getCause().getMessage() : e.getMessage();
+                    log.error("[GATEWAY] Unexpected error: {}", msg);
+                    return onError(exchange, SystemErrorCode.INTERNAL_ERROR);
                 });
 
         } catch (JwtAuthException e) {
@@ -198,7 +211,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         return -1;
     }
 
-    private Mono<Void> onError(ServerWebExchange exchange, JwtErrorCode errorCode) {
+    private Mono<Void> onError(ServerWebExchange exchange, ErrorCode errorCode) {
         ServerHttpResponse response = exchange.getResponse();
         response.setStatusCode(errorCode.getStatus());
         response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
