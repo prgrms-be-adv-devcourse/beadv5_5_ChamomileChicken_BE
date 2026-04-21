@@ -11,7 +11,14 @@ INSERT INTO gateway_whitelist (method, path_pattern, description) VALUES
     ('GET',  '/api/v1/products/*/reviewList',   '상품 리뷰 목록 조회'),
     ('GET',  '/api/v1/products/*/reviews/*',    '리뷰 단건 조회'),
     ('GET',  '/oauth2/authorization/**',        '소셜 로그인 시작'),
-    ('GET',  '/login/oauth2/code/**',           '소셜 로그인 콜백');
+    ('GET',  '/login/oauth2/code/**',           '소셜 로그인 콜백'),
+    ('GET', '/swagger-ui.html',          'Gateway Swagger UI'),
+    ('GET', '/swagger-ui/**',            'Gateway Swagger static resources'),
+    ('GET', '/webjars/**',               'Swagger UI webjars'),
+    ('GET', '/v3/api-docs/swagger-config', 'Gateway Swagger config'),
+    ('GET', '/docs/user',                'User service OpenAPI docs'),
+    ('GET', '/docs/product',             'Product service OpenAPI docs'),
+    ('GET', '/docs/order',               'Order service OpenAPI docs');
 
 INSERT INTO gateway_route_policy (method, path_pattern, allowed_roles, description) VALUES
     ('POST',   '/api/v1/products',               'SELLER,ADMIN', '상품 등록'),

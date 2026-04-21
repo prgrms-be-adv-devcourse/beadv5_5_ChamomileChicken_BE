@@ -1,6 +1,7 @@
 package jabaclass.user.common.apidocs;
 
 import java.util.Collections;
+import java.util.List;
 
 import org.springdoc.core.customizers.OperationCustomizer;
 import org.springframework.context.annotation.Bean;
@@ -16,6 +17,7 @@ import io.swagger.v3.oas.models.media.Schema;
 import io.swagger.v3.oas.models.responses.ApiResponse;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
+import io.swagger.v3.oas.models.servers.Server;
 
 @Configuration
 public class SwaggerConfig {
@@ -39,6 +41,7 @@ public class SwaggerConfig {
 			.description("User API 문서");
 
 		return new OpenAPI()
+			.servers(List.of(new Server().url("/")))
 			.components(new Components().addSecuritySchemes("bearerAuth", bearerScheme))
 			.security(Collections.singletonList(bearerRequirement))
 			.info(info);

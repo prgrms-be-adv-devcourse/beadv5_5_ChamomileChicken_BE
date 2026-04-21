@@ -70,3 +70,16 @@ spring:
 
 jwt:
   secret: ${JWT_SECRET}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    disable-swagger-default-url: true
+    urls-primary-name: user-service
+    urls:
+      - name: user-service
+        url: /docs/user
+      - name: product-service
+        url: /docs/product
+      - name: order-service
+        url: /docs/order
