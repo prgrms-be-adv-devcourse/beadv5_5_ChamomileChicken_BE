@@ -29,6 +29,7 @@ public interface SettlementTargetCalculationJpaRepository extends JpaRepository<
 		from SettlementTargetCalculation stc
 		where stc.settlementMonth = :settlementMonth
 		group by stc.sellerId, stc.settlementMonth
+		order by stc.sellerId
 		""")
 	List<SettlementTargetSummaryProjection> findSummaryBySettlementMonth(String settlementMonth);
 

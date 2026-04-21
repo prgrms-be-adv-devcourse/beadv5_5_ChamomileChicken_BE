@@ -1,8 +1,8 @@
 package jabaclass.settlement.infrastructure.batch.config;
 
-import java.util.Map;
-
 import jakarta.persistence.EntityManagerFactory;
+
+import java.util.Map;
 
 import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.core.job.Job;
@@ -10,10 +10,10 @@ import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.Step;
 import org.springframework.batch.core.step.builder.StepBuilder;
+import org.springframework.batch.infrastructure.item.database.JpaPagingItemReader;
 import org.springframework.batch.infrastructure.item.database.builder.JpaPagingItemReaderBuilder;
 import org.springframework.batch.infrastructure.item.ItemProcessor;
 import org.springframework.batch.infrastructure.item.ItemReader;
-import org.springframework.batch.infrastructure.item.ItemWriter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -70,7 +70,7 @@ public class SettlementBatchConfig {
 
 	@Bean
 	@StepScope
-	public ItemReader<SettlementTarget> settlementTargetItemReader(
+	public JpaPagingItemReader<SettlementTarget> settlementTargetItemReader(
 		EntityManagerFactory entityManagerFactory,
 		@Value("#{jobParameters['settlementMonth']}") String settlementMonthParam
 	) {
@@ -112,7 +112,7 @@ public class SettlementBatchConfig {
 
 	@Bean
 	@StepScope
-	public ItemReader<SettlementTargetSummary> settlementAggregationReader(
+	public JpaPagingItemReader<SettlementTargetSummary> settlementAggregationReader(
 		EntityManagerFactory entityManagerFactory,
 		@Value("#{jobParameters['settlementMonth']}") String settlementMonthParam
 	) {
