@@ -16,7 +16,7 @@ import jabaclass.settlement.presentation.dto.response.SellerSettlementPageRespon
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/seller/settlements")
+@RequestMapping("/api/v1/settlements/me")
 @RequiredArgsConstructor
 public class SellerSettlementController implements SellerSettlementApi {
 
