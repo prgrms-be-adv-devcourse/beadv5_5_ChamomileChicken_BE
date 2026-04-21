@@ -2,18 +2,18 @@ name: CD Order Service
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - dev
-    paths:
-      - 'service/order/**'
-      - 'common/**'
-      - 'build.gradle'
-      - 'settings.gradle'
-      - 'gradle/**'
-      - 'gradlew'
-      - '.github/workflows/cd-order.yml'
-      - '.github/scripts/**'
+#  push:
+#    branches:
+#      - dev
+#    paths:
+#      - 'service/order/**'
+#      - 'common/**'
+#      - 'build.gradle'
+#      - 'settings.gradle'
+#      - 'gradle/**'
+#      - 'gradlew'
+#      - '.github/workflows/cd-order.yml'
+#      - '.github/scripts/**'
 
 permissions:
   contents: read
