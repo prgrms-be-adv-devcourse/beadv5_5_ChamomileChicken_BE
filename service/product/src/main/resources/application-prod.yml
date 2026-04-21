@@ -3,7 +3,7 @@ api:
 
 spring:
   elasticsearch:
-    uris: ${ES_URIS:http://localhost:9200}
+    uris: ${ES_HOST:http://localhost:9200}
 
   datasource:
     url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:backend5}
