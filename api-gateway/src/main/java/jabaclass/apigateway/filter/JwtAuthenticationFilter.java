@@ -12,6 +12,7 @@ import io.jsonwebtoken.Claims;
 
 import jabaclass.apigateway.application.service.RbacService;
 import jabaclass.apigateway.application.service.WhitelistService;
+import jabaclass.apigateway.exception.RedisBlacklistException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -152,6 +153,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
                 .doOnNext(result -> log.info("[REDIS] blacklist check took {}ms",
                     System.currentTimeMillis() - start))
                 .timeout(Duration.ofMillis(200))
+                .onErrorMap(RedisBlacklistException::new)
                 .flatMap(isBlacklisted -> {
                     if (isBlacklisted) {
                         log.warn("[GATEWAY] Blacklisted token. Path: {} {}", httpMethod, path);
@@ -180,9 +182,9 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
                             return chain.filter(mutatedExchange);
                         });
                 })
-                .onErrorResume(e -> {
-                    log.error("[GATEWAY] Redis error: {}", e.getMessage());
-                    return onError(exchange, JwtErrorCode.INVALID_TOKEN);
+                .onErrorResume(RedisBlacklistException.class, e -> {
+                    log.error("[GATEWAY] Redis blacklist check failed: {}", e.getCause().getMessage());
+                    return onError(exchange, JwtErrorCode.REDIS_UNAVAILABLE);
                 });
 
         } catch (JwtAuthException e) {
