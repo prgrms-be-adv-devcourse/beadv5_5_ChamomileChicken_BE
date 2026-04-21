@@ -70,7 +70,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         return whitelistService.isWhitelisted(path, httpMethod)
             .flatMap(isWhitelisted -> {
                 if (isWhitelisted) {
-                    return chain.filter(sanitizedExchange);
+                    return enrichIfAuthenticated(sanitizedExchange, chain, path, httpMethod);
                 }
                 return authenticate(sanitizedExchange, chain, path, httpMethod);
             });
@@ -118,7 +118,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
                     log.warn("[GATEWAY] Optional auth enrichment failed: {} {}", httpMethod, path, e);
                     return chain.filter(exchange);
                 });
-        } catch (JwtAuthException e) {
+        } catch (Exception e) {
             log.debug("[GATEWAY] Ignore invalid token on whitelisted path: {} {}", httpMethod, path);
             return chain.filter(exchange);
         }
