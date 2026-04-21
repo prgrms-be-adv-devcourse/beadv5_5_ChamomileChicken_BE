@@ -15,7 +15,7 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/recommendations")
-public class RecommendationController {
+public class RecommendationController implements RecommendationApi{
 
 	private final RecommendationUseCase recommendationUseCase;
 
