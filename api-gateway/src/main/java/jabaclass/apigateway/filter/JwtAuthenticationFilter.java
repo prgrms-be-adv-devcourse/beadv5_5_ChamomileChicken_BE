@@ -151,7 +151,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
             return redisTemplate.hasKey(BLACKLIST_PREFIX + token)
                 .doOnNext(result -> log.info("[REDIS] blacklist check took {}ms",
                     System.currentTimeMillis() - start))
-                .timeout(Duration.ofMillis(500))
+                .timeout(Duration.ofMillis(200))
                 .flatMap(isBlacklisted -> {
                     if (isBlacklisted) {
                         log.warn("[GATEWAY] Blacklisted token. Path: {} {}", httpMethod, path);
