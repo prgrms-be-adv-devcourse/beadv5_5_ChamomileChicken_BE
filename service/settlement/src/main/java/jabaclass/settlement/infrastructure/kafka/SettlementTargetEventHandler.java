@@ -4,12 +4,11 @@ import java.time.format.DateTimeFormatter;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 import jabaclass.settlement.domain.model.settlement.SettlementTarget;
-import jabaclass.settlement.domain.repository.SettlementTargetRepository;
 import jabaclass.settlement.infrastructure.kafka.dto.SettlementPaymentCompletedEvent;
 import jabaclass.settlement.infrastructure.kafka.dto.SettlementRefundCompletedEvent;
+import jabaclass.settlement.infrastructure.persistence.SettlementTargetJpaRepository;
 import lombok.RequiredArgsConstructor;
 
 @Component
@@ -18,9 +17,8 @@ public class SettlementTargetEventHandler {
 
 	private static final DateTimeFormatter SETTLEMENT_MONTH_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM");
 
-	private final SettlementTargetRepository settlementTargetRepository;
+	private final SettlementTargetJpaRepository settlementTargetJpaRepository;
 
-	@Transactional
 	public void handlePaymentCompleted(SettlementPaymentCompletedEvent event) {
 		saveIgnoringDuplicateSourceEvent(SettlementTarget.forPayment(
 			event.eventId(),
@@ -34,7 +32,6 @@ public class SettlementTargetEventHandler {
 		));
 	}
 
-	@Transactional
 	public void handleRefundCompleted(SettlementRefundCompletedEvent event) {
 		saveIgnoringDuplicateSourceEvent(SettlementTarget.forRefund(
 			event.eventId(),
@@ -55,9 +52,23 @@ public class SettlementTargetEventHandler {
 
 	private void saveIgnoringDuplicateSourceEvent(SettlementTarget target) {
 		try {
-			settlementTargetRepository.save(target);
+			settlementTargetJpaRepository.saveAndFlush(target);
 		} catch (DataIntegrityViolationException e) {
-			// source_event_id unique 제약에 걸린 경우 이미 적재된 동일 이벤트로 간주한다.
+			if (!isDuplicateSourceEvent(e)) {
+				throw e;
+			}
 		}
+	}
+
+	private boolean isDuplicateSourceEvent(DataIntegrityViolationException e) {
+		Throwable current = e;
+		while (current != null) {
+			String message = current.getMessage();
+			if (message != null && message.toLowerCase().contains("source_event_id")) {
+				return true;
+			}
+			current = current.getCause();
+		}
+		return false;
 	}
 }
