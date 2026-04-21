@@ -3,6 +3,7 @@ package jabaclass.order.infrastructure.kafka.payment;
 import java.nio.charset.StandardCharsets;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.common.header.Header;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
@@ -29,7 +30,12 @@ public class PaymentEventsConsumer {
 	// 3회 초과 시 → payment.events.dlq 토픽으로 전송 (오프셋은 정상 커밋되어 다음 메시지 처리 계속)
 	@KafkaListener(topics = "payment.events", groupId = "order-service")
 	public void consume(ConsumerRecord<String, String> record) {
-		String eventType = new String(record.headers().lastHeader("eventType").value(), StandardCharsets.UTF_8);
+		Header eventTypeHeader = record.headers().lastHeader("eventType");
+		if (eventTypeHeader == null) {
+			log.warn("payment.events 헤더 누락. key={}, message={}", record.key(), record.value());
+			return;
+		}
+		String eventType = new String(eventTypeHeader.value(), StandardCharsets.UTF_8);
 		String message = record.value();
 
 		try {
