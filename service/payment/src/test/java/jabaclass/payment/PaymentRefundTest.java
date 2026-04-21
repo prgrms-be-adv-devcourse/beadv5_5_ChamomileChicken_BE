@@ -11,6 +11,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -22,6 +23,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 import jabaclass.payment.application.port.external.OrderPort;
 import jabaclass.payment.application.port.external.PaymentGatewayPort;
@@ -76,7 +78,7 @@ class PaymentRefundTest {
 			outboxRepository,
 			paymentConfirmHandler,
 			paymentRefundHandler,
-			new ObjectMapper()
+			new ObjectMapper().registerModule(new JavaTimeModule())
 		);
 
 		lenient().when(outboxRepository.save(any()))
@@ -119,9 +121,9 @@ class PaymentRefundTest {
 		Payment payment = createPayment(orderId, BigDecimal.valueOf(10000), BigDecimal.ZERO);
 		assignPaymentId(payment);
 		payment.markDone("pay-key");
-		BigDecimal depositRefundAmount = BigDecimal.ZERO;
+		InternalRefundResponseDto refundResponse = refundResponse(payment.getId(), payment.getProductId(), BigDecimal.ZERO);
 		when(paymentRepository.findByOrderId(orderId)).thenReturn(Optional.of(payment));
-		when(paymentRefundHandler.onSuccess(payment.getId(), FULL_REFUND_RATE)).thenReturn(depositRefundAmount);
+		when(paymentRefundHandler.onSuccess(payment.getId(), FULL_REFUND_RATE)).thenReturn(refundResponse);
 
 		InternalRefundResponseDto response = paymentService.refundByOrder(
 			new InternalRefundRequestDto(orderId, FULL_REFUND_RATE)
@@ -130,7 +132,7 @@ class PaymentRefundTest {
 		// PG 환불 호출 시 orderId를 멱등키로 전달
 		verify(paymentGatewayPort).refund(eq("pay-key"), eq(10000), eq(orderId.toString()));
 		verify(paymentRefundHandler).onSuccess(payment.getId(), FULL_REFUND_RATE);
-		assertEquals(depositRefundAmount, response.depositRefundAmount());
+		assertEquals(refundResponse, response);
 	}
 
 	@Test
@@ -139,9 +141,13 @@ class PaymentRefundTest {
 		Payment payment = createPayment(orderId, BigDecimal.ZERO, BigDecimal.valueOf(10000));
 		assignPaymentId(payment);
 		payment.markDone("DEPOSIT_ONLY");
-		BigDecimal depositRefundAmount = BigDecimal.valueOf(10000);
+		InternalRefundResponseDto refundResponse = refundResponse(
+			payment.getId(),
+			payment.getProductId(),
+			BigDecimal.valueOf(10000)
+		);
 		when(paymentRepository.findByOrderId(orderId)).thenReturn(Optional.of(payment));
-		when(paymentRefundHandler.onSuccess(payment.getId(), FULL_REFUND_RATE)).thenReturn(depositRefundAmount);
+		when(paymentRefundHandler.onSuccess(payment.getId(), FULL_REFUND_RATE)).thenReturn(refundResponse);
 
 		InternalRefundResponseDto response = paymentService.refundByOrder(
 			new InternalRefundRequestDto(orderId, FULL_REFUND_RATE)
@@ -150,7 +156,7 @@ class PaymentRefundTest {
 		// paymentAmount == 0 이므로 PG 호출 없음
 		verify(paymentGatewayPort, never()).refund(any(), any(Integer.class), any());
 		verify(paymentRefundHandler).onSuccess(payment.getId(), FULL_REFUND_RATE);
-		assertEquals(depositRefundAmount, response.depositRefundAmount());
+		assertEquals(refundResponse, response);
 	}
 
 	@Test
@@ -185,5 +191,16 @@ class PaymentRefundTest {
 
 	private void assignPaymentId(Payment payment) {
 		ReflectionTestUtils.setField(payment, "id", UUID.randomUUID());
+	}
+
+	private InternalRefundResponseDto refundResponse(UUID paymentId, UUID productId, BigDecimal depositRefundAmount) {
+		return new InternalRefundResponseDto(
+			UUID.randomUUID(),
+			paymentId,
+			productId,
+			depositRefundAmount,
+			BigDecimal.valueOf(10000).add(depositRefundAmount),
+			LocalDateTime.of(2026, 4, 20, 15, 30)
+		);
 	}
 }

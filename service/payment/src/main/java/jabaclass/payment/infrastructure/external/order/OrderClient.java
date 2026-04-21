@@ -1,6 +1,5 @@
 package jabaclass.payment.infrastructure.external.order;
 
-import java.math.BigDecimal;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -11,8 +10,6 @@ import org.springframework.web.client.RestTemplate;
 import jabaclass.payment.application.port.external.OrderPort;
 import jabaclass.payment.common.error.PaymentErrorCode;
 import jabaclass.payment.common.error.PaymentException;
-import jabaclass.payment.domain.model.PaymentResultStatus;
-import jabaclass.payment.infrastructure.external.order.dto.request.OrderStatusUpdateRequestDto;
 import lombok.RequiredArgsConstructor;
 
 @Component
@@ -53,42 +50,6 @@ public class OrderClient implements OrderPort {
 		}
 
 		return body.valid();
-	}
-
-	@Override
-	public void updatePaymentStatus(UUID orderId, UUID paymentId, int depositAmount, String status) {
-
-		String url = baseUrl + "/api/v1/orders/" + orderId + "/payment-status";
-
-		HttpHeaders headers = new HttpHeaders();
-		headers.setContentType(MediaType.APPLICATION_JSON);
-
-		PaymentResultStatus paymentStatus =
-			status.equals("PAID")
-				? PaymentResultStatus.SUCCESS
-				: PaymentResultStatus.FAILED;
-
-		OrderStatusUpdateRequestDto body =
-			new OrderStatusUpdateRequestDto(
-				paymentId,
-				paymentStatus,
-				BigDecimal.valueOf(depositAmount)
-			);
-
-		HttpEntity<OrderStatusUpdateRequestDto> request =
-			new HttpEntity<>(body, headers);
-
-		ResponseEntity<Void> response =
-			restTemplate.exchange(
-				url,
-				HttpMethod.PUT,
-				request,
-				Void.class
-			);
-
-		if (!response.getStatusCode().is2xxSuccessful()) {
-			throw new PaymentException(PaymentErrorCode.ORDER_UPDATE_FAILED);
-		}
 	}
 
 	private record OrderValidationResponse(boolean valid) {}

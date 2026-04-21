@@ -26,6 +26,7 @@ import jabaclass.payment.infrastructure.outbox.OutboxRepository;
 import jabaclass.payment.presentation.dto.request.ConfirmPaymentRequestDto;
 import jabaclass.payment.presentation.dto.request.InternalRefundRequestDto;
 import jabaclass.payment.presentation.dto.request.PreparePaymentRequestDto;
+import jabaclass.payment.presentation.dto.response.InternalRefundDetailResponseDto;
 import jabaclass.payment.presentation.dto.response.InternalRefundResponseDto;
 import jabaclass.payment.presentation.dto.response.PaymentResponseDto;
 import jabaclass.payment.presentation.dto.response.PaymentSettlementSliceResponseDto;
@@ -38,7 +39,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 @Slf4j
 public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUseCase {
 
@@ -77,7 +77,14 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 				"PAYMENT",
 				savedPayment.getId().toString(),
 				EventType.PAYMENT_COMPLETED,
-				toJson(new PaymentCompletedEvent(UUID.randomUUID(), savedPayment.getId(), savedPayment.getOrderId()))
+				toJson(new PaymentCompletedEvent(
+					UUID.randomUUID(),
+					savedPayment.getId(),
+					savedPayment.getOrderId(),
+					savedPayment.getProductId(),
+					savedPayment.getTotalAmount(),
+					savedPayment.getPaidAt()
+				))
 			));
 		}
 
@@ -141,14 +148,24 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 				// orderId를 멱등키로 전달 — 타임아웃 후 재시도 시 Toss가 이전 결과 반환, 이중 환불 방지
 				paymentGatewayPort.refund(payment.getPaymentKey(), paymentRefundAmount.intValue(), request.orderId().toString());
 			}
-			// PG 성공 확정 후 → Payment CANCELLED + Refund 생성 + Outbox PAYMENT_REFUNDED 저장 (같은 트랜잭션)
-			BigDecimal depositRefundAmount = paymentRefundHandler.onSuccess(payment.getId(), request.refundRate());
-			return new InternalRefundResponseDto(depositRefundAmount);
+			// PG 성공 확정 후 → Payment CANCELLED + Refund 생성 (같은 트랜잭션)
+			return paymentRefundHandler.onSuccess(payment.getId(), request.refundRate());
 		} catch (PaymentException e) {
 			throw e;
 		} catch (Exception e) {
 			throw new PaymentException(PaymentErrorCode.PAYMENT_REFUND_FAILED, e);
 		}
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public InternalRefundDetailResponseDto getRefundInfoByOrder(UUID orderId) {
+		Payment payment = paymentRepository.findByOrderId(orderId)
+			.orElseThrow(() -> new PaymentException(PaymentErrorCode.PAYMENT_NOT_FOUND));
+
+		return refundRepository.findLatestCompletedByPaymentId(payment.getId())
+			.map(refund -> InternalRefundDetailResponseDto.from(orderId, refund))
+			.orElseThrow(() -> new PaymentException(PaymentErrorCode.PAYMENT_NOT_FOUND));
 	}
 
 	// Outbox payload 직렬화
@@ -163,6 +180,7 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 	}
 
 	@Override
+	@Transactional(readOnly = true)
 	public PaymentSettlementSliceResponseDto getPaymentSettlementTargets(
 		LocalDateTime from,
 		LocalDateTime to,
@@ -203,6 +221,7 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 	}
 
 	@Override
+	@Transactional(readOnly = true)
 	public RefundSettlementSliceResponseDto getRefundSettlementTargets(
 		LocalDateTime from,
 		LocalDateTime to,

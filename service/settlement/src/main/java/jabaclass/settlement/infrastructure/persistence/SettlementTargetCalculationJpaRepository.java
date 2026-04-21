@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import jabaclass.settlement.domain.model.settlement.SettlementTargetCalculation;
@@ -17,6 +19,8 @@ public interface SettlementTargetCalculationJpaRepository extends JpaRepository<
 
 	List<SettlementTargetCalculation> findBySettlementMonthAndSellerId(String settlementMonth, UUID sellerId);
 
+	Page<SettlementTargetCalculation> findBySettlementMonthAndSellerId(String settlementMonth, UUID sellerId, Pageable pageable);
+
 	@Query("""
 		select
 			stc.sellerId as sellerId,
@@ -25,6 +29,7 @@ public interface SettlementTargetCalculationJpaRepository extends JpaRepository<
 		from SettlementTargetCalculation stc
 		where stc.settlementMonth = :settlementMonth
 		group by stc.sellerId, stc.settlementMonth
+		order by stc.sellerId
 		""")
 	List<SettlementTargetSummaryProjection> findSummaryBySettlementMonth(String settlementMonth);
 

@@ -26,14 +26,16 @@ import jabaclass.order.domain.model.OrderStatus;
 import jabaclass.order.domain.model.RefundPolicy;
 import jabaclass.order.domain.repository.OrderRepository;
 import jabaclass.order.infrastructure.client.product.dto.ProductReservationResponseDto;
+import jabaclass.order.infrastructure.client.payment.dto.InternalRefundResponseDto;
+import jabaclass.order.infrastructure.kafka.payment.dto.PaymentCompletedEvent;
 import jabaclass.order.infrastructure.kafka.product.dto.OrderReservationReleasedEvent;
 import jabaclass.order.infrastructure.outbox.EventType;
 import jabaclass.order.infrastructure.outbox.OutboxEvent;
 import jabaclass.order.infrastructure.outbox.OutboxRepository;
 import jabaclass.order.presentation.dto.request.CreateOrderRequestDto;
 import jabaclass.order.presentation.dto.request.OrderBulkReadRequestDto;
-import jabaclass.order.presentation.dto.request.UpdateOrderPaymentStatusRequestDto;
 import jabaclass.order.presentation.dto.response.CreateOrderResponseDto;
+import jabaclass.order.presentation.dto.response.OrderRefundInfoResponseDto;
 import jabaclass.order.presentation.dto.response.OrderResponseDto;
 import jabaclass.order.presentation.dto.response.OrderSettlementItemResponseDto;
 import lombok.RequiredArgsConstructor;
@@ -79,6 +81,7 @@ public class OrderService implements OrderUseCase {
 
 		Order order = Order.create(
 			requestDto.productScheduleId(),
+			reservation.sellerId(),
 			userId,
 			reservation.productUserId(),
 			requestDto.quantity(),
@@ -112,10 +115,10 @@ public class OrderService implements OrderUseCase {
 
 		// Payment 서비스로 환불 요청 (PG 호출 포함) — 성공 시 예치금 환불 금액 반환
 		// orderId를 PG 멱등키로 사용하므로 타임아웃 후 재시도해도 이중 환불 없음
-		BigDecimal depositRefundAmount = paymentClient.refund(orderId, refundRate);
+		InternalRefundResponseDto refundResponse = paymentClient.refund(orderId, refundRate);
 
 		// Payment 커밋 완료 후 → Order REFUNDED + Outbox 저장 (독립 트랜잭션)
-		orderRefundHandler.onSuccess(orderId, depositRefundAmount);
+		orderRefundHandler.onSuccess(orderId, refundResponse);
 	}
 
 	// 조회
@@ -128,6 +131,22 @@ public class OrderService implements OrderUseCase {
 			throw new BusinessException(OrderErrorCode.ORDER_ACCESS_DENIED);
 		}
 		return OrderResponseDto.from(order);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public OrderRefundInfoResponseDto getRefundInfo(UUID userId, UUID orderId) {
+		Order order = orderRepository.findById(orderId)
+			.orElseThrow(() -> new BusinessException(OrderErrorCode.ORDER_NOT_FOUND));
+		if (!order.isOwnedBy(userId)) {
+			throw new BusinessException(OrderErrorCode.ORDER_ACCESS_DENIED);
+		}
+		if (order.getStatus() != OrderStatus.REFUNDED) {
+			throw new BusinessException(OrderErrorCode.ORDER_REFUND_NOT_ALLOWED);
+		}
+
+		LocalDate startDate = productClient.getScheduleStartDate(order.getProductScheduleId());
+		return OrderRefundInfoResponseDto.of(startDate, paymentClient.getRefundInfo(orderId));
 	}
 
 	@Override
@@ -165,21 +184,18 @@ public class OrderService implements OrderUseCase {
 	}
 
 	@Override
-	public void updatePaymentStatus(UUID eventId, UUID orderId, UpdateOrderPaymentStatusRequestDto requestDto) {
-		switch (requestDto.paymentStatus()) {
-			case SUCCESS -> orderPaymentResultHandler.onSuccess(eventId, orderId);
-			case FAILED -> orderPaymentResultHandler.onFailed(eventId, orderId, requestDto.depositAmount());
-		}
+	public void completePayment(PaymentCompletedEvent event) {
+		orderPaymentResultHandler.onSuccess(event);
+	}
+
+	@Override
+	public void failPayment(UUID eventId, UUID orderId, BigDecimal depositAmount) {
+		orderPaymentResultHandler.onFailed(eventId, orderId, depositAmount);
 	}
 
 	@Override
 	public void expireOrder(UUID eventId, UUID orderId, BigDecimal depositAmount) {
 		orderExpireHandler.expire(eventId, orderId, depositAmount);
-	}
-
-	@Override
-	public void completeRefund(UUID eventId, UUID orderId, BigDecimal depositRefundAmount) {
-		orderRefundHandler.onSuccess(orderId, depositRefundAmount);
 	}
 
 	private ProductReservationResponseDto reserveProduct(UUID userId, CreateOrderRequestDto requestDto) {
@@ -189,7 +205,7 @@ public class OrderService implements OrderUseCase {
 			requestDto.quantity(),
 			requestDto.productPrice()
 		);
-		if (response == null || !response.isOk() || response.productUserId() == null) {
+		if (response == null || !response.isOk() || response.productUserId() == null || response.sellerId() == null) {
 			throw new BusinessException(OrderErrorCode.ORDER_PRODUCT_NOT_AVAILABLE);
 		}
 		return response;

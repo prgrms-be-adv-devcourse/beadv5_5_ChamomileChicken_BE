@@ -1,16 +1,9 @@
 api:
   user-host: ${USER_SERVICE_HOST}
 
-internal:
-  file:
-    url: ${FILE_SERVICE_HOST}
-  api:
-    key: ${INTERNAL_KEY:test-internal-key}
-
-
 spring:
   elasticsearch:
-    uris: ${ES_URIS:http://localhost:9200}
+    uris: ${ES_HOST:http://localhost:9200}
 
   datasource:
     url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:backend5}
@@ -25,6 +18,14 @@ spring:
     properties:
       hibernate:
         format_sql: false
+
+  cloud:
+    aws:
+      s3:
+        bucket: ${S3_BUCKET_NAME}
+        presigned-url-expiration: 5
+      region:
+        static: ap-northeast-2
 
 logging:
   level:

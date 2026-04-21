@@ -55,7 +55,7 @@ public class ProductDocument {
 	@Field(type = FieldType.Boolean)
 	private boolean deleted;
 
-	@Field(type = FieldType.Date, format = DateFormat.date_hour_minute_second)
+	@Field(type = FieldType.Date, format = {DateFormat.date_hour_minute_second_millis, DateFormat.epoch_millis})
 	private LocalDateTime regDt;
 
 	public static ProductDocument from(Product product, String sellerName) {

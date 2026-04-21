@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
 import jabaclass.settlement.domain.model.settlement.Settlement;
@@ -31,6 +33,11 @@ public class SettlementRepositoryAdapter implements SettlementRepository {
 	@Override
 	public boolean existsBySellerIdAndSettlementMonth(UUID sellerId, String settlementMonth) {
 		return settlementJpaRepository.existsBySellerIdAndSettlementMonth(sellerId, settlementMonth);
+	}
+
+	@Override
+	public Page<Settlement> findBySellerId(UUID sellerId, Pageable pageable) {
+		return settlementJpaRepository.findBySellerId(sellerId, pageable);
 	}
 
 	@Override

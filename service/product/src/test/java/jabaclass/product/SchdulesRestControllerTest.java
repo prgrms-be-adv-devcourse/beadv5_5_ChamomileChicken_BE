@@ -27,11 +27,11 @@ import jabaclass.product.presentation.controller.SchdulesRestController;
 import jabaclass.product.presentation.dto.request.CreateScheduleRequestDto;
 import jabaclass.product.presentation.dto.request.OrderRequestDto;
 import jabaclass.product.presentation.dto.request.UpdateScheduleRequestDto;
-import jabaclass.product.presentation.dto.respose.AvailabilityScheduleResponseDto;
-import jabaclass.product.presentation.dto.respose.DeleteScheduleResposeDto;
-import jabaclass.product.presentation.dto.respose.OrderResponseDto;
-import jabaclass.product.presentation.dto.respose.OrderValid;
-import jabaclass.product.presentation.dto.respose.SchedulesResponseDto;
+import jabaclass.product.presentation.dto.response.AvailabilityScheduleResponseDto;
+import jabaclass.product.presentation.dto.response.DeleteScheduleResponseDto;
+import jabaclass.product.presentation.dto.response.OrderResponseDto;
+import jabaclass.product.presentation.dto.response.OrderValid;
+import jabaclass.product.presentation.dto.response.SchedulesResponseDto;
 
 @ExtendWith(MockitoExtension.class)
 class SchdulesRestControllerTest {
@@ -46,6 +46,7 @@ class SchdulesRestControllerTest {
 	private static final UUID SCHEDULE_ID = UUID.fromString("223e4567-e89b-12d3-a456-426614174000");
 	private static final UUID USER_ID = UUID.fromString("323e4567-e89b-12d3-a456-426614174000");
 	private static final UUID PRODUCT_USER_ID = UUID.fromString("423e4567-e89b-12d3-a456-426614174000");
+	private static final UUID SELLER_ID = UUID.fromString("523e4567-e89b-12d3-a456-426614174000");
 
 	private CreateScheduleRequestDto createRequest;
 	private UpdateScheduleRequestDto updateRequest;
@@ -116,7 +117,13 @@ class SchdulesRestControllerTest {
 	@Test
 	void 예약_검증_요청이_들어오면_유스케이스를_호출한다() {
 		OrderRequestDto request = new OrderRequestDto(SCHEDULE_ID, USER_ID, 2, new BigDecimal("10000"));
-		OrderResponseDto response = new OrderResponseDto(new BigDecimal("10000"), 2, OrderValid.OK, PRODUCT_USER_ID);
+		OrderResponseDto response = new OrderResponseDto(
+			new BigDecimal("10000"),
+			2,
+			OrderValid.OK,
+			PRODUCT_USER_ID,
+			SELLER_ID
+		);
 		given(scheduleUseCase.verification(request)).willReturn(response);
 
 		ResponseEntity<OrderResponseDto> result = schdulesRestController.schedulesReservations(request);
@@ -128,10 +135,10 @@ class SchdulesRestControllerTest {
 
 	@Test
 	void 일정_삭제_요청이_들어오면_유스케이스를_호출한다() {
-		DeleteScheduleResposeDto response = DeleteScheduleResposeDto.from(SCHEDULE_ID, ReservedStatus.CLOSED);
+		DeleteScheduleResponseDto response = DeleteScheduleResponseDto.from(SCHEDULE_ID, ReservedStatus.CLOSED);
 		given(scheduleUseCase.delete(PRODUCT_ID, SCHEDULE_ID, USER_ID)).willReturn(response);
 
-		ResponseEntity<ApiResponseDto<DeleteScheduleResposeDto>> result = schdulesRestController.schedulesDelete(
+		ResponseEntity<ApiResponseDto<DeleteScheduleResponseDto>> result = schdulesRestController.schedulesDelete(
 			PRODUCT_ID,
 			SCHEDULE_ID,
 			USER_ID

@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
 import jabaclass.settlement.application.dto.SettlementTargetSummary;
@@ -36,6 +38,19 @@ public class SettlementTargetCalculationRepositoryAdapter implements SettlementT
 	@Override
 	public List<SettlementTargetCalculation> findBySettlementMonthAndSellerId(String settlementMonth, UUID sellerId) {
 		return settlementTargetCalculationJpaRepository.findBySettlementMonthAndSellerId(settlementMonth, sellerId);
+	}
+
+	@Override
+	public Page<SettlementTargetCalculation> findBySettlementMonthAndSellerId(
+		String settlementMonth,
+		UUID sellerId,
+		Pageable pageable
+	) {
+		return settlementTargetCalculationJpaRepository.findBySettlementMonthAndSellerId(
+			settlementMonth,
+			sellerId,
+			pageable
+		);
 	}
 
 	@Override

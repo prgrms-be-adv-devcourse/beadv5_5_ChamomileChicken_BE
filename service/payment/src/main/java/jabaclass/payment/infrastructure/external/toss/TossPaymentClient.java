@@ -7,6 +7,7 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import jabaclass.payment.application.port.external.PaymentGatewayPort;
@@ -40,6 +41,12 @@ public class TossPaymentClient implements PaymentGatewayPort {
 
 		try {
 			restTemplate.postForEntity(url, request, String.class);
+		} catch (HttpClientErrorException e) {
+			// 이미 처리된 결제는 성공으로 간주 (멱등 처리)
+			if (e.getResponseBodyAsString().contains("ALREADY_PROCESSED_PAYMENT")) {
+				return;
+			}
+			throw new RuntimeException("결제 승인 실패", e);
 		} catch (Exception e) {
 			throw new RuntimeException("결제 승인 실패", e);
 		}

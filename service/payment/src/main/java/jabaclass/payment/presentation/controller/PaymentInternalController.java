@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 import jabaclass.payment.application.usecase.PaymentSettlementQueryUseCase;
 import jabaclass.payment.application.usecase.PaymentUseCase;
 import jabaclass.payment.presentation.dto.request.InternalRefundRequestDto;
+import jabaclass.payment.presentation.dto.response.InternalRefundDetailResponseDto;
 import jabaclass.payment.presentation.dto.response.InternalRefundResponseDto;
 import jabaclass.payment.presentation.dto.response.PaymentSettlementSliceResponseDto;
 import jabaclass.payment.presentation.dto.response.RefundSettlementSliceResponseDto;
@@ -29,6 +31,12 @@ public class PaymentInternalController implements PaymentInternalApi {
 	@PostMapping("/internal/refunds")
 	public InternalRefundResponseDto refundByOrder(@RequestBody InternalRefundRequestDto request) {
 		return paymentUseCase.refundByOrder(request);
+	}
+
+	@Override
+	@GetMapping("/internal/refunds/orders/{orderId}")
+	public InternalRefundDetailResponseDto getRefundInfoByOrder(@PathVariable UUID orderId) {
+		return paymentUseCase.getRefundInfoByOrder(orderId);
 	}
 
 	@Override

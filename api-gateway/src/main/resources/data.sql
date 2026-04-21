@@ -9,7 +9,9 @@ INSERT INTO gateway_whitelist (method, path_pattern, description) VALUES
     ('GET',  '/api/v1/products/*/schedules',    '상품 일정 목록 조회'),
     ('GET',  '/api/v1/products/*/availability', '스케줄 예약 가능 여부'),
     ('GET',  '/api/v1/products/*/reviewList',   '상품 리뷰 목록 조회'),
-    ('GET',  '/api/v1/products/*/reviews/*',    '리뷰 단건 조회');
+    ('GET',  '/api/v1/products/*/reviews/*',    '리뷰 단건 조회'),
+    ('GET',  '/oauth2/authorization/**',        '소셜 로그인 시작'),
+    ('GET',  '/login/oauth2/code/**',           '소셜 로그인 콜백');
 
 INSERT INTO gateway_route_policy (method, path_pattern, allowed_roles, description) VALUES
     ('POST',   '/api/v1/products',               'SELLER,ADMIN', '상품 등록'),
@@ -21,6 +23,10 @@ INSERT INTO gateway_route_policy (method, path_pattern, allowed_roles, descripti
     ('GET',    '/api/v1/settlements',            'SELLER,ADMIN', '정산 목록 조회'),
     ('GET',    '/api/v1/settlements/ready',      'SELLER,ADMIN', 'READY 정산 목록 조회'),
     ('GET',    '/api/v1/settlements/*',          'SELLER,ADMIN', '정산 단건 조회'),
+    ('GET',    '/api/v1/settlements/me',         'SELLER,ADMIN', '판매자 정산 목록 조회'),
+    ('GET',    '/api/v1/settlements/me/*/details', 'SELLER,ADMIN', '판매자 정산 상세 항목 조회'),
+    ('POST',   '/api/v1/internal-batch/settlements/calculate', 'ADMIN', '정산 계산 배치 수동 실행'),
+    ('POST',   '/api/v1/internal-batch/settlements/transfer',  'ADMIN', '정산 송금 배치 수동 실행'),
     ('GET',    '/api/v1/admins/**',              'ADMIN', '어드민 조회'),
     ('POST',   '/api/v1/admins/**',              'ADMIN', '어드민 등록'),
     ('PATCH',  '/api/v1/admins/**',              'ADMIN', '어드민 수정'),

@@ -77,6 +77,8 @@ DB(`gateway_whitelist`)에서 조회하며, Caffeine 로컬 캐시(TTL 10분)로
 | GET | /api/v1/products/*/availability | 스케줄 예약 가능 여부 |
 | GET | /api/v1/products/*/reviewList | 상품 리뷰 목록 조회 |
 | GET | /api/v1/products/*/reviews/* | 리뷰 단건 조회 |
+| GET | /oauth2/authorization/** | 소셜 로그인 시작 |
+| GET | /login/oauth2/code/** | 소셜 로그인 콜백 |
 
 화이트리스트 정책 변경은 DB 데이터 수정만으로 적용 가능하다. 캐시 TTL(10분) 이내엔 기존 정책이 유지된다.
 
@@ -101,6 +103,10 @@ DB(`gateway_route_policy`)에서 조회하며, Caffeine 로컬 캐시(TTL 3분)�
 | GET | /api/v1/settlements | SELLER,ADMIN | 정산 목록 조회 |
 | GET | /api/v1/settlements/ready | SELLER,ADMIN | READY 정산 목록 |
 | GET | /api/v1/settlements/* | SELLER,ADMIN | 정산 단건 조회 |
+| GET | /api/v1/settlements/me | SELLER,ADMIN | 판매자 정산 목록 조회 |
+| GET | /api/v1/settlements/me/*/details | SELLER,ADMIN | 판매자 정산 상세 항목 조회 |
+| POST | /api/v1/internal-batch/settlements/calculate | ADMIN | 정산 계산 배치 수동 실행 |
+| POST | /api/v1/internal-batch/settlements/transfer | ADMIN | 정산 송금 배치 수동 실행 |
 | GET | /api/v1/admins/** | ADMIN | 어드민 조회 |
 | POST | /api/v1/admins/** | ADMIN | 어드민 등록 |
 | PATCH | /api/v1/admins/** | ADMIN | 어드민 수정 |
@@ -132,6 +138,7 @@ Spring Cloud Gateway는 WebFlux(Netty 이벤트 루프) 기반이므로 JDBC(블
 | /api/v1/files/** | File | 9000 |
 | /api/v1/payments/** | Payment | 9001 |
 | /api/v1/settlements/** | Settlement | 9002 |
+| /api/v1/internal-batch/settlements/** | Settlement | 9002 |
 | /api/v1/email/** | User (Rate Limit 적용) | 9003 |
 | /api/v1/auth/**, /api/v1/users/**, /api/v1/deposits/**, /oauth2/authorization/**, /login/oauth2/code/** | User | 9003 |
 | /api/v1/products/** | Product | 9004 |

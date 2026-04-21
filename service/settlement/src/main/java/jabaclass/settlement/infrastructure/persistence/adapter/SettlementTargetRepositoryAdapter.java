@@ -26,8 +26,18 @@ public class SettlementTargetRepositoryAdapter implements SettlementTargetReposi
 	}
 
 	@Override
+	public SettlementTarget save(SettlementTarget settlementTarget) {
+		return settlementTargetJpaRepository.save(settlementTarget);
+	}
+
+	@Override
 	public Optional<SettlementTarget> findByPaymentIdAndTargetType(UUID paymentId, SettlementTargetType targetType) {
 		return settlementTargetJpaRepository.findByPaymentIdAndTargetType(paymentId, targetType);
+	}
+
+	@Override
+	public Optional<SettlementTarget> findByRefundId(UUID refundId) {
+		return settlementTargetJpaRepository.findByRefundId(refundId);
 	}
 
 	@Override
