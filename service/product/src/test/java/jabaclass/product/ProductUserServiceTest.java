@@ -26,7 +26,7 @@ import jabaclass.product.domain.model.status.ReservationStatus;
 import jabaclass.product.domain.repository.ProductUserRepository;
 import jabaclass.product.infrastructure.acl.dto.response.UserResponseDto;
 import jabaclass.product.presentation.dto.request.CreateProductUserRequestDto;
-import jabaclass.product.presentation.dto.respose.ProductUserResponseDto;
+import jabaclass.product.presentation.dto.response.ProductUserResponseDto;
 
 @ExtendWith(MockitoExtension.class)
 class ProductUserServiceTest {

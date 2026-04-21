@@ -12,7 +12,7 @@ import jabaclass.product.common.exception.CommonErrorCode;
 import jabaclass.product.domain.model.Review;
 import jabaclass.product.domain.repository.ReviewRepository;
 import jabaclass.product.presentation.dto.request.ReviewRequestDto;
-import jabaclass.product.presentation.dto.respose.ReviewResponseDto;
+import jabaclass.product.presentation.dto.response.ReviewResponseDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 

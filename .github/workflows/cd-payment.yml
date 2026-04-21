@@ -68,6 +68,8 @@ jobs:
   deploy:
     needs: build-and-push
     runs-on: [ self-hosted, ec2, docker ]
+    env:
+      KUBECONFIG: /home/ubuntu/.kube/config
 
     steps:
       - name: Checkout
@@ -84,10 +86,12 @@ jobs:
         run: |
           rsync -av --delete ./ /home/ubuntu/apps/repo/
 
-      - name: Copy deploy script to EC2 deploy directory
+      - name: Copy deploy scripts to EC2 deploy directory
         run: |
           cp /home/ubuntu/apps/repo/.github/scripts/deploy-app.sh /home/ubuntu/apps/deploy/scripts/deploy-app.sh
+          cp /home/ubuntu/apps/repo/.github/scripts/apply-env.sh /home/ubuntu/apps/deploy/scripts/apply-env.sh
           chmod +x /home/ubuntu/apps/deploy/scripts/deploy-app.sh
+          chmod +x /home/ubuntu/apps/deploy/scripts/apply-env.sh
 
       - name: Check envsubst
         run: |
@@ -98,21 +102,14 @@ jobs:
           cp /home/ubuntu/apps/repo/.github/k3s/payment-service.yml \
              /home/ubuntu/apps/data/k3s-service/payment-service.yml
 
-      - name: Create common_config.env
+      - name: Apply env files and detect changes
+        env:
+          COMMON_CONFIG_ENV: ${{ secrets.COMMON_CONFIG_ENV }}
+          COMMON_SECRET_ENV: ${{ secrets.COMMON_SECRET_ENV }}
+          SERVICE_CONFIG_ENV: ${{ secrets.PAYMENT_CONFIG_ENV }}
+          SERVICE_SECRET_ENV: ${{ secrets.PAYMENT_SECRET_ENV }}
         run: |
-          printf '%s\n' '${{ secrets.COMMON_CONFIG_ENV }}' > /home/ubuntu/apps/deploy/env/common_config.env
-
-      - name: Create common_secret.env
-        run: |
-          printf '%s\n' '${{ secrets.COMMON_SECRET_ENV }}' > /home/ubuntu/apps/deploy/env/common_secret.env
-
-      - name: Create payment_config.env
-        run: |
-          printf '%s\n' '${{ secrets.PAYMENT_CONFIG_ENV }}' > /home/ubuntu/apps/deploy/env/payment_config.env
-
-      - name: Create payment_secret.env
-        run: |
-          printf '%s\n' '${{ secrets.PAYMENT_SECRET_ENV }}' > /home/ubuntu/apps/deploy/env/payment_secret.env
+          /home/ubuntu/apps/deploy/scripts/apply-env.sh payment
 
       - name: Verify deploy files exist
         run: |
@@ -130,10 +127,14 @@ jobs:
         env:
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
+          RESTART_ON_CONFIG_CHANGE: ${{ env.CONFIG_CHANGED }}
         run: |
           /home/ubuntu/apps/deploy/scripts/deploy-app.sh payment
 
       - name: Debug Kubernetes state
+        if: always()
+        env:
+          KUBECONFIG: /home/ubuntu/.kube/config
         run: |
           echo "===== pods ====="
           kubectl get pods -o wide

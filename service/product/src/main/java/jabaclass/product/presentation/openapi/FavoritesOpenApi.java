@@ -11,7 +11,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jabaclass.product.common.exception.ApiResponseDto;
-import jabaclass.product.presentation.dto.respose.FavoritesResposeDto;
+import jabaclass.product.presentation.dto.response.FavoritesResponseDto;
 
 @Tag(name = "Favorites", description = "즐겨찾기 API")
 public interface FavoritesOpenApi {
@@ -25,7 +25,7 @@ public interface FavoritesOpenApi {
 		)
 	)
 	@CommonErrorResponses
-	ResponseEntity<ApiResponseDto<FavoritesResposeDto>> create(int quantity, UUID scheduleId, UUID userId);
+	ResponseEntity<ApiResponseDto<FavoritesResponseDto>> create(int quantity, UUID scheduleId, UUID userId);
 
 	@Operation(summary = "즐겨찾기 해제", description = "즐겨찾기를 해제 합니다.")
 	@ApiResponse(
@@ -36,7 +36,7 @@ public interface FavoritesOpenApi {
 		)
 	)
 	@CommonErrorResponses
-	ResponseEntity<ApiResponseDto<FavoritesResposeDto>> delete(UUID likeId, UUID userId);
+	ResponseEntity<ApiResponseDto<FavoritesResponseDto>> delete(UUID likeId, UUID userId);
 
 	@Operation(summary = "즐겨찾기 검색", description = "즐겨찾기를 검색 합니다.")
 	@ApiResponse(
@@ -47,5 +47,5 @@ public interface FavoritesOpenApi {
 		)
 	)
 	@CommonErrorResponses
-	ResponseEntity<ApiResponseDto<List<FavoritesResposeDto>>> getList(UUID userId);
+	ResponseEntity<ApiResponseDto<List<FavoritesResponseDto>>> getList(UUID userId);
 }

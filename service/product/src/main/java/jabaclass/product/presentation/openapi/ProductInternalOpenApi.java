@@ -12,7 +12,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jabaclass.product.presentation.dto.request.ProductBulkReadRequestDto;
-import jabaclass.product.presentation.dto.respose.ProductSettlementItemResponseDto;
+import jabaclass.product.presentation.dto.response.ProductSettlementItemResponseDto;
 
 @Tag(name = "Product Internal", description = "상품 내부 연동 API")
 public interface ProductInternalOpenApi {

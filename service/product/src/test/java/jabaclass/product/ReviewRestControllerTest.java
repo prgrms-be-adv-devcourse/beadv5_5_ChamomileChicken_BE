@@ -20,7 +20,7 @@ import jabaclass.product.application.usecase.ReviewUseCase;
 import jabaclass.product.common.exception.ApiResponseDto;
 import jabaclass.product.presentation.controller.ReviewRestController;
 import jabaclass.product.presentation.dto.request.ReviewRequestDto;
-import jabaclass.product.presentation.dto.respose.ReviewResponseDto;
+import jabaclass.product.presentation.dto.response.ReviewResponseDto;
 
 @ExtendWith(MockitoExtension.class)
 class ReviewRestControllerTest {
