@@ -1,6 +1,7 @@
 package jabaclass.apigateway.filter;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.Map;
 import java.util.UUID;
 
@@ -98,7 +99,11 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
                 return onError(exchange, JwtErrorCode.INVALID_TOKEN);
             }
 
+            long start = System.currentTimeMillis();
             return redisTemplate.hasKey(BLACKLIST_PREFIX + token)
+                .doOnNext(result -> log.info("[REDIS] blacklist check took {}ms",
+                    System.currentTimeMillis() - start))
+                .timeout(Duration.ofMillis(500))
                 .flatMap(isBlacklisted -> {
                     if (isBlacklisted) {
                         log.warn("[GATEWAY] Blacklisted token. Path: {} {}", httpMethod, path);
