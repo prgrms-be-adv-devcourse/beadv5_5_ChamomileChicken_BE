@@ -45,7 +45,7 @@ public class ProductInternalController implements ProductInternalOpenApi {
 	}
 
 	@GetMapping("/schedules/{scheduleId}/start-date")
-	public ResponseEntity<LocalDate> getScheduleStartDate(@PathVariable UUID scheduleId) {
-		return ResponseEntity.ok(scheduleUseCase.getScheduleStartDate(scheduleId));
+	public ResponseEntity<Map<String, LocalDate>> getScheduleStartDate(@PathVariable UUID scheduleId) {
+		return ResponseEntity.ok(Map.of("startDate", scheduleUseCase.getScheduleStartDate(scheduleId)));
 	}
 }

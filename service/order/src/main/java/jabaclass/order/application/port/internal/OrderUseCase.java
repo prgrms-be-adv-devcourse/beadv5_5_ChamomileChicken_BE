@@ -10,6 +10,7 @@ import jabaclass.order.presentation.dto.request.CreateOrderRequestDto;
 import jabaclass.order.presentation.dto.request.OrderBulkReadRequestDto;
 import jabaclass.order.presentation.dto.request.UpdateOrderPaymentStatusRequestDto;
 import jabaclass.order.presentation.dto.response.CreateOrderResponseDto;
+import jabaclass.order.presentation.dto.response.OrderRefundInfoResponseDto;
 import jabaclass.order.presentation.dto.response.OrderSettlementItemResponseDto;
 import jabaclass.order.presentation.dto.response.OrderResponseDto;
 
@@ -18,6 +19,8 @@ public interface OrderUseCase {
     CreateOrderResponseDto create(UUID userId, CreateOrderRequestDto requestDto);
 
     OrderResponseDto getById(UUID userId, UUID orderId);
+
+	OrderRefundInfoResponseDto getRefundInfo(UUID userId, UUID orderId);
 
     List<OrderResponseDto> getOrders(UUID userId, OrderStatus status);
 
