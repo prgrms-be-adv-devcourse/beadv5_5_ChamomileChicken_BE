@@ -70,10 +70,58 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         return whitelistService.isWhitelisted(path, httpMethod)
             .flatMap(isWhitelisted -> {
                 if (isWhitelisted) {
-                    return chain.filter(sanitizedExchange);
+                    return enrichIfAuthenticated(sanitizedExchange, chain, path, httpMethod);
                 }
                 return authenticate(sanitizedExchange, chain, path, httpMethod);
             });
+    }
+
+    private Mono<Void> enrichIfAuthenticated(ServerWebExchange exchange,
+        GatewayFilterChain chain,
+        String path,
+        HttpMethod httpMethod) {
+        String token = tokenResolver.resolveToken(exchange);
+        if (token == null) {
+            return chain.filter(exchange);
+        }
+
+        try {
+            Claims claims = jwtProvider.parseClaims(token);
+
+            if (!jwtProvider.isAccessToken(claims)) {
+                log.debug("[GATEWAY] Ignore non-access token on whitelisted path: {} {}", httpMethod, path);
+                return chain.filter(exchange);
+            }
+
+            UUID userId = jwtProvider.getUserId(claims);
+            String role = jwtProvider.getRole(claims);
+
+            return redisTemplate.hasKey(BLACKLIST_PREFIX + token)
+                .flatMap(isBlacklisted -> {
+                    if (isBlacklisted) {
+                        log.debug("[GATEWAY] Ignore blacklisted token on whitelisted path: {} {}", httpMethod, path);
+                        return chain.filter(exchange);
+                    }
+
+                    ServerWebExchange mutatedExchange = exchange.mutate()
+                        .request(r -> {
+                            r.header("X-User-Id", userId.toString());
+                            if (role != null) {
+                                r.header("X-User-Role", role);
+                            }
+                        })
+                        .build();
+
+                    return chain.filter(mutatedExchange);
+                })
+                .onErrorResume(e -> {
+                    log.warn("[GATEWAY] Optional auth enrichment failed: {} {}", httpMethod, path, e);
+                    return chain.filter(exchange);
+                });
+        } catch (Exception e) {
+            log.debug("[GATEWAY] Ignore invalid token on whitelisted path: {} {}", httpMethod, path);
+            return chain.filter(exchange);
+        }
     }
 
     private Mono<Void> authenticate(ServerWebExchange exchange,
