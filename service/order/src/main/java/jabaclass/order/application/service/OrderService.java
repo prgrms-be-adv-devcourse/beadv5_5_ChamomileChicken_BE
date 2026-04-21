@@ -224,7 +224,6 @@ public class OrderService implements OrderUseCase {
 
 	private String toJson(Object obj) {
 		try {
-			objectMapper.findAndRegisterModules();
 			return objectMapper.writeValueAsString(obj);
 		} catch (Exception e) {
 			throw new RuntimeException("Outbox 직렬화 실패", e);
