@@ -34,7 +34,7 @@ spring:
             - id: settlement
               uri: ${SETTLEMENT_SERVICE_URL:http://localhost:9002}
               predicates:
-                - Path=/api/v1/settlements/**
+                - Path=/api/v1/settlements, /api/v1/settlements/**, /api/v1/internal-batch/settlements/**
 
             - id: email
               uri: ${USER_SERVICE_URL:http://localhost:9003}
