@@ -22,13 +22,13 @@
 
 | 영역 | 대표 엔드포인트 | 설명 |
 |------|------------------|------|
-| 정산 조회 | `GET /settlements` | 월별 정산 목록 조회 |
-| 정산 조회 | `GET /settlements/ready` | READY 상태 정산 목록 조회 |
-| 정산 조회 | `GET /settlements/{settlementId}` | 정산 단건 조회 |
-| 판매자 정산 조회 | `GET /seller/settlements` | 헤더의 판매자 ID 기준 정산 목록 페이지 조회 |
-| 판매자 정산 조회 | `GET /seller/settlements/{settlementId}/details` | 헤더의 판매자 ID 기준 정산 상세 항목 페이지 조회 |
-| 배치 실행 | `POST /internal-batch/settlements/calculate` | 정산 계산 배치 수동 실행 |
-| 배치 실행 | `POST /internal-batch/settlements/transfer` | 정산 송금 배치 수동 실행 |
+| 정산 조회 | `GET /api/v1/settlements` | 월별 정산 목록 조회 |
+| 정산 조회 | `GET /api/v1/settlements/ready` | READY 상태 정산 목록 조회 |
+| 정산 조회 | `GET /api/v1/settlements/{settlementId}` | 정산 단건 조회 |
+| 판매자 정산 조회 | `GET /api/v1/settlements/me` | 헤더의 판매자 ID 기준 정산 목록 페이지 조회 |
+| 판매자 정산 조회 | `GET /api/v1/settlements/me/{settlementId}/details` | 헤더의 판매자 ID 기준 정산 상세 항목 페이지 조회 |
+| 배치 실행 | `POST /api/v1/internal-batch/settlements/calculate` | 정산 계산 배치 수동 실행 |
+| 배치 실행 | `POST /api/v1/internal-batch/settlements/transfer` | 정산 송금 배치 수동 실행 |
 
 ### 현재 서비스 흐름의 큰 축
 

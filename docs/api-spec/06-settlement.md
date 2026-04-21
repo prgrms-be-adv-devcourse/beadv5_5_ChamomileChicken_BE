@@ -2,7 +2,7 @@
 
 > 인증 범례 및 공통 응답 형식 → [API_SPEC.md](../API_SPEC.md)
 
-> ⚠️ Settlement 서비스 전체가 게이트웨이 미등록 상태이므로 현재 모든 경로는 직접 접근 기준으로 열려 있다.
+> 외부 호출은 API Gateway 기준 경로(`/api/v1/...`)를 사용한다.
 
 > 정산 대상(`SettlementTarget`) 적재는 외부 REST 호출이 아니라 Kafka `settlement.events` 소비로 들어온다.
 
@@ -12,13 +12,13 @@
 
 | Method | Path | Auth | 설명 |
 |--------|------|------|------|
-| GET | `/settlements` | ❌ 미등록 | 특정 월의 전체 정산 목록 조회 |
-| GET | `/settlements/ready` | ❌ 미등록 | 특정 월의 `READY` 상태 정산 목록 조회 |
-| GET | `/settlements/{settlementId}` | ❌ 미등록 | 정산 단건 조회 |
-| GET | `/seller/settlements` | ✅ JWT | 헤더의 판매자 ID 기준 정산 목록 페이지 조회 |
-| GET | `/seller/settlements/{settlementId}/details` | ✅ JWT | 헤더의 판매자 ID 기준 정산 상세 항목 페이지 조회 |
+| GET | `/api/v1/settlements` | ✅ JWT | 특정 월의 전체 정산 목록 조회 |
+| GET | `/api/v1/settlements/ready` | ✅ JWT | 특정 월의 `READY` 상태 정산 목록 조회 |
+| GET | `/api/v1/settlements/{settlementId}` | ✅ JWT | 정산 단건 조회 |
+| GET | `/api/v1/settlements/me` | ✅ JWT | 헤더의 판매자 ID 기준 정산 목록 페이지 조회 |
+| GET | `/api/v1/settlements/me/{settlementId}/details` | ✅ JWT | 헤더의 판매자 ID 기준 정산 상세 항목 페이지 조회 |
 
-### GET `/settlements`
+### GET `/api/v1/settlements`
 
 특정 월의 전체 정산 목록을 조회한다.
 
@@ -52,7 +52,7 @@
 
 응답은 래핑 객체 없이 `SettlementResponse` 배열을 그대로 반환한다.
 
-### GET `/settlements/ready`
+### GET `/api/v1/settlements/ready`
 
 특정 월의 `READY` 상태 정산 목록만 조회한다.
 
@@ -84,7 +84,7 @@
 ]
 ```
 
-### GET `/settlements/{settlementId}`
+### GET `/api/v1/settlements/{settlementId}`
 
 정산 ID로 단건 정산을 조회한다.
 
@@ -120,7 +120,7 @@
 |------|------|------|
 | `404` | `SETTLEMENT_NOT_FOUND` | 정산 정보를 찾을 수 없음 |
 
-### GET `/seller/settlements`
+### GET `/api/v1/settlements/me`
 
 헤더의 `X-User-Id`를 판매자 ID로 사용해 자신의 정산 목록을 페이지 조회한다.
 
@@ -166,7 +166,7 @@
 }
 ```
 
-### GET `/seller/settlements/{settlementId}/details`
+### GET `/api/v1/settlements/me/{settlementId}/details`
 
 헤더의 `X-User-Id`를 판매자 ID로 사용해 자신의 정산 상세 항목을 페이지 조회한다.
 
@@ -248,8 +248,8 @@
 
 | Method | Path | Auth | 설명 |
 |--------|------|------|------|
-| POST | `/internal-batch/settlements/calculate` | ⚙️ Internal | 정산 계산 배치 수동 실행 |
-| POST | `/internal-batch/settlements/transfer` | ⚙️ Internal | 정산 송금 배치 수동 실행 |
+| POST | `/api/v1/internal-batch/settlements/calculate` | ⚙️ Internal | 정산 계산 배치 수동 실행 |
+| POST | `/api/v1/internal-batch/settlements/transfer` | ⚙️ Internal | 정산 송금 배치 수동 실행 |
 
 **공통 Query Parameters**
 
@@ -257,7 +257,7 @@
 |---------|------|------|------|
 | `settlementMonth` | String (`yyyy-MM`) | X | 미입력 시 전월 기준 실행 |
 
-### POST `/internal-batch/settlements/calculate`
+### POST `/api/v1/internal-batch/settlements/calculate`
 
 `settlementCalculateJob`을 실행한다.
 
@@ -296,7 +296,7 @@
 | `409` | `SETTLEMENT_BATCH_ALREADY_RUNNING` | 이미 같은 배치가 실행 중 |
 | `500` | `SETTLEMENT_CALCULATE_FAILED` | 정산 계산 배치 실행 실패 |
 
-### POST `/internal-batch/settlements/transfer`
+### POST `/api/v1/internal-batch/settlements/transfer`
 
 `settlementTransferJob`을 실행한다.
 
