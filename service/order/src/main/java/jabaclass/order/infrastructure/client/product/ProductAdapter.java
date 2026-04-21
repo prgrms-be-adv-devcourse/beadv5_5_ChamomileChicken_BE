@@ -11,7 +11,9 @@ import org.springframework.web.client.RestTemplate;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import jabaclass.order.application.exception.OrderErrorCode;
 import jabaclass.order.application.port.external.ProductPort;
+import jabaclass.order.common.error.BusinessException;
 import jabaclass.order.infrastructure.client.product.dto.ProductReservationRequestDto;
 import jabaclass.order.infrastructure.client.product.dto.ProductReservationResponseDto;
 import lombok.RequiredArgsConstructor;
@@ -48,12 +50,12 @@ public class ProductAdapter implements ProductPort {
 			String.class
 		);
 		if (response == null) {
-			throw new RuntimeException("스케줄 날짜 조회 실패: " + productScheduleId);
+			throw new BusinessException(OrderErrorCode.EXTERNAL_PRODUCT_ERROR);
 		}
 		try {
 			return LocalDate.parse(objectMapper.readTree(response).get("startDate").asText());
 		} catch (Exception e) {
-			throw new RuntimeException("스케줄 날짜 파싱 실패: " + productScheduleId, e);
+			throw new BusinessException(OrderErrorCode.EXTERNAL_PRODUCT_ERROR);
 		}
 	}
 }

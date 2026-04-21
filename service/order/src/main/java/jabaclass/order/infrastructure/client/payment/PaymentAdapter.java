@@ -7,7 +7,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
+import jabaclass.order.application.exception.OrderErrorCode;
 import jabaclass.order.application.port.external.PaymentPort;
+import jabaclass.order.common.error.BusinessException;
 import jabaclass.order.infrastructure.client.payment.dto.InternalRefundRequestDto;
 import jabaclass.order.infrastructure.client.payment.dto.PaymentRefundInfoResponseDto;
 import jabaclass.order.infrastructure.client.payment.dto.InternalRefundResponseDto;
@@ -30,7 +32,7 @@ public class PaymentAdapter implements PaymentPort {
 			InternalRefundResponseDto.class
 		);
 		if (response == null) {
-			throw new RuntimeException("Payment 환불 응답 없음: orderId=" + orderId);
+			throw new BusinessException(OrderErrorCode.EXTERNAL_PAYMENT_ERROR);
 		}
 		return response.depositRefundAmount();
 	}
@@ -42,7 +44,7 @@ public class PaymentAdapter implements PaymentPort {
 			PaymentRefundInfoResponseDto.class
 		);
 		if (response == null) {
-			throw new RuntimeException("Payment 환불 정보 응답 없음: orderId=" + orderId);
+			throw new BusinessException(OrderErrorCode.EXTERNAL_PAYMENT_ERROR);
 		}
 		return response;
 	}
