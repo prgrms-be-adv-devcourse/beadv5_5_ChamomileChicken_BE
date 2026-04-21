@@ -7,6 +7,6 @@ ENV SPRING_PROFILES_ACTIVE=prod
 
 VOLUME /app/logs
 
-EXPOSE 9008
+EXPOSE 9007
 
 ENTRYPOINT ["java", "-jar", "app.jar"]
