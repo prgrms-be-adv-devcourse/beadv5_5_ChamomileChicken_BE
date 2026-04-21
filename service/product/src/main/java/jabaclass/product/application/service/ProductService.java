@@ -29,7 +29,10 @@ import jabaclass.product.infrastructure.acl.client.FileConfirmClient;
 import jabaclass.product.infrastructure.acl.client.FileConfirmResponse;
 import jabaclass.product.infrastructure.acl.dto.response.UserResponseDto;
 import jabaclass.product.infrastructure.elasticsearch.ProductDocument;
+import jabaclass.product.infrastructure.event.dto.ProductAiSyncedEvent;   // 추가
+import jabaclass.product.infrastructure.event.dto.ProductDeletedEvent;    // 추가
 import jabaclass.product.infrastructure.event.dto.ProductEventResponseDto;
+import jabaclass.product.infrastructure.event.dto.ProductViewedEvent;
 import jabaclass.product.infrastructure.kafka.ProductEsIndexMessage;
 import jabaclass.product.infrastructure.outbox.EsEventType;
 import jabaclass.product.infrastructure.outbox.OutboxEvent;
@@ -89,10 +92,10 @@ public class ProductService implements ProductUseCase {
 		UserResponseDto seller = findBySellerIdOrThrow(sellerId);
 
 		publisher.publishEvent(new ProductEventResponseDto(saved.getId()));
+		publisher.publishEvent(ProductAiSyncedEvent.from(saved));           // 추가
 		saveEsSaveOutbox(saved, seller.name());
 		return ProductResponseDto.from(saved, seller.name());
 	}
-
 	@Override
 	@Transactional
 	public ProductResponseDto update(UpdateProductRequestDto requestDto, UUID productId, UUID sellerId) {
@@ -124,6 +127,7 @@ public class ProductService implements ProductUseCase {
 			product.changeImages(images);
 		}
 		UserResponseDto seller = findBySellerIdOrThrow(sellerId);
+		publisher.publishEvent(ProductAiSyncedEvent.from(product));         // 추가
 		saveEsSaveOutbox(product, seller.name());
 		return ProductResponseDto.from(product, seller.name());
 	}
@@ -138,6 +142,7 @@ public class ProductService implements ProductUseCase {
 
 		product.changeStatus(ProductStatus.DISABLE);
 		product.changeDelete();
+		publisher.publishEvent(ProductDeletedEvent.of(productId));          // 추가
 		saveEsDeleteOutbox(productId.toString());
 
 		return DeleteProductResposeDto.from(productId, ProductStatus.DISABLE);
@@ -155,7 +160,6 @@ public class ProductService implements ProductUseCase {
 			page = productSearchRepository.searchByKeyword(requestDto.title(), pageable);
 		}
 
-		// ES 문서에 sellerName이 비정규화되어 있어 user 서비스 추가 호출 불필요
 		List<ProductResponseDto> content = page.getContent().stream()
 			.map(ProductResponseDto::from)
 			.toList();
@@ -164,11 +168,15 @@ public class ProductService implements ProductUseCase {
 	}
 
 	@Override
-	public ProductResponseDto searchById(UUID productId) {
+	public ProductResponseDto searchById(UUID productId, UUID userId) {
 		Product product = findByIdOrThrow(productId);
 
-		// sellerId를 확인
 		UserResponseDto seller = findBySellerIdOrThrow(product.getSellerId());
+		if (userId != null) {
+			log.info("상품 조회 이벤트 발행 준비: userId={}, productId={}", userId, productId);
+			publisher.publishEvent(ProductViewedEvent.of(userId, productId));
+			log.info("상품 조회 이벤트 발행 완료: userId={}, productId={}", userId, productId);
+		}
 
 		return ProductResponseDto.from(product, seller.name());
 	}
@@ -180,7 +188,6 @@ public class ProductService implements ProductUseCase {
 	}
 
 	@Override
-	// 해당 상품 보유자인지 확인
 	public Product matchProductAndSellerId(UUID productId, UUID sellerId) {
 		return productRepository.findByIdAndSellerId(productId, sellerId)
 			.orElseThrow(() -> new BusinessException(CommonErrorCode.MATCH_FAIL));
@@ -205,7 +212,6 @@ public class ProductService implements ProductUseCase {
 			.map(ProductSettlementItemResponseDto::from)
 			.toList();
 	}
-
 	@Override
 	public int migrateToEs() {
 		final int BATCH_SIZE = 100;
@@ -274,5 +280,4 @@ public class ProductService implements ProductUseCase {
 
 		return sellerInfo;
 	}
-
 }
