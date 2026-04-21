@@ -162,7 +162,6 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 	// - Kafka 전송 시 payload로 사용됨
 	private String toJson(Object obj) {
 		try {
-			objectMapper.findAndRegisterModules();
 			return objectMapper.writeValueAsString(obj);
 		} catch (Exception e) {
 			throw new RuntimeException("Outbox 직렬화 실패", e);

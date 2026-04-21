@@ -23,6 +23,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 import jabaclass.payment.application.port.external.OrderPort;
 import jabaclass.payment.application.port.external.PaymentGatewayPort;
@@ -77,7 +78,7 @@ class PaymentRefundTest {
 			outboxRepository,
 			paymentConfirmHandler,
 			paymentRefundHandler,
-			new ObjectMapper()
+			new ObjectMapper().registerModule(new JavaTimeModule())
 		);
 
 		lenient().when(outboxRepository.save(any()))
