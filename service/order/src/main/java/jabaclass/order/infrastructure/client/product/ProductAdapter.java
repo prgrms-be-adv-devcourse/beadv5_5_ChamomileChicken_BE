@@ -51,17 +51,9 @@ public class ProductAdapter implements ProductPort {
 			throw new RuntimeException("스케줄 날짜 조회 실패: " + productScheduleId);
 		}
 		try {
-			JsonNode root = objectMapper.readTree(response);
-			if (root.isObject() && root.hasNonNull("startDate")) {
-				return LocalDate.parse(root.get("startDate").asText());
-			}
-			if (root.isTextual()) {
-				return LocalDate.parse(root.asText());
-			}
-		} catch (Exception ignored) {
-			// plain text response fallback
+			return LocalDate.parse(objectMapper.readTree(response).get("startDate").asText());
+		} catch (Exception e) {
+			throw new RuntimeException("스케줄 날짜 파싱 실패: " + productScheduleId, e);
 		}
-
-		return LocalDate.parse(response.replace("\"", "").trim());
 	}
 }
