@@ -24,25 +24,24 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import jabaclass.product.application.acl.SellerRepository;
+import jabaclass.product.application.dto.FileConfirmResponse;
 import jabaclass.product.application.exception.BusinessException;
 import jabaclass.product.application.service.ProductService;
+import jabaclass.product.application.usecase.ValidateFileUseCase;
 import jabaclass.product.common.exception.CommonErrorCode;
 import jabaclass.product.domain.model.Product;
-import jabaclass.product.domain.model.ProductImageItem;
 import jabaclass.product.domain.model.status.ProductStatus;
 import jabaclass.product.domain.repository.ProductRepository;
 import jabaclass.product.domain.repository.ProductSearchRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import jabaclass.product.infrastructure.acl.client.FileConfirmClient;
-import jabaclass.product.infrastructure.acl.client.FileConfirmResponse;
 import jabaclass.product.infrastructure.acl.dto.response.UserResponseDto;
 import jabaclass.product.infrastructure.event.dto.ProductEventResponseDto;
 import jabaclass.product.infrastructure.outbox.OutboxEvent;
 import jabaclass.product.infrastructure.outbox.OutboxRepository;
 import jabaclass.product.presentation.dto.request.CreateProductRequestDto;
 import jabaclass.product.presentation.dto.request.UpdateProductRequestDto;
-import jabaclass.product.presentation.dto.respose.ProductResponseDto;
+import jabaclass.product.presentation.dto.response.ProductResponseDto;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
@@ -66,7 +65,7 @@ class ProductCUDTest {
 	private ApplicationEventPublisher publisher;
 
 	@Mock
-	private FileConfirmClient fileConfirmClient;
+	private ValidateFileUseCase validateFileUseCase;
 
 	@Mock
 	private OutboxRepository outboxRepository;
@@ -121,7 +120,7 @@ class ProductCUDTest {
 			LONGITUDE
 		);
 		UUID fileId = UUID.randomUUID();
-		given(fileConfirmClient.confirmBulk(any())).willReturn(List.of(new FileConfirmResponse(fileId, "user/file/image.jpg")));
+		given(validateFileUseCase.validateAndConfirm(any())).willReturn(new FileConfirmResponse(fileId, "user/file/image.jpg"));
 		given(sellerRepository.findSeller(SELLER_ID))
 			.willReturn(Optional.of(new UserResponseDto(SELLER_ID, "테스트판매자", "SELLER")));
 		given(productRepository.save(any(Product.class))).willAnswer(invocation -> {
@@ -253,7 +252,7 @@ class ProductCUDTest {
 			"테스트상품",
 			5,
 			"테스트 상품입니다.",
-			List.of(UUID.randomUUID()),
+			null,
 			PRICE,
 			ProductStatus.ENABLE,
 			"경기 성남시 분당구 판교역로 166",
@@ -285,7 +284,7 @@ class ProductCUDTest {
 			new BigDecimal("127.7654321")
 		);
 		UUID fileId = UUID.randomUUID();
-		given(fileConfirmClient.confirmBulk(any())).willReturn(List.of(new FileConfirmResponse(fileId, "user/file/image.jpg")));
+		given(validateFileUseCase.validateAndConfirm(any())).willReturn(new FileConfirmResponse(fileId, "user/file/image.jpg"));
 		given(sellerRepository.findSeller(SELLER_ID))
 			.willReturn(Optional.of(new UserResponseDto(SELLER_ID, "테스트판매자", "SELLER")));
 		given(productRepository.findById(PRODUCT_ID)).willReturn(Optional.of(product));

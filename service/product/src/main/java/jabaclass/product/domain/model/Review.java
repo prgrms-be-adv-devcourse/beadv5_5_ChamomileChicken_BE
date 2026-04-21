@@ -16,7 +16,6 @@ import lombok.experimental.SuperBuilder;
 @Getter
 @NoArgsConstructor
 @SuperBuilder
-@EntityListeners(AuditingEntityListener.class)
 @Table(name = "product_reviews", schema = "public")
 public class Review extends EntityBase {
 

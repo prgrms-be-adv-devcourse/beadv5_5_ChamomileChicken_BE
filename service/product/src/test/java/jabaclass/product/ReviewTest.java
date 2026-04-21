@@ -30,7 +30,7 @@ import jabaclass.product.domain.model.Review;
 import jabaclass.product.domain.repository.ReviewRepository;
 import jabaclass.product.presentation.controller.ReviewRestController;
 import jabaclass.product.presentation.dto.request.ReviewRequestDto;
-import jabaclass.product.presentation.dto.respose.ReviewResponseDto;
+import jabaclass.product.presentation.dto.response.ReviewResponseDto;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;

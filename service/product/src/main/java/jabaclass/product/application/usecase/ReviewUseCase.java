@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.UUID;
 
 import jabaclass.product.presentation.dto.request.ReviewRequestDto;
-import jabaclass.product.presentation.dto.respose.ReviewResponseDto;
+import jabaclass.product.presentation.dto.response.ReviewResponseDto;
 
 public interface ReviewUseCase {
 

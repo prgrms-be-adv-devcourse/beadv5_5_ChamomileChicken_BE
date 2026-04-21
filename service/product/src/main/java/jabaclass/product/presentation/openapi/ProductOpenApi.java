@@ -14,10 +14,10 @@ import jabaclass.product.common.exception.ApiResponseDto;
 import jabaclass.product.presentation.dto.request.CreateProductRequestDto;
 import jabaclass.product.presentation.dto.request.SearchProductRequestDto;
 import jabaclass.product.presentation.dto.request.UpdateProductRequestDto;
-import jabaclass.product.presentation.dto.respose.DeleteProductResposeDto;
-import jabaclass.product.presentation.dto.respose.ProductResponseDto;
-import jabaclass.product.presentation.dto.respose.ProductUserResponseDto;
-import jabaclass.product.presentation.dto.respose.SearchProductResponseDto;
+import jabaclass.product.presentation.dto.response.DeleteProductResponseDto;
+import jabaclass.product.presentation.dto.response.ProductResponseDto;
+import jabaclass.product.presentation.dto.response.ProductUserResponseDto;
+import jabaclass.product.presentation.dto.response.SearchProductResponseDto;
 
 @Tag(name = "Product", description = "상품 API")
 public interface ProductOpenApi {
@@ -55,7 +55,7 @@ public interface ProductOpenApi {
 		)
 	)
 	@CommonErrorResponses
-	ResponseEntity<ApiResponseDto<DeleteProductResposeDto>> delete(UUID productId, UUID userId);
+	ResponseEntity<ApiResponseDto<DeleteProductResponseDto>> delete(UUID productId, UUID userId);
 
 	@Operation(summary = "상품 전체 검색", description = "전체 상품을 검색 합니다.")
 	@ApiResponse(

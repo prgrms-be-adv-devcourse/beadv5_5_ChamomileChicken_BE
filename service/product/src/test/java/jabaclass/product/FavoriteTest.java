@@ -27,7 +27,7 @@ import jabaclass.product.common.exception.CommonErrorCode;
 import jabaclass.product.domain.model.Favorite;
 import jabaclass.product.domain.repository.FavoriteRepository;
 import jabaclass.product.presentation.controller.FavoritesRestController;
-import jabaclass.product.presentation.dto.respose.FavoritesResposeDto;
+import jabaclass.product.presentation.dto.response.FavoritesResponseDto;
 
 @ExtendWith(MockitoExtension.class)
 class FavoriteTest {
@@ -68,7 +68,7 @@ class FavoriteTest {
 			return saved;
 		});
 
-		FavoritesResposeDto result = favoriteService.createFavorite(2, SCHEDULE_ID, USER_ID);
+		FavoritesResponseDto result = favoriteService.createFavorite(2, SCHEDULE_ID, USER_ID);
 
 		assertThat(result.id()).isEqualTo(FAVORITE_ID);
 		assertThat(result.productScheduleId()).isEqualTo(SCHEDULE_ID);
@@ -88,7 +88,7 @@ class FavoriteTest {
 	void 내_즐겨찾기_목록을_조회한다() {
 		given(favoriteRepository.findByUserIdAndDeleteDtIsNull(USER_ID)).willReturn(List.of(favorite));
 
-		List<FavoritesResposeDto> result = favoriteService.findByUserIdAndDeleteDtIsNull(USER_ID);
+		List<FavoritesResponseDto> result = favoriteService.findByUserIdAndDeleteDtIsNull(USER_ID);
 
 		assertThat(result).hasSize(1);
 		assertThat(result.get(0).id()).isEqualTo(FAVORITE_ID);
@@ -105,10 +105,10 @@ class FavoriteTest {
 
 	@Test
 	void 즐겨찾기_생성_요청이_들어오면_컨트롤러가_유스케이스를_호출한다() {
-		FavoritesResposeDto response = new FavoritesResposeDto(FAVORITE_ID, SCHEDULE_ID, 2);
+		FavoritesResponseDto response = new FavoritesResponseDto(FAVORITE_ID, SCHEDULE_ID, 2);
 		given(favoriteUseCase.createFavorite(2, SCHEDULE_ID, USER_ID)).willReturn(response);
 
-		ResponseEntity<ApiResponseDto<FavoritesResposeDto>> result = favoritesRestController.create(2, SCHEDULE_ID, USER_ID);
+		ResponseEntity<ApiResponseDto<FavoritesResponseDto>> result = favoritesRestController.create(2, SCHEDULE_ID, USER_ID);
 
 		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.CREATED);
 		assertThat(result.getBody()).isNotNull();
@@ -118,7 +118,7 @@ class FavoriteTest {
 
 	@Test
 	void 즐겨찾기_삭제_요청이_들어오면_컨트롤러가_유스케이스를_호출한다() {
-		ResponseEntity<ApiResponseDto<FavoritesResposeDto>> result = favoritesRestController.delete(FAVORITE_ID, USER_ID);
+		ResponseEntity<ApiResponseDto<FavoritesResponseDto>> result = favoritesRestController.delete(FAVORITE_ID, USER_ID);
 
 		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
 		then(favoriteUseCase).should().deleteFavorite(FAVORITE_ID, USER_ID);
@@ -126,10 +126,10 @@ class FavoriteTest {
 
 	@Test
 	void 즐겨찾기_목록_조회_요청이_들어오면_컨트롤러가_유스케이스를_호출한다() {
-		List<FavoritesResposeDto> response = List.of(new FavoritesResposeDto(FAVORITE_ID, SCHEDULE_ID, 2));
+		List<FavoritesResponseDto> response = List.of(new FavoritesResponseDto(FAVORITE_ID, SCHEDULE_ID, 2));
 		given(favoriteUseCase.findByUserIdAndDeleteDtIsNull(USER_ID)).willReturn(response);
 
-		ResponseEntity<ApiResponseDto<List<FavoritesResposeDto>>> result = favoritesRestController.getList(USER_ID);
+		ResponseEntity<ApiResponseDto<List<FavoritesResponseDto>>> result = favoritesRestController.getList(USER_ID);
 
 		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
 		assertThat(result.getBody()).isNotNull();

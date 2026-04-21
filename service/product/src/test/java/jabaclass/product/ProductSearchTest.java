@@ -24,14 +24,14 @@ import org.springframework.data.domain.Pageable;
 
 import jabaclass.product.application.acl.SellerRepository;
 import jabaclass.product.application.service.ProductService;
+import jabaclass.product.application.usecase.ValidateFileUseCase;
 import jabaclass.product.domain.model.status.ProductStatus;
 import jabaclass.product.domain.repository.ProductRepository;
 import jabaclass.product.domain.repository.ProductSearchRepository;
-import jabaclass.product.infrastructure.acl.client.FileConfirmClient;
 import jabaclass.product.infrastructure.elasticsearch.ProductDocument;
 import jabaclass.product.presentation.dto.request.SearchProductRequestDto;
-import jabaclass.product.presentation.dto.respose.ProductResponseDto;
-import jabaclass.product.presentation.dto.respose.SearchProductResponseDto;
+import jabaclass.product.presentation.dto.response.ProductResponseDto;
+import jabaclass.product.presentation.dto.response.SearchProductResponseDto;
 
 @ExtendWith(MockitoExtension.class)
 class ProductSearchTest {
@@ -52,7 +52,7 @@ class ProductSearchTest {
 	private ApplicationEventPublisher publisher;
 
 	@Mock
-	private FileConfirmClient fileConfirmClient;
+	private ValidateFileUseCase validateFileUseCase;
 
 	private static final UUID SELLER_ID = UUID.fromString("123e4567-e89b-12d3-a456-426614174000");
 	private static final BigDecimal PRICE = new BigDecimal("1000.50");
