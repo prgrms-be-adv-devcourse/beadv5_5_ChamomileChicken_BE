@@ -32,7 +32,7 @@ public class CandidateSearchRepositoryImpl implements CandidateSearchRepository 
                 description,
                 price,
                 road_address
-            FROM products_ai
+            FROM product_embeddings
             WHERE status = 'ENABLE'
             ORDER BY embedding <=> (?::vector)  -- cosine distance (pgvector)
             LIMIT ?
@@ -64,7 +64,7 @@ public class CandidateSearchRepositoryImpl implements CandidateSearchRepository 
                 description,
                 price,
                 road_address
-            FROM products_ai
+            FROM product_embeddings
             WHERE status = 'ENABLE'
             ORDER BY popularity DESC
             LIMIT ?
