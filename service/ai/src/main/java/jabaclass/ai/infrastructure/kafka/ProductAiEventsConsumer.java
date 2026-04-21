@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import jabaclass.ai.application.service.ProductEmbeddingSyncService;
+import jabaclass.ai.application.service.UserActivityService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -18,6 +19,7 @@ import lombok.extern.slf4j.Slf4j;
 public class ProductAiEventsConsumer {
 
 	private final ProductEmbeddingSyncService productEmbeddingSyncService;
+	private final UserActivityService userActivityService;
 	private final ObjectMapper objectMapper;
 
 	@KafkaListener(
@@ -39,6 +41,12 @@ public class ProductAiEventsConsumer {
 					ProductDeletedEvent event = objectMapper.readValue(message, ProductDeletedEvent.class);
 					productEmbeddingSyncService.delete(event.productId());
 					log.debug("AI 임베딩 삭제 완료: {}", event.productId());
+				}
+				case "PRODUCT_VIEWED" -> {
+					ProductViewedEvent event = objectMapper.readValue(message, ProductViewedEvent.class);
+					log.info("상품 조회 이벤트 수신: userId={}, productId={}", event.userId(), event.productId());
+					userActivityService.recordProductView(event);
+					log.info("사용자 상품 조회 기록 저장 완료: userId={}, productId={}", event.userId(), event.productId());
 				}
 				default -> log.warn("알 수 없는 eventType: {}", eventType);
 			}
