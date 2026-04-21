@@ -25,11 +25,13 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 public class RecommendationService implements RecommendationUseCase {
+	private static final int RECOMMENDATION_COUNT = 5;
 
 	private final RecommendationCacheRepository recommendationCacheRepository;
 	private final UserVectorService userVectorService;
 	private final CandidateSearchRepository candidateSearchRepository;
 	private final AiGatewayPort aiGatewayPort;
+
 	public RecommendationResponseDto recommend(UUID userId) {
 		// 1. 캐시 조회
 		RecommendationResponseDto cached = recommendationCacheRepository.get(userId);
@@ -41,7 +43,7 @@ public class RecommendationService implements RecommendationUseCase {
 		UserVector userVector = userVectorService.getOrCreate(userId);
 
 		// 3. 후보 조회
-		List<CandidateClassDto> candidates = candidateSearchRepository.findTopK(userVector, 10);
+		List<CandidateClassDto> candidates = candidateSearchRepository.findTopK(userVector, RECOMMENDATION_COUNT);
 		if (candidates == null || candidates.isEmpty()) {
 			return createFallback(userId);
 		}
@@ -54,9 +56,6 @@ public class RecommendationService implements RecommendationUseCase {
 			.map(c -> new RecommendationItemDto(
 				c.productId(),
 				c.title(),
-				c.description(),
-				c.price(),
-				c.roadAddress(),
 				reasonMap.getOrDefault(
 					c.productId(),
 					"사용자 취향과 유사한 클래스입니다."
@@ -74,15 +73,12 @@ public class RecommendationService implements RecommendationUseCase {
 
 	private RecommendationResponseDto createFallback(UUID userId) {
 
-		List<CandidateClassDto> popular = candidateSearchRepository.findPopular(1);
+		List<CandidateClassDto> popular = candidateSearchRepository.findPopular(RECOMMENDATION_COUNT);
 
 		List<RecommendationItemDto> items = popular.stream()
 			.map(p -> new RecommendationItemDto(
 				p.productId(),
 				p.title(),
-				p.description(),
-				p.price(),
-				p.roadAddress(),
 				"현재 인기 있는 클래스입니다."
 			))
 			.toList();
