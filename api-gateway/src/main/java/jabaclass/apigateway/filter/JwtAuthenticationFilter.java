@@ -68,6 +68,10 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         }
 
         return whitelistService.isWhitelisted(path, httpMethod)
+            .onErrorResume(e -> {
+                log.error("[GATEWAY] Whitelist check failed, denying request: {}", e.getMessage());
+                return Mono.just(false);
+            })
             .flatMap(isWhitelisted -> {
                 if (isWhitelisted) {
                     return chain.filter(sanitizedExchange);
