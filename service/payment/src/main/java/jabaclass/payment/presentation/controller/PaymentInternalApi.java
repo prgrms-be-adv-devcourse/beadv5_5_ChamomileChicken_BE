@@ -13,9 +13,22 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jabaclass.payment.presentation.dto.response.PaymentSettlementSliceResponseDto;
 import jabaclass.payment.presentation.dto.response.RefundSettlementSliceResponseDto;
+import jabaclass.payment.presentation.dto.response.InternalRefundDetailResponseDto;
+import org.springframework.web.bind.annotation.PathVariable;
 
 @Tag(name = "Payment Internal", description = "결제 내부 연동 API")
 public interface PaymentInternalApi {
+
+	@Operation(
+		summary = "주문별 환불 정보 조회",
+		description = "내부 서비스가 주문 ID 기준으로 환불 비율과 환불 처리 시각을 조회합니다."
+	)
+	@ApiResponse(
+		responseCode = "200",
+		description = "환불 정보 조회 성공",
+		content = @Content(schema = @Schema(implementation = InternalRefundDetailResponseDto.class))
+	)
+	InternalRefundDetailResponseDto getRefundInfoByOrder(@PathVariable UUID orderId);
 
 	@Operation(
 		summary = "결제 정산 원천 조회",
