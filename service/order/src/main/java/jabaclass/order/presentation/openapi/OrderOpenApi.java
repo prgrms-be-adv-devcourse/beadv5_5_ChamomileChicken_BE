@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jabaclass.order.domain.model.OrderStatus;
 import jabaclass.order.presentation.dto.request.CreateOrderRequestDto;
 import jabaclass.order.presentation.dto.response.CreateOrderResponseDto;
+import jabaclass.order.presentation.dto.response.OrderRefundInfoResponseDto;
 import jabaclass.order.presentation.dto.response.OrderResponseDto;
 import org.springframework.http.ResponseEntity;
 import jabaclass.order.common.auth.CurrentUser;
@@ -42,6 +43,15 @@ public interface OrderOpenApi {
     )
     @CommonErrorResponses
     ResponseEntity<OrderResponseDto> getById(@CurrentUser UUID userId, @PathVariable UUID orderId);
+
+	@Operation(summary = "주문 환불 정보 조회", description = "환불 완료된 주문의 클래스 시작일, 환불 처리일, 환불 비율을 조회합니다.")
+	@ApiResponse(
+		responseCode = "200",
+		description = "주문 환불 정보 조회 성공",
+		content = @Content(schema = @Schema(implementation = OrderRefundInfoResponseDto.class))
+	)
+	@CommonErrorResponses
+	ResponseEntity<OrderRefundInfoResponseDto> getRefundInfo(@CurrentUser UUID userId, @PathVariable UUID orderId);
 
     @Operation(summary = "내 주문 목록 조회", description = "로그인한 사용자의 주문 목록을 조회합니다.")
     @ApiResponse(

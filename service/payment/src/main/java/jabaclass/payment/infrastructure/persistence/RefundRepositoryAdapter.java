@@ -2,12 +2,14 @@ package jabaclass.payment.infrastructure.persistence;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Repository;
 
 import jabaclass.payment.domain.model.Refund;
+import jabaclass.payment.domain.model.RefundStatus;
 import jabaclass.payment.domain.repository.RefundRepository;
 import lombok.RequiredArgsConstructor;
 
@@ -20,6 +22,14 @@ public class RefundRepositoryAdapter implements RefundRepository {
 	@Override
 	public Refund save(Refund refund) {
 		return refundJpaRepository.save(refund);
+	}
+
+	@Override
+	public Optional<Refund> findLatestCompletedByPaymentId(UUID paymentId) {
+		return refundJpaRepository.findFirstByPaymentIdAndStatusOrderByProcessedAtDesc(
+			paymentId,
+			RefundStatus.COMPLETED
+		);
 	}
 
 	@Override

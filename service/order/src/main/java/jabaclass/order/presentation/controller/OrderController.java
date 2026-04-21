@@ -7,6 +7,7 @@ import jabaclass.order.application.port.internal.OrderUseCase;
 import jabaclass.order.domain.model.OrderStatus;
 import jabaclass.order.presentation.dto.request.CreateOrderRequestDto;
 import jabaclass.order.presentation.dto.response.CreateOrderResponseDto;
+import jabaclass.order.presentation.dto.response.OrderRefundInfoResponseDto;
 import jabaclass.order.presentation.dto.response.OrderResponseDto;
 import jabaclass.order.presentation.openapi.OrderOpenApi;
 import jakarta.validation.Valid;
@@ -51,6 +52,14 @@ public class OrderController implements OrderOpenApi {
 
         return ResponseEntity.ok(responseDto);
     }
+
+	@GetMapping("/{orderId}/refund-info")
+	public ResponseEntity<OrderRefundInfoResponseDto> getRefundInfo(
+		@CurrentUser UUID userId,
+		@PathVariable UUID orderId
+	) {
+		return ResponseEntity.ok(orderUseCase.getRefundInfo(userId, orderId));
+	}
 
     @Override
     @GetMapping
