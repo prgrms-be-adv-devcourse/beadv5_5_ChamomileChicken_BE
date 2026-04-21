@@ -8,14 +8,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import jabaclass.order.application.exception.OrderErrorCode;
 import jabaclass.order.application.port.external.ProductPort;
 import jabaclass.order.common.error.BusinessException;
 import jabaclass.order.infrastructure.client.product.dto.ProductReservationRequestDto;
 import jabaclass.order.infrastructure.client.product.dto.ProductReservationResponseDto;
+import jabaclass.order.infrastructure.client.product.dto.ProductScheduleDateResponseDto;
 import lombok.RequiredArgsConstructor;
 
 @Component
@@ -23,7 +21,6 @@ import lombok.RequiredArgsConstructor;
 public class ProductAdapter implements ProductPort {
 
 	private final RestTemplate restTemplate;
-	private final ObjectMapper objectMapper;
 
 	@Value("${external.products.base-url:http://localhost:9004}")
 	private String productBaseUrl;
@@ -45,17 +42,13 @@ public class ProductAdapter implements ProductPort {
 
 	@Override
 	public LocalDate getScheduleStartDate(UUID productScheduleId) {
-		String response = restTemplate.getForObject(
+		ProductScheduleDateResponseDto response = restTemplate.getForObject(
 			productBaseUrl + "/api/v1/products/schedules/" + productScheduleId + "/start-date",
-			String.class
+			ProductScheduleDateResponseDto.class
 		);
 		if (response == null) {
 			throw new BusinessException(OrderErrorCode.EXTERNAL_PRODUCT_ERROR);
 		}
-		try {
-			return LocalDate.parse(objectMapper.readTree(response).get("startDate").asText());
-		} catch (Exception e) {
-			throw new BusinessException(OrderErrorCode.EXTERNAL_PRODUCT_ERROR);
-		}
+		return response.startDate();
 	}
 }
