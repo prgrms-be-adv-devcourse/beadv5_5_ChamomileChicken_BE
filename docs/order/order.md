@@ -74,6 +74,7 @@ infrastructure/outbox/
 |------|------|
 | 주문 생성 (`create`) | 재고 예약 → 예치금 차감 → Order 저장 (tx 없음, 외부 호출 포함) |
 | 주문 조회 | 단건/목록/정산용 다건 조회 |
+| 환불 정보 조회 (`getRefundInfo`) | Payment 서비스 환불 상세 + 수업 시작일 조합하여 응답 |
 | 금액 검증 | Payment 서비스가 confirm 전 호출하는 내부 API |
 | 결제 결과 반영 | Kafka `payment.events` 수신 후 성공/실패 핸들러 위임 |
 
@@ -201,6 +202,13 @@ sequenceDiagram
 | 메서드 | 엔드포인트 | 용도 |
 |--------|-----------|------|
 | `validateAndUse` | `POST /api/v1/deposits/use` | 예치금 잔액 확인 + 차감 |
+
+### Payment 서비스 — `PaymentAdapter` (`PaymentPort` 구현)
+
+| 메서드 | 엔드포인트 | 용도 |
+|--------|-----------|------|
+| `refund` | `POST /api/v1/payments/internal/refunds` | 환불 요청 (PG + 예치금 환불금액 반환) |
+| `getRefundInfo` | `GET /api/v1/payments/internal/refunds/orders/{orderId}` | 환불 상세 정보 조회 |
 
 ---
 

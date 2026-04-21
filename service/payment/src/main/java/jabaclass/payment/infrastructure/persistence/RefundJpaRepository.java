@@ -8,8 +8,11 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
 import jabaclass.payment.domain.model.Refund;
+import jabaclass.payment.domain.model.RefundStatus;
 
 public interface RefundJpaRepository extends JpaRepository<Refund, UUID> {
+
+	java.util.Optional<Refund> findFirstByPaymentIdAndStatusOrderByProcessedAtDesc(UUID paymentId, RefundStatus status);
 
 	java.util.Optional<Refund> findByPaymentId(UUID paymentId);
 

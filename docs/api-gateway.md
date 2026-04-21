@@ -77,6 +77,8 @@ DB(`gateway_whitelist`)에서 조회하며, Caffeine 로컬 캐시(TTL 10분)로
 | GET | /api/v1/products/*/availability | 스케줄 예약 가능 여부 |
 | GET | /api/v1/products/*/reviewList | 상품 리뷰 목록 조회 |
 | GET | /api/v1/products/*/reviews/* | 리뷰 단건 조회 |
+| GET | /oauth2/authorization/** | 소셜 로그인 시작 |
+| GET | /login/oauth2/code/** | 소셜 로그인 콜백 |
 
 화이트리스트 정책 변경은 DB 데이터 수정만으로 적용 가능하다. 캐시 TTL(10분) 이내엔 기존 정책이 유지된다.
 

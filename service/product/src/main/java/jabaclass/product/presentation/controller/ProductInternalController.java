@@ -2,6 +2,7 @@ package jabaclass.product.presentation.controller;
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -9,13 +10,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.time.LocalDate;
-import java.util.UUID;
-
 import jabaclass.product.application.usecase.ProductUseCase;
 import jabaclass.product.application.usecase.ScheduleUseCase;
 import jabaclass.product.presentation.dto.request.ProductBulkReadRequestDto;
 import jabaclass.product.presentation.dto.response.ProductSettlementItemResponseDto;
+import jabaclass.product.presentation.dto.response.ScheduleStartDateResponseDto;
 import jabaclass.product.presentation.openapi.ProductInternalOpenApi;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -45,7 +44,7 @@ public class ProductInternalController implements ProductInternalOpenApi {
 	}
 
 	@GetMapping("/schedules/{scheduleId}/start-date")
-	public ResponseEntity<LocalDate> getScheduleStartDate(@PathVariable UUID scheduleId) {
-		return ResponseEntity.ok(scheduleUseCase.getScheduleStartDate(scheduleId));
+	public ResponseEntity<ScheduleStartDateResponseDto> getScheduleStartDate(@PathVariable UUID scheduleId) {
+		return ResponseEntity.ok(new ScheduleStartDateResponseDto(scheduleUseCase.getScheduleStartDate(scheduleId)));
 	}
 }

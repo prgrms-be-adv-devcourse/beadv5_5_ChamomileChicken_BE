@@ -9,7 +9,9 @@ INSERT INTO gateway_whitelist (method, path_pattern, description) VALUES
     ('GET',  '/api/v1/products/*/schedules',    '상품 일정 목록 조회'),
     ('GET',  '/api/v1/products/*/availability', '스케줄 예약 가능 여부'),
     ('GET',  '/api/v1/products/*/reviewList',   '상품 리뷰 목록 조회'),
-    ('GET',  '/api/v1/products/*/reviews/*',    '리뷰 단건 조회');
+    ('GET',  '/api/v1/products/*/reviews/*',    '리뷰 단건 조회'),
+    ('GET',  '/oauth2/authorization/**',        '소셜 로그인 시작'),
+    ('GET',  '/login/oauth2/code/**',           '소셜 로그인 콜백');
 
 INSERT INTO gateway_route_policy (method, path_pattern, allowed_roles, description) VALUES
     ('POST',   '/api/v1/products',               'SELLER,ADMIN', '상품 등록'),

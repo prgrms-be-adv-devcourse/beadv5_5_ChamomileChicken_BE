@@ -26,6 +26,7 @@ import jabaclass.payment.infrastructure.outbox.OutboxRepository;
 import jabaclass.payment.presentation.dto.request.ConfirmPaymentRequestDto;
 import jabaclass.payment.presentation.dto.request.InternalRefundRequestDto;
 import jabaclass.payment.presentation.dto.request.PreparePaymentRequestDto;
+import jabaclass.payment.presentation.dto.response.InternalRefundDetailResponseDto;
 import jabaclass.payment.presentation.dto.response.InternalRefundResponseDto;
 import jabaclass.payment.presentation.dto.response.PaymentResponseDto;
 import jabaclass.payment.presentation.dto.response.PaymentSettlementSliceResponseDto;
@@ -38,7 +39,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 @Slf4j
 public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUseCase {
 
@@ -157,6 +157,17 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 		}
 	}
 
+	@Override
+	@Transactional(readOnly = true)
+	public InternalRefundDetailResponseDto getRefundInfoByOrder(UUID orderId) {
+		Payment payment = paymentRepository.findByOrderId(orderId)
+			.orElseThrow(() -> new PaymentException(PaymentErrorCode.PAYMENT_NOT_FOUND));
+
+		return refundRepository.findLatestCompletedByPaymentId(payment.getId())
+			.map(refund -> InternalRefundDetailResponseDto.from(orderId, refund))
+			.orElseThrow(() -> new PaymentException(PaymentErrorCode.PAYMENT_NOT_FOUND));
+	}
+
 	// Outbox payload 직렬화
 	// - 이벤트 객체 → JSON 문자열로 변환
 	// - Kafka 전송 시 payload로 사용됨
@@ -169,6 +180,7 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 	}
 
 	@Override
+	@Transactional(readOnly = true)
 	public PaymentSettlementSliceResponseDto getPaymentSettlementTargets(
 		LocalDateTime from,
 		LocalDateTime to,
@@ -209,6 +221,7 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 	}
 
 	@Override
+	@Transactional(readOnly = true)
 	public RefundSettlementSliceResponseDto getRefundSettlementTargets(
 		LocalDateTime from,
 		LocalDateTime to,

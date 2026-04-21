@@ -9,6 +9,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Repository;
 
 import jabaclass.payment.domain.model.Refund;
+import jabaclass.payment.domain.model.RefundStatus;
 import jabaclass.payment.domain.repository.RefundRepository;
 import lombok.RequiredArgsConstructor;
 
@@ -26,6 +27,14 @@ public class RefundRepositoryAdapter implements RefundRepository {
 	@Override
 	public Optional<Refund> findByPaymentId(UUID paymentId) {
 		return refundJpaRepository.findByPaymentId(paymentId);
+	}
+
+	@Override
+	public Optional<Refund> findLatestCompletedByPaymentId(UUID paymentId) {
+		return refundJpaRepository.findFirstByPaymentIdAndStatusOrderByProcessedAtDesc(
+			paymentId,
+			RefundStatus.COMPLETED
+		);
 	}
 
 	@Override

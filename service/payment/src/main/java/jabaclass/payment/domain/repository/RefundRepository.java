@@ -13,6 +13,8 @@ public interface RefundRepository {
 
 	Optional<Refund> findByPaymentId(UUID paymentId);
 
+	Optional<Refund> findLatestCompletedByPaymentId(UUID paymentId);
+
 	List<SettlementRefundSource> findSettlementRefundSources(
 		LocalDateTime from,
 		LocalDateTime to,

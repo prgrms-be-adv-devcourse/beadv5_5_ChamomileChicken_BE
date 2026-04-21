@@ -35,6 +35,7 @@ import jabaclass.order.infrastructure.outbox.OutboxRepository;
 import jabaclass.order.presentation.dto.request.CreateOrderRequestDto;
 import jabaclass.order.presentation.dto.request.OrderBulkReadRequestDto;
 import jabaclass.order.presentation.dto.response.CreateOrderResponseDto;
+import jabaclass.order.presentation.dto.response.OrderRefundInfoResponseDto;
 import jabaclass.order.presentation.dto.response.OrderResponseDto;
 import jabaclass.order.presentation.dto.response.OrderSettlementItemResponseDto;
 import lombok.RequiredArgsConstructor;
@@ -130,6 +131,22 @@ public class OrderService implements OrderUseCase {
 			throw new BusinessException(OrderErrorCode.ORDER_ACCESS_DENIED);
 		}
 		return OrderResponseDto.from(order);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public OrderRefundInfoResponseDto getRefundInfo(UUID userId, UUID orderId) {
+		Order order = orderRepository.findById(orderId)
+			.orElseThrow(() -> new BusinessException(OrderErrorCode.ORDER_NOT_FOUND));
+		if (!order.isOwnedBy(userId)) {
+			throw new BusinessException(OrderErrorCode.ORDER_ACCESS_DENIED);
+		}
+		if (order.getStatus() != OrderStatus.REFUNDED) {
+			throw new BusinessException(OrderErrorCode.ORDER_REFUND_NOT_ALLOWED);
+		}
+
+		LocalDate startDate = productClient.getScheduleStartDate(order.getProductScheduleId());
+		return OrderRefundInfoResponseDto.of(startDate, paymentClient.getRefundInfo(orderId));
 	}
 
 	@Override
