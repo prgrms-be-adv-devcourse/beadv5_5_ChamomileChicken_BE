@@ -63,6 +63,11 @@ spring:
               predicates:
                 - Path=/api/v1/orders/**
 
+            - id: ai
+              uri: ${AI_SERVICE_URL:http://localhost:9009}
+              predicates:
+                - Path=/api/v1/recommendations/**
+
             - id: admin
               uri: ${ADMIN_SERVICE_URL:http://localhost:9007}
               predicates:

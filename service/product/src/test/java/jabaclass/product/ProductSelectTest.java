@@ -123,7 +123,7 @@ class ProductSelectTest {
 		given(sellerRepository.findSeller(SELLER_ID))
 			.willReturn(Optional.of(new UserResponseDto(SELLER_ID, "테스트판매자", "SELLER")));
 
-		ProductResponseDto result = productService.searchById(PRODUCT_ID);
+		ProductResponseDto result = productService.searchById(PRODUCT_ID, null);
 
 		assertThat(result.title()).isEqualTo("상품A");
 		then(productRepository).should().findById(PRODUCT_ID);
@@ -133,7 +133,7 @@ class ProductSelectTest {
 	void 특정_상품_조회에_실패한다() {
 		given(productRepository.findById(PRODUCT_ID)).willReturn(Optional.empty());
 
-		assertThatThrownBy(() -> productService.searchById(PRODUCT_ID))
+		assertThatThrownBy(() -> productService.searchById(PRODUCT_ID, null))
 			.isInstanceOf(BusinessException.class)
 			.hasMessage(CommonErrorCode.PRODUCT_NOT_FOUND.getMessage());
 		then(productRepository).should().findById(PRODUCT_ID);

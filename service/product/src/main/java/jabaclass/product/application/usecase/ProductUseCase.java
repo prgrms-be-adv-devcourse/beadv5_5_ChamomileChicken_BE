@@ -30,7 +30,7 @@ public interface ProductUseCase {
 	SearchProductResponseDto searchMy(SearchProductRequestDto requestDto, UUID sellerId);
 
 	// 특정 상품 검색
-	ProductResponseDto searchById(UUID productId);
+	ProductResponseDto searchById(UUID productId, UUID userId);
 
 	// 상품 존재 여부/단일 상품 검색
 	Product findByIdOrThrow(UUID productId);

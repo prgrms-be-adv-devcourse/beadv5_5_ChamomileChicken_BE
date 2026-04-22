@@ -88,7 +88,7 @@ public interface ProductOpenApi {
 		)
 	)
 	@CommonErrorResponses
-	ResponseEntity<ApiResponseDto<ProductResponseDto>> searchProduct(UUID productId);
+	ResponseEntity<ApiResponseDto<ProductResponseDto>> searchProduct(UUID productId, UUID userId);
 
 	@Operation(summary = "예약 유저 조회", description = "예약 유저 조회를 합니다.")
 	@ApiResponse(

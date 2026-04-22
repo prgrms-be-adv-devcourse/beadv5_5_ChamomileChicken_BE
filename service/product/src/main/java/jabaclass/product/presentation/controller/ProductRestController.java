@@ -104,8 +104,11 @@ public class ProductRestController implements ProductOpenApi {
 	// 특정 상품 검색
 	@Override
 	@GetMapping("/{productId}")
-	public ResponseEntity<ApiResponseDto<ProductResponseDto>> searchProduct(@PathVariable UUID productId) {
-		ProductResponseDto response = productUseCase.searchById(productId);
+	public ResponseEntity<ApiResponseDto<ProductResponseDto>> searchProduct(
+		@PathVariable UUID productId,
+		@CurrentUser(required = false) UUID userId
+	) {
+		ProductResponseDto response = productUseCase.searchById(productId, userId);
 
 		return ResponseEntity.ok()
 			.body(ApiResponseDto.success(HttpStatus.OK, "성공적으로 검색이 되었습니다.", response));
