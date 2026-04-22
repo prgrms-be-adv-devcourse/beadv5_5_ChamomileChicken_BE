@@ -26,6 +26,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 public class OpenAiClient implements AiGatewayPort {
 
 	private final RestTemplate restTemplate;
+	private final ObjectMapper objectMapper;
 
 	@Value("${openai.api.key}")
 	private String apiKey;
@@ -111,13 +112,14 @@ public class OpenAiClient implements AiGatewayPort {
           {"productId": "...", "reason": "..."},
           ...
         ]
-        """.formatted(userVector.toString(), candidateText);
+        """.formatted(
+			java.util.Arrays.toString(userVector.vector()),
+			candidateText
+		);
 	}
 
 	private Map<UUID, String> parseResult(String content) {
 		try {
-			ObjectMapper objectMapper = new ObjectMapper();
-
 			List<Map<String, String>> list =
 				objectMapper.readValue(content, new TypeReference<>() {});
 
