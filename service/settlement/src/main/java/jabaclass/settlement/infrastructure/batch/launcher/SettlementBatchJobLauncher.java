@@ -17,7 +17,9 @@ import jabaclass.settlement.application.exception.BusinessException;
 import jabaclass.settlement.application.exception.ErrorCode;
 import jabaclass.settlement.application.exception.SettlementBatchErrorCode;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class SettlementBatchJobLauncher {
@@ -86,6 +88,11 @@ public class SettlementBatchJobLauncher {
 		} catch (InvalidJobParametersException | IllegalArgumentException | DateTimeParseException e) {
 			throw new BusinessException(SettlementBatchErrorCode.SETTLEMENT_BATCH_PARAMETER_INVALID);
 		} catch (Exception e) {
+			log.error("[SETTLEMENT_BATCH] Job 실행 중 알 수 없는 예외 발생. jobName={}, settlementMonth={}",
+				job.getName(),
+				settlementMonth,
+				e
+			);
 			throw new BusinessException(failureErrorCode);
 		}
 	}
