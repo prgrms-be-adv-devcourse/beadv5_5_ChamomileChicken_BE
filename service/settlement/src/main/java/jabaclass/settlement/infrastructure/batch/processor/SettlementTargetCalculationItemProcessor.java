@@ -1,4 +1,4 @@
-package jabaclass.settlement.infrastructure.batch.component;
+package jabaclass.settlement.infrastructure.batch.processor;
 
 import org.springframework.batch.infrastructure.item.ItemProcessor;
 import org.springframework.stereotype.Component;

@@ -1,4 +1,4 @@
-package jabaclass.settlement.infrastructure.batch.component;
+package jabaclass.settlement.infrastructure.batch.writer;
 
 import java.util.List;
 import java.util.Objects;
