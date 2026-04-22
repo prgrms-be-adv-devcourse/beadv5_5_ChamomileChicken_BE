@@ -48,11 +48,11 @@ spec:
 
           resources:
             requests:
-              cpu: "500m"
-              memory: "512Mi"
+              cpu: "100m"
+              memory: "256Mi"
             limits:
-              cpu: "1000m"
-              memory: "768Mi"
+              cpu: "300m"
+              memory: "512Mi"
 
           startupProbe:
             httpGet:
