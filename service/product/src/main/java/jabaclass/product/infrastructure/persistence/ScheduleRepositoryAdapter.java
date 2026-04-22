@@ -92,6 +92,11 @@ public class ScheduleRepositoryAdapter implements ScheduleRepository {
 	}
 
 	@Override
+	public List<Schedule> findAllByIdInAndDeleteDtIsNull(List<UUID> scheduleIds) {
+		return scheduleJpaRepository.findAllByIdInAndDeleteDtIsNull(scheduleIds);
+	}
+
+	@Override
 	public int softDeleteByProductId(UUID productId) {
 		return scheduleJpaRepository.softDeleteByProductId(productId);
 	}
