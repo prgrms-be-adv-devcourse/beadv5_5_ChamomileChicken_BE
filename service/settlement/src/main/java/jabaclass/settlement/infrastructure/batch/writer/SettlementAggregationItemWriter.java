@@ -7,6 +7,7 @@ import org.springframework.batch.infrastructure.item.ItemWriter;
 
 import jabaclass.settlement.application.dto.SettlementTargetSummary;
 import jabaclass.settlement.application.service.calculation.SettlementCalculateService;
+import jabaclass.settlement.domain.model.grade.SellerGradePolicy;
 import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
@@ -14,6 +15,7 @@ public class SettlementAggregationItemWriter implements ItemWriter<SettlementTar
 
 	private final SettlementCalculateService settlementCalculateService;
 	private final String settlementMonth;
+	private final List<SellerGradePolicy> activeSellerGradePolicies;
 
 	@Override
 	public void write(Chunk<? extends SettlementTargetSummary> items) {
@@ -25,6 +27,10 @@ public class SettlementAggregationItemWriter implements ItemWriter<SettlementTar
 			return;
 		}
 
-		settlementCalculateService.createAndSaveMonthlySettlements(summaries, settlementMonth);
+		settlementCalculateService.createAndSaveMonthlySettlements(
+			summaries,
+			settlementMonth,
+			activeSellerGradePolicies
+		);
 	}
 }

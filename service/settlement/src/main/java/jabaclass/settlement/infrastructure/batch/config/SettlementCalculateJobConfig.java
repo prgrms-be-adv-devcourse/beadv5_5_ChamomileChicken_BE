@@ -142,6 +142,10 @@ public class SettlementCalculateJobConfig {
 		@Value("#{jobParameters['settlementMonth']}") String settlementMonthParam
 	) {
 		String settlementMonth = SettlementMonthResolver.resolve(settlementMonthParam);
-		return new SettlementAggregationItemWriter(settlementCalculateService, settlementMonth);
+		return new SettlementAggregationItemWriter(
+			settlementCalculateService,
+			settlementMonth,
+			settlementCalculateService.findActiveSellerGradePolicies()
+		);
 	}
 }

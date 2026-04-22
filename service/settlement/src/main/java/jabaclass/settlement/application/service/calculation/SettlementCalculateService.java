@@ -116,7 +116,20 @@ public class SettlementCalculateService implements SettlementCalculateUseCase {
 		List<SettlementTargetSummary> summaries,
 		String settlementMonth
 	) {
-		List<Settlement> settlements = createMonthlySettlements(summaries, settlementMonth);
+		return createAndSaveMonthlySettlements(
+			summaries,
+			settlementMonth,
+			findActiveSellerGradePolicies()
+		);
+	}
+
+	@Transactional
+	public List<Settlement> createAndSaveMonthlySettlements(
+		List<SettlementTargetSummary> summaries,
+		String settlementMonth,
+		List<SellerGradePolicy> activeSellerGradePolicies
+	) {
+		List<Settlement> settlements = createMonthlySettlements(summaries, settlementMonth, activeSellerGradePolicies);
 		if (settlements.isEmpty()) {
 			return List.of();
 		}
@@ -128,6 +141,19 @@ public class SettlementCalculateService implements SettlementCalculateUseCase {
 	public List<Settlement> createMonthlySettlements(
 		List<SettlementTargetSummary> summaries,
 		String settlementMonth
+	) {
+		return createMonthlySettlements(
+			summaries,
+			settlementMonth,
+			findActiveSellerGradePolicies()
+		);
+	}
+
+	@Transactional
+	public List<Settlement> createMonthlySettlements(
+		List<SettlementTargetSummary> summaries,
+		String settlementMonth,
+		List<SellerGradePolicy> activeSellerGradePolicies
 	) {
 		if (summaries == null || summaries.isEmpty()) {
 			return List.of();
@@ -151,7 +177,6 @@ public class SettlementCalculateService implements SettlementCalculateUseCase {
 		Map<UUID, SellerGrade> sellerGradeBySellerId = sellerGradeRepository.findBySellerIds(sellerIds)
 			.stream()
 			.collect(Collectors.toMap(SellerGrade::getSellerId, Function.identity(), (existing, replacement) -> existing));
-		List<SellerGradePolicy> activeSellerGradePolicies = sellerGradePolicyRepository.findActivePolicies();
 
 		List<Settlement> settlements = new ArrayList<>();
 		List<SellerGrade> sellerGrades = new ArrayList<>();
@@ -195,6 +220,10 @@ public class SettlementCalculateService implements SettlementCalculateUseCase {
 		}
 
 		return settlements;
+	}
+
+	public List<SellerGradePolicy> findActiveSellerGradePolicies() {
+		return sellerGradePolicyRepository.findActivePolicies();
 	}
 
 	private Map<UUID, BigDecimal> findRecentThreeMonthSalesAmountBySellerIds(
