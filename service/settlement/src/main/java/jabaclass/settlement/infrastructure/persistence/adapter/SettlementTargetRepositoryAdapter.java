@@ -1,6 +1,5 @@
 package jabaclass.settlement.infrastructure.persistence.adapter;
 
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -56,15 +55,6 @@ public class SettlementTargetRepositoryAdapter implements SettlementTargetReposi
 		SettlementTargetCalculationStatus calculationStatus
 	) {
 		return settlementTargetJpaRepository.findBySettlementMonthAndCalculationStatus(settlementMonth, calculationStatus);
-	}
-
-	@Override
-	public BigDecimal sumSettlementBaseAmountBySellerIdAndSettlementMonths(UUID sellerId, List<String> settlementMonths) {
-		if (settlementMonths == null || settlementMonths.isEmpty()) {
-			return BigDecimal.ZERO;
-		}
-
-		return settlementTargetJpaRepository.sumSettlementBaseAmountBySellerIdAndSettlementMonths(sellerId, settlementMonths);
 	}
 
 	@Override

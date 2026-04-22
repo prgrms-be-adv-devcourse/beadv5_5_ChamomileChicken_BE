@@ -36,11 +36,6 @@ public class SettlementTargetCalculationRepositoryAdapter implements SettlementT
 	}
 
 	@Override
-	public List<SettlementTargetCalculation> findBySettlementMonthAndSellerId(String settlementMonth, UUID sellerId) {
-		return settlementTargetCalculationJpaRepository.findBySettlementMonthAndSellerId(settlementMonth, sellerId);
-	}
-
-	@Override
 	public List<SettlementTargetCalculation> findBySettlementMonthAndSellerIds(
 		String settlementMonth,
 		List<UUID> sellerIds

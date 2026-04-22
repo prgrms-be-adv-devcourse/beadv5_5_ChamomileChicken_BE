@@ -1,6 +1,5 @@
 package jabaclass.settlement.domain.repository;
 
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -26,8 +25,6 @@ public interface SettlementTargetRepository {
 		String settlementMonth,
 		SettlementTargetCalculationStatus calculationStatus
 	);
-
-	BigDecimal sumSettlementBaseAmountBySellerIdAndSettlementMonths(UUID sellerId, List<String> settlementMonths);
 
 	List<SellerSalesAmount> sumSettlementBaseAmountBySellerIdsAndSettlementMonths(
 		List<UUID> sellerIds,

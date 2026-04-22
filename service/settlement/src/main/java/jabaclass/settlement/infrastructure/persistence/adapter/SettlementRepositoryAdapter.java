@@ -31,11 +31,6 @@ public class SettlementRepositoryAdapter implements SettlementRepository {
 	}
 
 	@Override
-	public boolean existsBySellerIdAndSettlementMonth(UUID sellerId, String settlementMonth) {
-		return settlementJpaRepository.existsBySellerIdAndSettlementMonth(sellerId, settlementMonth);
-	}
-
-	@Override
 	public List<Settlement> findBySettlementMonthAndSellerIds(String settlementMonth, List<UUID> sellerIds) {
 		if (sellerIds == null || sellerIds.isEmpty()) {
 			return List.of();
