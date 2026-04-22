@@ -21,7 +21,7 @@ oauth2:
 
 jwt:
   secret: ${JWT_SECRET}
-  access-token-validity: 1800000
+  access-token-validity: 300000
   refresh-token-validity: 604800000
 
 cookie:
