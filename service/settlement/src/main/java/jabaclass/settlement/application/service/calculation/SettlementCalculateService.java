@@ -129,12 +129,20 @@ public class SettlementCalculateService implements SettlementCalculateUseCase {
 		String settlementMonth,
 		List<SellerGradePolicy> activeSellerGradePolicies
 	) {
-		List<Settlement> settlements = createMonthlySettlements(summaries, settlementMonth, activeSellerGradePolicies);
-		if (settlements.isEmpty()) {
+		MonthlySettlementCreationResult creationResult = createMonthlySettlementCreationResult(
+			summaries,
+			settlementMonth,
+			activeSellerGradePolicies
+		);
+		if (creationResult.isEmpty()) {
 			return List.of();
 		}
 
-		return settlementRepository.saveAll(settlements);
+		if (!creationResult.sellerGrades().isEmpty()) {
+			sellerGradeRepository.saveAll(creationResult.sellerGrades());
+		}
+
+		return settlementRepository.saveAll(creationResult.settlements());
 	}
 
 	@Transactional
@@ -155,8 +163,20 @@ public class SettlementCalculateService implements SettlementCalculateUseCase {
 		String settlementMonth,
 		List<SellerGradePolicy> activeSellerGradePolicies
 	) {
+		return createMonthlySettlementCreationResult(
+			summaries,
+			settlementMonth,
+			activeSellerGradePolicies
+		).settlements();
+	}
+
+	private MonthlySettlementCreationResult createMonthlySettlementCreationResult(
+		List<SettlementTargetSummary> summaries,
+		String settlementMonth,
+		List<SellerGradePolicy> activeSellerGradePolicies
+	) {
 		if (summaries == null || summaries.isEmpty()) {
-			return List.of();
+			return MonthlySettlementCreationResult.empty();
 		}
 
 		List<UUID> sellerIds = summaries.stream()
@@ -215,11 +235,7 @@ public class SettlementCalculateService implements SettlementCalculateUseCase {
 			));
 		}
 
-		if (!sellerGrades.isEmpty()) {
-			sellerGradeRepository.saveAll(sellerGrades);
-		}
-
-		return settlements;
+		return new MonthlySettlementCreationResult(settlements, sellerGrades);
 	}
 
 	public List<SellerGradePolicy> findActiveSellerGradePolicies() {
@@ -339,5 +355,19 @@ public class SettlementCalculateService implements SettlementCalculateUseCase {
 					|| policy.getMaxSalesAmount().compareTo(BigDecimal.ZERO) >= 0)
 				.findFirst())
 			.orElseThrow(() -> new BusinessException(SettlementErrorCode.SELLER_GRADE_POLICY_NOT_FOUND));
+	}
+
+	private record MonthlySettlementCreationResult(
+		List<Settlement> settlements,
+		List<SellerGrade> sellerGrades
+	) {
+
+		private static MonthlySettlementCreationResult empty() {
+			return new MonthlySettlementCreationResult(List.of(), List.of());
+		}
+
+		private boolean isEmpty() {
+			return settlements.isEmpty() && sellerGrades.isEmpty();
+		}
 	}
 }
