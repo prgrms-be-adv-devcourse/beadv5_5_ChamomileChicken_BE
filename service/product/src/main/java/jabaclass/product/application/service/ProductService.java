@@ -163,6 +163,26 @@ public class ProductService implements ProductUseCase {
 			page = productSearchRepository.searchByKeyword(requestDto.title(), pageable);
 		}
 
+		// ES 문서에 sellerName이 비정규화되어 있어 user 서비스 추가 호출 불필요
+		List<ProductResponseDto> content = page.getContent().stream()
+			.map(ProductResponseDto::from)
+			.toList();
+
+		return SearchProductResponseDto.fromEs(page, content);
+	}
+
+	@Override
+	public SearchProductResponseDto searchMy(SearchProductRequestDto requestDto, UUID sellerId) {
+		Pageable pageable = PageRequest.of(requestDto.thisPage(), requestDto.pageSize());
+		String sellerIdStr = sellerId.toString();
+
+		Page<ProductDocument> page;
+		if (requestDto.title() == null || requestDto.title().isBlank()) {
+			page = productSearchRepository.findAllBySellerId(sellerIdStr, pageable);
+		} else {
+			page = productSearchRepository.searchByKeywordAndSellerId(requestDto.title(), sellerIdStr, pageable);
+		}
+
 		List<ProductResponseDto> content = page.getContent().stream()
 			.map(ProductResponseDto::from)
 			.toList();
@@ -191,6 +211,7 @@ public class ProductService implements ProductUseCase {
 	}
 
 	@Override
+	// 해당 상품 보유자인지 확인
 	public Product matchProductAndSellerId(UUID productId, UUID sellerId) {
 		return productRepository.findByIdAndSellerId(productId, sellerId)
 			.orElseThrow(() -> new BusinessException(CommonErrorCode.MATCH_FAIL));
@@ -215,6 +236,7 @@ public class ProductService implements ProductUseCase {
 			.map(ProductSettlementItemResponseDto::from)
 			.toList();
 	}
+
 	@Override
 	public int migrateToEs() {
 		final int BATCH_SIZE = 100;
@@ -283,4 +305,5 @@ public class ProductService implements ProductUseCase {
 
 		return sellerInfo;
 	}
+
 }

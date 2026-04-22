@@ -89,6 +89,18 @@ public class ProductRestController implements ProductOpenApi {
 			.body(ApiResponseDto.success(HttpStatus.OK, "성공적으로 전체 검색이 되었습니다.", response));
 	}
 
+	// 내 상품 목록 조회 (SELLER 본인)
+	@Override
+	@GetMapping("/my")
+	public ResponseEntity<ApiResponseDto<SearchProductResponseDto>> searchMyProducts(
+		@ModelAttribute SearchProductRequestDto request,
+		@CurrentUser UUID userId
+	) {
+		SearchProductResponseDto response = productUseCase.searchMy(request, userId);
+		return ResponseEntity.ok()
+			.body(ApiResponseDto.success(HttpStatus.OK, "성공적으로 내 상품 목록을 조회하였습니다.", response));
+	}
+
 	// 특정 상품 검색
 	@Override
 	@GetMapping("/{productId}")

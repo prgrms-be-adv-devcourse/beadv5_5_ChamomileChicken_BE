@@ -1,9 +1,9 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: user-service
+  name: ai-service
   labels:
-    app: user-service
+    app: ai-service
 spec:
   replicas: 1
   revisionHistoryLimit: 3
@@ -11,15 +11,15 @@ spec:
     type: Recreate
   selector:
     matchLabels:
-      app: user-service
+      app: ai-service
   template:
     metadata:
       labels:
-        app: user-service
+        app: ai-service
     spec:
       containers:
-        - name: user-service
-          image: ${DOCKERHUB_USERNAME}/chamomile-user:${IMAGE_TAG}
+        - name: ai-service
+          image: ${DOCKERHUB_USERNAME}/chamomile-ai:${IMAGE_TAG}
           imagePullPolicy: IfNotPresent
 
           env:
@@ -31,7 +31,7 @@ spec:
                 name: common-config
                 optional: true
             - configMapRef:
-                name: user-config
+                name: ai-config
                 optional: true
             - secretRef:
                 name: common-secret
@@ -40,11 +40,11 @@ spec:
                 name: db-secret
                 optional: false
             - secretRef:
-                name: user-secret
+                name: ai-secret
                 optional: true
 
           ports:
-            - containerPort: 9003
+            - containerPort: 9009
 
           resources:
             requests:
@@ -57,7 +57,7 @@ spec:
           startupProbe:
             httpGet:
               path: /actuator/health
-              port: 9003
+              port: 9009
             initialDelaySeconds: 5
             periodSeconds: 5
             timeoutSeconds: 3
@@ -66,7 +66,7 @@ spec:
           readinessProbe:
             httpGet:
               path: /actuator/health/readiness
-              port: 9003
+              port: 9009
             initialDelaySeconds: 5
             periodSeconds: 5
             timeoutSeconds: 3
@@ -75,7 +75,7 @@ spec:
           livenessProbe:
             httpGet:
               path: /actuator/health/liveness
-              port: 9003
+              port: 9009
             initialDelaySeconds: 60
             periodSeconds: 10
             timeoutSeconds: 3
@@ -85,14 +85,14 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: user-service
+  name: ai-service
   labels:
-    app: user-service
+    app: ai-service
 spec:
   selector:
-    app: user-service
+    app: ai-service
   ports:
-    - port: 9003
-      targetPort: 9003
+    - port: 9009
+      targetPort: 9009
       protocol: TCP
   type: ClusterIP

@@ -21,4 +21,10 @@ public interface ProductSearchRepository {
 
 	// 키워드 없이 전체 조회 (ENABLE 상품만)
 	Page<ProductDocument> findAllEnabled(Pageable pageable);
+
+	// 판매자 본인 상품 전체 조회
+	Page<ProductDocument> findAllBySellerId(String sellerId, Pageable pageable);
+
+	// 판매자 본인 상품 키워드 검색
+	Page<ProductDocument> searchByKeywordAndSellerId(String keyword, String sellerId, Pageable pageable);
 }
