@@ -51,6 +51,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
     private final RbacService rbacService;
 
     private static final String BLACKLIST_PREFIX = "blacklist:";
+    private static final String FORCE_LOGOUT_PREFIX = "force_logout:";
 
     private static final byte[] FORBIDDEN_BODY =
         "{\"message\":\"접근 권한이 없습니다.\"}".getBytes(StandardCharsets.UTF_8);
@@ -164,29 +165,46 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
                     UUID userId = jwtProvider.getUserId(claims);
                     String role = jwtProvider.getRole(claims);
 
-                    return rbacService.isAllowed(path, httpMethod, role)
-                        .timeout(Duration.ofMillis(300))
-                        .onErrorMap(AuthorizationServiceException::new)
-                        .flatMap(isAllowed -> {
-                            if (!isAllowed) {
-                                log.warn("[GATEWAY] Role not allowed. Path: {} {}, Role: {}", httpMethod, path, role);
-                                return onForbidden(exchange);
+                    return redisTemplate.opsForValue().get(FORCE_LOGOUT_PREFIX + userId)
+                        .timeout(Duration.ofMillis(200))
+                        .onErrorMap(RedisBlacklistException::new)
+                        .defaultIfEmpty("")
+                        .flatMap(forceLogoutTime -> {
+                            if (!forceLogoutTime.isEmpty()) {
+                                long forceLogoutMillis = Long.parseLong(forceLogoutTime);
+                                long tokenIssuedAt = claims.getIssuedAt().getTime();
+                                if (tokenIssuedAt <= forceLogoutMillis) {
+                                    log.warn("[GATEWAY] Force logout detected. Path: {} {}, userId: {}", httpMethod,
+                                        path, userId);
+                                    return onError(exchange, JwtErrorCode.INVALID_TOKEN);
+                                }
                             }
 
-                            ServerWebExchange mutatedExchange = exchange.mutate()
-                                .request(r -> {
-                                    r.header("X-User-Id", userId.toString());
-                                    if (role != null) {
-                                        r.header("X-User-Role", role);
+                            return rbacService.isAllowed(path, httpMethod, role)
+                                .timeout(Duration.ofMillis(300))
+                                .onErrorMap(AuthorizationServiceException::new)
+                                .flatMap(isAllowed -> {
+                                    if (!isAllowed) {
+                                        log.warn("[GATEWAY] Role not allowed. Path: {} {}, Role: {}", httpMethod, path,
+                                            role);
+                                        return onForbidden(exchange);
                                     }
-                                })
-                                .build();
 
-                            return chain.filter(mutatedExchange);
+                                    ServerWebExchange mutatedExchange = exchange.mutate()
+                                        .request(r -> {
+                                            r.header("X-User-Id", userId.toString());
+                                            if (role != null) {
+                                                r.header("X-User-Role", role);
+                                            }
+                                        })
+                                        .build();
+
+                                    return chain.filter(mutatedExchange);
+                                });
                         });
                 })
                 .onErrorResume(RedisBlacklistException.class, e -> {
-                    log.error("[GATEWAY] Redis blacklist check failed: {}", extractMessage(e));
+                    log.error("[GATEWAY] Redis check failed: {}", extractMessage(e));
                     return onError(exchange, SystemErrorCode.AUTH_SERVICE_UNAVAILABLE);
                 })
                 .onErrorResume(AuthorizationServiceException.class, e -> {

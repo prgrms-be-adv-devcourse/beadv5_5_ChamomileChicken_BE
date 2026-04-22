@@ -1,6 +1,7 @@
 package jabaclass.user.auth.application.service;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.UUID;
 
 import io.jsonwebtoken.Claims;
@@ -39,10 +40,14 @@ public class AuthService implements LoginUseCase, LogoutUseCase, ReissueUseCase 
     private final JwtProvider jwtProvider;
 
     private static final String BLACKLIST_PREFIX = "blacklist:";
+    private static final String FORCE_LOGOUT_PREFIX = "force_logout:";
     private final StringRedisTemplate redisTemplate;
 
     @Value("${jwt.refresh-token-validity}")
     private long refreshTokenValidity;
+
+    @Value("${jwt.access-token-validity}")
+    private long accessTokenValidity;
 
     @Override
     public TokenResult login(LoginRequestDto request) {
@@ -84,7 +89,14 @@ public class AuthService implements LoginUseCase, LogoutUseCase, ReissueUseCase 
         }
 
         if (!stored.equals(refreshToken)) {
-            throw new AuthException(AuthErrorCode.REFRESH_TOKEN_MISMATCH);
+            redisTemplate.opsForValue().set(
+                FORCE_LOGOUT_PREFIX + userId,
+                String.valueOf(Instant.now().toEpochMilli()),
+                Duration.ofMillis(accessTokenValidity)
+            );
+            redisTemplate.delete("refresh:" + userId);
+            log.warn("[AUTH] RTR 재사용 감지 - force_logout 설정. userId={}", userId);
+            throw new AuthException(AuthErrorCode.SUSPECTED_TOKEN_THEFT);
         }
 
         UserRole userRole;
