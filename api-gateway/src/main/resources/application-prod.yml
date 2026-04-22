@@ -16,8 +16,7 @@ spring:
 
   data:
     redis:
-      host: ${REDIS_HOST}
-      port: ${REDIS_PORT:6379}
+      url: ${REDIS_URL}
       connect-timeout: 1000ms
       timeout: 500ms
 

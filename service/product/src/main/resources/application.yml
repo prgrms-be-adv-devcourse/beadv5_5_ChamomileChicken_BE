@@ -19,6 +19,11 @@ spring:
       path: /v3/api-docs
       version: OPENAPI_3_0
 
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT:6379}
+
 management:
   endpoints:
     web:
