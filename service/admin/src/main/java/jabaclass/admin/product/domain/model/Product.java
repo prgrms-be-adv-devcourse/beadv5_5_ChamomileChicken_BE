@@ -4,22 +4,27 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-import jabaclass.admin.common.model.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.experimental.SuperBuilder;
 
 @Getter
-@SuperBuilder
 @NoArgsConstructor
 @Entity
 @Table(name = "products")
-public class Product extends BaseEntity {
+public class Product {
+
+	@Id
+	@Column(name = "id", updatable = false, nullable = false)
+	private UUID id;
+
+	@Column(name = "reg_dt", nullable = false, updatable = false)
+	private LocalDateTime createdAt;
 
 	@Column(name = "seller_id", nullable = false)
 	private UUID sellerId;

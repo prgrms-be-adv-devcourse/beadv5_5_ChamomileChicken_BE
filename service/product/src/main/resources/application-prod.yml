@@ -1,6 +1,12 @@
 api:
   user-host: ${USER_SERVICE_HOST}
 
+internal:
+  file:
+    url: ${FILE_SERVICE_HOST}
+  api:
+    key: ${INTERNAL-KEY}
+
 spring:
   elasticsearch:
     uris: ${ES_HOST:http://localhost:9200}

@@ -60,14 +60,13 @@ class ProductAdminServiceTest {
 	@BeforeEach
 	void setUp() {
 		productId = UUID.randomUUID();
-		product = Product.builder()
-			.sellerId(UUID.randomUUID())
-			.title("테스트상품")
-			.maxCapacity(10)
-			.price(new BigDecimal("50000"))
-			.status(ProductStatus.ENABLE)
-			.build();
+		product = new Product();
 		ReflectionTestUtils.setField(product, "id", productId);
+		ReflectionTestUtils.setField(product, "sellerId", UUID.randomUUID());
+		ReflectionTestUtils.setField(product, "title", "테스트상품");
+		ReflectionTestUtils.setField(product, "maxCapacity", 10);
+		ReflectionTestUtils.setField(product, "price", new BigDecimal("50000"));
+		ReflectionTestUtils.setField(product, "status", ProductStatus.ENABLE);
 	}
 
 	@Test

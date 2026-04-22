@@ -1,6 +1,7 @@
 package jabaclass.admin.order.domain.model;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 import jakarta.persistence.Column;
@@ -22,11 +23,17 @@ public class Order {
 	@Column(name = "id", nullable = false, updatable = false)
 	private UUID id;
 
+	@Column(name = "created_at", nullable = false, updatable = false)
+	private LocalDateTime createdAt;
+
 	@Column(name = "product_schedule_id", nullable = false)
 	private UUID productScheduleId;
 
 	@Column(name = "user_id", nullable = false)
 	private UUID userId;
+
+	@Column(name = "seller_id", nullable = false)
+	private UUID sellerId;
 
 	@Column(name = "quantity", nullable = false)
 	private Integer quantity;
