@@ -10,7 +10,6 @@ import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.Step;
 import org.springframework.batch.core.step.builder.StepBuilder;
-import org.springframework.batch.infrastructure.item.ItemProcessor;
 import org.springframework.batch.infrastructure.item.ItemReader;
 import org.springframework.batch.infrastructure.item.database.JpaPagingItemReader;
 import org.springframework.batch.infrastructure.item.database.builder.JpaPagingItemReaderBuilder;
@@ -21,9 +20,9 @@ import org.springframework.transaction.PlatformTransactionManager;
 
 import jabaclass.settlement.application.dto.SettlementTargetSummary;
 import jabaclass.settlement.application.service.calculation.SettlementCalculateService;
-import jabaclass.settlement.domain.model.settlement.Settlement;
 import jabaclass.settlement.domain.model.settlement.SettlementTarget;
 import jabaclass.settlement.domain.model.settlement.SettlementTargetCalculationStatus;
+import jabaclass.settlement.domain.repository.SettlementRepository;
 import jabaclass.settlement.infrastructure.batch.dto.SettlementTargetCalculationBatchItem;
 import jabaclass.settlement.infrastructure.batch.listener.SettlementJobExecutionListener;
 import jabaclass.settlement.infrastructure.batch.listener.SettlementStepExecutionListener;
@@ -114,15 +113,13 @@ public class SettlementCalculateJobConfig {
 		JobRepository jobRepository,
 		PlatformTransactionManager transactionManager,
 		ItemReader<SettlementTargetSummary> settlementAggregationReader,
-		ItemProcessor<SettlementTargetSummary, Settlement> settlementAggregationProcessor,
 		SettlementAggregationItemWriter settlementAggregationWriter,
 		SettlementStepExecutionListener settlementStepExecutionListener
 	) {
 		return new StepBuilder("settlementAggregationStep", jobRepository)
-			.<SettlementTargetSummary, Settlement>chunk(CHUNK_SIZE)
+			.<SettlementTargetSummary, SettlementTargetSummary>chunk(CHUNK_SIZE)
 			.transactionManager(transactionManager)
 			.reader(settlementAggregationReader)
-			.processor(settlementAggregationProcessor)
 			.writer(settlementAggregationWriter)
 			.listener(settlementStepExecutionListener)
 			.build();
@@ -146,11 +143,12 @@ public class SettlementCalculateJobConfig {
 
 	@Bean
 	@StepScope
-	public ItemProcessor<SettlementTargetSummary, Settlement> settlementAggregationProcessor(
+	public SettlementAggregationItemWriter settlementAggregationWriter(
 		SettlementCalculateService settlementCalculateService,
+		SettlementRepository settlementRepository,
 		@Value("#{jobParameters['settlementMonth']}") String settlementMonthParam
 	) {
 		String settlementMonth = SettlementMonthResolver.resolve(settlementMonthParam);
-		return summary -> settlementCalculateService.createMonthlySettlement(summary, settlementMonth);
+		return new SettlementAggregationItemWriter(settlementCalculateService, settlementRepository, settlementMonth);
 	}
 }
