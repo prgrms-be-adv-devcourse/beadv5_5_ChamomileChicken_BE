@@ -61,7 +61,7 @@ spec:
             initialDelaySeconds: 5
             periodSeconds: 5
             timeoutSeconds: 3
-            failureThreshold: 24
+            failureThreshold: 36
 
           readinessProbe:
             httpGet:
@@ -76,7 +76,7 @@ spec:
             httpGet:
               path: /actuator/health/liveness
               port: 9009
-            initialDelaySeconds: 30
+            initialDelaySeconds: 60
             periodSeconds: 10
             timeoutSeconds: 3
             failureThreshold: 3
