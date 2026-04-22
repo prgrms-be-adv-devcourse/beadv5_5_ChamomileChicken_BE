@@ -73,6 +73,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         }
 
         return whitelistService.isWhitelisted(path, httpMethod)
+            .timeout(Duration.ofMillis(200))
             .onErrorResume(e -> {
                 log.error("[GATEWAY] Whitelist check failed, denying request: {}", e.getMessage());
                 return Mono.just(false);
@@ -185,18 +186,15 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
                         });
                 })
                 .onErrorResume(RedisBlacklistException.class, e -> {
-                    String errorMessage = (e.getCause() != null) ? e.getCause().getMessage() : e.getMessage();
-                    log.error("[GATEWAY] Redis blacklist check failed: {}", errorMessage);
+                    log.error("[GATEWAY] Redis blacklist check failed: {}", extractMessage(e));
                     return onError(exchange, SystemErrorCode.AUTH_SERVICE_UNAVAILABLE);
                 })
                 .onErrorResume(AuthorizationServiceException.class, e -> {
-                    String msg = (e.getCause() != null) ? e.getCause().getMessage() : e.getMessage();
-                    log.error("[GATEWAY] RBAC system error: {}", msg);
+                    log.error("[GATEWAY] RBAC system error: {}", extractMessage(e));
                     return onError(exchange, SystemErrorCode.INTERNAL_ERROR);
                 })
                 .onErrorResume(e -> {
-                    String msg = (e.getCause() != null) ? e.getCause().getMessage() : e.getMessage();
-                    log.error("[GATEWAY] Unexpected error: {}", msg);
+                    log.error("[GATEWAY] Unexpected error: {}", extractMessage(e));
                     return onError(exchange, SystemErrorCode.INTERNAL_ERROR);
                 });
 
@@ -234,5 +232,9 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
         DataBuffer buffer = response.bufferFactory().wrap(FORBIDDEN_BODY);
         return response.writeWith(Mono.just(buffer));
+    }
+
+    private String extractMessage(Throwable e) {
+        return e.getCause() != null ? e.getCause().getMessage() : e.getMessage();
     }
 }
