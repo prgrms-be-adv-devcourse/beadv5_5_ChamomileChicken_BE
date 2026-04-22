@@ -60,15 +60,7 @@ public class SettlementCalculateService implements SettlementCalculateUseCase {
 		List<SettlementTargetSummary> summaries =
 			settlementTargetCalculationRepository.findSummaryBySettlementMonth(settlementMonth);
 
-		List<Settlement> settlements = createMonthlySettlements(summaries, settlementMonth);
-
-		if (settlements.isEmpty()) {
-			return 0;
-		}
-
-		List<Settlement> savedSettlements = settlementRepository.saveAll(settlements);
-
-		return savedSettlements.size();
+		return createAndSaveMonthlySettlements(summaries, settlementMonth).size();
 	}
 
 	public List<SettlementTarget> findPendingTargets(String settlementMonth) {
@@ -118,6 +110,19 @@ public class SettlementCalculateService implements SettlementCalculateUseCase {
 		}
 
 		return settlements.get(0);
+	}
+
+	@Transactional
+	public List<Settlement> createAndSaveMonthlySettlements(
+		List<SettlementTargetSummary> summaries,
+		String settlementMonth
+	) {
+		List<Settlement> settlements = createMonthlySettlements(summaries, settlementMonth);
+		if (settlements.isEmpty()) {
+			return List.of();
+		}
+
+		return settlementRepository.saveAll(settlements);
 	}
 
 	@Transactional
