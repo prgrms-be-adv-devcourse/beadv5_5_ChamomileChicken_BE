@@ -137,12 +137,12 @@ export DOCKERHUB_USERNAME IMAGE_TAG
 envsubst '$DOCKERHUB_USERNAME $IMAGE_TAG' < "$YAML_FILE" | \
   kubectl --kubeconfig "$KUBECONFIG_PATH" apply -f -
 
-# 3) config-only일 때만 restart
-if [ "$CONFIG_CHANGED" = "true" ] && [ "$IMAGE_CHANGED" != "true" ] && [ "$MANIFEST_CHANGED" != "true" ]; then
-  echo "Config only changed. Restarting deployment: $DEPLOYMENT_NAME"
+# 3) config가 변경됐고 image 변경이 없을 때 restart
+if [ "$CONFIG_CHANGED" = "true" ] && [ "$IMAGE_CHANGED" != "true" ]; then
+  echo "Config changed. Restarting deployment: $DEPLOYMENT_NAME"
   kubectl --kubeconfig "$KUBECONFIG_PATH" rollout restart deployment/"$DEPLOYMENT_NAME"
 else
-  echo "No config-only restart required."
+  echo "No restart required."
 fi
 
 # 4) rollout status는 항상 확인
