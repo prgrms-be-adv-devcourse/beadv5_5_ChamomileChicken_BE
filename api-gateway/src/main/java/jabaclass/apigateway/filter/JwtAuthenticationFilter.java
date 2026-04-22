@@ -1,6 +1,7 @@
 package jabaclass.apigateway.filter;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.Map;
 import java.util.UUID;
 
@@ -9,8 +10,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.jsonwebtoken.Claims;
 
-import jabaclass.apigateway.application.service.RbacService;
-import jabaclass.apigateway.application.service.WhitelistService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -32,6 +31,12 @@ import jabaclass.apigateway.exception.JwtAuthException;
 import jabaclass.apigateway.exception.JwtErrorCode;
 import jabaclass.apigateway.security.JwtProvider;
 import jabaclass.apigateway.security.JwtTokenResolver;
+import jabaclass.apigateway.application.service.RbacService;
+import jabaclass.apigateway.application.service.WhitelistService;
+import jabaclass.apigateway.exception.AuthorizationServiceException;
+import jabaclass.apigateway.exception.ErrorCode;
+import jabaclass.apigateway.exception.RedisBlacklistException;
+import jabaclass.apigateway.exception.SystemErrorCode;
 
 @Component
 @RequiredArgsConstructor
@@ -68,6 +73,11 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         }
 
         return whitelistService.isWhitelisted(path, httpMethod)
+            .timeout(Duration.ofMillis(200))
+            .onErrorResume(e -> {
+                log.error("[GATEWAY] Whitelist check failed, denying request: {}", e.getMessage());
+                return Mono.just(false);
+            })
             .flatMap(isWhitelisted -> {
                 if (isWhitelisted) {
                     return enrichIfAuthenticated(sanitizedExchange, chain, path, httpMethod);
@@ -143,6 +153,8 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
             }
 
             return redisTemplate.hasKey(BLACKLIST_PREFIX + token)
+                .timeout(Duration.ofMillis(200))
+                .onErrorMap(RedisBlacklistException::new)
                 .flatMap(isBlacklisted -> {
                     if (isBlacklisted) {
                         log.warn("[GATEWAY] Blacklisted token. Path: {} {}", httpMethod, path);
@@ -153,6 +165,8 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
                     String role = jwtProvider.getRole(claims);
 
                     return rbacService.isAllowed(path, httpMethod, role)
+                        .timeout(Duration.ofMillis(300))
+                        .onErrorMap(AuthorizationServiceException::new)
                         .flatMap(isAllowed -> {
                             if (!isAllowed) {
                                 log.warn("[GATEWAY] Role not allowed. Path: {} {}, Role: {}", httpMethod, path, role);
@@ -171,9 +185,17 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
                             return chain.filter(mutatedExchange);
                         });
                 })
+                .onErrorResume(RedisBlacklistException.class, e -> {
+                    log.error("[GATEWAY] Redis blacklist check failed: {}", extractMessage(e));
+                    return onError(exchange, SystemErrorCode.AUTH_SERVICE_UNAVAILABLE);
+                })
+                .onErrorResume(AuthorizationServiceException.class, e -> {
+                    log.error("[GATEWAY] RBAC system error: {}", extractMessage(e));
+                    return onError(exchange, SystemErrorCode.INTERNAL_ERROR);
+                })
                 .onErrorResume(e -> {
-                    log.error("[GATEWAY] Redis error: {}", e.getMessage());
-                    return onError(exchange, JwtErrorCode.INVALID_TOKEN);
+                    log.error("[GATEWAY] Unexpected error: {}", extractMessage(e));
+                    return onError(exchange, SystemErrorCode.INTERNAL_ERROR);
                 });
 
         } catch (JwtAuthException e) {
@@ -187,7 +209,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         return -1;
     }
 
-    private Mono<Void> onError(ServerWebExchange exchange, JwtErrorCode errorCode) {
+    private Mono<Void> onError(ServerWebExchange exchange, ErrorCode errorCode) {
         ServerHttpResponse response = exchange.getResponse();
         response.setStatusCode(errorCode.getStatus());
         response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
@@ -210,5 +232,9 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
         DataBuffer buffer = response.bufferFactory().wrap(FORBIDDEN_BODY);
         return response.writeWith(Mono.just(buffer));
+    }
+
+    private String extractMessage(Throwable e) {
+        return e.getCause() != null ? e.getCause().getMessage() : e.getMessage();
     }
 }
