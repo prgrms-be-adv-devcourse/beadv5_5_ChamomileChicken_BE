@@ -24,7 +24,7 @@ spec:
 
           env:
             - name: JAVA_TOOL_OPTIONS
-              value: "-Xms128m -Xmx256m"
+              value: "-Xms128m -Xmx315m"
 
           envFrom:
             - configMapRef:
