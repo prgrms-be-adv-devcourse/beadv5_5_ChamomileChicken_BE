@@ -24,7 +24,7 @@ spec:
 
           env:
             - name: JAVA_TOOL_OPTIONS
-              value: "-Xms128m -Xmx315m"
+              value: "-Xms128m -Xmx256m"
 
           envFrom:
             - configMapRef:
@@ -51,7 +51,7 @@ spec:
               cpu: "100m"
               memory: "256Mi"
             limits:
-              cpu: "500m"
+              cpu: "300m"
               memory: "512Mi"
 
           startupProbe:
