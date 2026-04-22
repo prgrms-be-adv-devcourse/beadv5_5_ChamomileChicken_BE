@@ -228,20 +228,77 @@ class SettlementCalculateServiceTest {
 	}
 
 	@Test
-	void 이미_정산이_존재하면_새로_생성하지_않는다() {
+	void 이미_정산이_존재하면_새_계산_결과로_갱신한다() {
 		UUID sellerId = UUID.randomUUID();
 		String settlementMonth = "2026-03";
+		Settlement existingSettlement = readySettlement(sellerId, settlementMonth);
 
 		given(settlementTargetCalculationRepository.findSummaryBySettlementMonth(settlementMonth))
 			.willReturn(List.of(new SettlementTargetSummary(
 				sellerId,
 				settlementMonth,
-				new BigDecimal("7000.00")
+				new BigDecimal("9000.00")
+			)));
+		given(settlementTargetCalculationRepository.findBySettlementMonthAndSellerIds(
+			org.mockito.ArgumentMatchers.eq(settlementMonth),
+			org.mockito.ArgumentMatchers.anyList()
+		))
+			.willReturn(List.of());
+		given(settlementTargetRepository.sumSettlementBaseAmountBySellerIdsAndSettlementMonths(
+			org.mockito.ArgumentMatchers.anyList(),
+			org.mockito.ArgumentMatchers.anyList()
+		)).willReturn(List.of(new SellerSalesAmount(sellerId, new BigDecimal("9000.00"))));
+		given(sellerGradePolicyRepository.findActivePolicies()).willReturn(List.of(basicPolicy()));
+		given(sellerGradeRepository.findBySellerIds(org.mockito.ArgumentMatchers.anyList())).willReturn(List.of());
+		given(settlementFeeCalculator.calculateFeeAmount(
+			new BigDecimal("9000.00"),
+			new BigDecimal("0.033"),
+			List.of()
+		)).willReturn(new BigDecimal("297.00"));
+		given(settlementFeeCalculator.calculateSettlementAmount(
+			new BigDecimal("9000.00"),
+			new BigDecimal("0.033"),
+			List.of()
+		)).willReturn(new BigDecimal("8703.00"));
+		given(settlementRepository.findBySettlementMonthAndSellerIds(
+			org.mockito.ArgumentMatchers.eq(settlementMonth),
+			org.mockito.ArgumentMatchers.anyList()
+		)).willReturn(List.of(existingSettlement));
+		given(settlementRepository.saveAll(anyList())).willAnswer(invocation -> invocation.getArgument(0));
+		given(sellerGradeRepository.saveAll(org.mockito.ArgumentMatchers.anyList()))
+			.willAnswer(invocation -> invocation.getArgument(0));
+
+		ArgumentCaptor<List<Settlement>> settlementCaptor = ArgumentCaptor.forClass(List.class);
+
+		int actual = settlementCalculateService.calculateMonthly(settlementMonth);
+
+		assertThat(actual).isEqualTo(1);
+		then(settlementRepository).should().saveAll(settlementCaptor.capture());
+		Settlement settlement = settlementCaptor.getValue().get(0);
+		assertThat(settlement).isSameAs(existingSettlement);
+		assertThat(settlement.getOriginalAmount()).isEqualByComparingTo("9000.00");
+		assertThat(settlement.getFeeAmount()).isEqualByComparingTo("297.00");
+		assertThat(settlement.getSettlementAmount()).isEqualByComparingTo("8703.00");
+		assertThat(settlement.getStatus()).isEqualTo(SettlementStatus.READY);
+	}
+
+	@Test
+	void 송금_완료된_정산은_재계산하지_않는다() {
+		UUID sellerId = UUID.randomUUID();
+		String settlementMonth = "2026-03";
+		Settlement sentSettlement = readySettlement(sellerId, settlementMonth);
+		sentSettlement.markSent(LocalDateTime.of(2026, 4, 1, 10, 0));
+
+		given(settlementTargetCalculationRepository.findSummaryBySettlementMonth(settlementMonth))
+			.willReturn(List.of(new SettlementTargetSummary(
+				sellerId,
+				settlementMonth,
+				new BigDecimal("9000.00")
 			)));
 		given(settlementRepository.findBySettlementMonthAndSellerIds(
 			org.mockito.ArgumentMatchers.eq(settlementMonth),
 			org.mockito.ArgumentMatchers.anyList()
-		)).willReturn(List.of(readySettlement(sellerId, settlementMonth)));
+		)).willReturn(List.of(sentSettlement));
 
 		int actual = settlementCalculateService.calculateMonthly(settlementMonth);
 

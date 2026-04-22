@@ -129,6 +129,40 @@ public class Settlement extends BaseEntity {
 		this.failReason = failReason;
 	}
 
+	public void recalculate(
+		BigDecimal originalAmount,
+		SellerGradeType sellerGradeCode,
+		UUID sellerGradePolicyId,
+		BigDecimal gradeBaseAmount,
+		BigDecimal feeAmount,
+		BigDecimal feeRate,
+		BigDecimal settlementAmount
+	) {
+		validateAmount(originalAmount, "정산 원금");
+		validateSellerGradeCode(sellerGradeCode);
+		validateSellerGradePolicyId(sellerGradePolicyId);
+		validateAmount(gradeBaseAmount, "등급 산정 기준 금액");
+		validateAmount(feeAmount, "수수료");
+		validateAmount(feeRate, "수수료율");
+		validateAmount(settlementAmount, "최종 정산금");
+
+		this.originalAmount = originalAmount;
+		this.sellerGradeCode = sellerGradeCode;
+		this.sellerGradePolicyId = sellerGradePolicyId;
+		this.gradeBaseAmount = gradeBaseAmount;
+		this.feeAmount = feeAmount;
+		this.feeRate = feeRate;
+		this.settlementAmount = settlementAmount;
+		this.status = SettlementStatus.READY;
+		this.failReason = null;
+	}
+
+	public boolean canRecalculate() {
+		return status == SettlementStatus.READY
+			|| status == SettlementStatus.HOLD
+			|| status == SettlementStatus.FAILED;
+	}
+
 	public void markTransferring() {
 		this.status = SettlementStatus.TRANSFERRING;
 		this.failReason = null;

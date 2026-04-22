@@ -5,7 +5,6 @@ import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -138,12 +137,11 @@ public class SettlementCalculateService implements SettlementCalculateUseCase {
 			.map(SettlementTargetSummary::sellerId)
 			.distinct()
 			.toList();
-		Set<UUID> existingSettlementSellerIds = settlementRepository.findBySettlementMonthAndSellerIds(
+		Map<UUID, Settlement> existingSettlementBySellerId = settlementRepository.findBySettlementMonthAndSellerIds(
 				settlementMonth,
 				sellerIds
 			).stream()
-			.map(Settlement::getSellerId)
-			.collect(Collectors.toSet());
+			.collect(Collectors.toMap(Settlement::getSellerId, Function.identity(), (existing, replacement) -> existing));
 		Map<UUID, BigDecimal> recentThreeMonthSalesAmountBySellerId =
 			findRecentThreeMonthSalesAmountBySellerIds(sellerIds, settlementMonth);
 		Map<UUID, List<SettlementTargetCalculation>> calculationsBySellerId =
@@ -158,7 +156,8 @@ public class SettlementCalculateService implements SettlementCalculateUseCase {
 		List<Settlement> settlements = new ArrayList<>();
 		List<SellerGrade> sellerGrades = new ArrayList<>();
 		for (SettlementTargetSummary summary : summaries) {
-			if (existingSettlementSellerIds.contains(summary.sellerId())) {
+			Settlement existingSettlement = existingSettlementBySellerId.get(summary.sellerId());
+			if (existingSettlement != null && !existingSettlement.canRecalculate()) {
 				continue;
 			}
 
@@ -175,12 +174,13 @@ public class SettlementCalculateService implements SettlementCalculateUseCase {
 				List.of()
 			);
 
-			settlements.add(buildMonthlySettlement(
+			settlements.add(resolveMonthlySettlement(
 				summary,
 				settlementMonth,
 				recentThreeMonthSalesAmount,
 				sellerGradePolicy,
-				sellerTargets
+				sellerTargets,
+				existingSettlement
 			));
 			sellerGrades.add(resolveSellerGrade(
 				summary.sellerId(),
@@ -219,12 +219,13 @@ public class SettlementCalculateService implements SettlementCalculateUseCase {
 			));
 	}
 
-	private Settlement buildMonthlySettlement(
+	private Settlement resolveMonthlySettlement(
 		SettlementTargetSummary summary,
 		String settlementMonth,
 		BigDecimal recentThreeMonthSalesAmount,
 		SellerGradePolicy sellerGradePolicy,
-		List<SettlementTargetCalculation> sellerTargets
+		List<SettlementTargetCalculation> sellerTargets,
+		Settlement existingSettlement
 	) {
 
 		BigDecimal feeAmount = settlementFeeCalculator.calculateFeeAmount(
@@ -238,17 +239,31 @@ public class SettlementCalculateService implements SettlementCalculateUseCase {
 			sellerTargets
 		);
 
-		Settlement settlement = Settlement.createReady(
-			summary.sellerId(),
-			settlementMonth,
-			summary.totalSettlementBaseAmount(),
-			sellerGradePolicy.getGradeCode(),
-			sellerGradePolicy.getId(),
-			recentThreeMonthSalesAmount,
-			feeAmount,
-			sellerGradePolicy.getFeeRate(),
-			settlementAmount
-		);
+		Settlement settlement;
+		if (existingSettlement == null) {
+			settlement = Settlement.createReady(
+				summary.sellerId(),
+				settlementMonth,
+				summary.totalSettlementBaseAmount(),
+				sellerGradePolicy.getGradeCode(),
+				sellerGradePolicy.getId(),
+				recentThreeMonthSalesAmount,
+				feeAmount,
+				sellerGradePolicy.getFeeRate(),
+				settlementAmount
+			);
+		} else {
+			existingSettlement.recalculate(
+				summary.totalSettlementBaseAmount(),
+				sellerGradePolicy.getGradeCode(),
+				sellerGradePolicy.getId(),
+				recentThreeMonthSalesAmount,
+				feeAmount,
+				sellerGradePolicy.getFeeRate(),
+				settlementAmount
+			);
+			settlement = existingSettlement;
+		}
 
 		if (!settlement.isTransferable()) {
 			settlement.hold("정산 금액이 0 이하이므로 송금 보류");
