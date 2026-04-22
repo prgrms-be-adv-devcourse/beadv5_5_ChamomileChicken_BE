@@ -167,6 +167,25 @@ public class ProductService implements ProductUseCase {
 	}
 
 	@Override
+	public SearchProductResponseDto searchMy(SearchProductRequestDto requestDto, UUID sellerId) {
+		Pageable pageable = PageRequest.of(requestDto.thisPage(), requestDto.pageSize());
+		String sellerIdStr = sellerId.toString();
+
+		Page<ProductDocument> page;
+		if (requestDto.title() == null || requestDto.title().isBlank()) {
+			page = productSearchRepository.findAllBySellerId(sellerIdStr, pageable);
+		} else {
+			page = productSearchRepository.searchByKeywordAndSellerId(requestDto.title(), sellerIdStr, pageable);
+		}
+
+		List<ProductResponseDto> content = page.getContent().stream()
+			.map(ProductResponseDto::from)
+			.toList();
+
+		return SearchProductResponseDto.fromEs(page, content);
+	}
+
+	@Override
 	public ProductResponseDto searchById(UUID productId) {
 		Product product = findByIdOrThrow(productId);
 

@@ -26,6 +26,9 @@ public interface ProductUseCase {
 	// 상품 전체 검색
 	SearchProductResponseDto searchAll(SearchProductRequestDto requestDto);
 
+	// 판매자 본인 상품 검색
+	SearchProductResponseDto searchMy(SearchProductRequestDto requestDto, UUID sellerId);
+
 	// 특정 상품 검색
 	ProductResponseDto searchById(UUID productId);
 
