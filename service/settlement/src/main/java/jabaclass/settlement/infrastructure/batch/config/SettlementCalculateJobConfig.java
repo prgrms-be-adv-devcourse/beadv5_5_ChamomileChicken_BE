@@ -22,7 +22,6 @@ import jabaclass.settlement.application.dto.SettlementTargetSummary;
 import jabaclass.settlement.application.service.calculation.SettlementCalculateService;
 import jabaclass.settlement.domain.model.settlement.SettlementTarget;
 import jabaclass.settlement.domain.model.settlement.SettlementTargetCalculationStatus;
-import jabaclass.settlement.domain.repository.SettlementRepository;
 import jabaclass.settlement.infrastructure.batch.dto.SettlementTargetCalculationBatchItem;
 import jabaclass.settlement.infrastructure.batch.listener.SettlementJobExecutionListener;
 import jabaclass.settlement.infrastructure.batch.listener.SettlementStepExecutionListener;
@@ -145,10 +144,9 @@ public class SettlementCalculateJobConfig {
 	@StepScope
 	public SettlementAggregationItemWriter settlementAggregationWriter(
 		SettlementCalculateService settlementCalculateService,
-		SettlementRepository settlementRepository,
 		@Value("#{jobParameters['settlementMonth']}") String settlementMonthParam
 	) {
 		String settlementMonth = SettlementMonthResolver.resolve(settlementMonthParam);
-		return new SettlementAggregationItemWriter(settlementCalculateService, settlementRepository, settlementMonth);
+		return new SettlementAggregationItemWriter(settlementCalculateService, settlementMonth);
 	}
 }

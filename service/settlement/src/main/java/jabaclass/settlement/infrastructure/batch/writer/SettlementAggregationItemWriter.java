@@ -7,15 +7,12 @@ import org.springframework.batch.infrastructure.item.ItemWriter;
 
 import jabaclass.settlement.application.dto.SettlementTargetSummary;
 import jabaclass.settlement.application.service.calculation.SettlementCalculateService;
-import jabaclass.settlement.domain.model.settlement.Settlement;
-import jabaclass.settlement.domain.repository.SettlementRepository;
 import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
 public class SettlementAggregationItemWriter implements ItemWriter<SettlementTargetSummary> {
 
 	private final SettlementCalculateService settlementCalculateService;
-	private final SettlementRepository settlementRepository;
 	private final String settlementMonth;
 
 	@Override
@@ -28,11 +25,6 @@ public class SettlementAggregationItemWriter implements ItemWriter<SettlementTar
 			return;
 		}
 
-		List<Settlement> settlements = settlementCalculateService.createMonthlySettlements(summaries, settlementMonth);
-		if (settlements.isEmpty()) {
-			return;
-		}
-
-		settlementRepository.saveAll(settlements);
+		settlementCalculateService.createAndSaveMonthlySettlements(summaries, settlementMonth);
 	}
 }
