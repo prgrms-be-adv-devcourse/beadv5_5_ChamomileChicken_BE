@@ -5,5 +5,5 @@ import jabaclass.user.auth.presentation.dto.response.TokenResult;
 
 public interface LoginUseCase {
 
-    TokenResult login(LoginRequestDto request);
+    TokenResult login(LoginRequestDto request, String clientIp, String userAgent);
 }

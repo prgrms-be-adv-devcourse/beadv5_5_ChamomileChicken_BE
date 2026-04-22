@@ -3,6 +3,7 @@ package jabaclass.user.auth.application.service;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 import io.jsonwebtoken.Claims;
 
@@ -27,20 +28,24 @@ import jabaclass.user.auth.presentation.dto.request.LoginRequestDto;
 import jabaclass.user.auth.presentation.dto.response.TokenResult;
 import jabaclass.user.user.domain.model.User;
 import jabaclass.user.user.domain.repository.UserRepository;
+import jabaclass.user.auth.application.usecase.ReportTheftUseCase;
+import jabaclass.user.mail.application.service.MailService;
 
 @Transactional(readOnly = true)
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class AuthService implements LoginUseCase, LogoutUseCase, ReissueUseCase {
+public class AuthService implements LoginUseCase, LogoutUseCase, ReissueUseCase, ReportTheftUseCase {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final TokenProvider tokenProvider;
     private final JwtProvider jwtProvider;
+    private final MailService mailService;
 
     private static final String BLACKLIST_PREFIX = "blacklist:";
     private static final String FORCE_LOGOUT_PREFIX = "force_logout:";
+    private static final String THEFT_REPORT_PREFIX = "theft_report:";
     private final StringRedisTemplate redisTemplate;
 
     @Value("${jwt.refresh-token-validity}")
@@ -49,8 +54,12 @@ public class AuthService implements LoginUseCase, LogoutUseCase, ReissueUseCase 
     @Value("${jwt.access-token-validity}")
     private long accessTokenValidity;
 
+    @Value("${app.base-url}")
+    private String baseUrl;
+
     @Override
-    public TokenResult login(LoginRequestDto request) {
+    @Transactional
+    public TokenResult login(LoginRequestDto request, String clientIp, String userAgent) {
 
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
@@ -58,6 +67,21 @@ public class AuthService implements LoginUseCase, LogoutUseCase, ReissueUseCase 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             throw new AuthException(AuthErrorCode.USER_NOT_FOUND);
         }
+
+        boolean isNewDevice = user.getLastLoginIp() != null &&
+            (!clientIp.equals(user.getLastLoginIp()) || !userAgent.equals(user.getLastLoginUserAgent()));
+
+        if (isNewDevice) {
+            String theftReportToken = UUID.randomUUID().toString();
+            redisTemplate.opsForValue().set(
+                THEFT_REPORT_PREFIX + theftReportToken,
+                user.getId().toString(),
+                Duration.ofMinutes(10)
+            );
+            sendSecurityAlertAsync(user.getEmail(), user.getName(), clientIp, userAgent, theftReportToken);
+        }
+
+        user.updateLastLogin(clientIp, userAgent);
 
         String accessToken = tokenProvider.generateAccessToken(user.getId(), user.getRole());
         String refreshToken = tokenProvider.generateRefreshToken(user.getId(), user.getRole());
@@ -136,5 +160,41 @@ public class AuthService implements LoginUseCase, LogoutUseCase, ReissueUseCase 
         } catch (Exception e) {
             log.warn("[AUTH] 액세스 토큰 파싱 실패, 블랙리스트 미등록. reason={}", e.getMessage());
         }
+    }
+
+    @Override
+    public void reportTheft(String token) {
+        String userIdStr = redisTemplate.opsForValue().get(THEFT_REPORT_PREFIX + token);
+
+        if (userIdStr == null) {
+            throw new AuthException(AuthErrorCode.THEFT_REPORT_TOKEN_EXPIRED);
+        }
+
+        UUID userId = UUID.fromString(userIdStr);
+        redisTemplate.opsForValue().set(
+            FORCE_LOGOUT_PREFIX + userId,
+            String.valueOf(Instant.now().toEpochMilli()),
+            Duration.ofMillis(accessTokenValidity)
+        );
+        redisTemplate.delete("refresh:" + userId);
+        redisTemplate.delete(THEFT_REPORT_PREFIX + token);
+        log.warn("[AUTH] 본인 아님 신고 처리 완료. userId={}", userId);
+    }
+
+    private void sendSecurityAlertAsync(String email, String name, String ip, String userAgent, String token) {
+        CompletableFuture.runAsync(() -> {
+            try {
+                String link = baseUrl + "/api/v1/auth/report-theft?token=" + token;
+                String body = "<p>" + name + "님, 새로운 기기에서 로그인이 감지되었습니다.</p>"
+                    + "<p>IP: " + ip + "</p>"
+                    + "<p>기기: " + userAgent + "</p>"
+                    + "<p>본인이 아닌 경우 아래 버튼을 클릭해 즉시 계정을 보호하세요. (10분 내 유효)</p>"
+                    + "<a href='" + link + "' style='padding:10px 20px;background:#e53e3e;color:white;"
+                    + "text-decoration:none;border-radius:4px;'>본인 아님 - 계정 보호</a>";
+                mailService.send(email, "[보안 알림] 새로운 기기에서 로그인되었습니다.", body, true);
+            } catch (Exception e) {
+                log.error("[AUTH] 보안 알림 이메일 발송 실패. email={}", email, e);
+            }
+        });
     }
 }
