@@ -7,6 +7,8 @@ metadata:
 spec:
   replicas: 1
   revisionHistoryLimit: 3
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: user-service
@@ -22,7 +24,7 @@ spec:
 
           env:
             - name: JAVA_TOOL_OPTIONS
-              value: "-Xms160m -Xmx320m"
+              value: "-Xms128m -Xmx315m"
 
           envFrom:
             - configMapRef:
@@ -46,11 +48,11 @@ spec:
 
           resources:
             requests:
-              cpu: "100m"
-              memory: "384Mi"
+              cpu: "200m"
+              memory: "256Mi"
             limits:
-              cpu: "300m"
-              memory: "640Mi"
+              cpu: "500m"
+              memory: "512Mi"
 
           startupProbe:
             httpGet:
@@ -59,7 +61,7 @@ spec:
             initialDelaySeconds: 5
             periodSeconds: 5
             timeoutSeconds: 3
-            failureThreshold: 24
+            failureThreshold: 36
 
           readinessProbe:
             httpGet:
@@ -74,7 +76,7 @@ spec:
             httpGet:
               path: /actuator/health/liveness
               port: 9003
-            initialDelaySeconds: 30
+            initialDelaySeconds: 60
             periodSeconds: 10
             timeoutSeconds: 3
             failureThreshold: 3
