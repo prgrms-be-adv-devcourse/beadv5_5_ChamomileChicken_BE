@@ -21,7 +21,6 @@ import org.springframework.transaction.PlatformTransactionManager;
 import jabaclass.settlement.application.dto.SettlementTargetSummary;
 import jabaclass.settlement.application.service.calculation.SettlementCalculateService;
 import jabaclass.settlement.domain.model.settlement.SettlementTarget;
-import jabaclass.settlement.domain.model.settlement.SettlementTargetCalculationStatus;
 import jabaclass.settlement.infrastructure.batch.dto.SettlementTargetCalculationBatchItem;
 import jabaclass.settlement.infrastructure.batch.listener.SettlementJobExecutionListener;
 import jabaclass.settlement.infrastructure.batch.listener.SettlementStepExecutionListener;
@@ -39,8 +38,7 @@ public class SettlementCalculateJobConfig {
 		select st
 		from SettlementTarget st
 		where st.settlementMonth = :settlementMonth
-		  and st.calculationStatus = :calculationStatus
-		order by st.id
+		order by st.occurredAt, st.id
 		""";
 
 	private static final String SETTLEMENT_AGGREGATION_QUERY = """
@@ -99,10 +97,7 @@ public class SettlementCalculateJobConfig {
 			.name("settlementTargetItemReader")
 			.entityManagerFactory(entityManagerFactory)
 			.pageSize(CHUNK_SIZE)
-			.parameterValues(Map.of(
-				"settlementMonth", settlementMonth,
-				"calculationStatus", SettlementTargetCalculationStatus.PENDING
-			))
+			.parameterValues(Map.of("settlementMonth", settlementMonth))
 			.queryString(SETTLEMENT_TARGET_QUERY)
 			.build();
 	}
