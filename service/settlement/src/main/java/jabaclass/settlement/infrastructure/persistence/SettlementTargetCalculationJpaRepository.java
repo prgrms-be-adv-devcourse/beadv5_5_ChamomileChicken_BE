@@ -17,7 +17,7 @@ public interface SettlementTargetCalculationJpaRepository extends JpaRepository<
 
 	Optional<SettlementTargetCalculation> findBySettlementTargetId(UUID settlementTargetId);
 
-	List<SettlementTargetCalculation> findBySettlementMonthAndSellerId(String settlementMonth, UUID sellerId);
+	List<SettlementTargetCalculation> findBySettlementMonthAndSellerIdIn(String settlementMonth, List<UUID> sellerIds);
 
 	Page<SettlementTargetCalculation> findBySettlementMonthAndSellerId(String settlementMonth, UUID sellerId, Pageable pageable);
 

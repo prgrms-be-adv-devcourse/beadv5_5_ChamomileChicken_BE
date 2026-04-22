@@ -111,6 +111,32 @@ jobs:
         run: |
           /home/ubuntu/apps/deploy/scripts/apply-env.sh payment
 
+      - name: Export env change outputs
+        id: env_changes
+        shell: bash
+        run: |
+          echo "config_changed=${CONFIG_CHANGED:-false}" >> "$GITHUB_OUTPUT"
+          echo "common_config_changed=${COMMON_CONFIG_CHANGED:-false}" >> "$GITHUB_OUTPUT"
+          echo "common_secret_changed=${COMMON_SECRET_CHANGED:-false}" >> "$GITHUB_OUTPUT"
+          echo "service_config_changed=${SERVICE_CONFIG_CHANGED:-false}" >> "$GITHUB_OUTPUT"
+          echo "service_secret_changed=${SERVICE_SECRET_CHANGED:-false}" >> "$GITHUB_OUTPUT"
+
+      - name: Detect manifest changes
+        id: manifest_changes
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          MANIFEST_CHANGED=false
+          IMAGE_CHANGED=true
+
+          if git diff --name-only HEAD^ HEAD | grep -Eq '^\.github/k3s/payment-service\.yml$'; then
+            MANIFEST_CHANGED=true
+          fi
+
+          echo "manifest_changed=$MANIFEST_CHANGED" >> "$GITHUB_OUTPUT"
+          echo "image_changed=$IMAGE_CHANGED" >> "$GITHUB_OUTPUT"
+
       - name: Verify deploy files exist
         run: |
           ls -l /home/ubuntu/apps/deploy/env
@@ -127,7 +153,13 @@ jobs:
         env:
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
-          RESTART_ON_CONFIG_CHANGE: ${{ env.CONFIG_CHANGED }}
+          IMAGE_CHANGED: ${{ steps.manifest_changes.outputs.image_changed }}
+          MANIFEST_CHANGED: ${{ steps.manifest_changes.outputs.manifest_changed }}
+          CONFIG_CHANGED: ${{ steps.env_changes.outputs.config_changed }}
+          COMMON_CONFIG_CHANGED: ${{ steps.env_changes.outputs.common_config_changed }}
+          COMMON_SECRET_CHANGED: ${{ steps.env_changes.outputs.common_secret_changed }}
+          SERVICE_CONFIG_CHANGED: ${{ steps.env_changes.outputs.service_config_changed }}
+          SERVICE_SECRET_CHANGED: ${{ steps.env_changes.outputs.service_secret_changed }}
         run: |
           /home/ubuntu/apps/deploy/scripts/deploy-app.sh payment
 
@@ -152,14 +184,21 @@ jobs:
         env:
           KUBECONFIG: /home/ubuntu/.kube/config
         run: |
-          kubectl rollout status deployment/payment-service --timeout=120s
-
           kubectl port-forward svc/payment-service 9001:9001 >/tmp/payment-portforward.log 2>&1 &
           PF_PID=$!
-          sleep 5
 
-          STATUS_CODE=$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' --max-time 5 \
-            "http://localhost:9001/actuator/health/readiness" || echo "000")
+          STATUS_CODE="000"
+
+          for i in 1 2 3 4 5; do
+            STATUS_CODE=$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' --max-time 5 \
+              "http://localhost:9001/actuator/health/readiness" || echo "000")
+
+            if [[ "$STATUS_CODE" == "200" ]]; then
+              break
+            fi
+
+            sleep 3
+          done
 
           kill $PF_PID || true
 

@@ -4,12 +4,16 @@ import java.math.BigDecimal;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import jabaclass.settlement.application.dto.AppliedPromotion;
+import jabaclass.settlement.application.dto.SellerSalesAmount;
 import jabaclass.settlement.application.dto.SettlementTargetSummary;
 import jabaclass.settlement.application.exception.BusinessException;
 import jabaclass.settlement.application.exception.CommonErrorCode;
@@ -27,7 +31,6 @@ import jabaclass.settlement.domain.repository.SellerGradePolicyRepository;
 import jabaclass.settlement.domain.repository.SettlementRepository;
 import jabaclass.settlement.domain.repository.SettlementTargetCalculationRepository;
 import jabaclass.settlement.domain.repository.SettlementTargetRepository;
-import jabaclass.settlement.infrastructure.batch.dto.MonthlySettlementBatchItem;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -56,37 +59,7 @@ public class SettlementCalculateService implements SettlementCalculateUseCase {
 		List<SettlementTargetSummary> summaries =
 			settlementTargetCalculationRepository.findSummaryBySettlementMonth(settlementMonth);
 
-		List<MonthlySettlementBatchItem> monthlyItems = new ArrayList<>();
-
-		for (SettlementTargetSummary summary : summaries) {
-			MonthlySettlementBatchItem monthlyItem = createMonthlySettlementItem(summary, settlementMonth);
-			if (monthlyItem != null) {
-				monthlyItems.add(monthlyItem);
-			}
-		}
-
-		if (monthlyItems.isEmpty()) {
-			return 0;
-		}
-
-		List<Settlement> savedSettlements = settlementRepository.saveAll(
-			monthlyItems.stream()
-				.map(MonthlySettlementBatchItem::settlement)
-				.toList()
-		);
-
-		return savedSettlements.size();
-	}
-
-	private BigDecimal calculateRecentThreeMonthSalesAmount(UUID sellerId, String settlementMonth) {
-		YearMonth baseMonth = YearMonth.parse(settlementMonth);
-		List<String> recentThreeMonths = List.of(
-			baseMonth.minusMonths(2).toString(),
-			baseMonth.minusMonths(1).toString(),
-			baseMonth.toString()
-		);
-
-		return settlementTargetRepository.sumSettlementBaseAmountBySellerIdAndSettlementMonths(sellerId, recentThreeMonths);
+		return createAndSaveMonthlySettlements(summaries, settlementMonth).size();
 	}
 
 	public List<SettlementTarget> findPendingTargets(String settlementMonth) {
@@ -126,32 +99,180 @@ public class SettlementCalculateService implements SettlementCalculateUseCase {
 	}
 
 	@Transactional
-	public MonthlySettlementBatchItem createMonthlySettlementItem(
+	public Settlement createMonthlySettlement(
 		SettlementTargetSummary summary,
 		String settlementMonth
 	) {
-		if (settlementRepository.existsBySellerIdAndSettlementMonth(summary.sellerId(), settlementMonth)) {
+		List<Settlement> settlements = createMonthlySettlements(List.of(summary), settlementMonth);
+		if (settlements.isEmpty()) {
 			return null;
 		}
 
-		return buildMonthlySettlementItem(summary, settlementMonth);
+		return settlements.get(0);
 	}
 
-	private MonthlySettlementBatchItem buildMonthlySettlementItem(
-		SettlementTargetSummary summary,
+	@Transactional
+	public List<Settlement> createAndSaveMonthlySettlements(
+		List<SettlementTargetSummary> summaries,
 		String settlementMonth
 	) {
-
-		BigDecimal recentThreeMonthSalesAmount = calculateRecentThreeMonthSalesAmount(
-			summary.sellerId(),
-			settlementMonth
+		return createAndSaveMonthlySettlements(
+			summaries,
+			settlementMonth,
+			findActiveSellerGradePolicies()
 		);
-		SellerGradePolicy sellerGradePolicy = resolveSellerGradePolicy(recentThreeMonthSalesAmount);
-		List<SettlementTargetCalculation> sellerTargets =
-			settlementTargetCalculationRepository.findBySettlementMonthAndSellerId(
+	}
+
+	@Transactional
+	public List<Settlement> createAndSaveMonthlySettlements(
+		List<SettlementTargetSummary> summaries,
+		String settlementMonth,
+		List<SellerGradePolicy> activeSellerGradePolicies
+	) {
+		MonthlySettlementCreationResult creationResult = createMonthlySettlementCreationResult(
+			summaries,
+			settlementMonth,
+			activeSellerGradePolicies
+		);
+		if (creationResult.isEmpty()) {
+			return List.of();
+		}
+
+		if (!creationResult.sellerGrades().isEmpty()) {
+			sellerGradeRepository.saveAll(creationResult.sellerGrades());
+		}
+
+		return settlementRepository.saveAll(creationResult.settlements());
+	}
+
+	@Transactional
+	public List<Settlement> createMonthlySettlements(
+		List<SettlementTargetSummary> summaries,
+		String settlementMonth
+	) {
+		return createMonthlySettlements(
+			summaries,
+			settlementMonth,
+			findActiveSellerGradePolicies()
+		);
+	}
+
+	@Transactional
+	public List<Settlement> createMonthlySettlements(
+		List<SettlementTargetSummary> summaries,
+		String settlementMonth,
+		List<SellerGradePolicy> activeSellerGradePolicies
+	) {
+		return createMonthlySettlementCreationResult(
+			summaries,
+			settlementMonth,
+			activeSellerGradePolicies
+		).settlements();
+	}
+
+	private MonthlySettlementCreationResult createMonthlySettlementCreationResult(
+		List<SettlementTargetSummary> summaries,
+		String settlementMonth,
+		List<SellerGradePolicy> activeSellerGradePolicies
+	) {
+		if (summaries == null || summaries.isEmpty()) {
+			return MonthlySettlementCreationResult.empty();
+		}
+
+		List<UUID> sellerIds = summaries.stream()
+			.map(SettlementTargetSummary::sellerId)
+			.distinct()
+			.toList();
+		Map<UUID, Settlement> existingSettlementBySellerId = settlementRepository.findBySettlementMonthAndSellerIds(
 				settlementMonth,
-				summary.sellerId()
+				sellerIds
+			).stream()
+			.collect(Collectors.toMap(Settlement::getSellerId, Function.identity(), (existing, replacement) -> existing));
+		Map<UUID, BigDecimal> recentThreeMonthSalesAmountBySellerId =
+			findRecentThreeMonthSalesAmountBySellerIds(sellerIds, settlementMonth);
+		Map<UUID, List<SettlementTargetCalculation>> calculationsBySellerId =
+			settlementTargetCalculationRepository.findBySettlementMonthAndSellerIds(settlementMonth, sellerIds)
+				.stream()
+				.collect(Collectors.groupingBy(SettlementTargetCalculation::getSellerId));
+		Map<UUID, SellerGrade> sellerGradeBySellerId = sellerGradeRepository.findBySellerIds(sellerIds)
+			.stream()
+			.collect(Collectors.toMap(SellerGrade::getSellerId, Function.identity(), (existing, replacement) -> existing));
+
+		List<Settlement> settlements = new ArrayList<>();
+		List<SellerGrade> sellerGrades = new ArrayList<>();
+		for (SettlementTargetSummary summary : summaries) {
+			Settlement existingSettlement = existingSettlementBySellerId.get(summary.sellerId());
+			if (existingSettlement != null && !existingSettlement.canRecalculate()) {
+				continue;
+			}
+
+			BigDecimal recentThreeMonthSalesAmount = recentThreeMonthSalesAmountBySellerId.getOrDefault(
+				summary.sellerId(),
+				BigDecimal.ZERO
 			);
+			SellerGradePolicy sellerGradePolicy = resolveSellerGradePolicy(
+				recentThreeMonthSalesAmount,
+				activeSellerGradePolicies
+			);
+			List<SettlementTargetCalculation> sellerTargets = calculationsBySellerId.getOrDefault(
+				summary.sellerId(),
+				List.of()
+			);
+
+			settlements.add(resolveMonthlySettlement(
+				summary,
+				settlementMonth,
+				recentThreeMonthSalesAmount,
+				sellerGradePolicy,
+				sellerTargets,
+				existingSettlement
+			));
+			sellerGrades.add(resolveSellerGrade(
+				summary.sellerId(),
+				sellerGradePolicy,
+				settlementMonth,
+				sellerGradeBySellerId
+			));
+		}
+
+		return new MonthlySettlementCreationResult(settlements, sellerGrades);
+	}
+
+	public List<SellerGradePolicy> findActiveSellerGradePolicies() {
+		return sellerGradePolicyRepository.findActivePolicies();
+	}
+
+	private Map<UUID, BigDecimal> findRecentThreeMonthSalesAmountBySellerIds(
+		List<UUID> sellerIds,
+		String settlementMonth
+	) {
+		YearMonth baseMonth = YearMonth.parse(settlementMonth);
+		List<String> recentThreeMonths = List.of(
+			baseMonth.minusMonths(2).toString(),
+			baseMonth.minusMonths(1).toString(),
+			baseMonth.toString()
+		);
+
+		return settlementTargetRepository.sumSettlementBaseAmountBySellerIdsAndSettlementMonths(
+				sellerIds,
+				recentThreeMonths
+			).stream()
+			.collect(Collectors.toMap(
+				SellerSalesAmount::sellerId,
+				SellerSalesAmount::salesAmount,
+				BigDecimal::add
+			));
+	}
+
+	private Settlement resolveMonthlySettlement(
+		SettlementTargetSummary summary,
+		String settlementMonth,
+		BigDecimal recentThreeMonthSalesAmount,
+		SellerGradePolicy sellerGradePolicy,
+		List<SettlementTargetCalculation> sellerTargets,
+		Settlement existingSettlement
+	) {
+
 		BigDecimal feeAmount = settlementFeeCalculator.calculateFeeAmount(
 			summary.totalSettlementBaseAmount(),
 			sellerGradePolicy.getFeeRate(),
@@ -162,53 +283,91 @@ public class SettlementCalculateService implements SettlementCalculateUseCase {
 			sellerGradePolicy.getFeeRate(),
 			sellerTargets
 		);
-		upsertSellerGrade(summary.sellerId(), sellerGradePolicy, settlementMonth);
 
-		Settlement settlement = Settlement.createReady(
-			summary.sellerId(),
-			settlementMonth,
-			summary.totalSettlementBaseAmount(),
-			sellerGradePolicy.getGradeCode(),
-			sellerGradePolicy.getId(),
-			recentThreeMonthSalesAmount,
-			feeAmount,
-			sellerGradePolicy.getFeeRate(),
-			settlementAmount
-		);
+		Settlement settlement;
+		if (existingSettlement == null) {
+			settlement = Settlement.createReady(
+				summary.sellerId(),
+				settlementMonth,
+				summary.totalSettlementBaseAmount(),
+				sellerGradePolicy.getGradeCode(),
+				sellerGradePolicy.getId(),
+				recentThreeMonthSalesAmount,
+				feeAmount,
+				sellerGradePolicy.getFeeRate(),
+				settlementAmount
+			);
+		} else {
+			existingSettlement.recalculate(
+				summary.totalSettlementBaseAmount(),
+				sellerGradePolicy.getGradeCode(),
+				sellerGradePolicy.getId(),
+				recentThreeMonthSalesAmount,
+				feeAmount,
+				sellerGradePolicy.getFeeRate(),
+				settlementAmount
+			);
+			settlement = existingSettlement;
+		}
 
 		if (!settlement.isTransferable()) {
 			settlement.hold("정산 금액이 0 이하이므로 송금 보류");
 		}
 
-		return new MonthlySettlementBatchItem(
-			settlement,
-			sellerTargets
-		);
+		return settlement;
 	}
 
-	private void upsertSellerGrade(
+	private SellerGrade resolveSellerGrade(
 		UUID sellerId,
 		SellerGradePolicy sellerGradePolicy,
-		String settlementMonth
+		String settlementMonth,
+		Map<UUID, SellerGrade> sellerGradeBySellerId
 	) {
-		SellerGrade sellerGrade = sellerGradeRepository.findBySellerId(sellerId)
-			.orElseGet(() -> SellerGrade.create(
+		SellerGrade sellerGrade = sellerGradeBySellerId.getOrDefault(
+			sellerId,
+			SellerGrade.create(
 				sellerId,
 				sellerGradePolicy.getId(),
 				settlementMonth
-			));
+			)
+		);
 
 		sellerGrade.update(
 			sellerGradePolicy.getId(),
 			settlementMonth
 		);
 
-		sellerGradeRepository.save(sellerGrade);
+		return sellerGrade;
 	}
 
-	private SellerGradePolicy resolveSellerGradePolicy(BigDecimal gradeBaseAmount) {
-		return sellerGradePolicyRepository.findActiveApplicablePolicy(gradeBaseAmount)
-			.or(() -> sellerGradePolicyRepository.findActiveApplicablePolicy(BigDecimal.ZERO))
+	private SellerGradePolicy resolveSellerGradePolicy(
+		BigDecimal gradeBaseAmount,
+		List<SellerGradePolicy> activeSellerGradePolicies
+	) {
+		return activeSellerGradePolicies.stream()
+			.filter(policy -> policy.getMinSalesAmount().compareTo(gradeBaseAmount) <= 0)
+			.filter(policy -> policy.getMaxSalesAmount() == null
+				|| policy.getMaxSalesAmount().compareTo(gradeBaseAmount) >= 0)
+			.findFirst()
+			.or(() -> activeSellerGradePolicies.stream()
+				.filter(policy -> policy.getMinSalesAmount().compareTo(BigDecimal.ZERO) <= 0)
+				.filter(policy -> policy.getMaxSalesAmount() == null
+					|| policy.getMaxSalesAmount().compareTo(BigDecimal.ZERO) >= 0)
+				.findFirst())
 			.orElseThrow(() -> new BusinessException(SettlementErrorCode.SELLER_GRADE_POLICY_NOT_FOUND));
+	}
+
+	private record MonthlySettlementCreationResult(
+		List<Settlement> settlements,
+		List<SellerGrade> sellerGrades
+	) {
+
+		private static MonthlySettlementCreationResult empty() {
+			return new MonthlySettlementCreationResult(List.of(), List.of());
+		}
+
+		private boolean isEmpty() {
+			return settlements.isEmpty() && sellerGrades.isEmpty();
+		}
 	}
 }

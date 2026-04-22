@@ -18,6 +18,7 @@ import jabaclass.user.mail.application.usecase.EmailVerificationUseCase;
 import jabaclass.user.user.application.exception.UserErrorCode;
 import jabaclass.user.user.application.usercase.UserUseCase;
 import jabaclass.user.user.domain.model.SellerSettlementAccount;
+import jabaclass.user.user.domain.model.SocialType;
 import jabaclass.user.user.domain.model.User;
 import jabaclass.user.user.domain.model.UserRole;
 import jabaclass.user.user.domain.repository.SellerSettlementAccountRepository;
@@ -62,6 +63,7 @@ public class UserService implements UserUseCase {
 			.password(passwordEncoder.encode(request.password()))
 			.phone(request.phone())
 			.role(UserRole.USER)
+			.socialType(SocialType.SYSTEM)
 			.deposit(BigDecimal.ZERO)
 			.build();
 

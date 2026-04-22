@@ -16,7 +16,7 @@ public interface SettlementRepository {
 
 	Optional<Settlement> findById(UUID settlementId);
 
-	boolean existsBySellerIdAndSettlementMonth(UUID sellerId, String settlementMonth);
+	List<Settlement> findBySettlementMonthAndSellerIds(String settlementMonth, List<UUID> sellerIds);
 
 	Page<Settlement> findBySellerId(UUID sellerId, Pageable pageable);
 

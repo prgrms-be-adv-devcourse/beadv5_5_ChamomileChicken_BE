@@ -1,6 +1,6 @@
 package jabaclass.settlement.infrastructure.persistence.adapter;
 
-import java.util.Optional;
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.stereotype.Repository;
@@ -17,12 +17,16 @@ public class SellerGradeRepositoryAdapter implements SellerGradeRepository {
 	private final SellerGradeJpaRepository sellerGradeJpaRepository;
 
 	@Override
-	public SellerGrade save(SellerGrade sellerGrade) {
-		return sellerGradeJpaRepository.save(sellerGrade);
+	public List<SellerGrade> saveAll(List<SellerGrade> sellerGrades) {
+		return sellerGradeJpaRepository.saveAll(sellerGrades);
 	}
 
 	@Override
-	public Optional<SellerGrade> findBySellerId(UUID sellerId) {
-		return sellerGradeJpaRepository.findBySellerId(sellerId);
+	public List<SellerGrade> findBySellerIds(List<UUID> sellerIds) {
+		if (sellerIds == null || sellerIds.isEmpty()) {
+			return List.of();
+		}
+
+		return sellerGradeJpaRepository.findBySellerIdIn(sellerIds);
 	}
 }

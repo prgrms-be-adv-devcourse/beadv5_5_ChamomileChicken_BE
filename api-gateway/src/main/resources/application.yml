@@ -22,7 +22,7 @@ spring:
                   maxBackoff: 500ms
           routes:
             - id: file
-              uri: ${FILE_SERVICE_URL:http://localhost:9000}
+              uri: ${FILE_SERVICE_URL:http://localhost:9004}
               predicates:
                 - Path=/api/v1/files/**
 
@@ -75,3 +75,7 @@ spring:
 
 jwt:
   secret: ${JWT_SECRET}
+
+logging:
+  level:
+    org.springframework.security: DEBUG

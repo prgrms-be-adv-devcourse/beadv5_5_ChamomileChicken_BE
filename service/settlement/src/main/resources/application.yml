@@ -21,13 +21,17 @@ spring:
 
 clients:
   user:
-    base-url: ${USER_SERVICE_HOST:http://localhost:9003}
+    base-url: ${USER_SERVICE_URL:http://localhost:9003}
 
 management:
   endpoints:
     web:
       exposure:
         include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true
 
 settlement:
   batch:

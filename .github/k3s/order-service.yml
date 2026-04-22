@@ -6,6 +6,7 @@ metadata:
     app: order-service
 spec:
   replicas: 1
+  revisionHistoryLimit: 3
   selector:
     matchLabels:
       app: order-service
@@ -17,7 +18,7 @@ spec:
       containers:
         - name: order-service
           image: ${DOCKERHUB_USERNAME}/chamomile-order:${IMAGE_TAG}
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
 
           env:
             - name: JAVA_TOOL_OPTIONS
@@ -55,8 +56,8 @@ spec:
             httpGet:
               path: /actuator/health
               port: 9005
-            initialDelaySeconds: 10
-            periodSeconds: 10
+            initialDelaySeconds: 5
+            periodSeconds: 5
             timeoutSeconds: 3
             failureThreshold: 24
 
@@ -64,17 +65,17 @@ spec:
             httpGet:
               path: /actuator/health/readiness
               port: 9005
-            initialDelaySeconds: 20
-            periodSeconds: 10
+            initialDelaySeconds: 5
+            periodSeconds: 5
             timeoutSeconds: 3
-            failureThreshold: 5
+            failureThreshold: 3
 
           livenessProbe:
             httpGet:
               path: /actuator/health/liveness
               port: 9005
-            initialDelaySeconds: 40
-            periodSeconds: 20
+            initialDelaySeconds: 30
+            periodSeconds: 10
             timeoutSeconds: 3
             failureThreshold: 3
 

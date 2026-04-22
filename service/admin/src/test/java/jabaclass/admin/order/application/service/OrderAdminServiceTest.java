@@ -6,6 +6,7 @@ import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.times;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -47,8 +48,10 @@ class OrderAdminServiceTest {
 		orderId = UUID.randomUUID();
 		order = new Order();
 		ReflectionTestUtils.setField(order, "id", orderId);
+		ReflectionTestUtils.setField(order, "createdAt", LocalDateTime.of(2025, 4, 1, 12, 0));
 		ReflectionTestUtils.setField(order, "productScheduleId", UUID.randomUUID());
 		ReflectionTestUtils.setField(order, "userId", UUID.randomUUID());
+		ReflectionTestUtils.setField(order, "sellerId", UUID.randomUUID());
 		ReflectionTestUtils.setField(order, "quantity", 2);
 		ReflectionTestUtils.setField(order, "price", new BigDecimal("100000"));
 		ReflectionTestUtils.setField(order, "status", OrderStatus.PAID);
@@ -68,6 +71,8 @@ class OrderAdminServiceTest {
 		assertThat(result.getContent()).hasSize(1);
 		assertThat(result.getContent().get(0).id()).isEqualTo(orderId);
 		assertThat(result.getContent().get(0).status()).isEqualTo(OrderStatus.PAID);
+		assertThat(result.getContent().get(0).sellerId()).isNotNull();
+		assertThat(result.getContent().get(0).createdAt()).isEqualTo(LocalDateTime.of(2025, 4, 1, 12, 0));
 		then(orderAdminRepository).should(times(1)).findAll(pageable);
 	}
 }

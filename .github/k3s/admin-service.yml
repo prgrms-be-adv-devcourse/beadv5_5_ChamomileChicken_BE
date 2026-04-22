@@ -6,6 +6,7 @@ metadata:
     app: admin-service
 spec:
   replicas: 1
+  revisionHistoryLimit: 3
   selector:
     matchLabels:
       app: admin-service
@@ -17,7 +18,7 @@ spec:
       containers:
         - name: admin-service
           image: ${DOCKERHUB_USERNAME}/chamomile-admin:${IMAGE_TAG}
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
 
           env:
             - name: JAVA_TOOL_OPTIONS
@@ -41,7 +42,7 @@ spec:
                 optional: true
 
           ports:
-            - containerPort: 9008
+            - containerPort: 9007
 
           resources:
             requests:
@@ -54,27 +55,27 @@ spec:
           startupProbe:
             httpGet:
               path: /actuator/health
-              port: 9008
-            initialDelaySeconds: 10
-            periodSeconds: 10
+              port: 9007
+            initialDelaySeconds: 5
+            periodSeconds: 5
             timeoutSeconds: 3
             failureThreshold: 24
 
           readinessProbe:
             httpGet:
               path: /actuator/health/readiness
-              port: 9008
-            initialDelaySeconds: 20
-            periodSeconds: 10
+              port: 9007
+            initialDelaySeconds: 5
+            periodSeconds: 5
             timeoutSeconds: 3
-            failureThreshold: 5
+            failureThreshold: 3
 
           livenessProbe:
             httpGet:
               path: /actuator/health/liveness
-              port: 9008
-            initialDelaySeconds: 40
-            periodSeconds: 20
+              port: 9007
+            initialDelaySeconds: 30
+            periodSeconds: 10
             timeoutSeconds: 3
             failureThreshold: 3
 
@@ -89,7 +90,7 @@ spec:
   selector:
     app: admin-service
   ports:
-    - port: 9008
-      targetPort: 9008
+    - port: 9007
+      targetPort: 9007
       protocol: TCP
   type: ClusterIP

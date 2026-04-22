@@ -45,16 +45,15 @@ class SettlementAdminServiceTest {
 	@BeforeEach
 	void setUp() {
 		settlementId = UUID.randomUUID();
-		settlement = Settlement.builder()
-			.sellerId(UUID.randomUUID())
-			.settlementMonth("2025-04")
-			.originalAmount(new BigDecimal("1000000"))
-			.feeAmount(new BigDecimal("30000"))
-			.feeRate(new BigDecimal("0.0300"))
-			.settlementAmount(new BigDecimal("970000"))
-			.status(SettlementStatus.SENT)
-			.build();
+		settlement = new Settlement();
 		ReflectionTestUtils.setField(settlement, "id", settlementId);
+		ReflectionTestUtils.setField(settlement, "sellerId", UUID.randomUUID());
+		ReflectionTestUtils.setField(settlement, "settlementMonth", "2025-04");
+		ReflectionTestUtils.setField(settlement, "originalAmount", new BigDecimal("1000000"));
+		ReflectionTestUtils.setField(settlement, "feeAmount", new BigDecimal("30000"));
+		ReflectionTestUtils.setField(settlement, "feeRate", new BigDecimal("0.0300"));
+		ReflectionTestUtils.setField(settlement, "settlementAmount", new BigDecimal("970000"));
+		ReflectionTestUtils.setField(settlement, "status", SettlementStatus.SENT);
 	}
 
 	@Test
