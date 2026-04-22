@@ -1,11 +1,9 @@
 package jabaclass.product;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.BDDMockito.then;
-import static org.mockito.Mockito.never;
+import static org.assertj.core.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.BDDMockito.*;
+import static org.mockito.Mockito.*;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -22,7 +20,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
 import jabaclass.product.application.acl.SellerRepository;
@@ -115,7 +112,8 @@ class ProductSearchMyTest {
 		// given
 		SearchProductRequestDto request = new SearchProductRequestDto("향수", 0, 10, ProductStatus.ENABLE);
 		Page<ProductDocument> esPage = new PageImpl<>(List.of(doc1));
-		given(productSearchRepository.searchByKeywordAndSellerId(eq("향수"), eq(SELLER_ID.toString()), any(Pageable.class)))
+		given(
+			productSearchRepository.searchByKeywordAndSellerId(eq("향수"), eq(SELLER_ID.toString()), any(Pageable.class)))
 			.willReturn(esPage);
 
 		// when
@@ -125,7 +123,8 @@ class ProductSearchMyTest {
 		assertThat(result.totalCount()).isEqualTo(1);
 		assertThat(result.content()).extracting(ProductResponseDto::title)
 			.containsExactly("향수 공방 클래스");
-		then(productSearchRepository).should().searchByKeywordAndSellerId(eq("향수"), eq(SELLER_ID.toString()), any(Pageable.class));
+		then(productSearchRepository).should()
+			.searchByKeywordAndSellerId(eq("향수"), eq(SELLER_ID.toString()), any(Pageable.class));
 		then(productSearchRepository).should(never()).findAllBySellerId(any(), any());
 	}
 
@@ -133,7 +132,8 @@ class ProductSearchMyTest {
 	void 내_상품_목록_조회_결과_비어있을때_성공() {
 		// given
 		SearchProductRequestDto request = new SearchProductRequestDto("없는키워드", 0, 10, ProductStatus.ENABLE);
-		given(productSearchRepository.searchByKeywordAndSellerId(eq("없는키워드"), eq(SELLER_ID.toString()), any(Pageable.class)))
+		given(productSearchRepository.searchByKeywordAndSellerId(eq("없는키워드"), eq(SELLER_ID.toString()),
+			any(Pageable.class)))
 			.willReturn(new PageImpl<>(List.of()));
 
 		// when
