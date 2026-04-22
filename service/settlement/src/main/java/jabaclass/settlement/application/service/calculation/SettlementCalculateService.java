@@ -152,7 +152,7 @@ public class SettlementCalculateService implements SettlementCalculateUseCase {
 				.collect(Collectors.groupingBy(SettlementTargetCalculation::getSellerId));
 		Map<UUID, SellerGrade> sellerGradeBySellerId = sellerGradeRepository.findBySellerIds(sellerIds)
 			.stream()
-			.collect(Collectors.toMap(SellerGrade::getSellerId, Function.identity()));
+			.collect(Collectors.toMap(SellerGrade::getSellerId, Function.identity(), (existing, replacement) -> existing));
 		List<SellerGradePolicy> activeSellerGradePolicies = sellerGradePolicyRepository.findActivePolicies();
 
 		List<Settlement> settlements = new ArrayList<>();
@@ -212,7 +212,11 @@ public class SettlementCalculateService implements SettlementCalculateUseCase {
 				sellerIds,
 				recentThreeMonths
 			).stream()
-			.collect(Collectors.toMap(SellerSalesAmount::sellerId, SellerSalesAmount::salesAmount));
+			.collect(Collectors.toMap(
+				SellerSalesAmount::sellerId,
+				SellerSalesAmount::salesAmount,
+				BigDecimal::add
+			));
 	}
 
 	private Settlement buildMonthlySettlement(
