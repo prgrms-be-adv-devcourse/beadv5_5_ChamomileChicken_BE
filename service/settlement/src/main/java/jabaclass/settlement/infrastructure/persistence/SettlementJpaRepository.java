@@ -12,7 +12,7 @@ import jabaclass.settlement.domain.model.settlement.SettlementStatus;
 
 public interface SettlementJpaRepository extends JpaRepository<Settlement, UUID> {
 
-	boolean existsBySellerIdAndSettlementMonth(UUID sellerId, String settlementMonth);
+	List<Settlement> findBySettlementMonthAndSellerIdIn(String settlementMonth, List<UUID> sellerIds);
 
 	Page<Settlement> findBySellerId(UUID sellerId, Pageable pageable);
 
