@@ -27,7 +27,6 @@ import jabaclass.settlement.domain.repository.SellerGradePolicyRepository;
 import jabaclass.settlement.domain.repository.SettlementRepository;
 import jabaclass.settlement.domain.repository.SettlementTargetCalculationRepository;
 import jabaclass.settlement.domain.repository.SettlementTargetRepository;
-import jabaclass.settlement.infrastructure.batch.dto.MonthlySettlementBatchItem;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -56,24 +55,20 @@ public class SettlementCalculateService implements SettlementCalculateUseCase {
 		List<SettlementTargetSummary> summaries =
 			settlementTargetCalculationRepository.findSummaryBySettlementMonth(settlementMonth);
 
-		List<MonthlySettlementBatchItem> monthlyItems = new ArrayList<>();
+		List<Settlement> settlements = new ArrayList<>();
 
 		for (SettlementTargetSummary summary : summaries) {
-			MonthlySettlementBatchItem monthlyItem = createMonthlySettlementItem(summary, settlementMonth);
-			if (monthlyItem != null) {
-				monthlyItems.add(monthlyItem);
+			Settlement settlement = createMonthlySettlement(summary, settlementMonth);
+			if (settlement != null) {
+				settlements.add(settlement);
 			}
 		}
 
-		if (monthlyItems.isEmpty()) {
+		if (settlements.isEmpty()) {
 			return 0;
 		}
 
-		List<Settlement> savedSettlements = settlementRepository.saveAll(
-			monthlyItems.stream()
-				.map(MonthlySettlementBatchItem::settlement)
-				.toList()
-		);
+		List<Settlement> savedSettlements = settlementRepository.saveAll(settlements);
 
 		return savedSettlements.size();
 	}
@@ -126,7 +121,7 @@ public class SettlementCalculateService implements SettlementCalculateUseCase {
 	}
 
 	@Transactional
-	public MonthlySettlementBatchItem createMonthlySettlementItem(
+	public Settlement createMonthlySettlement(
 		SettlementTargetSummary summary,
 		String settlementMonth
 	) {
@@ -134,10 +129,10 @@ public class SettlementCalculateService implements SettlementCalculateUseCase {
 			return null;
 		}
 
-		return buildMonthlySettlementItem(summary, settlementMonth);
+		return buildMonthlySettlement(summary, settlementMonth);
 	}
 
-	private MonthlySettlementBatchItem buildMonthlySettlementItem(
+	private Settlement buildMonthlySettlement(
 		SettlementTargetSummary summary,
 		String settlementMonth
 	) {
@@ -180,10 +175,7 @@ public class SettlementCalculateService implements SettlementCalculateUseCase {
 			settlement.hold("정산 금액이 0 이하이므로 송금 보류");
 		}
 
-		return new MonthlySettlementBatchItem(
-			settlement,
-			sellerTargets
-		);
+		return settlement;
 	}
 
 	private void upsertSellerGrade(
