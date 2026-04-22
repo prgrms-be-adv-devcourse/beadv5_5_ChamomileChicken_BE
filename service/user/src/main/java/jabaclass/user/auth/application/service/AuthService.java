@@ -72,6 +72,7 @@ public class AuthService implements LoginUseCase, LogoutUseCase, ReissueUseCase,
             (!clientIp.equals(user.getLastLoginIp()) || !userAgent.equals(user.getLastLoginUserAgent()));
 
         if (isNewDevice) {
+            log.warn("[AUTH] 새 기기 로그인 감지. userId={}, ip={}", user.getId(), clientIp);
             String theftReportToken = UUID.randomUUID().toString();
             redisTemplate.opsForValue().set(
                 THEFT_REPORT_PREFIX + theftReportToken,
@@ -82,6 +83,7 @@ public class AuthService implements LoginUseCase, LogoutUseCase, ReissueUseCase,
         }
 
         user.updateLastLogin(clientIp, userAgent);
+        log.info("[AUTH] 로그인 성공. userId={}, ip={}", user.getId(), clientIp);
 
         String accessToken = tokenProvider.generateAccessToken(user.getId(), user.getRole());
         String refreshToken = tokenProvider.generateRefreshToken(user.getId(), user.getRole());
