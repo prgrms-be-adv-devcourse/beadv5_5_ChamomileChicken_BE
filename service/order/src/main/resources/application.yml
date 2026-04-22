@@ -11,13 +11,12 @@ spring:
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
 
-jwt:
-  secret: ${JWT_SECRET}
-  access-token-validity: 3600000
-  refresh-token-validity: 604800000
-
 management:
   endpoints:
     web:
       exposure:
         include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true
