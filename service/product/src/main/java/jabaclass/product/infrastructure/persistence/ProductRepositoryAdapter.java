@@ -52,6 +52,11 @@ public class ProductRepositoryAdapter implements ProductRepository {
 	}
 
 	@Override
+	public List<Product> findAllByIdsAndDeleteDtIsNull(List<UUID> productIds) {
+		return productJpaRepository.findAllByIdInAndDeleteDtIsNull(productIds);
+	}
+
+	@Override
 	public Page<Product> findAllByDeleteDtIsNull(Pageable pageable) {
 		return productJpaRepository.findAllByDeleteDtIsNull(pageable);
 	}

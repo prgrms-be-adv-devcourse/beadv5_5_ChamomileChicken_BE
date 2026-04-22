@@ -44,7 +44,7 @@ class ReviewRestControllerTest {
 
 	@Test
 	void 리뷰_생성_요청이_들어오면_유스케이스를_호출한다() {
-		ReviewResponseDto response = new ReviewResponseDto(REVIEW_ID, 5, "좋았어요");
+		ReviewResponseDto response = new ReviewResponseDto(REVIEW_ID, 5, "좋았어요", null, null);
 		given(reviewUseCase.createReview(request, PRODUCT_ID, USER_ID)).willReturn(response);
 
 		ResponseEntity<ApiResponseDto<ReviewResponseDto>> result = reviewRestController.create(request, PRODUCT_ID, USER_ID);
@@ -58,7 +58,7 @@ class ReviewRestControllerTest {
 	@Test
 	void 리뷰_수정_요청이_들어오면_유스케이스를_호출한다() {
 		ReviewRequestDto updateRequest = new ReviewRequestDto(3, "보통이었어요");
-		ReviewResponseDto response = new ReviewResponseDto(REVIEW_ID, 3, "보통이었어요");
+		ReviewResponseDto response = new ReviewResponseDto(REVIEW_ID, 3, "보통이었어요", null, null);
 		given(reviewUseCase.updateReview(updateRequest, REVIEW_ID, USER_ID)).willReturn(response);
 
 		ResponseEntity<ApiResponseDto<ReviewResponseDto>> result = reviewRestController.update(updateRequest, REVIEW_ID, USER_ID);
@@ -79,7 +79,7 @@ class ReviewRestControllerTest {
 
 	@Test
 	void 내_리뷰_조회_요청이_들어오면_유스케이스를_호출한다() {
-		List<ReviewResponseDto> response = List.of(new ReviewResponseDto(REVIEW_ID, 5, "좋았어요"));
+		List<ReviewResponseDto> response = List.of(new ReviewResponseDto(REVIEW_ID, 5, "좋았어요", null, null));
 		given(reviewUseCase.userReview(USER_ID)).willReturn(response);
 
 		ResponseEntity<ApiResponseDto<List<ReviewResponseDto>>> result = reviewRestController.userReview(USER_ID);
@@ -92,7 +92,7 @@ class ReviewRestControllerTest {
 
 	@Test
 	void 상품_리뷰_조회_요청이_들어오면_유스케이스를_호출한다() {
-		List<ReviewResponseDto> response = List.of(new ReviewResponseDto(REVIEW_ID, 5, "좋았어요"));
+		List<ReviewResponseDto> response = List.of(new ReviewResponseDto(REVIEW_ID, 5, "좋았어요", null, null));
 		given(reviewUseCase.productReview(PRODUCT_ID)).willReturn(response);
 
 		ResponseEntity<ApiResponseDto<List<ReviewResponseDto>>> result = reviewRestController.productReview(PRODUCT_ID);
@@ -105,7 +105,7 @@ class ReviewRestControllerTest {
 
 	@Test
 	void 리뷰_단건_조회_요청이_들어오면_유스케이스를_호출한다() {
-		ReviewResponseDto response = new ReviewResponseDto(REVIEW_ID, 5, "좋았어요");
+		ReviewResponseDto response = new ReviewResponseDto(REVIEW_ID, 5, "좋았어요", null, null);
 		given(reviewUseCase.review(REVIEW_ID)).willReturn(response);
 
 		ResponseEntity<ApiResponseDto<ReviewResponseDto>> result = reviewRestController.review(REVIEW_ID);

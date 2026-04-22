@@ -77,6 +77,8 @@ public interface ScheduleRepository {
 		@Param("closedStatus") ReservedStatus closedStatus
 	);
 
+	List<Schedule> findAllByIdInAndDeleteDtIsNull(List<UUID> scheduleIds);
+
 	// admin.product FORCE_DOWN 처리 — 해당 상품의 모든 스케줄 소프트 딜리트
 	int softDeleteByProductId(UUID productId);
 }

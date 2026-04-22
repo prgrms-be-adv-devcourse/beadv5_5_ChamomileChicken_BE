@@ -87,4 +87,39 @@ public class ProductSearchRepositoryAdapter implements ProductSearchRepository {
 		List<ProductDocument> content = hits.stream().map(SearchHit::getContent).toList();
 		return new PageImpl<>(content, pageable, hits.getTotalHits());
 	}
+
+	@Override
+	public Page<ProductDocument> findAllBySellerId(String sellerId, Pageable pageable) {
+		Criteria criteria = new Criteria("status").is(ProductStatus.ENABLE.name())
+			.and(new Criteria("deleted").is(false))
+			.and(new Criteria("sellerId").is(sellerId));
+
+		CriteriaQuery query = new CriteriaQuery(criteria, pageable);
+		SearchHits<ProductDocument> hits = elasticsearchOperations.search(query, ProductDocument.class);
+		List<ProductDocument> content = hits.stream().map(SearchHit::getContent).toList();
+		return new PageImpl<>(content, pageable, hits.getTotalHits());
+	}
+
+	@Override
+	public Page<ProductDocument> searchByKeywordAndSellerId(String keyword, String sellerId, Pageable pageable) {
+		Query query = Query.of(q -> q
+			.bool(b -> b
+				.should(s -> s.match(m -> m.field("title").query(keyword).fuzziness("AUTO").prefixLength(1)))
+				.should(s -> s.match(m -> m.field("description").query(keyword)))
+				.minimumShouldMatch("1")
+				.filter(f -> f.term(t -> t.field("status").value(ProductStatus.ENABLE.name())))
+				.filter(f -> f.term(t -> t.field("deleted").value(false)))
+				.filter(f -> f.term(t -> t.field("sellerId").value(sellerId)))
+			)
+		);
+
+		NativeQuery nativeQuery = NativeQuery.builder()
+			.withQuery(query)
+			.withPageable(pageable)
+			.build();
+
+		SearchHits<ProductDocument> hits = elasticsearchOperations.search(nativeQuery, ProductDocument.class);
+		List<ProductDocument> content = hits.stream().map(SearchHit::getContent).toList();
+		return new PageImpl<>(content, pageable, hits.getTotalHits());
+	}
 }
