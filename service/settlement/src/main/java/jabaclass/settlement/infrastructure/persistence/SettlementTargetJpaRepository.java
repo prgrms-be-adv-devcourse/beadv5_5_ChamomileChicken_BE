@@ -37,4 +37,23 @@ public interface SettlementTargetJpaRepository extends JpaRepository<SettlementT
 		@Param("sellerId") UUID sellerId,
 		@Param("settlementMonths") List<String> settlementMonths
 	);
+
+	@Query("""
+		select
+			st.sellerId as sellerId,
+			coalesce(sum(st.settlementBaseAmount), 0) as salesAmount
+		from SettlementTarget st
+		where st.sellerId in :sellerIds
+		  and st.settlementMonth in :settlementMonths
+		group by st.sellerId
+		""")
+	List<SellerSalesAmountProjection> sumSettlementBaseAmountBySellerIdsAndSettlementMonths(
+		@Param("sellerIds") List<UUID> sellerIds,
+		@Param("settlementMonths") List<String> settlementMonths
+	);
+
+	interface SellerSalesAmountProjection {
+		UUID getSellerId();
+		BigDecimal getSalesAmount();
+	}
 }

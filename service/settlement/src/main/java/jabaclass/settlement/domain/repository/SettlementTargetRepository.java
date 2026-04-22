@@ -8,6 +8,7 @@ import java.util.UUID;
 import jabaclass.settlement.domain.model.settlement.SettlementTarget;
 import jabaclass.settlement.domain.model.settlement.SettlementTargetCalculationStatus;
 import jabaclass.settlement.domain.model.settlement.SettlementTargetType;
+import jabaclass.settlement.application.dto.SellerSalesAmount;
 
 public interface SettlementTargetRepository {
 
@@ -27,4 +28,9 @@ public interface SettlementTargetRepository {
 	);
 
 	BigDecimal sumSettlementBaseAmountBySellerIdAndSettlementMonths(UUID sellerId, List<String> settlementMonths);
+
+	List<SellerSalesAmount> sumSettlementBaseAmountBySellerIdsAndSettlementMonths(
+		List<UUID> sellerIds,
+		List<String> settlementMonths
+	);
 }

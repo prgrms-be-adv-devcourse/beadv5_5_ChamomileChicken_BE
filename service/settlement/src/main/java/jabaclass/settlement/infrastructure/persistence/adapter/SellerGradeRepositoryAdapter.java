@@ -1,5 +1,6 @@
 package jabaclass.settlement.infrastructure.persistence.adapter;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -22,7 +23,21 @@ public class SellerGradeRepositoryAdapter implements SellerGradeRepository {
 	}
 
 	@Override
+	public List<SellerGrade> saveAll(List<SellerGrade> sellerGrades) {
+		return sellerGradeJpaRepository.saveAll(sellerGrades);
+	}
+
+	@Override
 	public Optional<SellerGrade> findBySellerId(UUID sellerId) {
 		return sellerGradeJpaRepository.findBySellerId(sellerId);
+	}
+
+	@Override
+	public List<SellerGrade> findBySellerIds(List<UUID> sellerIds) {
+		if (sellerIds == null || sellerIds.isEmpty()) {
+			return List.of();
+		}
+
+		return sellerGradeJpaRepository.findBySellerIdIn(sellerIds);
 	}
 }

@@ -36,6 +36,15 @@ public class SettlementRepositoryAdapter implements SettlementRepository {
 	}
 
 	@Override
+	public List<Settlement> findBySettlementMonthAndSellerIds(String settlementMonth, List<UUID> sellerIds) {
+		if (sellerIds == null || sellerIds.isEmpty()) {
+			return List.of();
+		}
+
+		return settlementJpaRepository.findBySettlementMonthAndSellerIdIn(settlementMonth, sellerIds);
+	}
+
+	@Override
 	public Page<Settlement> findBySellerId(UUID sellerId, Pageable pageable) {
 		return settlementJpaRepository.findBySellerId(sellerId, pageable);
 	}

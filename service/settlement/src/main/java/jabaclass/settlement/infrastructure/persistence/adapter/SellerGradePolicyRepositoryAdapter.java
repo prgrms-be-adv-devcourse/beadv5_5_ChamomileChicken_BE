@@ -1,6 +1,7 @@
 package jabaclass.settlement.infrastructure.persistence.adapter;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.stereotype.Repository;
@@ -19,5 +20,10 @@ public class SellerGradePolicyRepositoryAdapter implements SellerGradePolicyRepo
 	@Override
 	public Optional<SellerGradePolicy> findActiveApplicablePolicy(BigDecimal salesAmount) {
 		return sellerGradePolicyJpaRepository.findActiveApplicablePolicies(salesAmount).stream().findFirst();
+	}
+
+	@Override
+	public List<SellerGradePolicy> findActivePolicies() {
+		return sellerGradePolicyJpaRepository.findByActiveTrueOrderByMinSalesAmountDesc();
 	}
 }

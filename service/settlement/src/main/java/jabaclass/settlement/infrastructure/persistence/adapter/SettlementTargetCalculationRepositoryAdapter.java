@@ -41,6 +41,18 @@ public class SettlementTargetCalculationRepositoryAdapter implements SettlementT
 	}
 
 	@Override
+	public List<SettlementTargetCalculation> findBySettlementMonthAndSellerIds(
+		String settlementMonth,
+		List<UUID> sellerIds
+	) {
+		if (sellerIds == null || sellerIds.isEmpty()) {
+			return List.of();
+		}
+
+		return settlementTargetCalculationJpaRepository.findBySettlementMonthAndSellerIdIn(settlementMonth, sellerIds);
+	}
+
+	@Override
 	public Page<SettlementTargetCalculation> findBySettlementMonthAndSellerId(
 		String settlementMonth,
 		UUID sellerId,

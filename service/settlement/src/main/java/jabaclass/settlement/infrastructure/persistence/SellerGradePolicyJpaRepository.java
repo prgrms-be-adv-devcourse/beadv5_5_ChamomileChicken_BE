@@ -21,4 +21,6 @@ public interface SellerGradePolicyJpaRepository extends JpaRepository<SellerGrad
 		order by p.minSalesAmount desc
 		""")
 	List<SellerGradePolicy> findActiveApplicablePolicies(@Param("salesAmount") BigDecimal salesAmount);
+
+	List<SellerGradePolicy> findByActiveTrueOrderByMinSalesAmountDesc();
 }

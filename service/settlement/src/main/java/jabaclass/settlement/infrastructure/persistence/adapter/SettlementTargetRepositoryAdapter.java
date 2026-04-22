@@ -7,6 +7,7 @@ import java.util.UUID;
 
 import org.springframework.stereotype.Repository;
 
+import jabaclass.settlement.application.dto.SellerSalesAmount;
 import jabaclass.settlement.domain.model.settlement.SettlementTarget;
 import jabaclass.settlement.domain.model.settlement.SettlementTargetCalculationStatus;
 import jabaclass.settlement.domain.model.settlement.SettlementTargetType;
@@ -64,5 +65,22 @@ public class SettlementTargetRepositoryAdapter implements SettlementTargetReposi
 		}
 
 		return settlementTargetJpaRepository.sumSettlementBaseAmountBySellerIdAndSettlementMonths(sellerId, settlementMonths);
+	}
+
+	@Override
+	public List<SellerSalesAmount> sumSettlementBaseAmountBySellerIdsAndSettlementMonths(
+		List<UUID> sellerIds,
+		List<String> settlementMonths
+	) {
+		if (sellerIds == null || sellerIds.isEmpty() || settlementMonths == null || settlementMonths.isEmpty()) {
+			return List.of();
+		}
+
+		return settlementTargetJpaRepository.sumSettlementBaseAmountBySellerIdsAndSettlementMonths(
+				sellerIds,
+				settlementMonths
+			).stream()
+			.map(it -> new SellerSalesAmount(it.getSellerId(), it.getSalesAmount()))
+			.toList();
 	}
 }

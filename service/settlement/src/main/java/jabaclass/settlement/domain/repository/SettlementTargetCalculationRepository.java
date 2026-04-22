@@ -21,6 +21,8 @@ public interface SettlementTargetCalculationRepository {
 
 	List<SettlementTargetCalculation> findBySettlementMonthAndSellerId(String settlementMonth, UUID sellerId);
 
+	List<SettlementTargetCalculation> findBySettlementMonthAndSellerIds(String settlementMonth, List<UUID> sellerIds);
+
 	Page<SettlementTargetCalculation> findBySettlementMonthAndSellerId(String settlementMonth, UUID sellerId, Pageable pageable);
 
 	List<SettlementTargetSummary> findSummaryBySettlementMonth(String settlementMonth);
