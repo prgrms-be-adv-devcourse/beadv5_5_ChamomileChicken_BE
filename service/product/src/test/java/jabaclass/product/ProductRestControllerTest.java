@@ -157,14 +157,14 @@ class ProductRestControllerTest {
 
 	@Test
 	void 상품_단건_조회_요청이_들어오면_유스케이스를_호출한다() {
-		given(productUseCase.searchById(PRODUCT_ID)).willReturn(productResponse);
+		given(productUseCase.searchById(PRODUCT_ID, null)).willReturn(productResponse);
 
-		ResponseEntity<ApiResponseDto<ProductResponseDto>> result = productRestController.searchProduct(PRODUCT_ID);
+		ResponseEntity<ApiResponseDto<ProductResponseDto>> result = productRestController.searchProduct(PRODUCT_ID, null);
 
 		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
 		assertThat(result.getBody()).isNotNull();
 		assertThat(result.getBody().getData()).isEqualTo(productResponse);
-		then(productUseCase).should().searchById(PRODUCT_ID);
+		then(productUseCase).should().searchById(PRODUCT_ID, null);
 	}
 
 	@Test

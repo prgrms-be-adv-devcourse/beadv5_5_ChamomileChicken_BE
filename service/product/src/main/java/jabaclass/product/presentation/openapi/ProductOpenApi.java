@@ -68,6 +68,17 @@ public interface ProductOpenApi {
 	@CommonErrorResponses
 	ResponseEntity<ApiResponseDto<SearchProductResponseDto>> searchAllProduct(SearchProductRequestDto request);
 
+	@Operation(summary = "판매자 본인 상품 검색", description = "판매자 본인의 상품 목록을 검색 합니다.")
+	@ApiResponse(
+		responseCode = "200",
+		description = "내 상품 검색 성공",
+		content = @Content(
+			schema = @Schema(implementation = ApiResponseDto.class)
+		)
+	)
+	@CommonErrorResponses
+	ResponseEntity<ApiResponseDto<SearchProductResponseDto>> searchMyProducts(SearchProductRequestDto request, UUID userId);
+
 	@Operation(summary = "특정 상품 검색", description = "특정 상품을 검색 합니다.")
 	@ApiResponse(
 		responseCode = "202",
@@ -77,7 +88,7 @@ public interface ProductOpenApi {
 		)
 	)
 	@CommonErrorResponses
-	ResponseEntity<ApiResponseDto<ProductResponseDto>> searchProduct(UUID productId);
+	ResponseEntity<ApiResponseDto<ProductResponseDto>> searchProduct(UUID productId, UUID userId);
 
 	@Operation(summary = "예약 유저 조회", description = "예약 유저 조회를 합니다.")
 	@ApiResponse(

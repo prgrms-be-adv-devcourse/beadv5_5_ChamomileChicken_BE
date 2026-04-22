@@ -4,6 +4,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.TimeoutException;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -108,6 +109,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
             String role = jwtProvider.getRole(claims);
 
             return redisTemplate.hasKey(BLACKLIST_PREFIX + token)
+                .timeout(Duration.ofMillis(200))
                 .flatMap(isBlacklisted -> {
                     if (isBlacklisted) {
                         log.debug("[GATEWAY] Ignore blacklisted token on whitelisted path: {} {}", httpMethod, path);
@@ -125,8 +127,14 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
                     return chain.filter(mutatedExchange);
                 })
+                .onErrorResume(TimeoutException.class, e -> {
+                    log.warn("[GATEWAY] Optional auth enrichment timed out, continuing without user context: {} {}", httpMethod,
+                        path);
+                    return chain.filter(exchange);
+                })
                 .onErrorResume(e -> {
-                    log.warn("[GATEWAY] Optional auth enrichment failed: {} {}", httpMethod, path, e);
+                    log.warn("[GATEWAY] Optional auth enrichment failed, continuing without user context: {} {}", httpMethod,
+                        path, e);
                     return chain.filter(exchange);
                 });
         } catch (Exception e) {

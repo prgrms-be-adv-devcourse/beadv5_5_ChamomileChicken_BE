@@ -1,5 +1,6 @@
 package jabaclass.product.presentation.dto.response;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -15,7 +16,13 @@ public record ReviewResponseDto(
 	int rating,
 
 	@Schema(description = "리뷰 내용", example = "정말 좋았어요")
-	String content
+	String content,
+
+	@Schema(description = "작성자명", example = "홍길동")
+	String userName,
+
+	@Schema(description = "작성시간")
+	LocalDateTime createdAt
 
 ) {
 
@@ -23,7 +30,19 @@ public record ReviewResponseDto(
 		return new ReviewResponseDto(
 			review.getId(),
 			review.getRating(),
-			review.getContent()
+			review.getContent(),
+			null,
+			review.getRegDt()
+		);
+	}
+
+	public static ReviewResponseDto from(Review review, String userName) {
+		return new ReviewResponseDto(
+			review.getId(),
+			review.getRating(),
+			review.getContent(),
+			userName,
+			review.getRegDt()
 		);
 	}
 }

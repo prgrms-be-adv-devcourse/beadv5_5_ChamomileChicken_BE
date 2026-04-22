@@ -31,7 +31,10 @@ import jabaclass.product.domain.repository.ProductRepository;
 import jabaclass.product.domain.repository.ProductSearchRepository;
 import jabaclass.product.infrastructure.acl.dto.response.UserResponseDto;
 import jabaclass.product.infrastructure.elasticsearch.ProductDocument;
+import jabaclass.product.infrastructure.event.dto.ProductAiSyncedEvent;   // 추가
+import jabaclass.product.infrastructure.event.dto.ProductDeletedEvent;    // 추가
 import jabaclass.product.infrastructure.event.dto.ProductEventResponseDto;
+import jabaclass.product.infrastructure.event.dto.ProductViewedEvent;
 import jabaclass.product.infrastructure.kafka.ProductEsIndexMessage;
 import jabaclass.product.infrastructure.outbox.EsEventType;
 import jabaclass.product.infrastructure.outbox.OutboxEvent;
@@ -91,10 +94,10 @@ public class ProductService implements ProductUseCase {
 		UserResponseDto seller = findBySellerIdOrThrow(sellerId);
 
 		publisher.publishEvent(new ProductEventResponseDto(saved.getId()));
+		publisher.publishEvent(ProductAiSyncedEvent.from(saved));           // 추가
 		saveEsSaveOutbox(saved, seller.name());
 		return ProductResponseDto.from(saved, seller.name());
 	}
-
 	@Override
 	@Transactional
 	public ProductResponseDto update(UpdateProductRequestDto requestDto, UUID productId, UUID sellerId) {
@@ -127,6 +130,7 @@ public class ProductService implements ProductUseCase {
 			product.changeImages(images);
 		}
 		UserResponseDto seller = findBySellerIdOrThrow(sellerId);
+		publisher.publishEvent(ProductAiSyncedEvent.from(product));         // 추가
 		saveEsSaveOutbox(product, seller.name());
 		return ProductResponseDto.from(product, seller.name());
 	}
@@ -141,6 +145,7 @@ public class ProductService implements ProductUseCase {
 
 		product.changeStatus(ProductStatus.DISABLE);
 		product.changeDelete();
+		publisher.publishEvent(ProductDeletedEvent.of(productId));          // 추가
 		saveEsDeleteOutbox(productId.toString());
 
 		return DeleteProductResponseDto.from(productId, ProductStatus.DISABLE);
@@ -167,11 +172,34 @@ public class ProductService implements ProductUseCase {
 	}
 
 	@Override
-	public ProductResponseDto searchById(UUID productId) {
+	public SearchProductResponseDto searchMy(SearchProductRequestDto requestDto, UUID sellerId) {
+		Pageable pageable = PageRequest.of(requestDto.thisPage(), requestDto.pageSize());
+		String sellerIdStr = sellerId.toString();
+
+		Page<ProductDocument> page;
+		if (requestDto.title() == null || requestDto.title().isBlank()) {
+			page = productSearchRepository.findAllBySellerId(sellerIdStr, pageable);
+		} else {
+			page = productSearchRepository.searchByKeywordAndSellerId(requestDto.title(), sellerIdStr, pageable);
+		}
+
+		List<ProductResponseDto> content = page.getContent().stream()
+			.map(ProductResponseDto::from)
+			.toList();
+
+		return SearchProductResponseDto.fromEs(page, content);
+	}
+
+	@Override
+	public ProductResponseDto searchById(UUID productId, UUID userId) {
 		Product product = findByIdOrThrow(productId);
 
-		// sellerId를 확인
 		UserResponseDto seller = findBySellerIdOrThrow(product.getSellerId());
+		if (userId != null) {
+			log.info("상품 조회 이벤트 발행 준비: userId={}, productId={}", userId, productId);
+			publisher.publishEvent(ProductViewedEvent.of(userId, productId));
+			log.info("상품 조회 이벤트 발행 완료: userId={}, productId={}", userId, productId);
+		}
 
 		return ProductResponseDto.from(product, seller.name());
 	}
