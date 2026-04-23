@@ -129,6 +129,21 @@ class RecommendationServiceTest {
 		assertThat(result.recommendations().get(0).title()).isEqualTo("베이킹 클래스");
 		assertThat(result.recommendations().get(0).reason()).isEqualTo("현재 인기 있는 클래스입니다.");
 		then(aiGatewayPort).shouldHaveNoInteractions();
-		then(recommendationCacheRepository).should().save(USER_ID, result);
+		then(recommendationCacheRepository).should( org.mockito.Mockito.never()).save(USER_ID, result);
+	}
+
+	@Test
+	void fallback_대상도_없으면_빈_추천을_반환한다() {
+		UserVector userVector = new UserVector(new float[] { 0.7f, 0.8f });
+		given(recommendationCacheRepository.get(USER_ID)).willReturn(null);
+		given(userVectorService.getOrCreate(USER_ID)).willReturn(userVector);
+		given(candidateSearchRepository.findTopK(userVector, 5)).willReturn(List.of());
+		given(candidateSearchRepository.findPopular(5)).willReturn(List.of());
+
+		RecommendationResponseDto result = recommendationService.recommend(USER_ID);
+
+		assertThat(result.recommendations()).isEmpty();
+		then(aiGatewayPort).shouldHaveNoInteractions();
+		then(recommendationCacheRepository).should(org.mockito.Mockito.never()).save(USER_ID, result);
 	}
 }

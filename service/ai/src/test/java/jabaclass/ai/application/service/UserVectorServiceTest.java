@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -101,6 +102,56 @@ class UserVectorServiceTest {
 
 		assertThat(result.vector()[0]).isEqualTo(0.0f);
 		assertThat(result.vector()[1]).isEqualTo(0.0f);
+	}
+
+	@Test
+	void 같은_상품의_반복_VIEW는_최대_세번까지만_반영한다() {
+		UUID heavilyViewedProductId = UUID.fromString("11111111-1111-1111-1111-111111111111");
+		UUID orderedProductId = UUID.fromString("22222222-2222-2222-2222-222222222222");
+		LocalDateTime now = LocalDateTime.now();
+
+		float[] viewedEmbedding = new float[768];
+		float[] orderedEmbedding = new float[768];
+		viewedEmbedding[0] = 1.0f;
+		orderedEmbedding[1] = 1.0f;
+
+		given(userActivityRepository.findByUserId(USER_ID)).willReturn(List.of(
+			UserActivity.create(USER_ID, heavilyViewedProductId, ActionType.VIEW, now.minusMinutes(1)),
+			UserActivity.create(USER_ID, heavilyViewedProductId, ActionType.VIEW, now.minusMinutes(2)),
+			UserActivity.create(USER_ID, heavilyViewedProductId, ActionType.VIEW, now.minusMinutes(3)),
+			UserActivity.create(USER_ID, heavilyViewedProductId, ActionType.VIEW, now.minusMinutes(4)),
+			UserActivity.create(USER_ID, heavilyViewedProductId, ActionType.VIEW, now.minusMinutes(5)),
+			UserActivity.create(USER_ID, orderedProductId, ActionType.ORDER, now.minusMinutes(6))
+		));
+		given(productEmbeddingRepository.findEmbeddingByProductId(heavilyViewedProductId)).willReturn(viewedEmbedding);
+		given(productEmbeddingRepository.findEmbeddingByProductId(orderedProductId)).willReturn(orderedEmbedding);
+
+		UserVector result = userVectorService.generate(USER_ID);
+
+		assertThat(result.vector()[0]).isCloseTo(result.vector()[1], within(0.02f));
+	}
+
+	@Test
+	void 최근_행동일수록_더_크게_반영된다() {
+		UUID recentProductId = UUID.fromString("33333333-3333-3333-3333-333333333333");
+		UUID oldProductId = UUID.fromString("44444444-4444-4444-4444-444444444444");
+		LocalDateTime now = LocalDateTime.now();
+
+		float[] recentEmbedding = new float[768];
+		float[] oldEmbedding = new float[768];
+		recentEmbedding[0] = 1.0f;
+		oldEmbedding[1] = 1.0f;
+
+		given(userActivityRepository.findByUserId(USER_ID)).willReturn(List.of(
+			UserActivity.create(USER_ID, oldProductId, ActionType.VIEW, now.minusDays(30)),
+			UserActivity.create(USER_ID, recentProductId, ActionType.VIEW, now.minusHours(1))
+		));
+		given(productEmbeddingRepository.findEmbeddingByProductId(recentProductId)).willReturn(recentEmbedding);
+		given(productEmbeddingRepository.findEmbeddingByProductId(oldProductId)).willReturn(oldEmbedding);
+
+		UserVector result = userVectorService.generate(USER_ID);
+
+		assertThat(result.vector()[0]).isGreaterThan(result.vector()[1]);
 	}
 
 	private static org.assertj.core.data.Offset<Float> within(float value) {
