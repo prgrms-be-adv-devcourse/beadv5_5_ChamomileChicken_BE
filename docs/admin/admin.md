@@ -104,19 +104,26 @@ Kafka 토픽: admin.product
 | Product DB `products_schedule` | 위와 같은 트랜잭션 | delete_dt=now() (soft-delete) |
 | Elasticsearch | DB 커밋 직후 | 인덱스 삭제 |
 
-### Multi-DataSource 구성
+### DataSource 구성
 
-Admin 서비스는 여러 DB에 연결해야 하므로 DataSource를 분리해서 설정한다.
+Admin 서비스는 여러 서비스 DB를 직접 참조하지만, **실제로는 모두 동일한 단일 DB(jabadb)를 바라본다.**
+따라서 DataSource를 도메인별로 분리할 이유가 없으며, `AdminDataSourceConfig` 하나로 통합한다.
 
 ```
 AdminApplication
-  ├── userDataSource       → user DB
-  ├── productDataSource    → product DB
-  ├── orderDataSource      → order DB
-  └── settlementDataSource → settlement DB
+  └── adminDataSource (AdminDataSourceConfig)
+        → 단일 DB (jabadb)
+        → EntityManagerFactory: user + product + order + settlement + review 엔티티 패키지 통합 스캔
+        → TransactionManager: adminTransactionManager
 ```
 
-각 DataSource는 `@Qualifier`로 구분하며, 도메인 패키지별로 `EntityManagerFactory`와 `TransactionManager`를 분리한다.
+- `maximumPoolSize: 2` — 관리자 트래픽 특성상 동시 요청이 거의 없으므로 2개로 충분
+- `minimumIdle: 1` — 유휴 시 최소 1개 커넥션 유지
+
+> **왜 분리하지 않나?**
+> MSA 원칙상 서비스 DB를 분리하는 게 맞지만, 현 프로젝트는 단일 DB를 공유하는 구조다.
+> 4개 DataSource를 별도로 구성하면 HikariCP 기본값(10) 기준 40개 커넥션이 생성된다.
+> 같은 DB를 4번 연결하는 불필요한 리소스 낭비이므로 단일 DataSource로 통합한다.
 
 ---
 
@@ -167,10 +174,7 @@ service/admin/src/main/java/jabaclass/admin/
 │   ├── config/
 │   │   ├── WebMvcConfig.java                   # ArgumentResolver, Interceptor 등록
 │   │   ├── KafkaProducerConfig.java            # Kafka Producer 설정
-│   │   ├── UserDataSourceConfig.java           # user DB DataSource/EMF/TM
-│   │   ├── ProductDataSourceConfig.java        # product + review DB DataSource/EMF/TM
-│   │   ├── OrderDataSourceConfig.java          # order DB DataSource/EMF/TM
-│   │   ├── SettlementDataSourceConfig.java     # settlement DB DataSource/EMF/TM
+│   │   ├── AdminDataSourceConfig.java          # 단일 DataSource/EMF/TM (maximumPoolSize: 2)
 │   │   └── SwaggerConfig.java
 │   ├── dto/
 │   │   └── ApiResponseDto.java
@@ -191,12 +195,15 @@ service/admin/src/main/java/jabaclass/admin/
 │   │   ├── model/
 │   │   │   ├── User.java                       # user DB 직접 참조용 엔티티 (필요 필드만)
 │   │   │   └── UserRole.java
+│   │   ├── dto/
+│   │   │   └── UserSearchCondition.java        # 검색 필터 조건 (role, name, email)
 │   │   └── repository/
 │   │       └── UserAdminRepository.java
 │   ├── infrastructure/
 │   │   └── persistence/
 │   │       ├── UserAdminJpaRepository.java
-│   │       └── UserAdminRepositoryAdapter.java
+│   │       ├── UserAdminRepositoryAdapter.java
+│   │       └── UserAdminSpecification.java     # JPA Specification 동적 쿼리
 │   └── presentation/
 │       ├── controller/
 │       │   ├── UserAdminApi.java
@@ -214,12 +221,15 @@ service/admin/src/main/java/jabaclass/admin/
 │   ├── domain/
 │   │   ├── model/
 │   │   │   └── Product.java                    # product DB 직접 참조용 엔티티 (필요 필드만)
+│   │   ├── dto/
+│   │   │   └── ProductSearchCondition.java     # 검색 필터 조건 (status, sellerId, title)
 │   │   └── repository/
 │   │       └── ProductAdminRepository.java
 │   ├── infrastructure/
 │   │   ├── persistence/
 │   │   │   ├── ProductAdminJpaRepository.java
 │   │   │   ├── ProductAdminRepositoryAdapter.java
+│   │   │   └── ProductAdminSpecification.java  # JPA Specification 동적 쿼리
 │   │   │   ├── OutboxEventJpaRepository.java   # FOR UPDATE SKIP LOCKED 쿼리
 │   │   │   └── OutboxEventRepositoryAdapter.java
 │   │   ├── kafka/
@@ -268,12 +278,15 @@ service/admin/src/main/java/jabaclass/admin/
 │   ├── domain/
 │   │   ├── model/
 │   │   │   └── Order.java                      # order DB 직접 참조용 엔티티
+│   │   ├── dto/
+│   │   │   └── OrderSearchCondition.java       # 검색 필터 조건 (status, sellerId, startDate, endDate)
 │   │   └── repository/
 │   │       └── OrderAdminRepository.java
 │   ├── infrastructure/
 │   │   └── persistence/
 │   │       ├── OrderAdminJpaRepository.java
-│   │       └── OrderAdminRepositoryAdapter.java
+│   │       ├── OrderAdminRepositoryAdapter.java
+│   │       └── OrderAdminSpecification.java    # JPA Specification 동적 쿼리
 │   └── presentation/
 │       ├── controller/
 │       │   ├── OrderAdminApi.java
@@ -291,12 +304,15 @@ service/admin/src/main/java/jabaclass/admin/
     ├── domain/
     │   ├── model/
     │   │   └── Settlement.java                 # settlement DB 직접 참조용 엔티티
+    │   ├── dto/
+    │   │   └── SettlementSearchCondition.java  # 검색 필터 조건 (status, sellerId, settlementMonth)
     │   └── repository/
     │       └── SettlementAdminRepository.java
     ├── infrastructure/
     │   └── persistence/
     │       ├── SettlementAdminJpaRepository.java
-    │       └── SettlementAdminRepositoryAdapter.java
+    │       ├── SettlementAdminRepositoryAdapter.java
+    │       └── SettlementAdminSpecification.java  # JPA Specification 동적 쿼리
     └── presentation/
         ├── controller/
         │   ├── SettlementAdminApi.java
@@ -375,7 +391,7 @@ payload: { "type": "FORCE_DOWN", "productId": "..." }
 
 ```java
 // Admin 서비스 - ProductAdminService
-@Transactional(transactionManager = "productTransactionManager")
+@Transactional
 public void forceDownProduct(UUID productId) {
     productAdminRepository.findById(productId)
         .orElseThrow(() -> new BusinessException(AdminErrorCode.PRODUCT_NOT_FOUND))
@@ -439,6 +455,7 @@ Admin 기능에 필요한 필드만 포함한 **읽기 전용에 가까운 가�
 |------|------|--------|
 | Admin 모듈 전체 구현 (유저/상품/주문/정산/리뷰) | ✅ 완료 | `feature/admin/admin-init/218` |
 | 상품 강제 내리기 Kafka Consumer + Outbox 패턴 | ✅ 완료 | `feature/product/product-admin-delete-product/231` |
+| 어드민 고도화 (검색 필터링 + DataSource 단일화) | ✅ 완료 | `feature/admin/admin-advance/294` |
 
 ### Admin 서비스 추가/수정 파일
 

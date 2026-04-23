@@ -10,10 +10,12 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import jabaclass.admin.common.dto.ApiResponseDto;
 import jabaclass.admin.product.application.usecase.ProductAdminUseCase;
+import jabaclass.admin.product.domain.dto.ProductSearchCondition;
 import jabaclass.admin.product.presentation.dto.response.ProductAdminResponseDto;
 import lombok.RequiredArgsConstructor;
 
@@ -26,9 +28,15 @@ public class ProductAdminController implements ProductAdminApi {
 
 	@Override
 	@GetMapping
-	public ResponseEntity<ApiResponseDto<Page<ProductAdminResponseDto>>> getProducts(Pageable pageable) {
+	public ResponseEntity<ApiResponseDto<Page<ProductAdminResponseDto>>> getProducts(
+		Pageable pageable,
+		@RequestParam(required = false) String status,
+		@RequestParam(required = false) UUID sellerId,
+		@RequestParam(required = false) String title
+	) {
+		ProductSearchCondition condition = new ProductSearchCondition(status, sellerId, title);
 		return ResponseEntity.ok(
-			ApiResponseDto.success(HttpStatus.OK, "상품 목록 조회 성공", productAdminUseCase.getProducts(pageable))
+			ApiResponseDto.success(HttpStatus.OK, "상품 목록 조회 성공", productAdminUseCase.getProducts(pageable, condition))
 		);
 	}
 

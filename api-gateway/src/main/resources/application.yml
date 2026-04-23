@@ -26,7 +26,7 @@ spring:
                   maxBackoff: 500ms
           routes:
             - id: file
-              uri: ${FILE_SERVICE_URL:http://localhost:9004}
+              uri: ${PRODUCT_SERVICE_URL:http://localhost:9004}
               predicates:
                 - Path=/api/v1/files/**
 
