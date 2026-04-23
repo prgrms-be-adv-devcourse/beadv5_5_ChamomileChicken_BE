@@ -20,6 +20,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import jabaclass.product.application.exception.BusinessException;
@@ -35,6 +36,7 @@ import jabaclass.product.domain.model.status.ReservedStatus;
 import jabaclass.product.domain.repository.FavoriteRepository;
 import jabaclass.product.domain.repository.ProductRepository;
 import jabaclass.product.domain.repository.ScheduleRepository;
+import jabaclass.product.infrastructure.event.dto.ProductWishlistedEvent;
 import jabaclass.product.presentation.controller.FavoritesRestController;
 import jabaclass.product.presentation.dto.response.FavoritesResponseDto;
 
@@ -55,6 +57,9 @@ class FavoriteTest {
 
 	@Mock
 	private ProductRepository productRepository;
+
+	@Mock
+	private ApplicationEventPublisher publisher;
 
 	@Mock
 	private FavoriteUseCase favoriteUseCase;
@@ -78,6 +83,17 @@ class FavoriteTest {
 
 	@Test
 	void 즐겨찾기를_생성한다() {
+		Schedule schedule = Schedule.builder()
+			.productId(PRODUCT_ID)
+			.scheduleDt(LocalDate.of(2026, 5, 1))
+			.startTime(LocalTime.of(10, 0))
+			.endTime(LocalTime.of(12, 0))
+			.status(ReservedStatus.AVAILABLE)
+			.capacity(10)
+			.build();
+		ReflectionTestUtils.setField(schedule, "id", SCHEDULE_ID);
+
+		given(scheduleRepository.findByIdAndDeleteDtIsNull(SCHEDULE_ID)).willReturn(java.util.Optional.of(schedule));
 		given(favoriteRepository.save(any(Favorite.class))).willAnswer(invocation -> {
 			Favorite saved = invocation.getArgument(0);
 			ReflectionTestUtils.setField(saved, "id", FAVORITE_ID);
@@ -89,6 +105,7 @@ class FavoriteTest {
 		assertThat(result.id()).isEqualTo(FAVORITE_ID);
 		assertThat(result.productScheduleId()).isEqualTo(SCHEDULE_ID);
 		assertThat(result.quantity()).isEqualTo(2);
+		then(publisher).should().publishEvent(any(ProductWishlistedEvent.class));
 	}
 
 	@Test

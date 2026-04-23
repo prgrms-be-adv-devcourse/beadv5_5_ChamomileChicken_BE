@@ -94,7 +94,7 @@ class UserVectorServiceTest {
 	void 차원이_다르거나_null_임베딩은_무시한다() {
 		UUID invalidProductId = UUID.fromString("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee");
 		given(userActivityRepository.findByUserId(USER_ID))
-			.willReturn(List.of(UserActivity.create(USER_ID, invalidProductId, ActionType.CART)));
+			.willReturn(List.of(UserActivity.create(USER_ID, invalidProductId, ActionType.WISHLIST)));
 		given(productEmbeddingRepository.findEmbeddingByProductId(invalidProductId)).willReturn(new float[] { 1.0f, 2.0f });
 
 		UserVector result = userVectorService.generate(USER_ID);
