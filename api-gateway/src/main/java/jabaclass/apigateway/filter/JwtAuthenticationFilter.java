@@ -49,6 +49,10 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 	private final RbacService rbacService;
 
 	private static final String BLACKLIST_PREFIX = "blacklist:";
+	private static final Duration WHITELIST_TIMEOUT = Duration.ofSeconds(2);
+	private static final Duration OPTIONAL_AUTH_ENRICHMENT_TIMEOUT = Duration.ofMillis(200);
+	private static final Duration REQUIRED_AUTH_BLACKLIST_TIMEOUT = Duration.ofSeconds(2);
+	private static final Duration RBAC_TIMEOUT = Duration.ofSeconds(3);
 
 	private static final byte[] FORBIDDEN_BODY =
 		"{\"message\":\"접근 권한이 없습니다.\"}".getBytes(StandardCharsets.UTF_8);
@@ -74,7 +78,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
 		return whitelistService.isWhitelisted(path, httpMethod)
 			//	.timeout(Duration.ofMillis(200))
-			.timeout(Duration.ofSeconds(2))
+			.timeout(WHITELIST_TIMEOUT)
 			.doOnNext(
 				r -> log.debug("[GATEWAY] whitelist check: {}ms", System.currentTimeMillis() - whitelistStart)) //로그
 			.onErrorResume(e -> {
@@ -113,7 +117,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
 			return redisTemplate.hasKey(BLACKLIST_PREFIX + token)
 				//.timeout(Duration.ofMillis(200))
-				.timeout(Duration.ofSeconds(2))
+				.timeout(OPTIONAL_AUTH_ENRICHMENT_TIMEOUT)
 				.doOnNext(r -> log.debug("[GATEWAY] blacklist check: {}ms",
 					System.currentTimeMillis() - blacklistStart)) // 로그
 				.flatMap(isBlacklisted -> {
@@ -171,7 +175,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
 			return redisTemplate.hasKey(BLACKLIST_PREFIX + token)
 				//	.timeout(Duration.ofMillis(200))
-				.timeout(Duration.ofSeconds(2))
+				.timeout(REQUIRED_AUTH_BLACKLIST_TIMEOUT)
 				.onErrorMap(RedisBlacklistException::new)
 				.flatMap(isBlacklisted -> {
 					if (isBlacklisted) {
@@ -184,7 +188,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
 					return rbacService.isAllowed(path, httpMethod, role)
 						//	.timeout(Duration.ofMillis(300))
-						.timeout(Duration.ofSeconds(3))
+						.timeout(RBAC_TIMEOUT)
 						.onErrorMap(AuthorizationServiceException::new)
 						.flatMap(isAllowed -> {
 							if (!isAllowed) {
