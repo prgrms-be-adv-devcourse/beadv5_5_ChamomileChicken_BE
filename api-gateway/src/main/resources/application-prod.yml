@@ -13,11 +13,11 @@ spring:
       max-acquire-time: 30s
 
 
-  flyway:
-    enabled: true
-    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:backend5}
-    user: ${POSTGRES_USER:postgres}
-    password: ${POSTGRES_PASSWORD:postgres}
+#  flyway:
+#    enabled: true
+#    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:backend5}
+#    user: ${POSTGRES_USER:postgres}
+#    password: ${POSTGRES_PASSWORD:postgres}
 
   sql:
     init:
