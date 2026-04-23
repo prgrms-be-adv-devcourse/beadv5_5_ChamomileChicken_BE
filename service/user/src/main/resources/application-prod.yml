@@ -4,6 +4,12 @@ spring:
     driver-class-name: org.postgresql.Driver
     username: ${POSTGRES_USER:postgres}
     password: ${POSTGRES_PASSWORD:postgres}
+    hikari:
+      minimum-idle: 1
+      maximum-pool-size: 4
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
 
   security:
     oauth2:
