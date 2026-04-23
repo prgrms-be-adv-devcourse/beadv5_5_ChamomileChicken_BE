@@ -9,6 +9,7 @@ import java.util.UUID;
 public record OrderResponseDto(
     UUID id,
     UUID productScheduleId,
+    UUID sellerId,
     UUID buyerId,
     Integer quantity,
     BigDecimal totalAmount,
@@ -19,6 +20,7 @@ public record OrderResponseDto(
         return new OrderResponseDto(
             order.getId(),
             order.getProductScheduleId(),
+            order.getSellerId(),
             order.getUserId(),
             order.getQuantity(),
             order.getPrice(),

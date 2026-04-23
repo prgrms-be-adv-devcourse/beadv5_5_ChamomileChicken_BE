@@ -12,6 +12,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import jabaclass.admin.common.error.AdminErrorCode;
 import jabaclass.admin.common.error.BusinessException;
+import jabaclass.admin.product.domain.dto.ProductSearchCondition;
 import jabaclass.admin.product.application.usecase.ProductAdminUseCase;
 import jabaclass.admin.product.domain.model.OutboxEvent;
 import jabaclass.admin.product.domain.repository.OutboxEventRepository;
@@ -20,7 +21,9 @@ import jabaclass.admin.product.infrastructure.kafka.AdminProductEvent;
 import jabaclass.admin.product.infrastructure.outbox.EventType;
 import jabaclass.admin.product.presentation.dto.response.ProductAdminResponseDto;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ProductAdminService implements ProductAdminUseCase {
@@ -30,14 +33,14 @@ public class ProductAdminService implements ProductAdminUseCase {
 	private final ObjectMapper objectMapper;
 
 	@Override
-	@Transactional(readOnly = true, transactionManager = "productTransactionManager")
-	public Page<ProductAdminResponseDto> getProducts(Pageable pageable) {
-		return productAdminRepository.findAll(pageable)
+	@Transactional(readOnly = true)
+	public Page<ProductAdminResponseDto> getProducts(Pageable pageable, ProductSearchCondition condition) {
+		return productAdminRepository.findAll(condition, pageable)
 			.map(ProductAdminResponseDto::from);
 	}
 
 	@Override
-	@Transactional(transactionManager = "productTransactionManager")
+	@Transactional
 	public void forceDownProduct(UUID productId) {
 		productAdminRepository.findById(productId)
 			.orElseThrow(() -> new BusinessException(AdminErrorCode.PRODUCT_NOT_FOUND))
@@ -52,7 +55,8 @@ public class ProductAdminService implements ProductAdminUseCase {
 				payload
 			));
 		} catch (JsonProcessingException e) {
-			throw new RuntimeException("OutboxEvent 직렬화 실패. productId=" + productId, e);
+			log.error("OutboxEvent 직렬화 실패. productId={}", productId, e);
+			throw new BusinessException(AdminErrorCode.OUTBOX_SERIALIZATION_FAILED);
 		}
 	}
 }

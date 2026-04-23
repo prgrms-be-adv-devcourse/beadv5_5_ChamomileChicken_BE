@@ -1,18 +1,10 @@
 package jabaclass.apigateway.filter;
 
-import java.util.List;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.Map;
 import java.util.UUID;
-
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-import io.jsonwebtoken.Claims;
-
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-
-import reactor.core.publisher.Mono;
+import java.util.concurrent.TimeoutException;
 
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
@@ -20,137 +12,252 @@ import org.springframework.core.Ordered;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.stereotype.Component;
-import org.springframework.util.AntPathMatcher;
 import org.springframework.web.server.ServerWebExchange;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import io.jsonwebtoken.Claims;
+import jabaclass.apigateway.application.service.RbacService;
+import jabaclass.apigateway.application.service.WhitelistService;
+import jabaclass.apigateway.exception.AuthorizationServiceException;
+import jabaclass.apigateway.exception.ErrorCode;
 import jabaclass.apigateway.exception.JwtAuthException;
 import jabaclass.apigateway.exception.JwtErrorCode;
+import jabaclass.apigateway.exception.RedisBlacklistException;
+import jabaclass.apigateway.exception.SystemErrorCode;
 import jabaclass.apigateway.security.JwtProvider;
 import jabaclass.apigateway.security.JwtTokenResolver;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import reactor.core.publisher.Mono;
 
 @Component
 @RequiredArgsConstructor
 @Slf4j
 public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
-    private final JwtProvider jwtProvider;
-    private final JwtTokenResolver tokenResolver;
-    private final ObjectMapper objectMapper;
-    private final ReactiveStringRedisTemplate redisTemplate;
+	private final JwtProvider jwtProvider;
+	private final JwtTokenResolver tokenResolver;
+	private final ObjectMapper objectMapper;
+	private final ReactiveStringRedisTemplate redisTemplate;
+	private final WhitelistService whitelistService;
+	private final RbacService rbacService;
 
-    private static final String BLACKLIST_PREFIX = "blacklist:";
+	private static final String BLACKLIST_PREFIX = "blacklist:";
+	private static final Duration WHITELIST_TIMEOUT = Duration.ofSeconds(2);
+	private static final Duration OPTIONAL_AUTH_ENRICHMENT_TIMEOUT = Duration.ofMillis(200);
+	private static final Duration REQUIRED_AUTH_BLACKLIST_TIMEOUT = Duration.ofSeconds(2);
+	private static final Duration RBAC_TIMEOUT = Duration.ofSeconds(3);
 
-    private record WhiteListEntry(HttpMethod method, String pattern) {}
+	private static final byte[] FORBIDDEN_BODY =
+		"{\"message\":\"접근 권한이 없습니다.\"}".getBytes(StandardCharsets.UTF_8);
 
-    // 인증 없이 통과할 경로 (user-service의 공개 엔드포인트)
-    private static final List<WhiteListEntry> WHITE_LIST = List.of(
-        new WhiteListEntry(HttpMethod.POST,  "/api/v1/auth/login"),
-        new WhiteListEntry(HttpMethod.POST,  "/api/v1/auth/reissue"),
-        new WhiteListEntry(HttpMethod.POST,  "/api/v1/users/register"),
-        new WhiteListEntry(HttpMethod.POST,  "/api/v1/users/email-check"),
-        new WhiteListEntry(HttpMethod.POST,  "/api/v1/email/**"),
-        new WhiteListEntry(HttpMethod.GET,  "/api/v1/products"),
-        new WhiteListEntry(HttpMethod.GET,  "/api/v1/products/*"),
-        new WhiteListEntry(HttpMethod.GET,  "/api/v1/products/*/schedules"),
-        new WhiteListEntry(HttpMethod.GET,  "/api/v1/products/*/availability"),
-        new WhiteListEntry(HttpMethod.GET,  "/api/v1/products/*/reviewList"),
-        new WhiteListEntry(HttpMethod.GET,  "/api/v1/products/*/reviews/*"),
-        new WhiteListEntry(HttpMethod.GET, "/oauth2/authorization/**"),
-        new WhiteListEntry(HttpMethod.GET, "/login/oauth2/code/**")
-    );
+	@Override
+	public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
+		ServerWebExchange sanitizedExchange = exchange.mutate()
+			.request(r -> r.headers(headers -> {
+				headers.remove("X-User-Id");
+				headers.remove("X-User-Role");
+			}))
+			.build();
 
-    private static final AntPathMatcher PATH_MATCHER = new AntPathMatcher();
+		String path = sanitizedExchange.getRequest().getURI().getPath();
+		HttpMethod httpMethod = sanitizedExchange.getRequest().getMethod();
 
-    @Override
-    public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
-        String path = exchange.getRequest().getURI().getPath();
-        HttpMethod httpMethod = exchange.getRequest().getMethod();
+		if (httpMethod == null) {
+			log.warn("[GATEWAY] Unknown HTTP method for path: {}", path);
+			return onError(sanitizedExchange, JwtErrorCode.INVALID_TOKEN);
+		}
 
-        if (httpMethod == null) {
-            log.warn("[GATEWAY] Unknown HTTP method for path: {}", path);
-            return onError(exchange, JwtErrorCode.INVALID_TOKEN);
-        }
+		long whitelistStart = System.currentTimeMillis();// 로그
 
-        if (isWhitelisted(path, httpMethod)) {
-            return chain.filter(exchange);
-        }
+		return whitelistService.isWhitelisted(path, httpMethod)
+			//	.timeout(Duration.ofMillis(200))
+			.timeout(WHITELIST_TIMEOUT)
+			.doOnNext(
+				r -> log.debug("[GATEWAY] whitelist check: {}ms", System.currentTimeMillis() - whitelistStart)) //로그
+			.onErrorResume(e -> {
+				log.error("[GATEWAY] Whitelist check failed, denying request: {}", e.getMessage());
+				return Mono.just(false);
+			})
+			.flatMap(isWhitelisted -> {
+				if (isWhitelisted) {
+					return enrichIfAuthenticated(sanitizedExchange, chain, path, httpMethod);
+				}
+				return authenticate(sanitizedExchange, chain, path, httpMethod);
+			});
+	}
 
-        String token = tokenResolver.resolveToken(exchange);
+	private Mono<Void> enrichIfAuthenticated(ServerWebExchange exchange,
+		GatewayFilterChain chain,
+		String path,
+		HttpMethod httpMethod) {
+		String token = tokenResolver.resolveToken(exchange);
+		if (token == null) {
+			return chain.filter(exchange);
+		}
 
-        if (token == null) {
-            log.warn("[GATEWAY] Token is missing for path: {} {}", httpMethod, path);
-            return onError(exchange, JwtErrorCode.EMPTY_TOKEN);
-        }
+		try {
+			Claims claims = jwtProvider.parseClaims(token);
 
-        // 성공 시 비동기 Redis 블랙리스트 조회로 연결
-        try {
-            Claims claims = jwtProvider.parseClaims(token);
+			if (!jwtProvider.isAccessToken(claims)) {
+				log.debug("[GATEWAY] Ignore non-access token on whitelisted path: {} {}", httpMethod, path);
+				return chain.filter(exchange);
+			}
 
-            if (!jwtProvider.isAccessToken(claims)) {
-                return onError(exchange, JwtErrorCode.INVALID_TOKEN);
-            }
+			UUID userId = jwtProvider.getUserId(claims);
+			String role = jwtProvider.getRole(claims);
 
-            return redisTemplate.hasKey(BLACKLIST_PREFIX + token)
-                .flatMap(isBlacklisted -> {
-                    if (isBlacklisted) {
-                        log.warn("[GATEWAY] Blacklisted token. Path: {} {}", httpMethod, path);
-                        return onError(exchange, JwtErrorCode.INVALID_TOKEN);
-                    }
+			long blacklistStart = System.currentTimeMillis(); // 로그
 
-                    UUID userId = jwtProvider.getUserId(claims);
-                    String role = jwtProvider.getRole(claims);
-                    log.info("[GATEWAY] User authenticated. Path: {} {}, UserId: {}", httpMethod, path, userId);
+			return redisTemplate.hasKey(BLACKLIST_PREFIX + token)
+				//.timeout(Duration.ofMillis(200))
+				.timeout(OPTIONAL_AUTH_ENRICHMENT_TIMEOUT)
+				.doOnNext(r -> log.debug("[GATEWAY] blacklist check: {}ms",
+					System.currentTimeMillis() - blacklistStart)) // 로그
+				.flatMap(isBlacklisted -> {
+					if (isBlacklisted) {
+						log.debug("[GATEWAY] Ignore blacklisted token on whitelisted path: {} {}", httpMethod, path);
+						return chain.filter(exchange);
+					}
 
-                    ServerWebExchange mutatedExchange = exchange.mutate()
-                        .request(r -> {
-                            r.header("X-User-Id", userId.toString());
-                            if (role != null) {
-                                r.header("X-User-Role", role);
-                            }
-                        })
-                        .build();
+					ServerWebExchange mutatedExchange = exchange.mutate()
+						.request(r -> {
+							r.header("X-User-Id", userId.toString());
+							if (role != null) {
+								r.header("X-User-Role", role);
+							}
+						})
+						.build();
 
-                    return chain.filter(mutatedExchange);
-                })
-                .onErrorResume(e -> {
-                    log.error("[GATEWAY] Redis error: {}", e.getMessage());
-                    return onError(exchange, JwtErrorCode.INVALID_TOKEN);
-                });
+					return chain.filter(mutatedExchange);
+				})
+				.onErrorResume(TimeoutException.class, e -> {
+					log.warn("[GATEWAY] Optional auth enrichment timed out, continuing without user context: {} {}",
+						httpMethod,
+						path);
+					return chain.filter(exchange);
+				})
+				.onErrorResume(e -> {
+					log.warn("[GATEWAY] Optional auth enrichment failed, continuing without user context: {} {}",
+						httpMethod,
+						path, e);
+					return chain.filter(exchange);
+				});
+		} catch (Exception e) {
+			log.debug("[GATEWAY] Ignore invalid token on whitelisted path: {} {}", httpMethod, path);
+			return chain.filter(exchange);
+		}
+	}
 
-        } catch (JwtAuthException e) {
-            log.error("[GATEWAY] Auth Exception: {} {} - {}", httpMethod, path, e.getErrorCode().getMessage());
-            return onError(exchange, e.getErrorCode());
-        }
-    }
+	private Mono<Void> authenticate(ServerWebExchange exchange,
+		GatewayFilterChain chain,
+		String path,
+		HttpMethod httpMethod) {
+		String token = tokenResolver.resolveToken(exchange);
 
-    @Override
-    public int getOrder() {
-        return -1;
-    }
+		if (token == null) {
+			log.warn("[GATEWAY] Token is missing for path: {} {}", httpMethod, path);
+			return onError(exchange, JwtErrorCode.EMPTY_TOKEN);
+		}
 
-    private boolean isWhitelisted(String path, HttpMethod method) {
-        return WHITE_LIST.stream()
-            .anyMatch(entry -> entry.method().equals(method)
-                && PATH_MATCHER.match(entry.pattern(), path));
-    }
+		try {
+			Claims claims = jwtProvider.parseClaims(token);
 
-    private Mono<Void> onError(ServerWebExchange exchange, JwtErrorCode errorCode) {
-        ServerHttpResponse response = exchange.getResponse();
-        response.setStatusCode(errorCode.getStatus());
-        response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
+			if (!jwtProvider.isAccessToken(claims)) {
+				return onError(exchange, JwtErrorCode.INVALID_TOKEN);
+			}
 
-        try {
-            byte[] bytes = objectMapper.writeValueAsBytes(
-                Map.of("message", errorCode.getMessage())
-            );
-            DataBuffer buffer = response.bufferFactory().wrap(bytes);
-            return response.writeWith(Mono.just(buffer));
-        } catch (JsonProcessingException e) {
-            log.error("[GATEWAY] Failed to serialize error response", e);
-            return response.setComplete();
-        }
-    }
+			return redisTemplate.hasKey(BLACKLIST_PREFIX + token)
+				//	.timeout(Duration.ofMillis(200))
+				.timeout(REQUIRED_AUTH_BLACKLIST_TIMEOUT)
+				.onErrorMap(RedisBlacklistException::new)
+				.flatMap(isBlacklisted -> {
+					if (isBlacklisted) {
+						log.warn("[GATEWAY] Blacklisted token. Path: {} {}", httpMethod, path);
+						return onError(exchange, JwtErrorCode.INVALID_TOKEN);
+					}
+
+					UUID userId = jwtProvider.getUserId(claims);
+					String role = jwtProvider.getRole(claims);
+
+					return rbacService.isAllowed(path, httpMethod, role)
+						//	.timeout(Duration.ofMillis(300))
+						.timeout(RBAC_TIMEOUT)
+						.onErrorMap(AuthorizationServiceException::new)
+						.flatMap(isAllowed -> {
+							if (!isAllowed) {
+								log.warn("[GATEWAY] Role not allowed. Path: {} {}, Role: {}", httpMethod, path, role);
+								return onForbidden(exchange);
+							}
+
+							ServerWebExchange mutatedExchange = exchange.mutate()
+								.request(r -> {
+									r.header("X-User-Id", userId.toString());
+									if (role != null) {
+										r.header("X-User-Role", role);
+									}
+								})
+								.build();
+
+							return chain.filter(mutatedExchange);
+						});
+				})
+				.onErrorResume(RedisBlacklistException.class, e -> {
+					log.error("[GATEWAY] Redis blacklist check failed: {}", extractMessage(e));
+					return onError(exchange, SystemErrorCode.AUTH_SERVICE_UNAVAILABLE);
+				})
+				.onErrorResume(AuthorizationServiceException.class, e -> {
+					log.error("[GATEWAY] RBAC system error: {}", extractMessage(e));
+					return onError(exchange, SystemErrorCode.INTERNAL_ERROR);
+				})
+				.onErrorResume(e -> {
+					log.error("[GATEWAY] Unexpected error: {}", extractMessage(e));
+					return onError(exchange, SystemErrorCode.INTERNAL_ERROR);
+				});
+
+		} catch (JwtAuthException e) {
+			log.error("[GATEWAY] Auth Exception: {} {} - {}", httpMethod, path, e.getErrorCode().getMessage());
+			return onError(exchange, e.getErrorCode());
+		}
+	}
+
+	@Override
+	public int getOrder() {
+		return -1;
+	}
+
+	private Mono<Void> onError(ServerWebExchange exchange, ErrorCode errorCode) {
+		ServerHttpResponse response = exchange.getResponse();
+		response.setStatusCode(errorCode.getStatus());
+		response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
+
+		try {
+			byte[] bytes = objectMapper.writeValueAsBytes(
+				Map.of("message", errorCode.getMessage())
+			);
+			DataBuffer buffer = response.bufferFactory().wrap(bytes);
+			return response.writeWith(Mono.just(buffer));
+		} catch (JsonProcessingException e) {
+			log.error("[GATEWAY] Failed to serialize error response", e);
+			return response.setComplete();
+		}
+	}
+
+	private Mono<Void> onForbidden(ServerWebExchange exchange) {
+		ServerHttpResponse response = exchange.getResponse();
+		response.setStatusCode(HttpStatus.FORBIDDEN);
+		response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
+		DataBuffer buffer = response.bufferFactory().wrap(FORBIDDEN_BODY);
+		return response.writeWith(Mono.just(buffer));
+	}
+
+	private String extractMessage(Throwable e) {
+		return e.getCause() != null ? e.getCause().getMessage() : e.getMessage();
+	}
 }

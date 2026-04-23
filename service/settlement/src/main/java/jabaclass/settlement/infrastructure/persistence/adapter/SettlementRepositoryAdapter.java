@@ -4,10 +4,12 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
-import jabaclass.settlement.domain.model.Settlement;
-import jabaclass.settlement.domain.model.SettlementStatus;
+import jabaclass.settlement.domain.model.settlement.Settlement;
+import jabaclass.settlement.domain.model.settlement.SettlementStatus;
 import jabaclass.settlement.domain.repository.SettlementRepository;
 import jabaclass.settlement.infrastructure.persistence.SettlementJpaRepository;
 import lombok.RequiredArgsConstructor;
@@ -17,11 +19,6 @@ import lombok.RequiredArgsConstructor;
 public class SettlementRepositoryAdapter implements SettlementRepository {
 
 	private final SettlementJpaRepository settlementJpaRepository;
-
-	@Override
-	public Settlement save(Settlement settlement) {
-		return settlementJpaRepository.save(settlement);
-	}
 
 	@Override
 	public List<Settlement> saveAll(List<Settlement> settlements) {
@@ -34,18 +31,17 @@ public class SettlementRepositoryAdapter implements SettlementRepository {
 	}
 
 	@Override
-	public Optional<Settlement> findBySellerIdAndSettlementMonth(UUID sellerId, String settlementMonth) {
-		return settlementJpaRepository.findBySellerIdAndSettlementMonth(sellerId, settlementMonth);
+	public List<Settlement> findBySettlementMonthAndSellerIds(String settlementMonth, List<UUID> sellerIds) {
+		if (sellerIds == null || sellerIds.isEmpty()) {
+			return List.of();
+		}
+
+		return settlementJpaRepository.findBySettlementMonthAndSellerIdIn(settlementMonth, sellerIds);
 	}
 
 	@Override
-	public boolean existsBySellerIdAndSettlementMonth(UUID sellerId, String settlementMonth) {
-		return settlementJpaRepository.existsBySellerIdAndSettlementMonth(sellerId, settlementMonth);
-	}
-
-	@Override
-	public List<Settlement> findByStatus(SettlementStatus status) {
-		return settlementJpaRepository.findByStatus(status);
+	public Page<Settlement> findBySellerId(UUID sellerId, Pageable pageable) {
+		return settlementJpaRepository.findBySellerId(sellerId, pageable);
 	}
 
 	@Override

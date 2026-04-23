@@ -3,6 +3,9 @@ package jabaclass.product.presentation.controller;
 import java.util.List;
 import java.util.UUID;
 
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -18,10 +21,8 @@ import jabaclass.product.application.usecase.ReviewUseCase;
 import jabaclass.product.common.auth.CurrentUser;
 import jabaclass.product.common.exception.ApiResponseDto;
 import jabaclass.product.presentation.dto.request.ReviewRequestDto;
-import jabaclass.product.presentation.dto.respose.ReviewResponseDto;
+import jabaclass.product.presentation.dto.response.ReviewResponseDto;
 import jabaclass.product.presentation.openapi.ReviewOpenApi;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 
 @RestController
 @RequestMapping("/api/v1/products")
@@ -45,9 +46,9 @@ public class ReviewRestController implements ReviewOpenApi {
 	@Override
 	@PutMapping("/{productId}/reviews/{reviewId}")
 	public ResponseEntity<ApiResponseDto<ReviewResponseDto>> update(@RequestBody ReviewRequestDto request,
-		@PathVariable UUID reivewId,
+		@PathVariable UUID reviewId,
 		@CurrentUser UUID userId) {
-		ReviewResponseDto response = reviewUseCase.updateReview(request, reivewId, userId);
+		ReviewResponseDto response = reviewUseCase.updateReview(request, reviewId, userId);
 
 		return ResponseEntity.ok()
 			.body(ApiResponseDto.success(HttpStatus.OK, "성공적으로 수정 되었습니다.", response));
@@ -55,8 +56,8 @@ public class ReviewRestController implements ReviewOpenApi {
 
 	@Override
 	@DeleteMapping("/{productId}/reviews/{reviewId}")
-	public ResponseEntity<ApiResponseDto<UUID>> delete(@PathVariable UUID reivewId, @CurrentUser UUID userId) {
-		reviewUseCase.deleteReview(reivewId, userId);
+	public ResponseEntity<ApiResponseDto<UUID>> delete(@PathVariable UUID reviewId, @CurrentUser UUID userId) {
+		reviewUseCase.deleteReview(reviewId, userId);
 
 		return ResponseEntity.ok()
 			.body(ApiResponseDto.success(HttpStatus.OK, "성공적으로 삭제 되었습니다.", null));

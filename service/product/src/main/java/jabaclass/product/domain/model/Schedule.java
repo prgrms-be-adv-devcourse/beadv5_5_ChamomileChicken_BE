@@ -26,7 +26,6 @@ import lombok.extern.slf4j.Slf4j;
 @Getter
 @NoArgsConstructor
 @SuperBuilder
-@EntityListeners(AuditingEntityListener.class)
 @Table(name = "products_schedule", schema = "public")
 @Slf4j
 public class Schedule extends EntityBase {

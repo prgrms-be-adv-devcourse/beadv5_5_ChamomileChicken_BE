@@ -11,13 +11,13 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import jabaclass.settlement.application.usecase.SettlementUseCase;
-import jabaclass.settlement.domain.model.Settlement;
+import jabaclass.settlement.domain.model.settlement.Settlement;
 import jabaclass.settlement.presentation.dto.response.SettlementResponse;
 
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/settlements")
+@RequestMapping("/api/v1/settlements")
 @RequiredArgsConstructor
 public class SettlementController implements SettlementApi {
 
@@ -25,7 +25,7 @@ public class SettlementController implements SettlementApi {
 
 	/**
 	 * 특정 월 정산 목록 조회
-	 * 예: /settlements?month=2026-03
+	 * 예: /api/v1/settlements?month=2026-03
 	 */
 	@GetMapping
 	@Override
@@ -41,7 +41,7 @@ public class SettlementController implements SettlementApi {
 
 	/**
 	 * 특정 월 READY 상태 정산 목록 조회
-	 * 예: /settlements/ready?month=2026-03
+	 * 예: /api/v1/settlements/ready?month=2026-03
 	 */
 	@GetMapping("/ready")
 	@Override
@@ -57,9 +57,9 @@ public class SettlementController implements SettlementApi {
 
 	/**
 	 * 정산 단건 조회
-	 * 예: /settlements/{settlementId}
+	 * 예: /api/v1/settlements/{settlementId}
 	 */
-	@GetMapping("/{settlementId}")
+	@GetMapping("/{settlementId:[0-9a-fA-F\\-]{36}}")
 	@Override
 	public ResponseEntity<SettlementResponse> getSettlement(
 		@PathVariable UUID settlementId

@@ -8,7 +8,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.Lob;
+
 import jakarta.persistence.Table;
 import lombok.Getter;
 
@@ -27,8 +27,7 @@ public class OutboxEvent extends BaseEntity {
 	@Column(nullable = false)
 	private EventType eventType;
 
-	@Lob
-	@Column(nullable = false)
+	@Column(nullable = false, columnDefinition = "TEXT")
 	private String payload;
 
 	@Enumerated(EnumType.STRING)

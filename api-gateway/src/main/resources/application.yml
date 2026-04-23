@@ -4,22 +4,93 @@ server:
 spring:
   application:
     name: api-gateway
+  profiles:
+    active: dev
 
-  # Redis 설정
-  data:
-    redis:
-      host: localhost
-      port: 6379
+#  flyway:
+#    baseline-on-migrate: true
+#    baseline-version: 0 # 현재 상태를 version 0으로 기준점 설정
 
-cors:
-  allowed-origins:
-    - http://localhost:3000
+  cloud:
+    gateway:
+      server:
+        webflux:
+          default-filters:
+            - name: Retry
+              args:
+                retries: 3
+                statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE
+                methods: GET
+                backoff:
+                  firstBackoff: 50ms
+                  maxBackoff: 500ms
+          routes:
+            - id: file
+              uri: ${PRODUCT_SERVICE_URL:http://localhost:9004}
+              predicates:
+                - Path=/api/v1/files/**
+
+            - id: payment
+              uri: ${PAYMENT_SERVICE_URL:http://localhost:9001}
+              predicates:
+                - Path=/api/v1/payments/**
+
+            - id: settlement
+              uri: ${SETTLEMENT_SERVICE_URL:http://localhost:9002}
+              predicates:
+                - Path=/api/v1/settlements, /api/v1/settlements/**, /api/v1/internal-batch/settlements/**
+
+            - id: email
+              uri: ${USER_SERVICE_URL:http://localhost:9003}
+              predicates:
+                - Path=/api/v1/email/**
+              filters:
+                - name: RequestRateLimiter
+                  args:
+                    redis-rate-limiter.replenishRate: 1
+                    redis-rate-limiter.burstCapacity: 3
+                    redis-rate-limiter.requestedTokens: 1
+                    key-resolver: "#{@ipKeyResolver}"
+
+            - id: user
+              uri: ${USER_SERVICE_URL:http://localhost:9003}
+              predicates:
+                - Path=/api/v1/auth/**, /api/v1/users/**, /api/v1/deposits/**, /oauth2/authorization/**, /login/oauth2/code/**
+
+            - id: product
+              uri: ${PRODUCT_SERVICE_URL:http://localhost:9004}
+              predicates:
+                - Path=/api/v1/products/**
+
+            - id: order
+              uri: ${ORDER_SERVICE_URL:http://localhost:9005}
+              predicates:
+                - Path=/api/v1/orders/**
+
+            - id: ai
+              uri: ${AI_SERVICE_URL:http://localhost:9009}
+              predicates:
+                - Path=/api/v1/recommendations/**
+
+            - id: admin
+              uri: ${ADMIN_SERVICE_URL:http://localhost:9007}
+              predicates:
+                - Path=/api/v1/admins/**
 
 jwt:
   secret: ${JWT_SECRET}
 
 logging:
   level:
-    root: INFO
-    jabaclass.apigateway: DEBUG
-    org.springframework.cloud.gateway: DEBUG
+    org.springframework.security: DEBUG
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true
+

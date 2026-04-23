@@ -6,6 +6,9 @@ metadata:
     app: admin-service
 spec:
   replicas: 1
+  revisionHistoryLimit: 3
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: admin-service
@@ -14,14 +17,33 @@ spec:
       labels:
         app: admin-service
     spec:
+      initContainers:
+        - name: wait-for-postgres
+          image: busybox:1.36
+          command:
+            - /bin/sh
+            - -c
+            - until nc -z postgres-headless 5432; do echo waiting for postgres-headless:5432; sleep 2; done
+        - name: wait-for-kafka
+          image: busybox:1.36
+          command:
+            - /bin/sh
+            - -c
+            - until nc -z kafka-service 9092; do echo waiting for kafka-service:9092; sleep 2; done
+        - name: wait-for-redis
+          image: busybox:1.36
+          command:
+            - /bin/sh
+            - -c
+            - until nc -z redis 6379; do echo waiting for redis:6379; sleep 2; done
       containers:
         - name: admin-service
           image: ${DOCKERHUB_USERNAME}/chamomile-admin:${IMAGE_TAG}
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
 
           env:
             - name: JAVA_TOOL_OPTIONS
-              value: "-Xms256m -Xmx512m"
+              value: "-Xms128m -Xmx256m"
 
           envFrom:
             - configMapRef:
@@ -41,31 +63,40 @@ spec:
                 optional: true
 
           ports:
-            - containerPort: 9008
+            - containerPort: 9007
 
           resources:
             requests:
-              cpu: "250m"
-              memory: "384Mi"
+              cpu: "100m"
+              memory: "256Mi"
             limits:
-              cpu: "500m"
-              memory: "768Mi"
+              cpu: "300m"
+              memory: "512Mi"
+
+          startupProbe:
+            httpGet:
+              path: /actuator/health
+              port: 9007
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 36
 
           readinessProbe:
             httpGet:
               path: /actuator/health/readiness
-              port: 9008
-            initialDelaySeconds: 20
-            periodSeconds: 10
+              port: 9007
+            initialDelaySeconds: 5
+            periodSeconds: 5
             timeoutSeconds: 3
             failureThreshold: 3
 
           livenessProbe:
             httpGet:
               path: /actuator/health/liveness
-              port: 9008
-            initialDelaySeconds: 40
-            periodSeconds: 15
+              port: 9007
+            initialDelaySeconds: 60
+            periodSeconds: 10
             timeoutSeconds: 3
             failureThreshold: 3
 
@@ -80,7 +111,7 @@ spec:
   selector:
     app: admin-service
   ports:
-    - port: 9008
-      targetPort: 9008
+    - port: 9007
+      targetPort: 9007
       protocol: TCP
   type: ClusterIP

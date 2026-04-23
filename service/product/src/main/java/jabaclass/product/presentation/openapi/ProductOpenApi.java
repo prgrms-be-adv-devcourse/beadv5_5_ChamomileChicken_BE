@@ -14,10 +14,10 @@ import jabaclass.product.common.exception.ApiResponseDto;
 import jabaclass.product.presentation.dto.request.CreateProductRequestDto;
 import jabaclass.product.presentation.dto.request.SearchProductRequestDto;
 import jabaclass.product.presentation.dto.request.UpdateProductRequestDto;
-import jabaclass.product.presentation.dto.respose.DeleteProductResposeDto;
-import jabaclass.product.presentation.dto.respose.ProductResponseDto;
-import jabaclass.product.presentation.dto.respose.ProductUserResponseDto;
-import jabaclass.product.presentation.dto.respose.SearchProductResponseDto;
+import jabaclass.product.presentation.dto.response.DeleteProductResponseDto;
+import jabaclass.product.presentation.dto.response.ProductResponseDto;
+import jabaclass.product.presentation.dto.response.ProductUserResponseDto;
+import jabaclass.product.presentation.dto.response.SearchProductResponseDto;
 
 @Tag(name = "Product", description = "상품 API")
 public interface ProductOpenApi {
@@ -55,7 +55,7 @@ public interface ProductOpenApi {
 		)
 	)
 	@CommonErrorResponses
-	ResponseEntity<ApiResponseDto<DeleteProductResposeDto>> delete(UUID productId, UUID userId);
+	ResponseEntity<ApiResponseDto<DeleteProductResponseDto>> delete(UUID productId, UUID userId);
 
 	@Operation(summary = "상품 전체 검색", description = "전체 상품을 검색 합니다.")
 	@ApiResponse(
@@ -68,6 +68,17 @@ public interface ProductOpenApi {
 	@CommonErrorResponses
 	ResponseEntity<ApiResponseDto<SearchProductResponseDto>> searchAllProduct(SearchProductRequestDto request);
 
+	@Operation(summary = "판매자 본인 상품 검색", description = "판매자 본인의 상품 목록을 검색 합니다.")
+	@ApiResponse(
+		responseCode = "200",
+		description = "내 상품 검색 성공",
+		content = @Content(
+			schema = @Schema(implementation = ApiResponseDto.class)
+		)
+	)
+	@CommonErrorResponses
+	ResponseEntity<ApiResponseDto<SearchProductResponseDto>> searchMyProducts(SearchProductRequestDto request, UUID userId);
+
 	@Operation(summary = "특정 상품 검색", description = "특정 상품을 검색 합니다.")
 	@ApiResponse(
 		responseCode = "202",
@@ -77,7 +88,7 @@ public interface ProductOpenApi {
 		)
 	)
 	@CommonErrorResponses
-	ResponseEntity<ApiResponseDto<ProductResponseDto>> searchProduct(UUID productId);
+	ResponseEntity<ApiResponseDto<ProductResponseDto>> searchProduct(UUID productId, UUID userId);
 
 	@Operation(summary = "예약 유저 조회", description = "예약 유저 조회를 합니다.")
 	@ApiResponse(

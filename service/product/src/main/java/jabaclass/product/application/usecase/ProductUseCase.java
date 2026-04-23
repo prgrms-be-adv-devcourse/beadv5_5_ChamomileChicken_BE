@@ -7,10 +7,10 @@ import jabaclass.product.domain.model.Product;
 import jabaclass.product.presentation.dto.request.CreateProductRequestDto;
 import jabaclass.product.presentation.dto.request.SearchProductRequestDto;
 import jabaclass.product.presentation.dto.request.UpdateProductRequestDto;
-import jabaclass.product.presentation.dto.respose.DeleteProductResposeDto;
-import jabaclass.product.presentation.dto.respose.ProductResponseDto;
-import jabaclass.product.presentation.dto.respose.ProductSettlementItemResponseDto;
-import jabaclass.product.presentation.dto.respose.SearchProductResponseDto;
+import jabaclass.product.presentation.dto.response.DeleteProductResponseDto;
+import jabaclass.product.presentation.dto.response.ProductResponseDto;
+import jabaclass.product.presentation.dto.response.ProductSettlementItemResponseDto;
+import jabaclass.product.presentation.dto.response.SearchProductResponseDto;
 
 public interface ProductUseCase {
 
@@ -21,13 +21,16 @@ public interface ProductUseCase {
 	ProductResponseDto update(UpdateProductRequestDto requestDto, UUID productId, UUID sellerId);
 
 	// 상품 삭제
-	DeleteProductResposeDto delete(UUID productId, UUID sellerId);
+	DeleteProductResponseDto delete(UUID productId, UUID sellerId);
 
 	// 상품 전체 검색
 	SearchProductResponseDto searchAll(SearchProductRequestDto requestDto);
 
+	// 판매자 본인 상품 검색
+	SearchProductResponseDto searchMy(SearchProductRequestDto requestDto, UUID sellerId);
+
 	// 특정 상품 검색
-	ProductResponseDto searchById(UUID productId);
+	ProductResponseDto searchById(UUID productId, UUID userId);
 
 	// 상품 존재 여부/단일 상품 검색
 	Product findByIdOrThrow(UUID productId);

@@ -1,0 +1,105 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-service
+  labels:
+    app: ai-service
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: ai-service
+  template:
+    metadata:
+      labels:
+        app: ai-service
+    spec:
+      initContainers:
+        - name: wait-for-postgres
+          image: busybox:1.36
+          command:
+            - /bin/sh
+            - -c
+            - until nc -z postgres-headless 5432; do echo waiting for postgres-headless:5432; sleep 2; done
+      containers:
+        - name: ai-service
+          image: ${DOCKERHUB_USERNAME}/chamomile-ai:${IMAGE_TAG}
+          imagePullPolicy: IfNotPresent
+
+          env:
+            - name: JAVA_TOOL_OPTIONS
+              value: "-Xms128m -Xmx256m"
+
+          envFrom:
+            - configMapRef:
+                name: common-config
+                optional: true
+            - configMapRef:
+                name: ai-config
+                optional: true
+            - secretRef:
+                name: common-secret
+                optional: true
+            - secretRef:
+                name: db-secret
+                optional: false
+            - secretRef:
+                name: ai-secret
+                optional: true
+
+          ports:
+            - containerPort: 9009
+
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "300m"
+              memory: "512Mi"
+
+          startupProbe:
+            httpGet:
+              path: /actuator/health
+              port: 9009
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 18
+
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 9009
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 9009
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-service
+  labels:
+    app: ai-service
+spec:
+  selector:
+    app: ai-service
+  ports:
+    - port: 9009
+      targetPort: 9009
+      protocol: TCP
+  type: ClusterIP

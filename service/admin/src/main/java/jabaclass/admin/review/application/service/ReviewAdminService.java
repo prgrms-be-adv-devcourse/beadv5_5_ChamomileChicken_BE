@@ -19,7 +19,7 @@ public class ReviewAdminService implements ReviewAdminUseCase {
 	private final ReviewAdminRepository reviewAdminRepository;
 
 	@Override
-	@Transactional(transactionManager = "productTransactionManager")
+	@Transactional
 	public void deleteReview(UUID reviewId) {
 		Review review = reviewAdminRepository.findById(reviewId)
 			.orElseThrow(() -> new BusinessException(AdminErrorCode.REVIEW_NOT_FOUND));

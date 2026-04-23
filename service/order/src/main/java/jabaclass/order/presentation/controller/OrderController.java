@@ -7,6 +7,7 @@ import jabaclass.order.application.port.internal.OrderUseCase;
 import jabaclass.order.domain.model.OrderStatus;
 import jabaclass.order.presentation.dto.request.CreateOrderRequestDto;
 import jabaclass.order.presentation.dto.response.CreateOrderResponseDto;
+import jabaclass.order.presentation.dto.response.OrderRefundInfoResponseDto;
 import jabaclass.order.presentation.dto.response.OrderResponseDto;
 import jabaclass.order.presentation.openapi.OrderOpenApi;
 import jakarta.validation.Valid;
@@ -14,7 +15,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import jabaclass.order.common.auth.CurrentUser;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -24,7 +24,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.DeleteMapping;
 
-@CrossOrigin(origins = "*")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/orders")
@@ -51,6 +50,14 @@ public class OrderController implements OrderOpenApi {
 
         return ResponseEntity.ok(responseDto);
     }
+
+	@GetMapping("/{orderId}/refund-info")
+	public ResponseEntity<OrderRefundInfoResponseDto> getRefundInfo(
+		@CurrentUser UUID userId,
+		@PathVariable UUID orderId
+	) {
+		return ResponseEntity.ok(orderUseCase.getRefundInfo(userId, orderId));
+	}
 
     @Override
     @GetMapping

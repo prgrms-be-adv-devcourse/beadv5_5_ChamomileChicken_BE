@@ -1,0 +1,214 @@
+name: CD AI Service
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - dev
+    paths:
+      - 'service/ai/**'
+      - 'common/**'
+      - 'build.gradle'
+      - 'settings.gradle'
+      - 'gradle/**'
+      - 'gradlew'
+      - '.github/workflows/cd-ai.yml'
+      - '.github/scripts/**'
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    outputs:
+      image_tag: ${{ steps.meta.outputs.image_tag }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x ./gradlew
+
+      - name: Build ai bootJar
+        run: ./gradlew :service:ai:clean :service:ai:bootJar --no-daemon
+
+      - name: Set image tag
+        id: meta
+        run: |
+          IMAGE_TAG=${GITHUB_SHA::7}
+          echo "image_tag=$IMAGE_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            -t ${{ secrets.DOCKERHUB_USERNAME }}/chamomile-ai:latest \
+            -t ${{ secrets.DOCKERHUB_USERNAME }}/chamomile-ai:${{ steps.meta.outputs.image_tag }} \
+            ./service/ai
+
+      - name: Push Docker image
+        run: |
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/chamomile-ai:latest
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/chamomile-ai:${{ steps.meta.outputs.image_tag }}
+
+  deploy:
+    needs: build-and-push
+    runs-on: [ self-hosted, ec2, docker ]
+    env:
+      KUBECONFIG: /home/ubuntu/.kube/config
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare directories
+        run: |
+          mkdir -p /home/ubuntu/apps/repo
+          mkdir -p /home/ubuntu/apps/deploy/env
+          mkdir -p /home/ubuntu/apps/deploy/scripts
+          mkdir -p /home/ubuntu/apps/data/k3s-service
+
+      - name: Sync repository to fixed path
+        run: |
+          rsync -av --delete ./ /home/ubuntu/apps/repo/
+
+      - name: Copy deploy scripts to EC2 deploy directory
+        run: |
+          cp /home/ubuntu/apps/repo/.github/scripts/deploy-app.sh /home/ubuntu/apps/deploy/scripts/deploy-app.sh
+          cp /home/ubuntu/apps/repo/.github/scripts/apply-env.sh /home/ubuntu/apps/deploy/scripts/apply-env.sh
+          chmod +x /home/ubuntu/apps/deploy/scripts/deploy-app.sh
+          chmod +x /home/ubuntu/apps/deploy/scripts/apply-env.sh
+
+      - name: Check envsubst
+        run: |
+          which envsubst
+
+      - name: Copy Kubernetes YAML to fixed path
+        run: |
+          cp /home/ubuntu/apps/repo/.github/k3s/ai-service.yml \
+             /home/ubuntu/apps/data/k3s-service/ai-service.yml
+
+      - name: Apply env files and detect changes
+        env:
+          COMMON_CONFIG_ENV: ${{ secrets.COMMON_CONFIG_ENV }}
+          COMMON_SECRET_ENV: ${{ secrets.COMMON_SECRET_ENV }}
+          SERVICE_CONFIG_ENV: ${{ secrets.AI_CONFIG_ENV }}
+          SERVICE_SECRET_ENV: ${{ secrets.AI_SECRET_ENV }}
+        run: |
+          /home/ubuntu/apps/deploy/scripts/apply-env.sh ai
+
+      - name: Export env change outputs
+        id: env_changes
+        shell: bash
+        run: |
+          echo "config_changed=${CONFIG_CHANGED:-false}" >> "$GITHUB_OUTPUT"
+          echo "common_config_changed=${COMMON_CONFIG_CHANGED:-false}" >> "$GITHUB_OUTPUT"
+          echo "common_secret_changed=${COMMON_SECRET_CHANGED:-false}" >> "$GITHUB_OUTPUT"
+          echo "service_config_changed=${SERVICE_CONFIG_CHANGED:-false}" >> "$GITHUB_OUTPUT"
+          echo "service_secret_changed=${SERVICE_SECRET_CHANGED:-false}" >> "$GITHUB_OUTPUT"
+
+      - name: Detect manifest changes
+        id: manifest_changes
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          MANIFEST_CHANGED=false
+          IMAGE_CHANGED=true
+
+          if git diff --name-only HEAD^ HEAD | grep -Eq '^\.github/k3s/ai-service\.yml$'; then
+            MANIFEST_CHANGED=true
+          fi
+
+          echo "manifest_changed=$MANIFEST_CHANGED" >> "$GITHUB_OUTPUT"
+          echo "image_changed=$IMAGE_CHANGED" >> "$GITHUB_OUTPUT"
+
+      - name: Verify deploy files exist
+        run: |
+          ls -l /home/ubuntu/apps/deploy/env
+          ls -l /home/ubuntu/apps/deploy/scripts
+          ls -l /home/ubuntu/apps/data/k3s-service
+
+      - name: Docker Hub login on EC2
+        run: |
+          echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login \
+            -u "${{ secrets.DOCKERHUB_USERNAME }}" \
+            --password-stdin
+
+      - name: Deploy ai service
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
+          IMAGE_CHANGED: ${{ steps.manifest_changes.outputs.image_changed }}
+          MANIFEST_CHANGED: ${{ steps.manifest_changes.outputs.manifest_changed }}
+          CONFIG_CHANGED: ${{ steps.env_changes.outputs.config_changed }}
+          COMMON_CONFIG_CHANGED: ${{ steps.env_changes.outputs.common_config_changed }}
+          COMMON_SECRET_CHANGED: ${{ steps.env_changes.outputs.common_secret_changed }}
+          SERVICE_CONFIG_CHANGED: ${{ steps.env_changes.outputs.service_config_changed }}
+          SERVICE_SECRET_CHANGED: ${{ steps.env_changes.outputs.service_secret_changed }}
+        run: |
+          /home/ubuntu/apps/deploy/scripts/deploy-app.sh ai
+
+      - name: Debug Kubernetes state
+        if: always()
+        env:
+          KUBECONFIG: /home/ubuntu/.kube/config
+        run: |
+          echo "===== pods ====="
+          kubectl get pods -o wide
+          echo "===== deployment ====="
+          kubectl get deployment ai-service -o wide
+          echo "===== describe deployment ====="
+          kubectl describe deployment ai-service || true
+          echo "===== recent pod logs ====="
+          POD_NAME=$(kubectl get pods -l app=ai-service -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)
+          if [ -n "$POD_NAME" ]; then
+            kubectl logs "$POD_NAME" --tail=200 || true
+          fi
+
+      - name: Health check
+        env:
+          KUBECONFIG: /home/ubuntu/.kube/config
+        run: |
+          kubectl port-forward svc/ai-service 9009:9009 >/tmp/ai-portforward.log 2>&1 &
+          PF_PID=$!
+
+          STATUS_CODE="000"
+
+          for i in 1 2 3 4 5; do
+            STATUS_CODE=$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' --max-time 5 \
+              "http://localhost:9009/actuator/health/readiness" || echo "000")
+
+            if [[ "$STATUS_CODE" == "200" ]]; then
+              break
+            fi
+
+            sleep 3
+          done
+
+          kill $PF_PID || true
+
+          if [[ "$STATUS_CODE" != "200" ]]; then
+            echo "Health check failed with status=$STATUS_CODE"
+            POD_NAME=$(kubectl get pods -l app=ai-service -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)
+            if [ -n "$POD_NAME" ]; then
+              kubectl logs "$POD_NAME" --tail=200 || true
+            fi
+            exit 1
+          fi
+
+          echo "Health check passed with status $STATUS_CODE"

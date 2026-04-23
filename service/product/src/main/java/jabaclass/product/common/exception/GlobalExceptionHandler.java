@@ -2,6 +2,8 @@ package jabaclass.product.common.exception;
 
 import java.time.format.DateTimeParseException;
 
+import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -9,7 +11,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import jabaclass.product.application.exception.BusinessException;
-import lombok.extern.slf4j.Slf4j;
+import jabaclass.product.application.exception.FileException;
 
 @RestControllerAdvice
 @Slf4j
@@ -55,4 +57,11 @@ public class GlobalExceptionHandler {
 		throw new BusinessException(CommonErrorCode.INVALID_DATE_FORMAT);
 	}
 
+	// file
+	@ExceptionHandler(FileException.class)
+	public ResponseEntity<ApiResponseDto<Void>> handleFileException(FileException ex) {
+		return ResponseEntity
+			.status(ex.getStatus())
+			.body(ApiResponseDto.fail(ex.getStatus(), ex.getMessage()));
+	}
 }

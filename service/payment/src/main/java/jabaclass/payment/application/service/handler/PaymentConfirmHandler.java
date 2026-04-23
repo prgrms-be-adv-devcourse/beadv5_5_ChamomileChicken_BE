@@ -43,7 +43,14 @@ public class PaymentConfirmHandler {
 			"PAYMENT",
 			paymentId.toString(),
 			EventType.PAYMENT_COMPLETED,
-			toJson(new PaymentCompletedEvent(UUID.randomUUID(), paymentId, payment.getOrderId()))
+			toJson(new PaymentCompletedEvent(
+				UUID.randomUUID(),
+				paymentId,
+				payment.getOrderId(),
+				payment.getProductId(),
+				payment.getTotalAmount(),
+				payment.getPaidAt()
+			))
 		));
 		return PaymentResponseDto.from(payment);
 	}

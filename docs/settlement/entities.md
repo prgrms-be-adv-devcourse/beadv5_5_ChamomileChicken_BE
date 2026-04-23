@@ -1,0 +1,76 @@
+# Settlement 엔티티
+
+정산 서비스의 핵심 식별자는 로그인 사용자 ID가 아니라 정산 대상 판매자 ID(`sellerId`)와 정산 월(`settlementMonth`)이다.
+
+## 핵심 엔티티
+
+| 엔티티 | 설명 | 핵심 필드 |
+|--------|------|-----------|
+| `SettlementTarget` | 결제/환불 원천 이벤트에서 적재된 정산 대상 데이터 | `sourceEventId`, `sellerId`, `orderId`, `productId`, `paymentId`, `refundId`, `settlementMonth`, `settlementBaseAmount`, `targetType`, `occurredAt`, `calculationStatus` |
+| `SettlementTargetCalculation` | 정산 대상 1건을 월 정산 집계용으로 정규화한 계산 결과 | `settlementTargetId`, `settlementBaseAmount`, `appliedPromotionId`, `appliedPromotionType`, `appliedFeeRate`, `originalPaymentTargetCalculationId` |
+| `Settlement` | 판매자별 월 정산 결과 스냅샷 | `sellerId`, `settlementMonth`, `sellerGradeCode`, `sellerGradePolicyId`, `gradeBaseAmount`, `feeAmount`, `feeRate`, `settlementAmount`, `status` |
+| `SettlementTransfer` | 송금 요청과 결과 이력 | `settlementId`, `transferStatus`, `bankCode`, `accountNumberMasked`, `amount`, `requestedAt`, `completedAt`, `failReason` |
+| `SellerGradePolicy` | 최근 3개월 판매금액 구간별 등급/수수료 정책 | `gradeCode`, `minSalesAmount`, `maxSalesAmount`, `feeRate`, `version`, `active` |
+| `SellerGrade` | 판매자별 마지막 적용 등급 캐시 | `sellerId`, `sellerGradePolicyId`, `calculatedMonth` |
+| `SettlementPromotion` | 프로모션 마스터 정보 | `name`, `promotionType`, `feeRate`, `durationDays`, `active` |
+| `SellerPromotion` | 판매자별 프로모션 적용 이력 | `sellerId`, `promotionId`, `startedAt`, `endedAt`, `active` |
+
+## 상태값
+
+| 타입 | 값 | 설명 |
+|------|----|------|
+| `SettlementTargetType` | `PAYMENT`, `REFUND` | 결제 정산 대상인지 환불 정산 대상인지 구분 |
+| `SettlementTargetCalculationStatus` | `PENDING`, `CALCULATED`, `FAILED` | 정산 대상의 건별 계산 상태 |
+| `SettlementStatus` | `READY`, `HOLD`, `TRANSFERRING`, `SENT`, `FAILED` | 월 정산의 송금 진행 상태 |
+| `SettlementTransferStatus` | `REQUESTED`, `SENT`, `FAILED`, `HOLD` | 송금 이력의 상태 |
+
+## 엔티티 관계 흐름
+
+```text
+SettlementTarget
+  -> SettlementTargetCalculation
+    -> Settlement
+      -> SettlementTransfer
+```
+
+### `SettlementTarget`
+
+Kafka 이벤트를 통해 적재되는 원천 정산 대상이다.
+
+- 결제 성공 이벤트는 `PAYMENT` 타겟으로 적재된다.
+- 환불 성공 이벤트는 `REFUND` 타겟으로 적재된다.
+- `sourceEventId`는 이벤트 고유 ID이며 유니크 제약으로 중복 적재를 막는다.
+- `calculationStatus`가 `PENDING`인 데이터가 정산 계산 배치의 대상이 된다.
+
+### `SettlementTargetCalculation`
+
+정산 대상 1건에 대한 계산 결과다.
+
+- 결제 건은 원 정산 기준 금액과 당시 적용 프로모션/수수료율을 저장한다.
+- 환불 건은 원 결제 계산 결과를 기준으로 환불 비율만큼 음수 금액을 계산한다.
+- 원 결제 계산 결과가 없으면 환불 발생 시점의 판매자 프로모션을 기준으로 보정 계산한다.
+- 월 정산 상세 조회는 이 엔티티와 `SettlementTarget`을 조합해 구성한다.
+
+### `Settlement`
+
+판매자별 월 정산 헤더다.
+
+- `sellerId + settlementMonth` 조합이 월 정산 생성 기준이다.
+- `originalAmount`는 월 정산에 포함된 기준 금액 합계다.
+- `gradeBaseAmount`는 최근 3개월 판매금액 기준이다.
+- `sellerGradeCode`, `sellerGradePolicyId`, `feeRate`는 정산 생성 시점의 정책 스냅샷이다.
+- 정산 금액이 0 이하이면 송금하지 않고 `HOLD` 상태가 된다.
+
+### `SettlementTransfer`
+
+송금 요청과 결과 이력이다.
+
+- 송금 가능한 `Settlement`에 대해 생성된다.
+- 계좌 정보가 없거나 정산 금액이 0 이하이면 `HOLD` 이력을 남긴다.
+- 송금 성공 시 `SENT`, 실패 시 `FAILED`로 남긴다.
+
+## 등급과 프로모션
+
+`SellerGradePolicy`는 최근 3개월 판매금액 기준 등급/수수료 정책이다. 월 정산 집계 시 active 정책을 한 번 조회하고 메모리에서 판매자별 기준 금액에 맞는 정책을 찾는다.
+
+`SellerPromotion`과 `SettlementPromotion`은 건별 정산 계산 시 적용 수수료율을 판단하는 데 사용된다. 적용된 프로모션 정보는 `SettlementTargetCalculation`에 스냅샷으로 남는다.

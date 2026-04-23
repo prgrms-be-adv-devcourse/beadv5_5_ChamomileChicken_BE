@@ -68,6 +68,8 @@ jobs:
   deploy:
     needs: build-and-push
     runs-on: [ self-hosted, ec2, docker ]
+    env:
+      KUBECONFIG: /home/ubuntu/.kube/config
 
     steps:
       - name: Checkout
@@ -84,10 +86,12 @@ jobs:
         run: |
           rsync -av --delete ./ /home/ubuntu/apps/repo/
 
-      - name: Copy deploy script to EC2 deploy directory
+      - name: Copy deploy scripts to EC2 deploy directory
         run: |
           cp /home/ubuntu/apps/repo/.github/scripts/deploy-app.sh /home/ubuntu/apps/deploy/scripts/deploy-app.sh
+          cp /home/ubuntu/apps/repo/.github/scripts/apply-env.sh /home/ubuntu/apps/deploy/scripts/apply-env.sh
           chmod +x /home/ubuntu/apps/deploy/scripts/deploy-app.sh
+          chmod +x /home/ubuntu/apps/deploy/scripts/apply-env.sh
 
       - name: Check envsubst
         run: |
@@ -98,21 +102,40 @@ jobs:
           cp /home/ubuntu/apps/repo/.github/k3s/product-service.yml \
              /home/ubuntu/apps/data/k3s-service/product-service.yml
 
-      - name: Create common_config.env
+      - name: Apply env files and detect changes
+        env:
+          COMMON_CONFIG_ENV: ${{ secrets.COMMON_CONFIG_ENV }}
+          COMMON_SECRET_ENV: ${{ secrets.COMMON_SECRET_ENV }}
+          SERVICE_CONFIG_ENV: ${{ secrets.PRODUCT_CONFIG_ENV }}
+          SERVICE_SECRET_ENV: ${{ secrets.PRODUCT_SECRET_ENV }}
         run: |
-          printf '%s\n' '${{ secrets.COMMON_CONFIG_ENV }}' > /home/ubuntu/apps/deploy/env/common_config.env
+          /home/ubuntu/apps/deploy/scripts/apply-env.sh product
 
-      - name: Create common_secret.env
+      - name: Export env change outputs
+        id: env_changes
+        shell: bash
         run: |
-          printf '%s\n' '${{ secrets.COMMON_SECRET_ENV }}' > /home/ubuntu/apps/deploy/env/common_secret.env
+          echo "config_changed=${CONFIG_CHANGED:-false}" >> "$GITHUB_OUTPUT"
+          echo "common_config_changed=${COMMON_CONFIG_CHANGED:-false}" >> "$GITHUB_OUTPUT"
+          echo "common_secret_changed=${COMMON_SECRET_CHANGED:-false}" >> "$GITHUB_OUTPUT"
+          echo "service_config_changed=${SERVICE_CONFIG_CHANGED:-false}" >> "$GITHUB_OUTPUT"
+          echo "service_secret_changed=${SERVICE_SECRET_CHANGED:-false}" >> "$GITHUB_OUTPUT"
 
-      - name: Create product_config.env
+      - name: Detect manifest changes
+        id: manifest_changes
+        shell: bash
         run: |
-          printf '%s\n' '${{ secrets.PRODUCT_CONFIG_ENV }}' > /home/ubuntu/apps/deploy/env/product_config.env
+          set -euo pipefail
 
-      - name: Create product_secret.env
-        run: |
-          printf '%s\n' '${{ secrets.PRODUCT_SECRET_ENV }}' > /home/ubuntu/apps/deploy/env/product_secret.env
+          MANIFEST_CHANGED=false
+          IMAGE_CHANGED=true
+
+          if git diff --name-only HEAD^ HEAD | grep -Eq '^\.github/k3s/product-service\.yml$'; then
+            MANIFEST_CHANGED=true
+          fi
+
+          echo "manifest_changed=$MANIFEST_CHANGED" >> "$GITHUB_OUTPUT"
+          echo "image_changed=$IMAGE_CHANGED" >> "$GITHUB_OUTPUT"
 
       - name: Verify deploy files exist
         run: |
@@ -130,10 +153,20 @@ jobs:
         env:
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
+          IMAGE_CHANGED: ${{ steps.manifest_changes.outputs.image_changed }}
+          MANIFEST_CHANGED: ${{ steps.manifest_changes.outputs.manifest_changed }}
+          CONFIG_CHANGED: ${{ steps.env_changes.outputs.config_changed }}
+          COMMON_CONFIG_CHANGED: ${{ steps.env_changes.outputs.common_config_changed }}
+          COMMON_SECRET_CHANGED: ${{ steps.env_changes.outputs.common_secret_changed }}
+          SERVICE_CONFIG_CHANGED: ${{ steps.env_changes.outputs.service_config_changed }}
+          SERVICE_SECRET_CHANGED: ${{ steps.env_changes.outputs.service_secret_changed }}
         run: |
           /home/ubuntu/apps/deploy/scripts/deploy-app.sh product
 
       - name: Debug Kubernetes state
+        if: always()
+        env:
+          KUBECONFIG: /home/ubuntu/.kube/config
         run: |
           echo "===== pods ====="
           kubectl get pods -o wide
@@ -151,14 +184,21 @@ jobs:
         env:
           KUBECONFIG: /home/ubuntu/.kube/config
         run: |
-          kubectl rollout status deployment/product-service --timeout=120s
-
           kubectl port-forward svc/product-service 9004:9004 >/tmp/product-portforward.log 2>&1 &
           PF_PID=$!
-          sleep 5
 
-          STATUS_CODE=$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' --max-time 5 \
-            "http://localhost:9004/actuator/health/readiness" || echo "000")
+          STATUS_CODE="000"
+
+          for i in 1 2 3 4 5; do
+            STATUS_CODE=$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' --max-time 5 \
+              "http://localhost:9004/actuator/health/readiness" || echo "000")
+
+            if [[ "$STATUS_CODE" == "200" ]]; then
+              break
+            fi
+
+            sleep 3
+          done
 
           kill $PF_PID || true
 

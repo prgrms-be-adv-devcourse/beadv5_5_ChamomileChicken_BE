@@ -9,6 +9,7 @@ import jabaclass.order.domain.model.Order;
 public record OrderSettlementItemResponseDto(
     UUID orderId,
     UUID productScheduleId,
+    UUID sellerId,
     UUID buyerId,
     UUID participantUserId,
     Integer quantity,
@@ -25,6 +26,7 @@ public record OrderSettlementItemResponseDto(
         return new OrderSettlementItemResponseDto(
             order.getId(),
             order.getProductScheduleId(),
+            order.getSellerId(),
             order.getUserId(),
             order.getProductUserId(),
             order.getQuantity(),

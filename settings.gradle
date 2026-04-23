@@ -1,13 +1,12 @@
 rootProject.name = 'jaba'
 
-include 'common'
 include 'api-gateway'
 
 include 'service'
 include 'service:admin'
-include 'service:file'
 include 'service:order'
 include 'service:payment'
 include 'service:product'
 include 'service:settlement'
 include 'service:user'
+include 'service:ai'

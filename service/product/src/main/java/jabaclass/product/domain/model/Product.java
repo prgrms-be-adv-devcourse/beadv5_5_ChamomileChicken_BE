@@ -28,7 +28,6 @@ import lombok.experimental.SuperBuilder;
 @Getter
 @NoArgsConstructor
 @SuperBuilder
-@EntityListeners(AuditingEntityListener.class)
 @Table(name = "products")
 public class Product extends EntityBase {
 

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.times;
@@ -30,6 +31,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import jabaclass.admin.common.error.BusinessException;
+import jabaclass.admin.product.domain.dto.ProductSearchCondition;
 import jabaclass.admin.product.domain.model.OutboxEvent;
 import jabaclass.admin.product.domain.model.Product;
 import jabaclass.admin.product.domain.model.ProductStatus;
@@ -55,43 +57,102 @@ class ProductAdminServiceTest {
 	private ProductAdminService productAdminService;
 
 	private UUID productId;
+	private UUID sellerId;
 	private Product product;
 
 	@BeforeEach
 	void setUp() {
 		productId = UUID.randomUUID();
-		product = Product.builder()
-			.sellerId(UUID.randomUUID())
-			.title("테스트상품")
-			.maxCapacity(10)
-			.price(new BigDecimal("50000"))
-			.status(ProductStatus.ENABLE)
-			.build();
+		sellerId = UUID.randomUUID();
+		product = new Product();
 		ReflectionTestUtils.setField(product, "id", productId);
+		ReflectionTestUtils.setField(product, "sellerId", sellerId);
+		ReflectionTestUtils.setField(product, "title", "테스트상품");
+		ReflectionTestUtils.setField(product, "maxCapacity", 10);
+		ReflectionTestUtils.setField(product, "price", new BigDecimal("50000"));
+		ReflectionTestUtils.setField(product, "status", ProductStatus.ENABLE);
 	}
 
 	@Test
-	void 전체_상품_목록을_조회한다() {
+	void 조건_없으면_전체_조회_성공() {
+		// given
 		Pageable pageable = PageRequest.of(0, 10);
-		given(productAdminRepository.findAll(pageable))
+		ProductSearchCondition condition = new ProductSearchCondition(null, null, null);
+		given(productAdminRepository.findAll(any(ProductSearchCondition.class), eq(pageable)))
 			.willReturn(new PageImpl<>(List.of(product)));
 
-		Page<ProductAdminResponseDto> result = productAdminService.getProducts(pageable);
+		// when
+		Page<ProductAdminResponseDto> result = productAdminService.getProducts(pageable, condition);
 
+		// then
 		assertThat(result.getContent()).hasSize(1);
 		assertThat(result.getContent().get(0).id()).isEqualTo(productId);
 		assertThat(result.getContent().get(0).title()).isEqualTo("테스트상품");
 		assertThat(result.getContent().get(0).status()).isEqualTo(ProductStatus.ENABLE);
-		then(productAdminRepository).should(times(1)).findAll(pageable);
+		then(productAdminRepository).should(times(1)).findAll(any(ProductSearchCondition.class), eq(pageable));
+	}
+
+	@Test
+	void 상태_ENABLE_필터_조회_성공() {
+		// given
+		Pageable pageable = PageRequest.of(0, 10);
+		ProductSearchCondition condition = new ProductSearchCondition("ENABLE", null, null);
+		given(productAdminRepository.findAll(any(ProductSearchCondition.class), eq(pageable)))
+			.willReturn(new PageImpl<>(List.of(product)));
+
+		// when
+		Page<ProductAdminResponseDto> result = productAdminService.getProducts(pageable, condition);
+
+		// then
+		assertThat(result.getContent()).hasSize(1);
+		assertThat(result.getContent().get(0).status()).isEqualTo(ProductStatus.ENABLE);
+		then(productAdminRepository).should(times(1)).findAll(any(ProductSearchCondition.class), eq(pageable));
+	}
+
+	@Test
+	void 판매자ID_필터_조회_성공() {
+		// given
+		Pageable pageable = PageRequest.of(0, 10);
+		ProductSearchCondition condition = new ProductSearchCondition(null, sellerId, null);
+		given(productAdminRepository.findAll(any(ProductSearchCondition.class), eq(pageable)))
+			.willReturn(new PageImpl<>(List.of(product)));
+
+		// when
+		Page<ProductAdminResponseDto> result = productAdminService.getProducts(pageable, condition);
+
+		// then
+		assertThat(result.getContent()).hasSize(1);
+		assertThat(result.getContent().get(0).sellerId()).isEqualTo(sellerId);
+		then(productAdminRepository).should(times(1)).findAll(any(ProductSearchCondition.class), eq(pageable));
+	}
+
+	@Test
+	void 제목_검색_부분일치_성공() {
+		// given
+		Pageable pageable = PageRequest.of(0, 10);
+		ProductSearchCondition condition = new ProductSearchCondition(null, null, "테스트");
+		given(productAdminRepository.findAll(any(ProductSearchCondition.class), eq(pageable)))
+			.willReturn(new PageImpl<>(List.of(product)));
+
+		// when
+		Page<ProductAdminResponseDto> result = productAdminService.getProducts(pageable, condition);
+
+		// then
+		assertThat(result.getContent()).hasSize(1);
+		assertThat(result.getContent().get(0).title()).contains("테스트");
+		then(productAdminRepository).should(times(1)).findAll(any(ProductSearchCondition.class), eq(pageable));
 	}
 
 	@Test
 	void 상품을_강제로_내리면_상태가_DISABLE로_변경되고_아웃박스_이벤트가_저장된다() throws Exception {
+		// given
 		given(productAdminRepository.findById(productId)).willReturn(Optional.of(product));
 		given(objectMapper.writeValueAsString(any())).willReturn("{\"type\":\"FORCE_DOWN\"}");
 
+		// when
 		productAdminService.forceDownProduct(productId);
 
+		// then
 		assertThat(product.getStatus()).isEqualTo(ProductStatus.DISABLE);
 		assertThat(product.getDeleteDt()).isNotNull();
 		then(outboxEventRepository).should(times(1)).save(any(OutboxEvent.class));
@@ -99,11 +160,14 @@ class ProductAdminServiceTest {
 
 	@Test
 	void 강제로_내린_아웃박스_이벤트는_PENDING_상태로_저장된다() throws Exception {
+		// given
 		given(productAdminRepository.findById(productId)).willReturn(Optional.of(product));
 		given(objectMapper.writeValueAsString(any())).willReturn("{\"type\":\"FORCE_DOWN\"}");
 
+		// when
 		productAdminService.forceDownProduct(productId);
 
+		// then
 		then(outboxEventRepository).should(times(1)).save(
 			argThat(event -> event.getStatus().name().equals("PENDING")
 				&& event.getEventType().getTopic().equals("admin.product"))
@@ -112,8 +176,10 @@ class ProductAdminServiceTest {
 
 	@Test
 	void 존재하지_않는_상품_강제_내리기시_예외가_발생한다() {
+		// given
 		given(productAdminRepository.findById(productId)).willReturn(Optional.empty());
 
+		// when & then
 		assertThatThrownBy(() -> productAdminService.forceDownProduct(productId))
 			.isInstanceOf(BusinessException.class)
 			.hasMessage("상품을 찾을 수 없습니다.");
