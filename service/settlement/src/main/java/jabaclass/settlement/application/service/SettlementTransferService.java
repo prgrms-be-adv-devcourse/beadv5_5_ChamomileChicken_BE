@@ -45,11 +45,15 @@ public class SettlementTransferService {
 		List<Settlement> settlements =
 			settlementRepository.findBySettlementMonthAndStatus(settlementMonth, SettlementStatus.READY);
 
-		return transferSettlements(settlements);
+		return transferSettlementsAndCountSuccess(settlements);
 	}
 
 	@Transactional(propagation = Propagation.NOT_SUPPORTED)
-	public int transferSettlements(List<Settlement> settlements) {
+	public void transferSettlements(List<Settlement> settlements) {
+		transferSettlementsAndCountSuccess(settlements);
+	}
+
+	private int transferSettlementsAndCountSuccess(List<Settlement> settlements) {
 		Map<UUID, SellerSettlementAccount> accountMap = sellerSettlementPort.fetchSellerSettlementAccounts(
 			settlements.stream()
 				.map(Settlement::getSellerId)

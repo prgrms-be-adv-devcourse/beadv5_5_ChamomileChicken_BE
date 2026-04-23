@@ -25,8 +25,15 @@ public class SettlementBatchLockManager {
 
 	public boolean acquire(String lockKey, String jobName, String settlementMonth) {
 		LocalDateTime now = LocalDateTime.now();
-		settlementBatchLockJpaRepository.deleteByExpiresAtBefore(now);
+		if (tryAcquire(lockKey, jobName, settlementMonth, now)) {
+			return true;
+		}
 
+		settlementBatchLockJpaRepository.deleteByLockKeyAndExpiresAtBefore(lockKey, now);
+		return tryAcquire(lockKey, jobName, settlementMonth, now);
+	}
+
+	private boolean tryAcquire(String lockKey, String jobName, String settlementMonth, LocalDateTime now) {
 		try {
 			settlementBatchLockJpaRepository.saveAndFlush(new SettlementBatchLock(
 				lockKey,

@@ -19,4 +19,13 @@ public interface SettlementBatchLockJpaRepository extends JpaRepository<Settleme
 	@Modifying(clearAutomatically = true, flushAutomatically = true)
 	@Query("delete from SettlementBatchLock lock where lock.expiresAt < :now")
 	void deleteByExpiresAtBefore(LocalDateTime now);
+
+	@Transactional
+	@Modifying(clearAutomatically = true, flushAutomatically = true)
+	@Query("""
+		delete from SettlementBatchLock lock
+		where lock.lockKey = :lockKey
+		  and lock.expiresAt < :now
+		""")
+	void deleteByLockKeyAndExpiresAtBefore(String lockKey, LocalDateTime now);
 }

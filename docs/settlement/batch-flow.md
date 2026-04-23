@@ -160,6 +160,9 @@ settlementMonth 기준 Settlement paging 조회
   -> SettlementTransfer 이력 저장
 ```
 
+`SettlementTransferItemWriter`가 호출하는 `SettlementTransferService.transferSettlements`는 chunk 처리 결과를 반환하지 않는다.
+배치 처리 건수는 Spring Batch의 step metric(`readCount`, `writeCount`, `filterCount`, `skipCount`)과 `SettlementTransfer` 이력으로 확인한다.
+
 상태 처리:
 
 | 상황 | Settlement 상태 | Transfer 이력 |
@@ -226,6 +229,10 @@ SETTLEMENT_BATCH_LOCK_EXPIRE_MINUTES
 정산 배치는 `settlement:{settlementMonth}` 락을 먼저 획득한 뒤 실행한다.
 같은 정산월의 계산 배치와 송금 배치가 동시에 실행되면 같은 월 정산 데이터를 함께 변경할 수 있으므로, 월 단위 락으로 중복 실행을 막는다.
 락을 획득하지 못한 실행은 `이미 실행 중인 정산 배치`로 종료되고, 송금 배치는 다음 cron 시점에 다시 시도한다.
+
+락 획득 시에는 먼저 `settlement_batch_locks` insert를 시도한다.
+성공하면 바로 락을 획득하고, unique 충돌이 발생한 경우에만 같은 `lockKey`의 만료된 락을 삭제한 뒤 한 번 더 insert를 시도한다.
+매번 전체 만료 락을 삭제하지 않고 충돌 시 필요한 lock key만 정리해 불필요한 delete 작업을 줄인다.
 
 dev 환경에서 짧은 주기로 확인할 때는 cron을 짧게 설정하되, 실제 월 정산 기준과 다르게 같은 월을 반복 계산할 수 있다는 점을 함께 확인해야 한다.
 
