@@ -11,13 +11,21 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import jabaclass.ai.domain.model.ActionType;
+import jabaclass.ai.domain.repository.RecommendationCacheRepository;
 import jabaclass.ai.domain.repository.UserActivityRepository;
+import jabaclass.ai.domain.repository.UserVectorCacheRepository;
 
 @ExtendWith(MockitoExtension.class)
 class UserActivityServiceTest {
 
 	@Mock
 	private UserActivityRepository userActivityRepository;
+
+	@Mock
+	private UserVectorCacheRepository userVectorCacheRepository;
+
+	@Mock
+	private RecommendationCacheRepository recommendationCacheRepository;
 
 	@InjectMocks
 	private UserActivityService userActivityService;
@@ -35,5 +43,7 @@ class UserActivityServiceTest {
 					&& activity.getProductId().equals(productId)
 					&& activity.getActionType() == ActionType.ORDER
 			));
+		then(userVectorCacheRepository).should().delete(userId);
+		then(recommendationCacheRepository).should().delete(userId);
 	}
 }
