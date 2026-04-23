@@ -14,6 +14,7 @@ import jabaclass.order.domain.model.Order;
 import jabaclass.order.domain.model.OrderStatus;
 import jabaclass.order.domain.repository.OrderRepository;
 import jabaclass.order.infrastructure.idempotency.ProcessedEvent;
+import jabaclass.order.infrastructure.kafka.ai.dto.OrderCompletedEvent;
 import jabaclass.order.infrastructure.idempotency.ProcessedEventRepository;
 import jabaclass.order.infrastructure.kafka.payment.dto.PaymentCompletedEvent;
 import jabaclass.order.infrastructure.kafka.product.dto.OrderReservationConfirmedEvent;
@@ -56,6 +57,13 @@ public class OrderPaymentResultHandler {
 			orderId.toString(),
 			EventType.ORDER_RESERVATION_CONFIRMED,
 			toJson(new OrderReservationConfirmedEvent(UUID.randomUUID(), order.getId(), productUserId))
+		));
+
+		outboxRepository.save(OutboxEvent.create(
+			"ORDER",
+			orderId.toString(),
+			EventType.ORDER_COMPLETED,
+			toJson(new OrderCompletedEvent(UUID.randomUUID(), order.getId(), order.getUserId(), event.productId()))
 		));
 
 		// 정산에게 이벤트 발행
