@@ -21,7 +21,16 @@ public class UserActivityService {
 	@Transactional
 	public void recordActivity(java.util.UUID userId, java.util.UUID productId, ActionType actionType) {
 		userActivityRepository.save(UserActivity.create(userId, productId, actionType));
-		userVectorCacheRepository.delete(userId);
-		recommendationCacheRepository.delete(userId);
+		if (shouldInvalidateRecommendationCache(actionType)) {
+			userVectorCacheRepository.delete(userId);
+			recommendationCacheRepository.delete(userId);
+		}
+	}
+
+	private boolean shouldInvalidateRecommendationCache(ActionType actionType) {
+		return switch (actionType) {
+			case WISHLIST, ORDER -> true;
+			case VIEW -> false;
+		};
 	}
 }
