@@ -27,8 +27,8 @@ spring:
     redis:
       host: ${APP_REDIS_HOST}
       port: ${APP_REDIS_PORT:6379}
-      connect-timeout: 3s
-      timeout: 2s
+      # connect-timeout: 3s
+      # timeout: 2s
 
 cors:
   allowed-origins:
