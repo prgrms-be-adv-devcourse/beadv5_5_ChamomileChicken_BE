@@ -73,7 +73,7 @@ spec:
               port: 8080
             initialDelaySeconds: 5
             periodSeconds: 5
-            timeoutSeconds: 3
+            timeoutSeconds: 10
             failureThreshold: 36
 
           readinessProbe:
@@ -82,7 +82,7 @@ spec:
               port: 8080
             initialDelaySeconds: 5
             periodSeconds: 5
-            timeoutSeconds: 3
+            timeoutSeconds: 10
             failureThreshold: 3
 
           livenessProbe:
@@ -91,7 +91,7 @@ spec:
               port: 8080
             initialDelaySeconds: 60
             periodSeconds: 10
-            timeoutSeconds: 3
+            timeoutSeconds: 10
             failureThreshold: 3
 ---
 apiVersion: v1
