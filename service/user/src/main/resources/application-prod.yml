@@ -75,3 +75,6 @@ spring:
 cookie:
   secure: true
 
+oauth2:
+  redirect-uri: ${FRONTEND_SERVICE_URL:http://3.37.179.13:30080}/oauth2/callback
+
