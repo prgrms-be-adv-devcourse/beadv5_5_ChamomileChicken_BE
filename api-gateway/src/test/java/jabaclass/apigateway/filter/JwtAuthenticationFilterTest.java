@@ -6,7 +6,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.time.Duration;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -64,7 +64,7 @@ class JwtAuthenticationFilterTest {
         when(jwtProvider.getRole(claims)).thenReturn("USER");
         when(jwtProvider.getUserId(claims)).thenReturn(java.util.UUID.fromString("11111111-1111-1111-1111-111111111111"));
         when(redisTemplate.hasKey("blacklist:access-token"))
-            .thenReturn(Mono.delay(Duration.ofMillis(250)).map(ignored -> false));
+            .thenReturn(Mono.error(new TimeoutException("optional auth enrichment timeout")));
 
         AtomicReference<ServerHttpRequest> forwardedRequest = new AtomicReference<>();
         GatewayFilterChain chain = chainExchange -> {
