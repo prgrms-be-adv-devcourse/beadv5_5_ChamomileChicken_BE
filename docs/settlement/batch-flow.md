@@ -146,6 +146,7 @@ settlementTransferJob
     -> SettlementTransferItemWriter
   -> settlementTransferReconcileStep
     -> JpaPagingItemReader<Settlement>
+    -> SettlementTransferReconcileItemProcessor
     -> SettlementTransferReconcileItemWriter
 ```
 
@@ -163,6 +164,22 @@ settlementMonth 기준 Settlement paging 조회
   -> SettlementTransfer 이력 저장
 ```
 
+외부 송금 호출 전 `TRANSFERRING + REQUESTED`를 먼저 저장하는 이유:
+
+```text
+READY 상태 그대로 외부 송금 호출
+  -> 외부 송금 성공
+  -> DB 저장 전 장애
+  -> DB에는 여전히 READY
+  -> 다음 배치에서 다시 송금될 수 있음
+
+READY
+  -> TRANSFERRING + REQUESTED 먼저 저장
+  -> 외부 송금 호출
+```
+
+즉 `READY`는 "아직 송금 시도 전", `TRANSFERRING`은 "외부 송금 시도를 시작했고 결과 최종 확정 전" 상태로 사용한다.
+
 `SettlementTransferItemWriter`가 호출하는 `SettlementTransferService.transferSettlements`는 chunk 처리 결과를 반환하지 않는다.
 배치 처리 건수는 Spring Batch의 step metric(`readCount`, `writeCount`, `filterCount`, `skipCount`)과 `SettlementTransfer` 이력으로 확인한다.
 
@@ -170,11 +187,28 @@ settlementMonth 기준 Settlement paging 조회
 
 ```text
 settlementMonth 기준 TRANSFERRING Settlement paging 조회
+  -> TRANSFERRING 상태만 processor 통과
   -> SettlementTransfer latest 이력 조회
   -> fake 외부 송금 client 상태 조회
   -> SENT면 Settlement / SettlementTransfer 를 SENT로 복구
   -> FAILED면 Settlement / SettlementTransfer 를 FAILED로 복구
   -> REQUESTED 또는 NOT_FOUND면 그대로 유지 후 다음 배치에서 다시 확인
+```
+
+복구 step이 필요한 이유:
+
+```text
+TRANSFERRING + REQUESTED 저장 성공
+  -> 외부 송금 API 성공
+  -> SENT 저장 전 DB 장애
+
+DB 상태
+  -> Settlement = TRANSFERRING
+  -> SettlementTransfer = REQUESTED
+
+다음 배치 reconcile step
+  -> 외부 송금 상태 조회
+  -> SENT / FAILED 로 복구
 ```
 
 상태 처리:
@@ -186,6 +220,21 @@ settlementMonth 기준 TRANSFERRING Settlement paging 조회
 | 정산 금액 0 이하 | `HOLD` | `HOLD` |
 | 계좌 정보 없음 | `HOLD` | `HOLD` |
 | 계좌 비활성 | `HOLD` | `HOLD` |
+| 외부 송금 호출 예외 | `TRANSFERRING` 유지 | `REQUESTED` 유지 |
+| 외부 송금 성공/실패 후 최종 저장 실패 | `TRANSFERRING` 유지 | `REQUESTED` 유지 |
+
+상태 흐름:
+
+```text
+READY
+  -> 송금 가능하면 TRANSFERRING
+  -> 송금 불가면 HOLD
+
+TRANSFERRING
+  -> 외부 송금 성공 확정 시 SENT
+  -> 외부 송금 실패 확정 시 FAILED
+  -> 외부 결과 미확정이면 그대로 유지
+```
 
 ### fake 외부 송금 client 멱등 처리
 
