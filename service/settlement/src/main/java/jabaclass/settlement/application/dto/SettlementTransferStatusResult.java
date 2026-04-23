@@ -13,10 +13,6 @@ public record SettlementTransferStatusResult(
 		return new SettlementTransferStatusResult(SettlementTransferCheckStatus.FAILED, message);
 	}
 
-	public static SettlementTransferStatusResult requested() {
-		return new SettlementTransferStatusResult(SettlementTransferCheckStatus.REQUESTED, null);
-	}
-
 	public static SettlementTransferStatusResult notFound() {
 		return new SettlementTransferStatusResult(SettlementTransferCheckStatus.NOT_FOUND, null);
 	}

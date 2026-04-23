@@ -7,7 +7,6 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.springframework.stereotype.Component;
 
-import jabaclass.settlement.application.dto.SettlementTransferCheckStatus;
 import jabaclass.settlement.application.dto.SettlementTransferCommand;
 import jabaclass.settlement.application.dto.SettlementTransferResult;
 import jabaclass.settlement.application.dto.SettlementTransferStatusResult;

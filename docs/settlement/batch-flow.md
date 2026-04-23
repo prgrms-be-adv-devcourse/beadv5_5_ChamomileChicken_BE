@@ -192,7 +192,7 @@ settlementMonth 기준 TRANSFERRING Settlement paging 조회
   -> fake 외부 송금 client 상태 조회
   -> SENT면 Settlement / SettlementTransfer 를 SENT로 복구
   -> FAILED면 Settlement / SettlementTransfer 를 FAILED로 복구
-  -> REQUESTED 또는 NOT_FOUND면 그대로 유지 후 다음 배치에서 다시 확인
+  -> NOT_FOUND면 그대로 유지 후 다음 배치에서 다시 확인
 ```
 
 복구 step이 필요한 이유:

@@ -11,8 +11,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-import jabaclass.settlement.application.exception.BusinessException;
-import jabaclass.settlement.application.exception.CommonErrorCode;
 import jabaclass.settlement.application.dto.SellerSettlementAccount;
 import jabaclass.settlement.application.dto.SettlementTransferCheckStatus;
 import jabaclass.settlement.application.dto.SettlementTransferCommand;
@@ -22,8 +20,6 @@ import jabaclass.settlement.application.port.external.SellerSettlementPort;
 import jabaclass.settlement.application.port.external.SettlementTransferPort;
 import jabaclass.settlement.domain.model.settlement.Settlement;
 import jabaclass.settlement.domain.model.settlement.SettlementTransfer;
-import jabaclass.settlement.domain.model.settlement.SettlementStatus;
-import jabaclass.settlement.domain.repository.SettlementRepository;
 import jabaclass.settlement.domain.repository.SettlementTransferRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,27 +30,14 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 public class SettlementTransferService {
 
-	private final SettlementRepository settlementRepository;
 	private final SettlementTransferRepository settlementTransferRepository;
 	private final SettlementTransferStatePersistenceService settlementTransferStatePersistenceService;
 	private final SellerSettlementPort sellerSettlementPort;
 	private final SettlementTransferPort settlementTransferPort;
 
 	@Transactional(propagation = Propagation.NOT_SUPPORTED)
-	public int transferMonthly(String settlementMonth) {
-		if (settlementMonth == null || settlementMonth.isBlank()) {
-			throw new BusinessException(CommonErrorCode.INVALID_PARAMETER);
-		}
-
-		List<Settlement> settlements =
-			settlementRepository.findBySettlementMonthAndStatus(settlementMonth, SettlementStatus.READY);
-
-		return transferSettlementsAndCountSuccess(settlements);
-	}
-
-	@Transactional(propagation = Propagation.NOT_SUPPORTED)
 	public void transferSettlements(List<Settlement> settlements) {
-		transferSettlementsAndCountSuccess(settlements);
+		transferSettlementsInternal(settlements);
 	}
 
 	@Transactional(propagation = Propagation.NOT_SUPPORTED)
@@ -64,14 +47,12 @@ public class SettlementTransferService {
 		}
 	}
 
-	private int transferSettlementsAndCountSuccess(List<Settlement> settlements) {
+	private void transferSettlementsInternal(List<Settlement> settlements) {
 		Map<UUID, SellerSettlementAccount> accountMap = sellerSettlementPort.fetchSellerSettlementAccounts(
 			settlements.stream()
 				.map(Settlement::getSellerId)
 				.collect(Collectors.toSet())
 		).stream().collect(Collectors.toMap(SellerSettlementAccount::sellerId, Function.identity()));
-
-		int successCount = 0;
 
 		for (Settlement settlement : settlements) {
 			if (!settlement.isTransferable()) {
@@ -114,12 +95,7 @@ public class SettlementTransferService {
 
 			applyTransferResult(settlement, transferHistory, result);
 			persistFinalTransferResult(settlement, transferHistory);
-			if (result.success()) {
-				successCount++;
-			}
 		}
-
-		return successCount;
 	}
 
 	private SettlementTransfer requestTransfer(Settlement settlement, SellerSettlementAccount account) {
