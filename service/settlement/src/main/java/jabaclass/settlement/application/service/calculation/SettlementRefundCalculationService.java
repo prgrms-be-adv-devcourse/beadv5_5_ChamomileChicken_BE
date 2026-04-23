@@ -5,6 +5,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import jabaclass.settlement.application.dto.AppliedPromotion;
 import jabaclass.settlement.application.exception.BusinessException;
+import jabaclass.settlement.application.exception.SettlementCalculationRetryableException;
 import jabaclass.settlement.application.exception.SettlementErrorCode;
 import jabaclass.settlement.domain.model.settlement.SettlementTarget;
 import jabaclass.settlement.domain.model.settlement.SettlementTargetCalculation;
@@ -26,13 +27,19 @@ public class SettlementRefundCalculationService {
 		return settlementTargetRepository.findByPaymentIdAndTargetType(
 			target.getPaymentId(),
 			SettlementTargetType.PAYMENT
-		).flatMap(originalPaymentTarget -> settlementTargetCalculationRepository.findBySettlementTargetId(
-			originalPaymentTarget.getId()
-		).map(originalPaymentCalculation -> SettlementTargetCalculation.forRefund(
-			target,
-			originalPaymentTarget,
-			originalPaymentCalculation
-		))).orElseGet(() -> calculateWithPromotionFallback(target));
+		).map(originalPaymentTarget -> {
+			SettlementTargetCalculation originalPaymentCalculation =
+				settlementTargetCalculationRepository.findBySettlementTargetId(originalPaymentTarget.getId())
+					.orElseThrow(() -> new SettlementCalculationRetryableException(
+						"원 결제 정산 계산 결과가 아직 생성되지 않았습니다."
+					));
+
+			return SettlementTargetCalculation.forRefund(
+				target,
+				originalPaymentTarget,
+				originalPaymentCalculation
+			);
+		}).orElseGet(() -> calculateWithPromotionFallback(target));
 	}
 
 	private SettlementTargetCalculation calculateWithPromotionFallback(SettlementTarget target) {

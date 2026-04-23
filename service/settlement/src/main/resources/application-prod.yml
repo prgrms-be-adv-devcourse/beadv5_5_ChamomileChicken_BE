@@ -25,3 +25,10 @@ spring:
 logging:
   level:
     org.hibernate.SQL: WARN
+
+settlement:
+  batch:
+    calculate:
+      cron: "${SETTLEMENT_BATCH_CALCULATE_CRON:0 */5 * * * *}"
+    transfer:
+      cron: "${SETTLEMENT_BATCH_TRANSFER_CRON:30 */5 * * * *}"

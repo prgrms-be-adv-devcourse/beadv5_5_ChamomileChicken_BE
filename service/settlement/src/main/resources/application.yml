@@ -39,5 +39,7 @@ settlement:
       cron: "${SETTLEMENT_BATCH_CALCULATE_CRON:0 0 2 1 * *}"
       target-month-offset-months: ${SETTLEMENT_BATCH_CALCULATE_TARGET_MONTH_OFFSET_MONTHS:1}
     transfer:
-      cron: "${SETTLEMENT_BATCH_TRANSFER_CRON:0 0 2 2 * *}"
+      cron: "${SETTLEMENT_BATCH_TRANSFER_CRON:0 */5 2-3 2 * *}"
       target-month-offset-months: ${SETTLEMENT_BATCH_TRANSFER_TARGET_MONTH_OFFSET_MONTHS:1}
+    lock:
+      expire-minutes: ${SETTLEMENT_BATCH_LOCK_EXPIRE_MINUTES:360}

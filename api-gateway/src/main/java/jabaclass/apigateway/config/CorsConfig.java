@@ -16,7 +16,7 @@ import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
 @RequiredArgsConstructor
 public class CorsConfig {
 
-    private final CorsProperties corsProperties;
+	private final CorsProperties corsProperties;
 
 	@Bean
 	@Order(Ordered.HIGHEST_PRECEDENCE)

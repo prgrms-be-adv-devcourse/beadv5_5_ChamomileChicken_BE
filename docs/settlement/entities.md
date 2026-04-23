@@ -10,6 +10,7 @@
 | `SettlementTargetCalculation` | 정산 대상 1건을 월 정산 집계용으로 정규화한 계산 결과 | `settlementTargetId`, `settlementBaseAmount`, `appliedPromotionId`, `appliedPromotionType`, `appliedFeeRate`, `originalPaymentTargetCalculationId` |
 | `Settlement` | 판매자별 월 정산 결과 스냅샷 | `sellerId`, `settlementMonth`, `sellerGradeCode`, `sellerGradePolicyId`, `gradeBaseAmount`, `feeAmount`, `feeRate`, `settlementAmount`, `status` |
 | `SettlementTransfer` | 송금 요청과 결과 이력 | `settlementId`, `transferStatus`, `bankCode`, `accountNumberMasked`, `amount`, `requestedAt`, `completedAt`, `failReason` |
+| `SettlementBatchLock` | 같은 정산월 배치 동시 실행 방지용 DB 락 | `lockKey`, `jobName`, `settlementMonth`, `expiresAt` |
 | `SellerGradePolicy` | 최근 3개월 판매금액 구간별 등급/수수료 정책 | `gradeCode`, `minSalesAmount`, `maxSalesAmount`, `feeRate`, `version`, `active` |
 | `SellerGrade` | 판매자별 마지막 적용 등급 캐시 | `sellerId`, `sellerGradePolicyId`, `calculatedMonth` |
 | `SettlementPromotion` | 프로모션 마스터 정보 | `name`, `promotionType`, `feeRate`, `durationDays`, `active` |
@@ -56,6 +57,7 @@ Kafka 이벤트를 통해 적재되는 원천 정산 대상이다.
 판매자별 월 정산 헤더다.
 
 - `sellerId + settlementMonth` 조합이 월 정산 생성 기준이다.
+- `sellerId + settlementMonth` 조합은 유니크 제약으로 보호한다.
 - `originalAmount`는 월 정산에 포함된 기준 금액 합계다.
 - `gradeBaseAmount`는 최근 3개월 판매금액 기준이다.
 - `sellerGradeCode`, `sellerGradePolicyId`, `feeRate`는 정산 생성 시점의 정책 스냅샷이다.
@@ -66,8 +68,19 @@ Kafka 이벤트를 통해 적재되는 원천 정산 대상이다.
 송금 요청과 결과 이력이다.
 
 - 송금 가능한 `Settlement`에 대해 생성된다.
+- 외부 송금 호출 전 `Settlement`를 `TRANSFERRING`으로 바꾸고, `SettlementTransfer`는 `REQUESTED` 이력으로 먼저 저장한다.
 - 계좌 정보가 없거나 정산 금액이 0 이하이면 `HOLD` 이력을 남긴다.
 - 송금 성공 시 `SENT`, 실패 시 `FAILED`로 남긴다.
+- 외부 송금은 성공했지만 최종 DB 저장 전에 장애가 나면 `REQUESTED` 이력이 남을 수 있고, 이후 송금 복구 step이 외부 상태 조회 결과로 `SENT` 또는 `FAILED`로 정정한다.
+
+### `SettlementBatchLock`
+
+정산 배치 실행 전 같은 정산월을 이미 처리 중인지 확인하기 위한 락 엔티티다.
+
+- `lockKey`는 `settlement:{settlementMonth}` 형식이다.
+- `lockKey`는 유니크 제약으로 보호한다.
+- 계산 배치와 송금 배치가 같은 정산월을 동시에 처리하지 못하도록 같은 lock key를 사용한다.
+- `expiresAt`은 배치 서버 장애 등으로 락이 해제되지 못한 경우를 대비한 만료 시각이다.
 
 ## 등급과 프로모션
 
