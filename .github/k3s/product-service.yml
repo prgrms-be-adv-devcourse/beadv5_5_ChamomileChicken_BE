@@ -18,6 +18,12 @@ spec:
         app: product-service
     spec:
       initContainers:
+        - name: wait-for-postgres
+          image: busybox:1.36
+          command:
+            - /bin/sh
+            - -c
+            - until nc -z postgres-headless 5432; do echo waiting for postgres-headless:5432; sleep 2; done
         - name: wait-for-kafka
           image: busybox:1.36
           command:
@@ -35,7 +41,7 @@ spec:
           command:
             - /bin/sh
             - -c
-            - until nc -z elasticsearch-service 9200; do echo waiting for elasticsearch-service:9200; sleep 2; done
+            - until nc -z elasticsearch 9200; do echo waiting for elasticsearch:9200; sleep 2; done
       containers:
         - name: product-service
           image: ${DOCKERHUB_USERNAME}/chamomile-product:${IMAGE_TAG}

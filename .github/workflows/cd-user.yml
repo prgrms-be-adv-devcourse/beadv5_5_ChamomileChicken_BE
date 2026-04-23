@@ -2,18 +2,18 @@ name: CD User Service
 
 on:
   workflow_dispatch:
-#  push:
-#    branches:
-#      - dev
-#    paths:
-#      - 'service/user/**'
-#      - 'common/**'
-#      - 'build.gradle'
-#      - 'settings.gradle'
-#      - 'gradle/**'
-#      - 'gradlew'
-#      - '.github/workflows/cd-user.yml'
-#      - '.github/scripts/**'
+  push:
+    branches:
+      - dev
+    paths:
+      - 'service/user/**'
+      - 'common/**'
+      - 'build.gradle'
+      - 'settings.gradle'
+      - 'gradle/**'
+      - 'gradlew'
+      - '.github/workflows/cd-user.yml'
+      - '.github/scripts/**'
 
 permissions:
   contents: read
