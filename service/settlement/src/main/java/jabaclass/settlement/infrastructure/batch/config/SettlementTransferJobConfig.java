@@ -38,6 +38,7 @@ public class SettlementTransferJobConfig {
 		select s
 		from Settlement s
 		where s.settlementMonth = :settlementMonth
+		  and s.status = :status
 		order by s.id
 		""";
 
@@ -102,6 +103,7 @@ public class SettlementTransferJobConfig {
 		return settlementReader(
 			entityManagerFactory,
 			settlementMonthParam,
+			SettlementStatus.READY,
 			"settlementTransferItemReader"
 		);
 	}
@@ -115,6 +117,7 @@ public class SettlementTransferJobConfig {
 		return settlementReader(
 			entityManagerFactory,
 			settlementMonthParam,
+			SettlementStatus.TRANSFERRING,
 			"settlementTransferReconcileItemReader"
 		);
 	}
@@ -122,6 +125,7 @@ public class SettlementTransferJobConfig {
 	private JpaPagingItemReader<Settlement> settlementReader(
 		EntityManagerFactory entityManagerFactory,
 		String settlementMonthParam,
+		SettlementStatus status,
 		String name
 	) {
 		String settlementMonth = SettlementMonthResolver.resolve(settlementMonthParam);
@@ -129,7 +133,10 @@ public class SettlementTransferJobConfig {
 			.name(name)
 			.entityManagerFactory(entityManagerFactory)
 			.pageSize(CHUNK_SIZE)
-			.parameterValues(Map.of("settlementMonth", settlementMonth))
+			.parameterValues(Map.of(
+				"settlementMonth", settlementMonth,
+				"status", status
+			))
 			.queryString(SETTLEMENT_TRANSFER_QUERY)
 			.build();
 	}
