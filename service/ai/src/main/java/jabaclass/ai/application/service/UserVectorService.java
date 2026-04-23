@@ -1,6 +1,11 @@
 package jabaclass.ai.application.service;
 
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
@@ -18,6 +23,8 @@ import lombok.RequiredArgsConstructor;
 public class UserVectorService {
 
 	private static final int VECTOR_SIZE = 768;
+	private static final int MAX_VIEW_CONTRIBUTIONS_PER_PRODUCT = 3;
+	private static final double RECENCY_HALF_LIFE_DAYS = 14.0;
 
 	private final UserActivityRepository userActivityRepository;
 	private final UserVectorCacheRepository userVectorCacheRepository;
@@ -40,12 +47,20 @@ public class UserVectorService {
 	// UserActivity 기반 벡터 생성
 	public UserVector generate(UUID userId) {
 		List<UserActivity> activities = userActivityRepository.findByUserId(userId);
+		activities = activities.stream()
+			.sorted(Comparator.comparing(UserActivity::getCreatedAt).reversed())
+			.toList();
 
 		float[] vector = new float[VECTOR_SIZE];
+		Map<UUID, Integer> viewContributionCounts = new HashMap<>();
+		LocalDateTime now = LocalDateTime.now();
 
 		for (UserActivity activity : activities) {
+			if (shouldSkipView(activity, viewContributionCounts)) {
+				continue;
+			}
 
-			float weight = getWeight(activity.getActionType());
+			float weight = getWeight(activity.getActionType()) * getRecencyWeight(activity.getCreatedAt(), now);
 
 			float[] itemVector = productEmbeddingRepository.findEmbeddingByProductId(activity.getProductId());
 
@@ -71,6 +86,26 @@ public class UserVectorService {
 			case WISHLIST -> 2.0f;
 			case ORDER -> 3.0f;
 		};
+	}
+
+	private boolean shouldSkipView(UserActivity activity, Map<UUID, Integer> viewContributionCounts) {
+		if (activity.getActionType() != ActionType.VIEW) {
+			return false;
+		}
+
+		int count = viewContributionCounts.getOrDefault(activity.getProductId(), 0);
+		if (count >= MAX_VIEW_CONTRIBUTIONS_PER_PRODUCT) {
+			return true;
+		}
+
+		viewContributionCounts.put(activity.getProductId(), count + 1);
+		return false;
+	}
+
+	private float getRecencyWeight(LocalDateTime createdAt, LocalDateTime now) {
+		long ageHours = Math.max(0L, ChronoUnit.HOURS.between(createdAt, now));
+		double halfLifeHours = RECENCY_HALF_LIFE_DAYS * 24.0;
+		return (float) Math.pow(0.5, ageHours / halfLifeHours);
 	}
 
 	// 벡터 정규화
