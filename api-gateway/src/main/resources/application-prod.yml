@@ -25,10 +25,10 @@ spring:
   # 1000ms 500ms
   data:
     redis:
-      host: ${APP_REDIS_HOST}
+      host: ${APP_REDIS_HOST:redis}
       port: ${APP_REDIS_PORT:6379}
-      # connect-timeout: 3s
-      # timeout: 2s
+      connect-timeout: 2s
+      timeout: 2s
 
 cors:
   allowed-origins:
