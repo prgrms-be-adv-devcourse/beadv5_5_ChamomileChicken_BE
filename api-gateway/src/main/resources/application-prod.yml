@@ -6,7 +6,7 @@ spring:
     pool:
       enabled: true
       initial-size: 1
-      min-idle: 0
+      min-idle: 2
       max-size: 3
       max-idle-time: 10m
       max-life-time: 30m
