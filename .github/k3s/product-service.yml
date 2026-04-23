@@ -41,7 +41,7 @@ spec:
           command:
             - /bin/sh
             - -c
-            - until nc -z elasticsearch-service 9200; do echo waiting for elasticsearch-service:9200; sleep 2; done
+            - until nc -z elasticsearch 9200; do echo waiting for elasticsearch:9200; sleep 2; done
       containers:
         - name: product-service
           image: ${DOCKERHUB_USERNAME}/chamomile-product:${IMAGE_TAG}
