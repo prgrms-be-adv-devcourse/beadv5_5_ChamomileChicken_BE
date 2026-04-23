@@ -13,22 +13,22 @@ spring:
       max-acquire-time: 30s
 
 
-#  flyway:
-#    enabled: true
-#    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:backend5}
-#    user: ${POSTGRES_USER:postgres}
-#    password: ${POSTGRES_PASSWORD:postgres}
+  #  flyway:
+  #    enabled: true
+  #    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:backend5}
+  #    user: ${POSTGRES_USER:postgres}
+  #    password: ${POSTGRES_PASSWORD:postgres}
 
   sql:
     init:
       mode: never
-
+  # 1000ms 500ms
   data:
     redis:
       host: ${REDIS_HOST}
       port: ${REDIS_PORT:6379}
-      connect-timeout: 1000ms
-      timeout: 500ms
+      connect-timeout: 3s
+      timeout: 2s
 
 cors:
   allowed-origins:
