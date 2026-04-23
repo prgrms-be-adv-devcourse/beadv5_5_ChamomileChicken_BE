@@ -33,6 +33,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.atLeastOnce;
 
 @SuppressWarnings("NonAsciiCharacters")
 @ExtendWith(MockitoExtension.class)
@@ -98,8 +99,8 @@ class SettlementTransferServiceTest {
 
 		// then
 		assertThat(actual).isEqualTo(1);
-		then(settlementRepository).should().saveAll(settlementCaptor.capture());
-		Settlement savedSettlement = settlementCaptor.getValue().get(0);
+		then(settlementRepository).should(atLeastOnce()).saveAll(settlementCaptor.capture());
+		Settlement savedSettlement = settlementCaptor.getAllValues().getLast().get(0);
 		assertThat(savedSettlement.getStatus()).isEqualTo(SettlementStatus.SENT);
 		assertThat(savedSettlement.getTransferredAt()).isNotNull();
 	}
@@ -225,8 +226,8 @@ class SettlementTransferServiceTest {
 
 		// then
 		assertThat(actual).isEqualTo(0);
-		then(settlementRepository).should().saveAll(settlementCaptor.capture());
-		Settlement savedSettlement = settlementCaptor.getValue().get(0);
+		then(settlementRepository).should(atLeastOnce()).saveAll(settlementCaptor.capture());
+		Settlement savedSettlement = settlementCaptor.getAllValues().getLast().get(0);
 		assertThat(savedSettlement.getStatus()).isEqualTo(SettlementStatus.FAILED);
 		assertThat(savedSettlement.getFailReason()).isEqualTo("송금 실패");
 	}

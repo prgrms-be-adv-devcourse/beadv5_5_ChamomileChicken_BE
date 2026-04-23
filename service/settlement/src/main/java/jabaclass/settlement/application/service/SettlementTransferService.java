@@ -8,6 +8,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import jabaclass.settlement.application.exception.BusinessException;
@@ -17,7 +18,6 @@ import jabaclass.settlement.application.dto.SettlementTransferCommand;
 import jabaclass.settlement.application.dto.SettlementTransferResult;
 import jabaclass.settlement.application.port.external.SellerSettlementPort;
 import jabaclass.settlement.application.port.external.SettlementTransferPort;
-import jabaclass.settlement.application.usecase.SettlementTransferUseCase;
 import jabaclass.settlement.domain.model.settlement.Settlement;
 import jabaclass.settlement.domain.model.settlement.SettlementTransfer;
 import jabaclass.settlement.domain.model.settlement.SettlementStatus;
@@ -30,15 +30,14 @@ import lombok.extern.slf4j.Slf4j;
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
 @Service
-public class SettlementTransferService implements SettlementTransferUseCase {
+public class SettlementTransferService {
 
 	private final SettlementRepository settlementRepository;
 	private final SettlementTransferRepository settlementTransferRepository;
 	private final SellerSettlementPort sellerSettlementPort;
 	private final SettlementTransferPort settlementTransferPort;
 
-	@Override
-	@Transactional
+	@Transactional(propagation = Propagation.NOT_SUPPORTED)
 	public int transferMonthly(String settlementMonth) {
 		if (settlementMonth == null || settlementMonth.isBlank()) {
 			throw new BusinessException(CommonErrorCode.INVALID_PARAMETER);
@@ -47,6 +46,11 @@ public class SettlementTransferService implements SettlementTransferUseCase {
 		List<Settlement> settlements =
 			settlementRepository.findBySettlementMonthAndStatus(settlementMonth, SettlementStatus.READY);
 
+		return transferSettlements(settlements);
+	}
+
+	@Transactional(propagation = Propagation.NOT_SUPPORTED)
+	public int transferSettlements(List<Settlement> settlements) {
 		Map<UUID, SellerSettlementAccount> accountMap = sellerSettlementPort.fetchSellerSettlementAccounts(
 			settlements.stream()
 				.map(Settlement::getSellerId)
@@ -54,13 +58,13 @@ public class SettlementTransferService implements SettlementTransferUseCase {
 		).stream().collect(Collectors.toMap(SellerSettlementAccount::sellerId, Function.identity()));
 
 		int successCount = 0;
-		List<SettlementTransfer> transferHistories = new java.util.ArrayList<>();
 
 		for (Settlement settlement : settlements) {
+			SettlementTransfer transferHistory = null;
 			try {
 				if (!settlement.isTransferable()) {
 					settlement.hold("정산 금액이 0 이하이므로 송금 보류");
-					transferHistories.add(SettlementTransfer.hold(
+					saveTransferResult(settlement, SettlementTransfer.hold(
 						settlement.getId(),
 						settlement.getSettlementAmount(),
 						"정산 금액이 0 이하이므로 송금 보류"
@@ -72,7 +76,7 @@ public class SettlementTransferService implements SettlementTransferUseCase {
 
 				if (account == null) {
 					settlement.hold("판매자 정산 계좌 정보가 없습니다.");
-					transferHistories.add(SettlementTransfer.hold(
+					saveTransferResult(settlement, SettlementTransfer.hold(
 						settlement.getId(),
 						settlement.getSettlementAmount(),
 						"판매자 정산 계좌 정보가 없습니다."
@@ -82,7 +86,7 @@ public class SettlementTransferService implements SettlementTransferUseCase {
 
 				if (!account.isTransferable()) {
 					settlement.hold("판매자 정산 계좌가 비활성 상태입니다.");
-					transferHistories.add(SettlementTransfer.hold(
+					saveTransferResult(settlement, SettlementTransfer.hold(
 						settlement.getId(),
 						settlement.getSettlementAmount(),
 						"판매자 정산 계좌가 비활성 상태입니다."
@@ -91,12 +95,13 @@ public class SettlementTransferService implements SettlementTransferUseCase {
 				}
 
 				settlement.markTransferring();
-				SettlementTransfer transferHistory = SettlementTransfer.requested(
+				transferHistory = SettlementTransfer.requested(
 					settlement.getId(),
 					account.bankCode(),
 					account.accountNumber(),
 					settlement.getSettlementAmount()
 				);
+				saveTransferResult(settlement, transferHistory);
 
 				SettlementTransferCommand command = new SettlementTransferCommand(
 					settlement.getId(),
@@ -117,25 +122,28 @@ public class SettlementTransferService implements SettlementTransferUseCase {
 					settlement.markFailed(result.message());
 					transferHistory.markFailed(result.message());
 				}
-				transferHistories.add(transferHistory);
+				saveTransferResult(settlement, transferHistory);
 			} catch (Exception e) {
 				settlement.markFailed(e.getMessage());
-				SettlementTransfer failedTransfer = SettlementTransfer.requested(
-					settlement.getId(),
-					null,
-					null,
-					settlement.getSettlementAmount()
-				);
-				failedTransfer.markFailed(e.getMessage());
-				transferHistories.add(failedTransfer);
+				if (transferHistory == null) {
+					transferHistory = SettlementTransfer.requested(
+						settlement.getId(),
+						null,
+						null,
+						settlement.getSettlementAmount()
+					);
+				}
+				transferHistory.markFailed(e.getMessage());
+				saveTransferResult(settlement, transferHistory);
 				log.error("[SETTLEMENT_TRANSFER] settlementId={} 송금 실패", settlement.getId(), e);
 			}
 		}
 
-		settlementRepository.saveAll(settlements);
-		if (!transferHistories.isEmpty()) {
-			settlementTransferRepository.saveAll(transferHistories);
-		}
 		return successCount;
+	}
+
+	private void saveTransferResult(Settlement settlement, SettlementTransfer transferHistory) {
+		settlementRepository.saveAll(List.of(settlement));
+		settlementTransferRepository.saveAll(List.of(transferHistory));
 	}
 }
