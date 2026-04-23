@@ -54,8 +54,10 @@ spring:
 
   data:
     redis:
-      host: ${REDIS_HOST}
-      port: ${REDIS_PORT:6379}
+      host: ${APP_REDIS_HOST}
+      port: ${APP_REDIS_PORT:6379}
+      connect-timeout: 3s
+      timeout: 2s
 
   jpa:
     hibernate:
