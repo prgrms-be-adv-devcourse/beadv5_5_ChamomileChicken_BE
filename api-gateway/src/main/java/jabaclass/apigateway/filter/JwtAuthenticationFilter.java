@@ -73,7 +73,8 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 		long whitelistStart = System.currentTimeMillis();// 로그
 
 		return whitelistService.isWhitelisted(path, httpMethod)
-			.timeout(Duration.ofMillis(200))
+			//	.timeout(Duration.ofMillis(200))
+			.timeout(Duration.ofSeconds(2))
 			.doOnNext(
 				r -> log.debug("[GATEWAY] whitelist check: {}ms", System.currentTimeMillis() - whitelistStart)) //로그
 			.onErrorResume(e -> {
@@ -111,7 +112,8 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 			long blacklistStart = System.currentTimeMillis(); // 로그
 
 			return redisTemplate.hasKey(BLACKLIST_PREFIX + token)
-				.timeout(Duration.ofMillis(200))
+				//.timeout(Duration.ofMillis(200))
+				.timeout(Duration.ofSeconds(2))
 				.doOnNext(r -> log.debug("[GATEWAY] blacklist check: {}ms",
 					System.currentTimeMillis() - blacklistStart)) // 로그
 				.flatMap(isBlacklisted -> {
@@ -168,7 +170,8 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 			}
 
 			return redisTemplate.hasKey(BLACKLIST_PREFIX + token)
-				.timeout(Duration.ofMillis(200))
+				//	.timeout(Duration.ofMillis(200))
+				.timeout(Duration.ofSeconds(2))
 				.onErrorMap(RedisBlacklistException::new)
 				.flatMap(isBlacklisted -> {
 					if (isBlacklisted) {
@@ -180,7 +183,8 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 					String role = jwtProvider.getRole(claims);
 
 					return rbacService.isAllowed(path, httpMethod, role)
-						.timeout(Duration.ofMillis(300))
+						//	.timeout(Duration.ofMillis(300))
+						.timeout(Duration.ofSeconds(3))
 						.onErrorMap(AuthorizationServiceException::new)
 						.flatMap(isAllowed -> {
 							if (!isAllowed) {
