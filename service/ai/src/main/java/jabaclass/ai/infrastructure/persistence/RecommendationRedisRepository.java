@@ -49,4 +49,10 @@ public class RecommendationRedisRepository implements RecommendationCacheReposit
 			throw new IllegalStateException("추천 캐시 직렬화 실패", e);
 		}
 	}
+
+	@Override
+	public void delete(UUID userId) {
+		String key = KEY_FORMAT.formatted(userId);
+		redisTemplate.delete(key);
+	}
 }
