@@ -2,18 +2,18 @@ name: CD Product Service
 
 on:
   workflow_dispatch:
-#  push:
-#    branches:
-#      - dev
-#    paths:
-#      - 'service/product/**'
-#      - 'common/**'
-#      - 'build.gradle'
-#      - 'settings.gradle'
-#      - 'gradle/**'
-#      - 'gradlew'
-#      - '.github/workflows/cd-product.yml'
-#      - '.github/scripts/**'
+  push:
+    branches:
+      - dev
+    paths:
+      - 'service/product/**'
+      - 'common/**'
+      - 'build.gradle'
+      - 'settings.gradle'
+      - 'gradle/**'
+      - 'gradlew'
+      - '.github/workflows/cd-product.yml'
+      - '.github/scripts/**'
 
 permissions:
   contents: read

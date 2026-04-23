@@ -23,7 +23,7 @@ spec:
           command:
             - /bin/sh
             - -c
-            - until nc -z postgres-service 5432; do echo waiting for postgres-service:5432; sleep 2; done
+            - until nc -z postgres-headless 5432; do echo waiting for postgres-headless:5432; sleep 2; done
       containers:
         - name: api-gateway-service
           image: ${DOCKERHUB_USERNAME}/chamomile-api-gateway:${IMAGE_TAG}

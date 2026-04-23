@@ -17,6 +17,13 @@ spec:
       labels:
         app: ai-service
     spec:
+      initContainers:
+        - name: wait-for-postgres
+          image: busybox:1.36
+          command:
+            - /bin/sh
+            - -c
+            - until nc -z postgres-headless 5432; do echo waiting for postgres-headless:5432; sleep 2; done
       containers:
         - name: ai-service
           image: ${DOCKERHUB_USERNAME}/chamomile-ai:${IMAGE_TAG}

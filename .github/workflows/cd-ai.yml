@@ -2,18 +2,18 @@ name: CD AI Service
 
 on:
   workflow_dispatch:
-#  push:
-#    branches:
-#      - dev
-#    paths:
-#      - 'service/ai/**'
-#      - 'common/**'
-#      - 'build.gradle'
-#      - 'settings.gradle'
-#      - 'gradle/**'
-#      - 'gradlew'
-#      - '.github/workflows/cd-ai.yml'
-#      - '.github/scripts/**'
+  push:
+    branches:
+      - dev
+    paths:
+      - 'service/ai/**'
+      - 'common/**'
+      - 'build.gradle'
+      - 'settings.gradle'
+      - 'gradle/**'
+      - 'gradlew'
+      - '.github/workflows/cd-ai.yml'
+      - '.github/scripts/**'
 
 permissions:
   contents: read
