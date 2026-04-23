@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import jabaclass.admin.common.error.AdminErrorCode;
 import jabaclass.admin.common.error.BusinessException;
+import jabaclass.admin.user.domain.dto.UserSearchCondition;
 import jabaclass.admin.user.application.usecase.UserAdminUseCase;
 import jabaclass.admin.user.domain.repository.UserAdminRepository;
 import jabaclass.admin.user.presentation.dto.response.UserAdminResponseDto;
@@ -21,14 +22,14 @@ public class UserAdminService implements UserAdminUseCase {
 	private final UserAdminRepository userAdminRepository;
 
 	@Override
-	@Transactional(readOnly = true, transactionManager = "userTransactionManager")
-	public Page<UserAdminResponseDto> getUsers(Pageable pageable) {
-		return userAdminRepository.findAll(pageable)
+	@Transactional(readOnly = true)
+	public Page<UserAdminResponseDto> getUsers(Pageable pageable, UserSearchCondition condition) {
+		return userAdminRepository.findAll(condition, pageable)
 			.map(UserAdminResponseDto::from);
 	}
 
 	@Override
-	@Transactional(readOnly = true, transactionManager = "userTransactionManager")
+	@Transactional(readOnly = true)
 	public UserAdminResponseDto getUser(UUID userId) {
 		return userAdminRepository.findById(userId)
 			.map(UserAdminResponseDto::from)
@@ -36,7 +37,7 @@ public class UserAdminService implements UserAdminUseCase {
 	}
 
 	@Override
-	@Transactional(transactionManager = "userTransactionManager")
+	@Transactional
 	public void approveSeller(UUID userId) {
 		userAdminRepository.findById(userId)
 			.orElseThrow(() -> new BusinessException(AdminErrorCode.USER_NOT_FOUND))
