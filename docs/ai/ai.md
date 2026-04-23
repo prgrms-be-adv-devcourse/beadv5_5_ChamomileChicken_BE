@@ -43,7 +43,7 @@ Controller
 
 - 추천 API는 `@CurrentUser`로 전달된 `X-User-Id` 헤더를 기준으로 동작합니다.
 - 사용자 벡터는 상품 임베딩 768차원 벡터의 가중합으로 계산합니다.
-- 행동 가중치는 `VIEW=1.0`, `CART=2.0`, `ORDER=3.0`입니다.
+- 행동 가중치는 `VIEW=1.0`, `WISHLIST=2.0`, `ORDER=3.0`입니다.
 - 추천 후보가 없으면 인기 상품 fallback 추천으로 내려갑니다.
 - 추천 결과는 Redis에 20분, 사용자 벡터는 Redis에 1시간 캐시됩니다.
 - 상품 임베딩은 PostgreSQL `pgvector` 확장을 전제로 `product_embeddings` 테이블에 저장됩니다.
@@ -65,9 +65,9 @@ Controller
 
 | 타입 | 값 |
 |------|----|
-| `ActionType` | `VIEW`, `CART`, `ORDER` |
+| `ActionType` | `VIEW`, `WISHLIST`, `ORDER` |
 
-> 현재 실제 적재 로직은 `PRODUCT_VIEWED` 이벤트를 통해 `VIEW` 행동만 저장합니다. `CART`, `ORDER`는 확장 여지를 위해 enum에 정의되어 있습니다.
+> 현재 실제 적재 로직은 `PRODUCT_VIEWED`, `PRODUCT_WISHLISTED`, `ORDER_COMPLETED` 이벤트를 통해 `VIEW`, `WISHLIST`, `ORDER` 행동을 저장합니다.
 
 ---
 
@@ -238,7 +238,7 @@ user_vector = normalize(
 | 행동 | 가중치 |
 |------|--------|
 | `VIEW` | `1.0` |
-| `CART` | `2.0` |
+| `WISHLIST` | `2.0` |
 | `ORDER` | `3.0` |
 
 ### 2. 후보 검색

@@ -68,7 +68,7 @@ public class UserVectorService {
 	private float getWeight(ActionType actionType) {
 		return switch (actionType) {
 			case VIEW -> 1.0f;
-			case CART -> 2.0f;
+			case WISHLIST -> 2.0f;
 			case ORDER -> 3.0f;
 		};
 	}

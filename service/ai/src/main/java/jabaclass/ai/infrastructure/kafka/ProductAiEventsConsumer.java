@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import jabaclass.ai.application.service.ProductEmbeddingSyncService;
 import jabaclass.ai.application.service.UserActivityService;
+import jabaclass.ai.domain.model.ActionType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -45,8 +46,14 @@ public class ProductAiEventsConsumer {
 				case "PRODUCT_VIEWED" -> {
 					ProductViewedEvent event = objectMapper.readValue(message, ProductViewedEvent.class);
 					log.info("상품 조회 이벤트 수신: userId={}, productId={}", event.userId(), event.productId());
-					userActivityService.recordProductView(event);
+					userActivityService.recordActivity(event.userId(), event.productId(), ActionType.VIEW);
 					log.info("사용자 상품 조회 기록 저장 완료: userId={}, productId={}", event.userId(), event.productId());
+				}
+				case "PRODUCT_WISHLISTED" -> {
+					ProductWishlistedEvent event = objectMapper.readValue(message, ProductWishlistedEvent.class);
+					log.info("상품 찜 이벤트 수신: userId={}, productId={}", event.userId(), event.productId());
+					userActivityService.recordActivity(event.userId(), event.productId(), ActionType.WISHLIST);
+					log.info("사용자 상품 찜 기록 저장 완료: userId={}, productId={}", event.userId(), event.productId());
 				}
 				default -> log.warn("알 수 없는 eventType: {}", eventType);
 			}
