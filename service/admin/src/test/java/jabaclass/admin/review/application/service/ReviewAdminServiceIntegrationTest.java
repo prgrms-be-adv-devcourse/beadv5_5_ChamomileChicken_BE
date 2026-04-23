@@ -20,7 +20,7 @@ import jabaclass.admin.review.infrastructure.persistence.ReviewAdminJpaRepositor
 @SuppressWarnings("NonAsciiCharacters")
 @SpringBootTest(properties = "spring.profiles.active=test")
 @ActiveProfiles("test")
-@Transactional("productTransactionManager")
+@Transactional
 @DisplayNameGeneration(ReplaceUnderscores.class)
 class ReviewAdminServiceIntegrationTest {
 
