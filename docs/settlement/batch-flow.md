@@ -144,6 +144,9 @@ settlementTransferJob
     -> JpaPagingItemReader<Settlement>
     -> SettlementTransferItemProcessor
     -> SettlementTransferItemWriter
+  -> settlementTransferReconcileStep
+    -> JpaPagingItemReader<Settlement>
+    -> SettlementTransferReconcileItemWriter
 ```
 
 송금 step의 주요 흐름:
@@ -162,6 +165,17 @@ settlementMonth 기준 Settlement paging 조회
 
 `SettlementTransferItemWriter`가 호출하는 `SettlementTransferService.transferSettlements`는 chunk 처리 결과를 반환하지 않는다.
 배치 처리 건수는 Spring Batch의 step metric(`readCount`, `writeCount`, `filterCount`, `skipCount`)과 `SettlementTransfer` 이력으로 확인한다.
+
+복구 step의 주요 흐름:
+
+```text
+settlementMonth 기준 TRANSFERRING Settlement paging 조회
+  -> SettlementTransfer latest 이력 조회
+  -> fake 외부 송금 client 상태 조회
+  -> SENT면 Settlement / SettlementTransfer 를 SENT로 복구
+  -> FAILED면 Settlement / SettlementTransfer 를 FAILED로 복구
+  -> REQUESTED 또는 NOT_FOUND면 그대로 유지 후 다음 배치에서 다시 확인
+```
 
 상태 처리:
 
@@ -197,6 +211,14 @@ idempotencyKey = settlementId
   -> 기존 결과 반환
 ```
 
+상태 조회도 동일한 `settlementId`를 기준으로 수행한다.
+
+```text
+getTransferStatus(settlementId)
+  -> 기존 송금 결과가 있으면 SENT 또는 FAILED 반환
+  -> 없으면 NOT_FOUND 반환
+```
+
 테스트용 실패 조건:
 
 | 조건 | 결과 |
@@ -208,6 +230,7 @@ idempotencyKey = settlementId
 이 멱등 저장소는 `ConcurrentHashMap` 기반이므로 로컬 개발/테스트 검증 목적이다.
 앱 재시작이나 다중 인스턴스 환경까지 보장하는 운영용 멱등성은 아니다.
 실제 지급대행 API를 붙일 때는 `settlementId` 또는 외부 송금 요청 ID를 idempotency key로 전달해야 한다.
+또한 외부 송금 성공 후 DB 저장 전에 장애가 난 경우를 복구할 수 있도록 상태 조회 API를 함께 제공해야 한다.
 
 ## 스케줄 설정
 

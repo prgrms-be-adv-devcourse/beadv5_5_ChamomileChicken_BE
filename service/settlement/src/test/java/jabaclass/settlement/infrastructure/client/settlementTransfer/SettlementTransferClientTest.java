@@ -7,8 +7,10 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 
+import jabaclass.settlement.application.dto.SettlementTransferCheckStatus;
 import jabaclass.settlement.application.dto.SettlementTransferCommand;
 import jabaclass.settlement.application.dto.SettlementTransferResult;
+import jabaclass.settlement.application.dto.SettlementTransferStatusResult;
 
 @SuppressWarnings("NonAsciiCharacters")
 class SettlementTransferClientTest {
@@ -44,6 +46,20 @@ class SettlementTransferClientTest {
 		// then
 		assertThat(failedResult.success()).isFalse();
 		assertThat(successResult.success()).isTrue();
+	}
+
+	@Test
+	void 송금_결과_조회시_기존_외부_송금_상태를_반환한다() {
+		// given
+		UUID settlementId = UUID.randomUUID();
+		SettlementTransferCommand command = command(settlementId, "12345678", BigDecimal.valueOf(10_000));
+		settlementTransferClient.transfer(command);
+
+		// when
+		SettlementTransferStatusResult statusResult = settlementTransferClient.getTransferStatus(settlementId);
+
+		// then
+		assertThat(statusResult.status()).isEqualTo(SettlementTransferCheckStatus.SENT);
 	}
 
 	private SettlementTransferCommand command(UUID settlementId, String accountNumber, BigDecimal amount) {

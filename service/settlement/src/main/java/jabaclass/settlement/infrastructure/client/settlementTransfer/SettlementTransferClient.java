@@ -7,8 +7,10 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.springframework.stereotype.Component;
 
+import jabaclass.settlement.application.dto.SettlementTransferCheckStatus;
 import jabaclass.settlement.application.dto.SettlementTransferCommand;
 import jabaclass.settlement.application.dto.SettlementTransferResult;
+import jabaclass.settlement.application.dto.SettlementTransferStatusResult;
 import jabaclass.settlement.application.port.external.SettlementTransferPort;
 import lombok.extern.slf4j.Slf4j;
 
@@ -38,6 +40,20 @@ public class SettlementTransferClient implements SettlementTransferPort {
 		);
 
 		return result;
+	}
+
+	@Override
+	public SettlementTransferStatusResult getTransferStatus(UUID settlementId) {
+		SettlementTransferResult result = transferResults.get(settlementId);
+		if (result == null) {
+			return SettlementTransferStatusResult.notFound();
+		}
+
+		if (result.success()) {
+			return SettlementTransferStatusResult.sent();
+		}
+
+		return SettlementTransferStatusResult.failed(result.message());
 	}
 
 	private SettlementTransferResult executeFakeTransfer(SettlementTransferCommand command) {

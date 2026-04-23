@@ -16,7 +16,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import jabaclass.settlement.application.dto.SellerSettlementAccount;
+import jabaclass.settlement.application.dto.SettlementTransferCheckStatus;
 import jabaclass.settlement.application.dto.SettlementTransferResult;
+import jabaclass.settlement.application.dto.SettlementTransferStatusResult;
 import jabaclass.settlement.application.exception.BusinessException;
 import jabaclass.settlement.application.port.external.SellerSettlementPort;
 import jabaclass.settlement.application.port.external.SettlementTransferPort;
@@ -25,6 +27,7 @@ import jabaclass.settlement.domain.model.settlement.Settlement;
 import jabaclass.settlement.domain.model.settlement.SettlementStatus;
 import jabaclass.settlement.domain.model.settlement.SettlementTransfer;
 import jabaclass.settlement.domain.repository.SettlementRepository;
+import jabaclass.settlement.domain.repository.SettlementTransferRepository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -32,6 +35,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.times;
 
 @SuppressWarnings("NonAsciiCharacters")
 @ExtendWith(MockitoExtension.class)
@@ -45,6 +51,9 @@ class SettlementTransferServiceTest {
 
 	@Mock
 	private SettlementTransferStatePersistenceService settlementTransferStatePersistenceService;
+
+	@Mock
+	private SettlementTransferRepository settlementTransferRepository;
 
 	@Mock
 	private SellerSettlementPort sellerSettlementPort;
@@ -252,6 +261,96 @@ class SettlementTransferServiceTest {
 		assertThatThrownBy(() -> settlementTransferService.transferMonthly(""))
 			.isInstanceOf(BusinessException.class)
 			.hasMessage("파라미터 값을 확인해주세요.");
+	}
+
+	@Test
+	void 외부_송금_성공후_db_저장에_실패해도_다음_배치에서_sent로_복구한다() {
+		// given
+		UUID sellerId = UUID.randomUUID();
+		Settlement settlement = Settlement.createReady(
+			sellerId,
+			"2026-03",
+			new BigDecimal("10000"),
+			SellerGradeType.BASIC,
+			SELLER_GRADE_POLICY_ID,
+			new BigDecimal("300000"),
+			new BigDecimal("330.00"),
+			new BigDecimal("0.033"),
+			new BigDecimal("9670.00")
+		);
+		assignId(settlement);
+		settlement.markTransferring();
+
+		SettlementTransfer transferHistory = SettlementTransfer.requested(
+			settlement.getId(),
+			"088",
+			"12345678",
+			new BigDecimal("9670.00")
+		);
+
+		given(settlementTransferRepository.findLatestBySettlementId(settlement.getId()))
+			.willReturn(java.util.Optional.of(transferHistory));
+		given(settlementTransferPort.getTransferStatus(settlement.getId()))
+			.willReturn(SettlementTransferStatusResult.sent());
+
+		ArgumentCaptor<Settlement> settlementCaptor = ArgumentCaptor.forClass(Settlement.class);
+		ArgumentCaptor<SettlementTransfer> transferCaptor = ArgumentCaptor.forClass(SettlementTransfer.class);
+
+		// when
+		settlementTransferService.reconcileTransferringSettlements(List.of(settlement));
+
+		// then
+		then(settlementTransferStatePersistenceService).should()
+			.saveTransferState(settlementCaptor.capture(), transferCaptor.capture());
+		assertThat(settlementCaptor.getValue().getStatus()).isEqualTo(SettlementStatus.SENT);
+		assertThat(transferCaptor.getValue().getTransferStatus()).isEqualTo(
+			jabaclass.settlement.domain.model.settlement.SettlementTransferStatus.SENT
+		);
+	}
+
+	@Test
+	void 외부_송금_성공후_최종_저장에_실패하면_failed로_덮어쓰지_않고_예외를_전파한다() {
+		// given
+		String settlementMonth = "2026-03";
+		UUID sellerId = UUID.randomUUID();
+		Settlement settlement = Settlement.createReady(
+			sellerId,
+			settlementMonth,
+			new BigDecimal("10000"),
+			SellerGradeType.BASIC,
+			SELLER_GRADE_POLICY_ID,
+			new BigDecimal("300000"),
+			new BigDecimal("330.00"),
+			new BigDecimal("0.033"),
+			new BigDecimal("9670.00")
+		);
+		assignId(settlement);
+
+		given(settlementRepository.findBySettlementMonthAndStatus(settlementMonth, SettlementStatus.READY))
+			.willReturn(List.of(settlement));
+		given(sellerSettlementPort.fetchSellerSettlementAccounts(Set.of(sellerId)))
+			.willReturn(List.of(new SellerSettlementAccount(
+				sellerId,
+				"088",
+				"123-456",
+				"판매자",
+				true
+			)));
+		given(settlementTransferPort.transfer(any()))
+			.willReturn(SettlementTransferResult.ok());
+		doNothing()
+			.doThrow(new RuntimeException("db save fail"))
+			.when(settlementTransferStatePersistenceService)
+			.saveTransferState(any(), any());
+
+		// when & then
+		assertThatThrownBy(() -> settlementTransferService.transferMonthly(settlementMonth))
+			.isInstanceOf(RuntimeException.class)
+			.hasMessage("db save fail");
+
+		then(settlementTransferPort).should().transfer(any());
+		then(settlementTransferStatePersistenceService).should(times(2))
+			.saveTransferState(any(), any());
 	}
 
 	private void assignId(Settlement settlement) {
