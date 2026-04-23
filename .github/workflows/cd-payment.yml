@@ -2,18 +2,18 @@ name: CD Payment Service
 
 on:
   workflow_dispatch:
-#  push:
-#    branches:
-#      - dev
-#    paths:
-#      - 'service/payment/**'
-#      - 'common/**'
-#      - 'build.gradle'
-#      - 'settings.gradle'
-#      - 'gradle/**'
-#      - 'gradlew'
-#      - '.github/workflows/cd-payment.yml'
-#      - '.github/scripts/**'
+  push:
+    branches:
+      - dev
+    paths:
+      - 'service/payment/**'
+      - 'common/**'
+      - 'build.gradle'
+      - 'settings.gradle'
+      - 'gradle/**'
+      - 'gradlew'
+      - '.github/workflows/cd-payment.yml'
+      - '.github/scripts/**'
 
 permissions:
   contents: read
