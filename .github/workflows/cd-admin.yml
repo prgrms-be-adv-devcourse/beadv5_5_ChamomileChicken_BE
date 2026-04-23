@@ -2,18 +2,18 @@ name: CD Admin Service
 
 on:
   workflow_dispatch:
-#  push:
-#    branches:
-#      - dev
-#    paths:
-#      - 'service/admin/**'
-#      - 'common/**'
-#      - 'build.gradle'
-#      - 'settings.gradle'
-#      - 'gradle/**'
-#      - 'gradlew'
-#      - '.github/workflows/cd-admin.yml'
-#      - '.github/scripts/**'
+  push:
+    branches:
+      - dev
+    paths:
+      - 'service/admin/**'
+      - 'common/**'
+      - 'build.gradle'
+      - 'settings.gradle'
+      - 'gradle/**'
+      - 'gradlew'
+      - '.github/workflows/cd-admin.yml'
+      - '.github/scripts/**'
 
 permissions:
   contents: read
