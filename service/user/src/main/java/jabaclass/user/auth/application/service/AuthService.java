@@ -77,7 +77,7 @@ public class AuthService implements LoginUseCase, LogoutUseCase, ReissueUseCase,
             redisTemplate.opsForValue().set(
                 THEFT_REPORT_PREFIX + theftReportToken,
                 user.getId().toString(),
-                Duration.ofMinutes(10)
+                Duration.ofMinutes(refreshTokenValidity)
             );
             sendSecurityAlertAsync(user.getEmail(), user.getName(), clientIp, userAgent, theftReportToken);
         }
@@ -187,16 +187,81 @@ public class AuthService implements LoginUseCase, LogoutUseCase, ReissueUseCase,
         CompletableFuture.runAsync(() -> {
             try {
                 String link = baseUrl + "/api/v1/auth/report-theft?token=" + token;
-                String body = "<p>" + name + "님, 새로운 기기에서 로그인이 감지되었습니다.</p>"
-                    + "<p>IP: " + ip + "</p>"
-                    + "<p>기기: " + userAgent + "</p>"
-                    + "<p>본인이 아닌 경우 아래 버튼을 클릭해 즉시 계정을 보호하세요. (10분 내 유효)</p>"
-                    + "<a href='" + link + "' style='padding:10px 20px;background:#e53e3e;color:white;"
-                    + "text-decoration:none;border-radius:4px;'>본인 아님 - 계정 보호</a>";
+                String body = createSecurityAlertEmailBody(name, ip, userAgent, link);
                 mailService.send(email, "[보안 알림] 새로운 기기에서 로그인되었습니다.", body, true);
             } catch (Exception e) {
                 log.error("[AUTH] 보안 알림 이메일 발송 실패. email={}", email, e);
             }
         });
+    }
+
+    private String createSecurityAlertEmailBody(String name, String ip, String userAgent, String link) {
+        return """
+          <div style="margin:0;padding:0;background-color:#f3f6fb;">
+            <div style="width:100%%;background-color:#f3f6fb;padding:40px 16px;">
+              <div style="max-width:560px;margin:0 auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:20px;overflow:hidden;box-shadow:0 10px 30px rgba(15,23,42,0.08);">
+                <div style="background:linear-gradient(135deg,#7f1d1d 0%%,#991b1b 100%%);padding:36px 32px 28px;text-align:left;">
+                  <div style="display:inline-block;padding:6px 12px;background:rgba(255,255,255,0.15);border-radius:999px;font-size:12px;font-weight:700;letter-spacing:0.4px;color:#fecaca;margin-bottom:16px;">
+                    SECURITY ALERT
+                  </div>
+                  <h1 style="margin:0;font-size:30px;line-height:1.3;font-weight:800;color:#ffffff;">
+                    새로운 기기에서<br>로그인이 감지되었습니다
+                  </h1>
+                  <p style="margin:12px 0 0;font-size:15px;line-height:1.7;color:#fca5a5;">
+                    본인이 아닌 경우 즉시 계정을 보호하세요.
+                  </p>
+                </div>
+
+                <div style="padding:36px 32px 32px;">
+                  <p style="margin:0 0 14px;font-size:16px;line-height:1.7;color:#374151;">
+                    안녕하세요, <strong style="color:#111827;">%s</strong>님.
+                  </p>
+                  <p style="margin:0 0 28px;font-size:15px;line-height:1.7;color:#4b5563;">
+                    회원님의 계정에 새로운 기기 또는 위치에서 로그인이 감지되었습니다.
+                  </p>
+  
+                  <div style="margin:0 0 28px;padding:24px;background:linear-gradient(180deg,#fff7f7 0%%,#fff1f1 100%%);border:1px solid #fecaca;border-radius:18px;">
+                    <div style="font-size:13px;font-weight:700;letter-spacing:0.2px;color:#991b1b;margin-bottom:16px;">
+                      로그인 정보
+                    </div>
+                    <table style="width:100%%;border-collapse:collapse;">
+                      <tr>
+                        <td style="padding:8px 0;font-size:14px;color:#6b7280;width:80px;">IP 주소</td>
+                        <td style="padding:8px 0;font-size:14px;font-weight:600;color:#111827;">%s</td>
+                      </tr>
+                      <tr style="border-top:1px solid #fee2e2;">
+                        <td style="padding:8px 0;font-size:14px;color:#6b7280;">기기 정보</td>
+                        <td style="padding:8px 0;font-size:13px;font-weight:500;color:#374151;word-break:break-all;">%s</td>
+                      </tr>
+                    </table>
+                  </div>
+
+                  <div style="text-align:center;margin:0 0 28px;">
+                    <a href="%s" style="display:inline-block;padding:16px 36px;background:linear-gradient(135deg,#dc2626 0%%,#b91c1c 100%%);
+                    color:#ffffff;text-decoration:none;border-radius:14px;font-size:16px;font-weight:700;letter-spacing:0.2px;box-shadow:0 4px 14px rgba(220,38,38,0.35);">
+                      본인 아님 — 계정 보호하기
+                    </a>
+                  </div>
+
+                  <div style="padding:18px 20px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:14px;">
+                    <p style="margin:0 0 8px;font-size:14px;line-height:1.6;color:#374151;">
+                      이 링크는 <strong>10분</strong> 동안 유효합니다.
+                    </p>
+                    <p style="margin:0;font-size:14px;line-height:1.6;color:#6b7280;">
+                      본인이 로그인한 경우 이 메일을 무시하셔도 됩니다.
+                    </p>
+                  </div>
+                </div>
+
+                <div style="padding:20px 32px;background:#fafafa;border-top:1px solid #e5e7eb;">
+                  <p style="margin:0;font-size:12px;line-height:1.6;color:#9ca3af;">
+                    © Jaba Class. All rights reserved.
+                  </p>
+                </div>
+
+              </div>
+            </div>
+          </div>
+          """.formatted(name, ip, userAgent, link);
     }
 }
