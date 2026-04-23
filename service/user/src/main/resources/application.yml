@@ -41,3 +41,6 @@ management:
     health:
       probes:
         enabled: true
+
+oauth2:
+  redirect-uri: ${OAUTH2_REDIRECT_URI:http://localhost:3000/oauth2/callback}
