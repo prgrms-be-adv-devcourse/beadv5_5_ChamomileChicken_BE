@@ -17,6 +17,11 @@ public class SettlementTransferRepositoryAdapter implements SettlementTransferRe
 	private final SettlementTransferJpaRepository settlementTransferJpaRepository;
 
 	@Override
+	public SettlementTransfer save(SettlementTransfer settlementTransfer) {
+		return settlementTransferJpaRepository.save(settlementTransfer);
+	}
+
+	@Override
 	public List<SettlementTransfer> saveAll(List<SettlementTransfer> settlementTransfers) {
 		return settlementTransferJpaRepository.saveAll(settlementTransfers);
 	}

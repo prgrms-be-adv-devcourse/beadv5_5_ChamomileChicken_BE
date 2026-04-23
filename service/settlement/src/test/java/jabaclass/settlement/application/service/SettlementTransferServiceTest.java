@@ -25,12 +25,10 @@ import jabaclass.settlement.domain.model.settlement.Settlement;
 import jabaclass.settlement.domain.model.settlement.SettlementStatus;
 import jabaclass.settlement.domain.model.settlement.SettlementTransfer;
 import jabaclass.settlement.domain.repository.SettlementRepository;
-import jabaclass.settlement.domain.repository.SettlementTransferRepository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.atLeastOnce;
@@ -46,7 +44,7 @@ class SettlementTransferServiceTest {
 	private SettlementRepository settlementRepository;
 
 	@Mock
-	private SettlementTransferRepository settlementTransferRepository;
+	private SettlementTransferStatePersistenceService settlementTransferStatePersistenceService;
 
 	@Mock
 	private SellerSettlementPort sellerSettlementPort;
@@ -87,20 +85,17 @@ class SettlementTransferServiceTest {
 			)));
 		given(settlementTransferPort.transfer(any()))
 			.willReturn(SettlementTransferResult.ok());
-		given(settlementRepository.saveAll(anyList()))
-			.willAnswer(invocation -> invocation.getArgument(0));
-		given(settlementTransferRepository.saveAll(anyList()))
-			.willAnswer(invocation -> invocation.getArgument(0));
 
-		ArgumentCaptor<List<Settlement>> settlementCaptor = ArgumentCaptor.forClass(List.class);
+		ArgumentCaptor<Settlement> settlementCaptor = ArgumentCaptor.forClass(Settlement.class);
 
 		// when
 		int actual = settlementTransferService.transferMonthly(settlementMonth);
 
 		// then
 		assertThat(actual).isEqualTo(1);
-		then(settlementRepository).should(atLeastOnce()).saveAll(settlementCaptor.capture());
-		Settlement savedSettlement = settlementCaptor.getAllValues().getLast().get(0);
+		then(settlementTransferStatePersistenceService).should(atLeastOnce())
+			.saveTransferState(settlementCaptor.capture(), any());
+		Settlement savedSettlement = settlementCaptor.getAllValues().getLast();
 		assertThat(savedSettlement.getStatus()).isEqualTo(SettlementStatus.SENT);
 		assertThat(savedSettlement.getTransferredAt()).isNotNull();
 	}
@@ -127,18 +122,16 @@ class SettlementTransferServiceTest {
 			.willReturn(List.of(settlement));
 		given(sellerSettlementPort.fetchSellerSettlementAccounts(Set.of(sellerId)))
 			.willReturn(List.of());
-		given(settlementTransferRepository.saveAll(anyList()))
-			.willAnswer(invocation -> invocation.getArgument(0));
 
-		ArgumentCaptor<List<Settlement>> settlementCaptor = ArgumentCaptor.forClass(List.class);
+		ArgumentCaptor<Settlement> settlementCaptor = ArgumentCaptor.forClass(Settlement.class);
 
 		// when
 		int actual = settlementTransferService.transferMonthly(settlementMonth);
 
 		// then
 		assertThat(actual).isEqualTo(0);
-		then(settlementRepository).should().saveAll(settlementCaptor.capture());
-		Settlement savedSettlement = settlementCaptor.getValue().get(0);
+		then(settlementTransferStatePersistenceService).should().saveTransferState(settlementCaptor.capture(), any());
+		Settlement savedSettlement = settlementCaptor.getValue();
 		assertThat(savedSettlement.getStatus()).isEqualTo(SettlementStatus.HOLD);
 		assertThat(savedSettlement.getFailReason()).isEqualTo("판매자 정산 계좌 정보가 없습니다.");
 	}
@@ -171,17 +164,15 @@ class SettlementTransferServiceTest {
 				"판매자",
 				true
 			)));
-		given(settlementTransferRepository.saveAll(anyList()))
-			.willAnswer(invocation -> invocation.getArgument(0));
 
-		ArgumentCaptor<List<Settlement>> settlementCaptor = ArgumentCaptor.forClass(List.class);
+		ArgumentCaptor<Settlement> settlementCaptor = ArgumentCaptor.forClass(Settlement.class);
 
 		// when
 		settlementTransferService.transferMonthly(settlementMonth);
 
 		// then
-		then(settlementRepository).should().saveAll(settlementCaptor.capture());
-		Settlement savedSettlement = settlementCaptor.getValue().get(0);
+		then(settlementTransferStatePersistenceService).should().saveTransferState(settlementCaptor.capture(), any());
+		Settlement savedSettlement = settlementCaptor.getValue();
 		assertThat(savedSettlement.getStatus()).isEqualTo(SettlementStatus.HOLD);
 		assertThat(savedSettlement.getFailReason()).isEqualTo("판매자 정산 계좌가 비활성 상태입니다.");
 	}
@@ -216,18 +207,17 @@ class SettlementTransferServiceTest {
 			)));
 		given(settlementTransferPort.transfer(any()))
 			.willReturn(SettlementTransferResult.fail("송금 실패"));
-		given(settlementTransferRepository.saveAll(anyList()))
-			.willAnswer(invocation -> invocation.getArgument(0));
 
-		ArgumentCaptor<List<Settlement>> settlementCaptor = ArgumentCaptor.forClass(List.class);
+		ArgumentCaptor<Settlement> settlementCaptor = ArgumentCaptor.forClass(Settlement.class);
 
 		// when
 		int actual = settlementTransferService.transferMonthly(settlementMonth);
 
 		// then
 		assertThat(actual).isEqualTo(0);
-		then(settlementRepository).should(atLeastOnce()).saveAll(settlementCaptor.capture());
-		Settlement savedSettlement = settlementCaptor.getAllValues().getLast().get(0);
+		then(settlementTransferStatePersistenceService).should(atLeastOnce())
+			.saveTransferState(settlementCaptor.capture(), any());
+		Settlement savedSettlement = settlementCaptor.getAllValues().getLast();
 		assertThat(savedSettlement.getStatus()).isEqualTo(SettlementStatus.FAILED);
 		assertThat(savedSettlement.getFailReason()).isEqualTo("송금 실패");
 	}

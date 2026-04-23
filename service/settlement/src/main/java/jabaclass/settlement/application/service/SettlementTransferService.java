@@ -1,8 +1,8 @@
 package jabaclass.settlement.application.service;
 
 import java.time.LocalDateTime;
-import java.util.Map;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -22,7 +22,6 @@ import jabaclass.settlement.domain.model.settlement.Settlement;
 import jabaclass.settlement.domain.model.settlement.SettlementTransfer;
 import jabaclass.settlement.domain.model.settlement.SettlementStatus;
 import jabaclass.settlement.domain.repository.SettlementRepository;
-import jabaclass.settlement.domain.repository.SettlementTransferRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -33,7 +32,7 @@ import lombok.extern.slf4j.Slf4j;
 public class SettlementTransferService {
 
 	private final SettlementRepository settlementRepository;
-	private final SettlementTransferRepository settlementTransferRepository;
+	private final SettlementTransferStatePersistenceService settlementTransferStatePersistenceService;
 	private final SellerSettlementPort sellerSettlementPort;
 	private final SettlementTransferPort settlementTransferPort;
 
@@ -143,7 +142,6 @@ public class SettlementTransferService {
 	}
 
 	private void saveTransferResult(Settlement settlement, SettlementTransfer transferHistory) {
-		settlementRepository.saveAll(List.of(settlement));
-		settlementTransferRepository.saveAll(List.of(transferHistory));
+		settlementTransferStatePersistenceService.saveTransferState(settlement, transferHistory);
 	}
 }

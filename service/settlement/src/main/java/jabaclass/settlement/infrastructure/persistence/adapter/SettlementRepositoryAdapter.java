@@ -21,6 +21,11 @@ public class SettlementRepositoryAdapter implements SettlementRepository {
 	private final SettlementJpaRepository settlementJpaRepository;
 
 	@Override
+	public Settlement save(Settlement settlement) {
+		return settlementJpaRepository.save(settlement);
+	}
+
+	@Override
 	public List<Settlement> saveAll(List<Settlement> settlements) {
 		return settlementJpaRepository.saveAll(settlements);
 	}
