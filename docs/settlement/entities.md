@@ -68,8 +68,10 @@ Kafka 이벤트를 통해 적재되는 원천 정산 대상이다.
 송금 요청과 결과 이력이다.
 
 - 송금 가능한 `Settlement`에 대해 생성된다.
+- 외부 송금 호출 전 `Settlement`를 `TRANSFERRING`으로 바꾸고, `SettlementTransfer`는 `REQUESTED` 이력으로 먼저 저장한다.
 - 계좌 정보가 없거나 정산 금액이 0 이하이면 `HOLD` 이력을 남긴다.
 - 송금 성공 시 `SENT`, 실패 시 `FAILED`로 남긴다.
+- 외부 송금은 성공했지만 최종 DB 저장 전에 장애가 나면 `REQUESTED` 이력이 남을 수 있고, 이후 송금 복구 step이 외부 상태 조회 결과로 `SENT` 또는 `FAILED`로 정정한다.
 
 ### `SettlementBatchLock`
 
