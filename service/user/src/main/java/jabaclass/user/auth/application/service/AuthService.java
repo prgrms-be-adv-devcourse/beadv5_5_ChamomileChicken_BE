@@ -245,7 +245,7 @@ public class AuthService implements LoginUseCase, LogoutUseCase, ReissueUseCase,
 
                   <div style="padding:18px 20px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:14px;">
                     <p style="margin:0 0 8px;font-size:14px;line-height:1.6;color:#374151;">
-                      이 링크는 <strong>10분</strong> 동안 유효합니다.
+                      이 링크는 <strong>일주일</strong> 동안 유효합니다.
                     </p>
                     <p style="margin:0;font-size:14px;line-height:1.6;color:#6b7280;">
                       본인이 로그인한 경우 이 메일을 무시하셔도 됩니다.
