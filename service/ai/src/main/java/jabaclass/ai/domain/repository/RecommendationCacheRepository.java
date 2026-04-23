@@ -12,4 +12,6 @@ public interface RecommendationCacheRepository {
 	void save(UUID userId, RecommendationResponseDto response);
 
 	void delete(UUID userId);
+
+	void deleteAll();
 }

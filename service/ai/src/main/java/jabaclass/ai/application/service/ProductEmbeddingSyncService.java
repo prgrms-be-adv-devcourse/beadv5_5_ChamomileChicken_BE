@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import jabaclass.ai.domain.repository.ProductEmbeddingRepository;
+import jabaclass.ai.domain.repository.RecommendationCacheRepository;
 import jabaclass.ai.infrastructure.external.openai.EmbeddingService;
 import jabaclass.ai.infrastructure.kafka.ProductAiSyncedEvent;
 import jabaclass.ai.infrastructure.persistence.command.ProductEmbeddingUpsertCommand;
@@ -17,6 +18,7 @@ public class ProductEmbeddingSyncService {
 
 	private final EmbeddingService embeddingService;
 	private final ProductEmbeddingRepository productEmbeddingRepository;
+	private final RecommendationCacheRepository recommendationCacheRepository;
 
 	@Transactional
 	public void saveOrUpdate(ProductAiSyncedEvent payload) {
@@ -38,10 +40,12 @@ public class ProductEmbeddingSyncService {
 				embedding
 			)
 		);
+		recommendationCacheRepository.deleteAll();
 	}
 
 	@Transactional
 	public void delete(UUID productId) {
 		productEmbeddingRepository.deleteByProductId(productId);
+		recommendationCacheRepository.deleteAll();
 	}
 }
