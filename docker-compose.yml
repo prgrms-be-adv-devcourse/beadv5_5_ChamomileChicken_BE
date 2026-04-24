@@ -1,5 +1,9 @@
 version: '3.8'
+
 services:
+
+  # ── 인프라 ────────────────────────────────────────────────────────
+
   zookeeper:
     image: confluentinc/cp-zookeeper:7.5.0
     container_name: zookeeper
@@ -18,20 +22,32 @@ services:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://${KAFKA_HOST:-localhost}:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
 
-  postgres:
-    image: postgres:16
-    container_name: postgres
+  mysql:
+    image: mysql:8
+    container_name: mysql
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "3306:3306"
     environment:
-      POSTGRES_DB: userdb
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      MYSQL_ROOT_PASSWORD: 1234
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - mysql_data:/var/lib/mysql
+      - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p1234"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
 
   elasticsearch:
     build:
@@ -49,15 +65,196 @@ services:
     volumes:
       - es_data:/usr/share/elasticsearch/data
 
-  redis:
-    image: redis:7-alpine
-    container_name: redis
+  # ── 앱 서비스 ──────────────────────────────────────────────────────
+
+  user-service:
+    build:
+      context: ./service/user
+    container_name: user-service
     ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
+      - "9003:9003"
+    env_file: .env
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_USER: root
+      MYSQL_PASSWORD: 1234
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_HOST: kafka
+      SPRING_DATA_REDIS_HOST: redis
+      GATEWAY_BASE_URL: http://api-gateway:8080
+    depends_on:
+      mysql:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+      redis:
+        condition: service_started
+    restart: unless-stopped
+
+  payment-service:
+    build:
+      context: ./service/payment
+    container_name: payment-service
+    ports:
+      - "9001:9001"
+    env_file: .env
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_USER: root
+      MYSQL_PASSWORD: 1234
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_HOST: kafka
+      ORDER_SERVICE_URL: http://order-service:9005
+      USER_SERVICE_URL: http://user-service:9003
+    depends_on:
+      mysql:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+    restart: unless-stopped
+
+  product-service:
+    build:
+      context: ./service/product
+    container_name: product-service
+    ports:
+      - "9004:9004"
+    env_file: .env
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_USER: root
+      MYSQL_PASSWORD: 1234
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_HOST: kafka
+      ES_URIS: http://elasticsearch:9200
+      USER_SERVICE_URL: http://user-service:9003
+    depends_on:
+      mysql:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+      elasticsearch:
+        condition: service_started
+    restart: unless-stopped
+
+  order-service:
+    build:
+      context: ./service/order
+    container_name: order-service
+    ports:
+      - "9005:9005"
+    env_file: .env
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_USER: root
+      MYSQL_PASSWORD: 1234
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_HOST: kafka
+      EXTERNAL_DEPOSITS_BASE_URL: http://user-service:9003
+      EXTERNAL_PRODUCTS_BASE_URL: http://product-service:9004
+    depends_on:
+      mysql:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+    restart: unless-stopped
+
+  settlement-service:
+    build:
+      context: ./service/settlement
+    container_name: settlement-service
+    ports:
+      - "9002:9002"
+    env_file: .env
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_USER: root
+      MYSQL_PASSWORD: 1234
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_HOST: kafka
+      USER_SERVICE_URL: http://user-service:9003
+    depends_on:
+      mysql:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+    restart: unless-stopped
+
+  admin-service:
+    build:
+      context: ./service/admin
+    container_name: admin-service
+    ports:
+      - "9007:9007"
+    env_file: .env
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_USER: root
+      MYSQL_PASSWORD: 1234
+    depends_on:
+      mysql:
+        condition: service_healthy
+    restart: unless-stopped
+
+  ai-service:
+    build:
+      context: ./service/ai
+    container_name: ai-service
+    ports:
+      - "9009:9009"
+    env_file: .env
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_USER: root
+      MYSQL_PASSWORD: 1234
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_HOST: kafka
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      USER_SERVICE_URL: http://user-service:9003
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+
+  api-gateway:
+    build:
+      context: ./api-gateway
+    container_name: api-gateway
+    ports:
+      - "8080:8080"
+    env_file: .env
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_USER: root
+      MYSQL_PASSWORD: 1234
+      SPRING_DATA_REDIS_HOST: redis
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
 
 volumes:
-  postgres_data:
+  mysql_data:
   es_data:
   redis_data:
