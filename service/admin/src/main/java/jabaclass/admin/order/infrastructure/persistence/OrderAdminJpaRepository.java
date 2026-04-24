@@ -15,7 +15,8 @@ public interface OrderAdminJpaRepository extends JpaRepository<Order, UUID>, Jpa
 
 	long countByStatus(OrderStatus status);
 
-	@Query("SELECT MONTH(o.createdAt), COUNT(o), " +
+	@Query("SELECT MONTH(o.createdAt), " +
+		"SUM(CASE WHEN o.status = jabaclass.admin.order.domain.model.OrderStatus.PAID THEN 1 ELSE 0 END), " +
 		"SUM(CASE WHEN o.status = jabaclass.admin.order.domain.model.OrderStatus.PAID THEN o.price ELSE 0 END) " +
 		"FROM Order o WHERE YEAR(o.createdAt) = :year " +
 		"GROUP BY MONTH(o.createdAt) ORDER BY MONTH(o.createdAt)")
