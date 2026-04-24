@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayNameGeneration;
 import org.junit.jupiter.api.DisplayNameGenerator.ReplaceUnderscores;
 import org.junit.jupiter.api.Test;
@@ -22,7 +23,11 @@ import org.springframework.test.context.ActiveProfiles;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import jabaclass.settlement.domain.model.promotion.PromotionType;
+import jabaclass.settlement.domain.model.promotion.SettlementPromotion;
 import jabaclass.settlement.domain.model.settlement.SettlementTargetType;
+import jabaclass.settlement.infrastructure.persistence.SellerPromotionJpaRepository;
+import jabaclass.settlement.infrastructure.persistence.SettlementPromotionJpaRepository;
 import jabaclass.settlement.infrastructure.persistence.SettlementTargetJpaRepository;
 
 @SpringBootTest
@@ -41,6 +46,27 @@ class SettlementEventsConsumerTest {
 
 	@Autowired
 	private SettlementTargetJpaRepository settlementTargetJpaRepository;
+
+	@Autowired
+	private SellerPromotionJpaRepository sellerPromotionJpaRepository;
+
+	@Autowired
+	private SettlementPromotionJpaRepository settlementPromotionJpaRepository;
+
+	@BeforeEach
+	void setUp() {
+		if (settlementPromotionJpaRepository.count() > 0) {
+			return;
+		}
+
+		settlementPromotionJpaRepository.save(new SettlementPromotion(
+			"신규 가입 셀러 30일 우대 수수료",
+			PromotionType.NEW_SELLER,
+			new BigDecimal("0.0300"),
+			30,
+			true
+		));
+	}
 
 	@Test
 	void SETTLEMENT_PAYMENT_COMPLETED_수신시_settlementTarget에_저장된다() throws Exception {
@@ -114,6 +140,54 @@ class SettlementEventsConsumerTest {
 		});
 	}
 
+	@Test
+	void USER_SELLER_APPROVED_수신시_신규셀러_프로모션이_등록된다() throws Exception {
+		UUID sellerId = UUID.randomUUID();
+		send("USER_SELLER_APPROVED", objectMapper.writeValueAsString(new SellerApprovedPayload(
+			UUID.randomUUID(),
+			"SELLER_APPROVED",
+			sellerId,
+			LocalDateTime.of(2026, 4, 24, 10, 0)
+		)));
+
+		await().atMost(5, SECONDS).untilAsserted(() -> {
+			assertThat(
+				sellerPromotionJpaRepository.findAll().stream()
+					.filter(promotion -> sellerId.equals(promotion.getSellerId()))
+					.count()
+			).isEqualTo(1L);
+		});
+	}
+
+	@Test
+	void 동일_신규셀러_이벤트를_중복_수신해도_프로모션은_한_번만_등록된다() throws Exception {
+		UUID sellerId = UUID.randomUUID();
+		String payload = objectMapper.writeValueAsString(new SellerApprovedPayload(
+			UUID.randomUUID(),
+			"SELLER_APPROVED",
+			sellerId,
+			LocalDateTime.of(2026, 4, 24, 10, 0)
+		));
+
+		send("USER_SELLER_APPROVED", payload);
+		await().atMost(5, SECONDS).untilAsserted(() -> {
+			assertThat(
+				sellerPromotionJpaRepository.findAll().stream()
+					.filter(promotion -> sellerId.equals(promotion.getSellerId()))
+					.count()
+			).isEqualTo(1L);
+		});
+
+		send("USER_SELLER_APPROVED", payload);
+		await().atMost(5, SECONDS).untilAsserted(() -> {
+			assertThat(
+				sellerPromotionJpaRepository.findAll().stream()
+					.filter(promotion -> sellerId.equals(promotion.getSellerId()))
+					.count()
+			).isEqualTo(1L);
+		});
+	}
+
 	private void send(String eventType, String payload) {
 		ProducerRecord<String, String> record = new ProducerRecord<>("settlement.events", payload);
 		record.headers().add("eventType", eventType.getBytes(StandardCharsets.UTF_8));
@@ -139,5 +213,12 @@ class SettlementEventsConsumerTest {
 		UUID productId,
 		BigDecimal settlementBaseAmount,
 		LocalDateTime occurredAt
+	) {}
+
+	record SellerApprovedPayload(
+		UUID eventId,
+		String type,
+		UUID sellerId,
+		LocalDateTime approvedAt
 	) {}
 }

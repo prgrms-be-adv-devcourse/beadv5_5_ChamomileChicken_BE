@@ -1,5 +1,9 @@
 package jabaclass.ai.infrastructure.persistence;
 
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -16,24 +20,35 @@ public class ProductEmbeddingRepositoryImpl implements ProductEmbeddingRepositor
 	private final JdbcTemplate jdbcTemplate;
 
 	@Override
-	public float[] findEmbeddingByProductId(UUID productId) {
+	public Map<UUID, float[]> findAllByProductIds(Collection<UUID> productIds) {
+		if (productIds == null || productIds.isEmpty()) {
+			return Collections.emptyMap();
+		}
 
+		String placeholders = String.join(",", Collections.nCopies(productIds.size(), "?"));
 		String sql = """
-            SELECT embedding
-            FROM product_embeddings
-            WHERE id = ?
-        """;
+			SELECT id, embedding
+			FROM product_embeddings
+			WHERE id IN (%s)
+		""".formatted(placeholders);
 
 		return jdbcTemplate.query(
 			sql,
-			ps -> ps.setObject(1, productId),
+			ps -> {
+				int index = 1;
+				for (UUID productId : productIds) {
+					ps.setObject(index++, productId);
+				}
+			},
 			rs -> {
-				if (!rs.next()) return null;
-
-				// pgvector → 문자열 형태 "[1,2,3]"로 온다고 가정
-				String vectorStr = rs.getString("embedding");
-
-				return parseVector(vectorStr);
+				Map<UUID, float[]> embeddings = new HashMap<>();
+				while (rs.next()) {
+					embeddings.put(
+						rs.getObject("id", UUID.class),
+						parseVector(rs.getString("embedding"))
+					);
+				}
+				return embeddings;
 			}
 		);
 	}

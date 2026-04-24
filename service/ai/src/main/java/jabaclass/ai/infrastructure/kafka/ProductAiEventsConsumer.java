@@ -3,6 +3,7 @@ package jabaclass.ai.infrastructure.kafka;
 import java.nio.charset.StandardCharsets;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.common.header.Header;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
@@ -10,6 +11,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import jabaclass.ai.application.service.ProductEmbeddingSyncService;
 import jabaclass.ai.application.service.UserActivityService;
+import jabaclass.ai.domain.model.ActionType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -27,7 +29,12 @@ public class ProductAiEventsConsumer {
 		groupId = "ai-product-indexer"
 	)
 	public void consume(ConsumerRecord<String, String> record) {
-		String eventType = new String(record.headers().lastHeader("eventType").value(), StandardCharsets.UTF_8);
+		Header eventTypeHeader = record.headers().lastHeader("eventType");
+		if (eventTypeHeader == null) {
+			log.error("product.events eventType 헤더가 누락되었습니다. record={}", record);
+			return;
+		}
+		String eventType = new String(eventTypeHeader.value(), StandardCharsets.UTF_8);
 		String message = record.value();
 
 		try {
@@ -45,8 +52,14 @@ public class ProductAiEventsConsumer {
 				case "PRODUCT_VIEWED" -> {
 					ProductViewedEvent event = objectMapper.readValue(message, ProductViewedEvent.class);
 					log.info("상품 조회 이벤트 수신: userId={}, productId={}", event.userId(), event.productId());
-					userActivityService.recordProductView(event);
+					userActivityService.recordActivity(event.userId(), event.productId(), ActionType.VIEW);
 					log.info("사용자 상품 조회 기록 저장 완료: userId={}, productId={}", event.userId(), event.productId());
+				}
+				case "PRODUCT_WISHLISTED" -> {
+					ProductWishlistedEvent event = objectMapper.readValue(message, ProductWishlistedEvent.class);
+					log.info("상품 찜 이벤트 수신: userId={}, productId={}", event.userId(), event.productId());
+					userActivityService.recordActivity(event.userId(), event.productId(), ActionType.WISHLIST);
+					log.info("사용자 상품 찜 기록 저장 완료: userId={}, productId={}", event.userId(), event.productId());
 				}
 				default -> log.warn("알 수 없는 eventType: {}", eventType);
 			}

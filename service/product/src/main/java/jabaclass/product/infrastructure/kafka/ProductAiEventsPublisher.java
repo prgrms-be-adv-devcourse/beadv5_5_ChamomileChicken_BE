@@ -14,6 +14,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jabaclass.product.infrastructure.event.dto.ProductAiSyncedEvent;
 import jabaclass.product.infrastructure.event.dto.ProductDeletedEvent;
 import jabaclass.product.infrastructure.event.dto.ProductViewedEvent;
+import jabaclass.product.infrastructure.event.dto.ProductWishlistedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -54,6 +55,19 @@ public class ProductAiEventsPublisher {
 			send(ProductEventType.PRODUCT_VIEWED, event.userId().toString(), objectMapper.writeValueAsString(event));
 		} catch (Exception e) {
 			log.error("상품 조회 이벤트 발행 실패: userId={}, productId={}, error={}",
+				event.userId(), event.productId(), e.getMessage(), e);
+		}
+	}
+
+	@Async
+	@TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+	public void handle(ProductWishlistedEvent event) {
+		try {
+			log.info("찜 이벤트 Kafka 발행 시작: userId={}, productId={}", event.userId(), event.productId());
+			send(ProductEventType.PRODUCT_WISHLISTED, event.userId().toString(), objectMapper.writeValueAsString(event));
+			log.info("찜 이벤트 Kafka 발행 완료: userId={}, productId={}", event.userId(), event.productId());
+		} catch (Exception e) {
+			log.error("상품 찜 이벤트 발행 실패: userId={}, productId={}, error={}",
 				event.userId(), event.productId(), e.getMessage(), e);
 		}
 	}

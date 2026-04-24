@@ -9,4 +9,8 @@ import jabaclass.settlement.domain.model.promotion.SellerPromotion;
 public interface SellerPromotionRepository {
 
 	Optional<SellerPromotion> findActiveApplicablePromotion(UUID sellerId, LocalDateTime occurredAt);
+
+	boolean existsBySellerIdAndPromotionIdAndStartedAt(UUID sellerId, UUID promotionId, LocalDateTime startedAt);
+
+	SellerPromotion save(SellerPromotion sellerPromotion);
 }

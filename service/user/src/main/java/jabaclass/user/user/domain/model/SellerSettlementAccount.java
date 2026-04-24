@@ -34,4 +34,53 @@ public class SellerSettlementAccount extends BaseEntity {
 
 	@Column(name = "active", nullable = false)
 	private boolean active;
+
+	public static SellerSettlementAccount register(
+		UUID userId,
+		String bankCode,
+		String accountNumber,
+		String accountHolder,
+		boolean active
+	) {
+		validateUserId(userId);
+		validateRequiredText(bankCode, "은행 코드");
+		validateRequiredText(accountNumber, "계좌번호");
+		validateRequiredText(accountHolder, "예금주");
+
+		return SellerSettlementAccount.builder()
+			.userId(userId)
+			.bankCode(bankCode)
+			.accountNumber(accountNumber)
+			.accountHolder(accountHolder)
+			.active(active)
+			.build();
+	}
+
+	public void updateAccount(
+		String bankCode,
+		String accountNumber,
+		String accountHolder,
+		boolean active
+	) {
+		validateRequiredText(bankCode, "은행 코드");
+		validateRequiredText(accountNumber, "계좌번호");
+		validateRequiredText(accountHolder, "예금주");
+
+		this.bankCode = bankCode;
+		this.accountNumber = accountNumber;
+		this.accountHolder = accountHolder;
+		this.active = active;
+	}
+
+	private static void validateUserId(UUID userId) {
+		if (userId == null) {
+			throw new IllegalArgumentException("사용자 ID는 null일 수 없습니다.");
+		}
+	}
+
+	private static void validateRequiredText(String value, String fieldName) {
+		if (value == null || value.isBlank()) {
+			throw new IllegalArgumentException(fieldName + "는 비어 있을 수 없습니다.");
+		}
+	}
 }

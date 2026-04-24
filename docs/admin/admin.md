@@ -40,7 +40,7 @@ Admin은 보안 최상급 영역이므로 이중 검증 구조를 채택한다.
 |------|------|------|
 | 전체 유저 목록 조회 | 직접 DB (user) | 조회, 부작용 없음 |
 | 특정 유저 상세 조회 | 직접 DB (user) | 조회, 부작용 없음 |
-| 셀러 승인 | 직접 DB (user) | role 컬럼만 변경, 연쇄 로직 없음 |
+| 셀러 승인 | 직접 DB (user) + Kafka 이벤트 | role 컬럼 변경 후 신규 셀러 프로모션 등록을 settlement 서비스에 위임 |
 | 전체 상품 조회 | 직접 DB (product) | 조회, 부작용 없음 |
 | 상품 강제 내리기 | 직접 DB (product) + Kafka 이벤트 | soft delete 후 schedule 취소 + ES 삭제를 product 서비스에 위임 |
 | 전체 주문 조회 | 직접 DB (order) | 조회, 부작용 없음 |
@@ -56,6 +56,14 @@ Admin은 보안 최상급 영역이므로 이중 검증 구조를 채택한다.
 > **Outbox 패턴**을 적용해 product soft delete와 outbox 이벤트 저장을 같은 트랜잭션으로 묶어 원자적으로 커밋한다.
 > 별도 스케줄러(`OutboxEventPoller`)가 Kafka에 발행하며, Kafka 장애 시에도 이벤트 유실 없이 재발행이 보장된다.
 > 신뢰성 설계 상세는 [force-down-reliability.md](force-down-reliability.md)를 참고한다.
+
+> **셀러 승격을 이벤트 기반으로 처리하는 이유**
+>
+> 셀러 승인 자체는 user DB의 `role` 컬럼 변경이지만, 이후 정산 서비스에서는 신규 셀러 프로모션을 seller에게 할당해야 한다.
+> Admin이 settlement DB를 직접 수정하면 서비스 간 책임이 섞이고 결합이 강해진다.
+>
+> 따라서 Admin은 user DB 변경과 outbox 이벤트 저장을 같은 트랜잭션으로 묶고,
+> settlement 서비스가 `USER_SELLER_APPROVED` 이벤트를 소비해 `seller_promotions`를 직접 등록하도록 분리한다.
 
 ### 상품 강제 내리기 흐름
 
@@ -103,6 +111,45 @@ Kafka 토픽: admin.product
 | Product DB `products` | Kafka 소비 후 (비동기) | status=DISABLE, deleteDt=now() |
 | Product DB `products_schedule` | 위와 같은 트랜잭션 | delete_dt=now() (soft-delete) |
 | Elasticsearch | DB 커밋 직후 | 인덱스 삭제 |
+
+### 셀러 승인 흐름
+
+```text
+[Admin 서비스 — 동기, HTTP 응답 전]
+
+PATCH /api/v1/admins/users/{userId}/approve-seller
+  -> AdminRoleInterceptor: X-User-Role == ADMIN 검증
+  -> UserAdminService.approveSeller()  @Transactional(adminTransactionManager)
+      1. Admin DB users 조회 (없으면 404)
+      2. user.approveSeller() -> role = SELLER
+      3. AdminUserEvent.sellerApproved() 생성
+      4. OutboxEvent.create() 저장 -> admin_outbox_events: status=PENDING, topic=settlement.events
+      ↓ DB 커밋 (users + outbox 원자적)
+  -> HTTP 200 응답 반환
+
+[Admin 서비스 — 비동기, OutboxEventPoller]
+
+OutboxEventPoller  @Scheduled(fixedDelay=1000)
+  -> admin_outbox_events PENDING 조회
+  -> OutboxService.markSending() -> status=SENDING
+  -> kafkaTemplate.send(ProducerRecord).get()
+      topic   = settlement.events
+      key     = userId
+      header  = eventType: USER_SELLER_APPROVED
+      value   = {"eventId":"...","type":"SELLER_APPROVED","sellerId":"...","approvedAt":"..."}
+      성공: OutboxService.markPublished() -> status=PUBLISHED
+      실패: OutboxService.retry() -> retryCount++, status=PENDING
+
+[Settlement 서비스 — 비동기, Kafka]
+
+SettlementEventsConsumer.consume()
+  -> eventType == USER_SELLER_APPROVED
+  -> SellerPromotionEventHandler.handleSellerApproved()
+  -> NewSellerPromotionService.register()
+      1. settlement_promotions 에서 NEW_SELLER active 정책 조회
+      2. seller_promotions 에 동일 seller/promotion 활성 여부 확인
+      3. 없으면 seller_promotions 저장
+```
 
 ### DataSource 구성
 
@@ -200,6 +247,8 @@ service/admin/src/main/java/jabaclass/admin/
 │   │   └── repository/
 │   │       └── UserAdminRepository.java
 │   ├── infrastructure/
+│   │   ├── kafka/
+│   │   │   └── AdminUserEvent.java             # 셀러 승격 이벤트 payload
 │   │   └── persistence/
 │   │       ├── UserAdminJpaRepository.java
 │   │       ├── UserAdminRepositoryAdapter.java
@@ -235,7 +284,7 @@ service/admin/src/main/java/jabaclass/admin/
 │   │   ├── kafka/
 │   │   │   └── AdminProductEvent.java          # 강제 내리기 이벤트 payload (type + productId)
 │   │   └── outbox/
-│   │       ├── EventType.java                  # PRODUCT_FORCE_DOWN("admin.product")
+│   │       ├── EventType.java                  # PRODUCT_FORCE_DOWN("admin.product"), USER_SELLER_APPROVED("settlement.events")
 │   │       ├── OutboxService.java              # 상태 전환 전용 @Transactional
 │   │       └── OutboxEventPoller.java          # @Scheduled 폴러
 │   └── presentation/

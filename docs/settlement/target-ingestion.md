@@ -2,6 +2,8 @@
 
 정산 대상(`SettlementTarget`)은 외부 REST API로 직접 생성하지 않는다. 주문/결제/환불 흐름에서 발행된 Kafka 이벤트를 `settlement` 서비스가 소비해 적재한다.
 
+현재 `settlement.events` 토픽에는 정산 타겟 적재 이벤트 외에 `USER_SELLER_APPROVED`도 함께 들어온다. 다만 이 이벤트는 `SettlementTarget` 적재가 아니라 신규 셀러 프로모션 등록에 사용된다.
+
 ## 전체 흐름
 
 ```text
@@ -18,6 +20,7 @@ order-service
 |-------------|------|-----------|
 | `SETTLEMENT_PAYMENT_COMPLETED` | 결제 완료 후 정산 대상 생성 | `SettlementTargetType.PAYMENT` |
 | `SETTLEMENT_REFUND_COMPLETED` | 환불 완료 후 정산 대상 생성 | `SettlementTargetType.REFUND` |
+| `USER_SELLER_APPROVED` | 신규 셀러 프로모션 등록 | `SettlementTarget` 미생성 |
 
 ## 적재 데이터
 
