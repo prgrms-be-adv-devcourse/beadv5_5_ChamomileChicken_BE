@@ -12,6 +12,8 @@ import jabaclass.settlement.domain.model.promotion.SellerPromotion;
 
 public interface SellerPromotionJpaRepository extends JpaRepository<SellerPromotion, UUID> {
 
+	boolean existsBySellerIdAndPromotionIdAndActiveTrue(UUID sellerId, UUID promotionId);
+
 	@Query("""
 		select sp
 		from SellerPromotion sp

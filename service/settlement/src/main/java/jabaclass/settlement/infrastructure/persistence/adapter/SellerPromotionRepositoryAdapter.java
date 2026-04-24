@@ -27,4 +27,14 @@ public class SellerPromotionRepositoryAdapter implements SellerPromotionReposito
 			.stream()
 			.findFirst();
 	}
+
+	@Override
+	public boolean existsActiveBySellerIdAndPromotionId(UUID sellerId, UUID promotionId) {
+		return sellerPromotionJpaRepository.existsBySellerIdAndPromotionIdAndActiveTrue(sellerId, promotionId);
+	}
+
+	@Override
+	public SellerPromotion save(SellerPromotion sellerPromotion) {
+		return sellerPromotionJpaRepository.save(sellerPromotion);
+	}
 }
