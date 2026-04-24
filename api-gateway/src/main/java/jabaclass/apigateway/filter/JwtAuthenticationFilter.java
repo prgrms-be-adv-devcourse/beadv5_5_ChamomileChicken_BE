@@ -2,6 +2,7 @@ package jabaclass.apigateway.filter;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Date;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeoutException;
@@ -196,11 +197,15 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 						.defaultIfEmpty("")
 						.flatMap(forceLogoutTime -> {
 							if (!forceLogoutTime.isEmpty()) {
-								long forceLogoutMillis = Long.parseLong(forceLogoutTime);
-								long tokenIssuedAt = claims.getIssuedAt().getTime();
-								if (tokenIssuedAt <= forceLogoutMillis) {
-									log.warn("[GATEWAY] Force logout detected. Path: {} {}, userId: {}", httpMethod, path, userId);
-									return onError(exchange, JwtErrorCode.INVALID_TOKEN);
+								try {
+									long forceLogoutMillis = Long.parseLong(forceLogoutTime);
+									Date issuedAt = claims.getIssuedAt();
+									if (issuedAt == null || issuedAt.getTime() <= forceLogoutMillis) {
+										log.warn("[GATEWAY] Force logout detected. Path: {} {}, userId: {}", httpMethod, path, userId);
+										return onError(exchange, JwtErrorCode.INVALID_TOKEN);
+									}
+								} catch (NumberFormatException e) {
+									log.error("[GATEWAY] Invalid forceLogoutTime format in Redis, userId: {}", userId);
 								}
 							}
 
