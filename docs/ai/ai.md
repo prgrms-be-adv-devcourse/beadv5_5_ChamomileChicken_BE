@@ -138,9 +138,11 @@ infrastructure/kafka/
 | 기능 | 설명 |
 |------|------|
 | 사용자 벡터 조회 | Redis에서 사용자 벡터 캐시 조회 |
-| 사용자 벡터 생성 | 활동 이력과 상품 임베딩을 합산해 벡터 생성 |
+| 사용자 벡터 생성 | 활동 이력 기준 상품 ID를 모아 임베딩을 벌크 조회한 뒤 벡터 생성 |
 | 가중치 적용 | 행동 유형별 가중치 반영 |
 | 정규화 | 코사인 유사도 안정화를 위해 L2 정규화 |
+
+> 상품 임베딩은 개별 조회하지 않고 벌크 조회하여 추천 벡터 생성 구간의 N+1 쿼리를 방지합니다.
 
 ### UserActivityService
 
@@ -168,7 +170,7 @@ RecommendationController
     -> UserVectorService.getOrCreate()
       -> UserVectorRedisRepository.get()
       -> 없으면 UserActivityRepository.findByUserId()
-      -> ProductEmbeddingRepository.findEmbeddingByProductId()
+      -> ProductEmbeddingRepository.findAllByProductIds()
       -> 사용자 벡터 생성 및 정규화
       -> UserVectorRedisRepository.save()
     -> CandidateSearchRepository.findTopK()
@@ -226,6 +228,8 @@ product.events
 ### 1. 사용자 벡터 생성
 
 사용자 벡터는 사용자가 상호작용한 상품 임베딩의 가중합으로 생성합니다.
+이때 반영 대상 상품 ID를 먼저 모은 뒤 상품 임베딩을 벌크 조회하여 사용자 벡터를 계산합니다.
+이 방식으로 활동 수만큼 임베딩 조회 쿼리가 반복되는 N+1 문제를 방지합니다.
 
 ```text
 user_vector = normalize(
