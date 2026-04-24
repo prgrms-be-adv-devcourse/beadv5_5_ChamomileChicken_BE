@@ -27,7 +27,11 @@ public class NewSellerPromotionService {
 		SettlementPromotion promotion = settlementPromotionRepository.findActiveByPromotionType(PromotionType.NEW_SELLER)
 			.orElseThrow(() -> new BusinessException(SettlementErrorCode.SETTLEMENT_PROMOTION_NOT_FOUND));
 
-		if (sellerPromotionRepository.existsActiveBySellerIdAndPromotionId(sellerId, promotion.getId())) {
+		if (sellerPromotionRepository.existsBySellerIdAndPromotionIdAndStartedAt(
+			sellerId,
+			promotion.getId(),
+			approvedAt
+		)) {
 			return;
 		}
 

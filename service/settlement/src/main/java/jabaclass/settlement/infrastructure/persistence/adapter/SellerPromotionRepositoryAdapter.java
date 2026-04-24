@@ -29,8 +29,16 @@ public class SellerPromotionRepositoryAdapter implements SellerPromotionReposito
 	}
 
 	@Override
-	public boolean existsActiveBySellerIdAndPromotionId(UUID sellerId, UUID promotionId) {
-		return sellerPromotionJpaRepository.existsBySellerIdAndPromotionIdAndActiveTrue(sellerId, promotionId);
+	public boolean existsBySellerIdAndPromotionIdAndStartedAt(
+		UUID sellerId,
+		UUID promotionId,
+		LocalDateTime startedAt
+	) {
+		return sellerPromotionJpaRepository.existsBySellerIdAndPromotionIdAndStartedAt(
+			sellerId,
+			promotionId,
+			startedAt
+		);
 	}
 
 	@Override

@@ -12,7 +12,7 @@ import jabaclass.settlement.domain.model.promotion.SellerPromotion;
 
 public interface SellerPromotionJpaRepository extends JpaRepository<SellerPromotion, UUID> {
 
-	boolean existsBySellerIdAndPromotionIdAndActiveTrue(UUID sellerId, UUID promotionId);
+	boolean existsBySellerIdAndPromotionIdAndStartedAt(UUID sellerId, UUID promotionId, LocalDateTime startedAt);
 
 	@Query("""
 		select sp

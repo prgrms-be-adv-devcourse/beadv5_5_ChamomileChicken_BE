@@ -10,7 +10,7 @@ public interface SellerPromotionRepository {
 
 	Optional<SellerPromotion> findActiveApplicablePromotion(UUID sellerId, LocalDateTime occurredAt);
 
-	boolean existsActiveBySellerIdAndPromotionId(UUID sellerId, UUID promotionId);
+	boolean existsBySellerIdAndPromotionIdAndStartedAt(UUID sellerId, UUID promotionId, LocalDateTime startedAt);
 
 	SellerPromotion save(SellerPromotion sellerPromotion);
 }
