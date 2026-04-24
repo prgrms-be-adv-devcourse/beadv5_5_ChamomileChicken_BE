@@ -515,4 +515,26 @@ class UserServiceTest {
 			.hasMessage(UserErrorCode.SELLER_SETTLEMENT_ACCOUNT_ACCESS_DENIED.getMessage());
 	}
 
+	@Test
+	void 현재_사용자_권한이_null이면_정산_계좌를_등록할_수_없다() {
+		// given
+		UpsertSellerSettlementAccountRequestDto request = new UpsertSellerSettlementAccountRequestDto(
+			"088",
+			"123-456-789",
+			"권한없음",
+			true
+		);
+
+		given(userRepository.findById(userId)).willReturn(Optional.of(user));
+
+		// when & then
+		assertThatThrownBy(() -> userService.upsertSellerSettlementAccount(
+			userId,
+			null,
+			request
+		))
+			.isInstanceOf(BusinessException.class)
+			.hasMessage(UserErrorCode.SELLER_SETTLEMENT_ACCOUNT_ACCESS_DENIED.getMessage());
+	}
+
 }

@@ -222,6 +222,9 @@ public class UserService implements UserUseCase {
 	}
 
 	private UserRole resolveRole(String currentUserRole) {
+		if (currentUserRole == null) {
+			throw new BusinessException(UserErrorCode.SELLER_SETTLEMENT_ACCOUNT_ACCESS_DENIED);
+		}
 		try {
 			return UserRole.valueOf(currentUserRole);
 		} catch (IllegalArgumentException e) {
