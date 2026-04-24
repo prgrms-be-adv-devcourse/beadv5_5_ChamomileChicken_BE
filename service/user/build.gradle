@@ -74,6 +74,7 @@ dependencies {
     testAnnotationProcessor 'org.projectlombok:lombok'
 
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'io.micrometer:micrometer-registry-prometheus'
 
     // OAuth2
     implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'

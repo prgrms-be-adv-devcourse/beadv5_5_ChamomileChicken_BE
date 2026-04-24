@@ -8,3 +8,18 @@ datasource:
   connection-timeout: 30000
   idle-timeout: 600000
   max-lifetime: 1800000
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+    prometheus:
+      enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
