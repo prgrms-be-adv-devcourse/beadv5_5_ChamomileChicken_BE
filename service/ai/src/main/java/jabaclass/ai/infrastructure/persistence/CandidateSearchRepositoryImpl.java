@@ -16,6 +16,8 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class CandidateSearchRepositoryImpl implements CandidateSearchRepository {
 
+	private static final double MAX_COSINE_DISTANCE = 0.35;
+
 	private final JdbcTemplate jdbcTemplate;
 
 	@Override
@@ -24,6 +26,8 @@ public class CandidateSearchRepositoryImpl implements CandidateSearchRepository 
 		if (userVector == null || userVector.isEmpty()) {
 			return List.of();
 		}
+
+		String vector = toPgVector(userVector.vector());
 
 		String sql = """
             SELECT 
@@ -34,6 +38,7 @@ public class CandidateSearchRepositoryImpl implements CandidateSearchRepository 
                 road_address
             FROM product_embeddings
             WHERE status = 'ENABLE'
+              AND embedding <=> (?::vector) <= ?
             ORDER BY embedding <=> (?::vector)  -- cosine distance (pgvector)
             LIMIT ?
         """;
@@ -41,8 +46,10 @@ public class CandidateSearchRepositoryImpl implements CandidateSearchRepository 
 		return jdbcTemplate.query(
 			sql,
 			ps -> {
-				ps.setString(1, toPgVector(userVector.vector()));
-				ps.setInt(2, k);
+				ps.setString(1, vector);
+				ps.setDouble(2, MAX_COSINE_DISTANCE);
+				ps.setString(3, vector);
+				ps.setInt(4, k);
 			},
 			(rs, rowNum) -> new CandidateClassDto(
 				rs.getObject("id", java.util.UUID.class),
