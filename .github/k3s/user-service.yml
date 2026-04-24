@@ -16,6 +16,10 @@ spec:
     metadata:
       labels:
         app: user-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/actuator/prometheus"
+        prometheus.io/port: "9003"
     spec:
       initContainers:
         - name: wait-for-postgres
