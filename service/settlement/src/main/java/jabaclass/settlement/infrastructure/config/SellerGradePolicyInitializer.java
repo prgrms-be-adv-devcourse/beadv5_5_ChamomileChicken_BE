@@ -18,9 +18,9 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Component
-@Profile("dev")
+@Profile({"dev", "prod"})
 @RequiredArgsConstructor
-public class DevSellerGradePolicyInitializer implements ApplicationRunner {
+public class SellerGradePolicyInitializer implements ApplicationRunner {
 
 	private final SellerGradePolicyJpaRepository sellerGradePolicyJpaRepository;
 
