@@ -3,6 +3,7 @@ package jabaclass.ai.infrastructure.kafka;
 import java.nio.charset.StandardCharsets;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.common.header.Header;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
@@ -26,7 +27,12 @@ public class OrderAiEventsConsumer {
 		groupId = "ai-order-activity"
 	)
 	public void consume(ConsumerRecord<String, String> record) {
-		String eventType = new String(record.headers().lastHeader("eventType").value(), StandardCharsets.UTF_8);
+		Header eventTypeHeader = record.headers().lastHeader("eventType");
+		if (eventTypeHeader == null) {
+			log.error("order.events eventType 헤더가 누락되었습니다. record={}", record);
+			return;
+		}
+		String eventType = new String(eventTypeHeader.value(), StandardCharsets.UTF_8);
 		String message = record.value();
 
 		try {
