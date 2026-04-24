@@ -10,6 +10,12 @@ spring:
       connection-timeout: 5000
       idle-timeout: 60000
       max-lifetime: 180000
+  data:
+    redis:
+      host: ${APP_REDIS_HOST:redis}
+      port: ${APP_REDIS_PORT:6379}
+      connect-timeout: 2s
+      timeout: 2s
 
   jpa:
     hibernate:

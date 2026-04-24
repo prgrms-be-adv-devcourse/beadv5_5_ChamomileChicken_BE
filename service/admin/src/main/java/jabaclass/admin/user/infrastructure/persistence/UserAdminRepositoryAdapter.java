@@ -7,6 +7,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
+import jabaclass.admin.user.domain.dto.UserSearchCondition;
 import jabaclass.admin.user.domain.model.User;
 import jabaclass.admin.user.domain.repository.UserAdminRepository;
 import lombok.RequiredArgsConstructor;
@@ -18,8 +19,8 @@ public class UserAdminRepositoryAdapter implements UserAdminRepository {
 	private final UserAdminJpaRepository userAdminJpaRepository;
 
 	@Override
-	public Page<User> findAll(Pageable pageable) {
-		return userAdminJpaRepository.findAll(pageable);
+	public Page<User> findAll(UserSearchCondition condition, Pageable pageable) {
+		return userAdminJpaRepository.findAll(UserAdminSpecification.withCondition(condition), pageable);
 	}
 
 	@Override

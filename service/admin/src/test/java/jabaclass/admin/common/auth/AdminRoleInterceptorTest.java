@@ -74,7 +74,7 @@ class AdminRoleInterceptorTest {
 
 	@Test
 	void ADMIN_헤더면_유저_목록_조회가_통과된다() throws Exception {
-		given(userAdminUseCase.getUsers(any())).willReturn(Page.empty());
+		given(userAdminUseCase.getUsers(any(), any())).willReturn(Page.empty());
 
 		mockMvc.perform(get("/api/v1/admins/users")
 				.header("X-User-Role", "ADMIN"))

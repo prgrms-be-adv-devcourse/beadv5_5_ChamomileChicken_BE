@@ -22,6 +22,8 @@ spring:
 external:
   deposits:
     base-url: ${USER_SERVICE_URL}
+  payments:
+    base-url: ${PAYMENT_SERVICE_URL}
   products:
     base-url: ${PRODUCT_SERVICE_URL}
 

@@ -1,6 +1,8 @@
 package jabaclass.settlement.infrastructure.kafka;
 
-import java.time.format.DateTimeFormatter;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.YearMonth;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Component;
@@ -15,14 +17,15 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class SettlementTargetEventHandler {
 
-	private static final DateTimeFormatter SETTLEMENT_MONTH_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM");
+	private static final LocalTime MONTHLY_SETTLEMENT_GRACE_DEADLINE_TIME = LocalTime.of(1, 0);
 
 	private final SettlementTargetJpaRepository settlementTargetJpaRepository;
 
 	public void handlePaymentCompleted(SettlementPaymentCompletedEvent event) {
+		LocalDateTime receivedAt = LocalDateTime.now();
 		saveIgnoringDuplicateSourceEvent(SettlementTarget.forPayment(
 			event.eventId(),
-			toSettlementMonth(event.occurredAt()),
+			resolveSettlementMonth(event.occurredAt(), receivedAt),
 			event.sellerId(),
 			event.orderId(),
 			event.paymentId(),
@@ -33,9 +36,10 @@ public class SettlementTargetEventHandler {
 	}
 
 	public void handleRefundCompleted(SettlementRefundCompletedEvent event) {
+		LocalDateTime receivedAt = LocalDateTime.now();
 		saveIgnoringDuplicateSourceEvent(SettlementTarget.forRefund(
 			event.eventId(),
-			toSettlementMonth(event.occurredAt()),
+			resolveSettlementMonth(event.occurredAt(), receivedAt),
 			event.sellerId(),
 			event.orderId(),
 			event.paymentId(),
@@ -46,8 +50,22 @@ public class SettlementTargetEventHandler {
 		));
 	}
 
-	private String toSettlementMonth(java.time.LocalDateTime occurredAt) {
-		return occurredAt.format(SETTLEMENT_MONTH_FORMATTER);
+	String resolveSettlementMonth(LocalDateTime occurredAt, LocalDateTime receivedAt) {
+		YearMonth receivedMonth = YearMonth.from(receivedAt);
+		if (occurredAt.isAfter(receivedAt)) {
+			return receivedMonth.toString();
+		}
+
+		YearMonth occurredMonth = YearMonth.from(occurredAt);
+		LocalDateTime graceDeadline = occurredMonth.plusMonths(1)
+			.atDay(1)
+			.atTime(MONTHLY_SETTLEMENT_GRACE_DEADLINE_TIME);
+
+		if (receivedAt.isBefore(graceDeadline)) {
+			return occurredMonth.toString();
+		}
+
+		return receivedMonth.toString();
 	}
 
 	private void saveIgnoringDuplicateSourceEvent(SettlementTarget target) {

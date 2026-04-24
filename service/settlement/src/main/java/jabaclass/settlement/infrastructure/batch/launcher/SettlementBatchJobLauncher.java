@@ -16,6 +16,7 @@ import org.springframework.stereotype.Component;
 import jabaclass.settlement.application.exception.BusinessException;
 import jabaclass.settlement.application.exception.ErrorCode;
 import jabaclass.settlement.application.exception.SettlementBatchErrorCode;
+import jabaclass.settlement.infrastructure.batch.lock.SettlementBatchLockManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -24,9 +25,14 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class SettlementBatchJobLauncher {
 
+	public static final String LOCK_KEY_PARAMETER_NAME = "settlementBatchLockKey";
+	public static final String SETTLEMENT_MONTH_PARAMETER_NAME = "settlementMonth";
+	private static final String REQUESTED_AT_PARAMETER_NAME = "requestedAt";
+
 	private final JobOperator jobOperator;
 	private final Job settlementCalculateJob;
 	private final Job settlementTransferJob;
+	private final SettlementBatchLockManager settlementBatchLockManager;
 
 	public void startCalculate(String settlementMonth) {
 		startWithMonthParam(
@@ -76,18 +82,33 @@ public class SettlementBatchJobLauncher {
 	}
 
 	private void start(Job job, String settlementMonth, ErrorCode failureErrorCode) {
+		String lockKey = settlementBatchLockManager.createMonthlyLockKey(settlementMonth);
+		boolean acquired = false;
+
 		try {
+			acquired = settlementBatchLockManager.acquire(lockKey, job.getName(), settlementMonth);
+			if (!acquired) {
+				throw new BusinessException(SettlementBatchErrorCode.SETTLEMENT_BATCH_ALREADY_RUNNING);
+			}
+
 			JobParameters jobParameters = new JobParametersBuilder()
-				.addString("settlementMonth", settlementMonth)
-				.addLong("requestedAt", System.currentTimeMillis())
+				.addString(SETTLEMENT_MONTH_PARAMETER_NAME, settlementMonth)
+				.addString(LOCK_KEY_PARAMETER_NAME, lockKey, false)
+				.addLong(REQUESTED_AT_PARAMETER_NAME, System.currentTimeMillis())
 				.toJobParameters();
 
 			jobOperator.start(job, jobParameters);
+		} catch (BusinessException e) {
+			releaseIfAcquired(acquired, lockKey);
+			throw e;
 		} catch (JobExecutionAlreadyRunningException | JobRestartException | JobInstanceAlreadyCompleteException e) {
+			releaseIfAcquired(acquired, lockKey);
 			throw new BusinessException(SettlementBatchErrorCode.SETTLEMENT_BATCH_ALREADY_RUNNING);
 		} catch (InvalidJobParametersException | IllegalArgumentException | DateTimeParseException e) {
+			releaseIfAcquired(acquired, lockKey);
 			throw new BusinessException(SettlementBatchErrorCode.SETTLEMENT_BATCH_PARAMETER_INVALID);
 		} catch (Exception e) {
+			releaseIfAcquired(acquired, lockKey);
 			log.error("[SETTLEMENT_BATCH] Job 실행 중 알 수 없는 예외 발생. jobName={}, settlementMonth={}",
 				job.getName(),
 				settlementMonth,
@@ -95,6 +116,14 @@ public class SettlementBatchJobLauncher {
 			);
 			throw new BusinessException(failureErrorCode);
 		}
+	}
+
+	private void releaseIfAcquired(boolean acquired, String lockKey) {
+		if (!acquired) {
+			return;
+		}
+
+		settlementBatchLockManager.release(lockKey);
 	}
 
 	private String resolveSettlementMonth(String settlementMonth, YearMonth defaultSettlementMonth) {

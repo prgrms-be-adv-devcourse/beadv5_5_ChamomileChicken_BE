@@ -9,6 +9,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -19,7 +20,13 @@ import jabaclass.settlement.domain.model.grade.SellerGradeType;
 @Getter
 @Entity
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(name = "settlements")
+@Table(
+	name = "settlements",
+	uniqueConstraints = @UniqueConstraint(
+		name = "uk_settlements_seller_month",
+		columnNames = {"seller_id", "settlement_month"}
+	)
+)
 public class Settlement extends BaseEntity {
 
 	@Column(name = "seller_id", nullable = false)

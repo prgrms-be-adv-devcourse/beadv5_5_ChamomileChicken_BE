@@ -1,6 +1,7 @@
 package jabaclass.settlement.infrastructure.persistence.adapter;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.stereotype.Repository;
@@ -17,7 +18,17 @@ public class SettlementTransferRepositoryAdapter implements SettlementTransferRe
 	private final SettlementTransferJpaRepository settlementTransferJpaRepository;
 
 	@Override
+	public SettlementTransfer save(SettlementTransfer settlementTransfer) {
+		return settlementTransferJpaRepository.save(settlementTransfer);
+	}
+
+	@Override
 	public List<SettlementTransfer> saveAll(List<SettlementTransfer> settlementTransfers) {
 		return settlementTransferJpaRepository.saveAll(settlementTransfers);
+	}
+
+	@Override
+	public Optional<SettlementTransfer> findLatestBySettlementId(UUID settlementId) {
+		return settlementTransferJpaRepository.findTopBySettlementIdOrderByRequestedAtDesc(settlementId);
 	}
 }

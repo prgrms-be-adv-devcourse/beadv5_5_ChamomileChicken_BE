@@ -12,6 +12,8 @@ import jabaclass.settlement.domain.model.settlement.SettlementStatus;
 
 public interface SettlementRepository {
 
+	Settlement save(Settlement settlement);
+
 	List<Settlement> saveAll(List<Settlement> settlements);
 
 	Optional<Settlement> findById(UUID settlementId);

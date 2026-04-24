@@ -37,6 +37,29 @@ order-service
 | `occurredAt` | 결제/환불 발생 시각 |
 | `calculationStatus` | 최초 적재 시 `PENDING` |
 
+## 정산 귀속 월 결정
+
+`settlementMonth`는 기본적으로 이벤트의 `occurredAt`을 기준으로 결정한다.
+다만 월말 이벤트가 Kafka 지연 등으로 다음 달 초에 늦게 도착할 수 있으므로, 다음 달 1일 01:00까지 유예시간을 둔다.
+
+| 조건 | settlementMonth |
+|------|-----------------|
+| 발생월 이벤트가 다음 달 1일 01:00 전까지 수신됨 | 발생월 |
+| 발생월 이벤트가 다음 달 1일 01:00 이후 수신됨 | 수신월 |
+| 발생시각이 수신시각보다 미래 | 수신월 |
+
+예시:
+
+```text
+occurredAt = 2026-04-30 23:59:55
+receivedAt = 2026-05-01 00:59:59
+-> settlementMonth = 2026-04
+
+occurredAt = 2026-04-30 23:59:55
+receivedAt = 2026-05-01 01:00:00
+-> settlementMonth = 2026-05
+```
+
 ## 멱등 처리
 
 Kafka 메시지는 재전달될 수 있으므로 동일 이벤트 중복 적재를 막아야 한다.
