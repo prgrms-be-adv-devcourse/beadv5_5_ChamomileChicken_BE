@@ -3,6 +3,8 @@ package jabaclass.admin.review.infrastructure.persistence;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
 import jabaclass.admin.review.domain.model.Review;
@@ -14,6 +16,11 @@ import lombok.RequiredArgsConstructor;
 public class ReviewAdminRepositoryAdapter implements ReviewAdminRepository {
 
 	private final ReviewAdminJpaRepository reviewAdminJpaRepository;
+
+	@Override
+	public Page<Review> findAll(Pageable pageable) {
+		return reviewAdminJpaRepository.findByDeleteDtIsNull(pageable);
+	}
 
 	@Override
 	public Optional<Review> findById(UUID reviewId) {
