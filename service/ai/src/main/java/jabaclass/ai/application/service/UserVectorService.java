@@ -2,10 +2,13 @@ package jabaclass.ai.application.service;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
@@ -54,15 +57,25 @@ public class UserVectorService {
 		float[] vector = new float[VECTOR_SIZE];
 		Map<UUID, Integer> viewContributionCounts = new HashMap<>();
 		LocalDateTime now = LocalDateTime.now();
+		List<UserActivity> filteredActivities = new ArrayList<>();
 
 		for (UserActivity activity : activities) {
 			if (shouldSkipView(activity, viewContributionCounts)) {
 				continue;
 			}
 
+			filteredActivities.add(activity);
+		}
+
+		Set<UUID> productIds = filteredActivities.stream()
+			.map(UserActivity::getProductId)
+			.collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+		Map<UUID, float[]> embeddingsByProductId = productEmbeddingRepository.findAllByProductIds(productIds);
+
+		for (UserActivity activity : filteredActivities) {
 			float weight = getWeight(activity.getActionType()) * getRecencyWeight(activity.getCreatedAt(), now);
 
-			float[] itemVector = productEmbeddingRepository.findEmbeddingByProductId(activity.getProductId());
+			float[] itemVector = embeddingsByProductId.get(activity.getProductId());
 
 			// null 방어
 			if (itemVector == null || itemVector.length != VECTOR_SIZE) {

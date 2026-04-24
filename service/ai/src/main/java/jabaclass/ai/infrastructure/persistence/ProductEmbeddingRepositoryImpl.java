@@ -1,5 +1,9 @@
 package jabaclass.ai.infrastructure.persistence;
 
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -34,6 +38,40 @@ public class ProductEmbeddingRepositoryImpl implements ProductEmbeddingRepositor
 				String vectorStr = rs.getString("embedding");
 
 				return parseVector(vectorStr);
+			}
+		);
+	}
+
+	@Override
+	public Map<UUID, float[]> findAllByProductIds(Collection<UUID> productIds) {
+		if (productIds == null || productIds.isEmpty()) {
+			return Collections.emptyMap();
+		}
+
+		String placeholders = String.join(",", Collections.nCopies(productIds.size(), "?"));
+		String sql = """
+			SELECT id, embedding
+			FROM product_embeddings
+			WHERE id IN (%s)
+		""".formatted(placeholders);
+
+		return jdbcTemplate.query(
+			sql,
+			ps -> {
+				int index = 1;
+				for (UUID productId : productIds) {
+					ps.setObject(index++, productId);
+				}
+			},
+			rs -> {
+				Map<UUID, float[]> embeddings = new HashMap<>();
+				while (rs.next()) {
+					embeddings.put(
+						rs.getObject("id", UUID.class),
+						parseVector(rs.getString("embedding"))
+					);
+				}
+				return embeddings;
 			}
 		);
 	}
