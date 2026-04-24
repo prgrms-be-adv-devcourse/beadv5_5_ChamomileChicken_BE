@@ -189,6 +189,8 @@ RecommendationService.recommend()
   -> Redis 캐시 저장
 ```
 
+> 추천 캐시 전체 무효화는 Redis `SCAN` 결과를 배치 단위로 삭제해 애플리케이션 메모리 사용량과 대량 `DEL` 호출로 인한 Redis 부하를 줄입니다.
+
 ### 상품 임베딩 동기화 흐름
 
 ```
