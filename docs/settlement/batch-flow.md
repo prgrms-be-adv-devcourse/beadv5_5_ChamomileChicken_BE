@@ -2,6 +2,8 @@
 
 정산 배치는 크게 정산 계산 배치와 정산 송금 배치로 나뉜다.
 
+정산 서비스는 배치만 담당하는 것이 아니라, Kafka 이벤트를 통해 정산 타겟 적재와 판매자 프로모션 등록도 함께 처리한다.
+
 ## 배치 패키지 구조
 
 ```text
@@ -60,6 +62,40 @@ SettlementBatchController
 ```
 
 `SettlementBatchJobLauncher`는 배치 실행 파라미터 생성과 공통 예외 처리를 담당한다. 스케줄러와 컨트롤러는 직접 `JobParameters`를 만들지 않는다.
+
+## Kafka 이벤트 소비 흐름
+
+정산 서비스는 현재 정산 관련 이벤트를 `settlement.events` 토픽 하나에서 받고, `eventType` 헤더로 분기한다.
+
+```text
+settlement.events
+  -> SETTLEMENT_PAYMENT_COMPLETED
+  -> SETTLEMENT_REFUND_COMPLETED
+  -> USER_SELLER_APPROVED
+```
+
+이 중 결제/환불 이벤트는 `SettlementTarget` 적재로 이어지고, 판매자 승격 이벤트는 신규 셀러 프로모션 등록으로 이어진다.
+
+### 신규 셀러 프로모션 등록 흐름
+
+```text
+admin-service
+  -> USER_SELLER_APPROVED 발행
+    -> settlement.events
+      -> SettlementEventsConsumer
+        -> SellerPromotionEventHandler
+          -> NewSellerPromotionService
+            -> NEW_SELLER 프로모션 조회
+            -> seller_promotions 저장
+```
+
+주요 규칙:
+
+- 이벤트에는 `sellerId`, `approvedAt`이 포함된다.
+- `approvedAt`을 신규 셀러 프로모션 시작 시각으로 사용한다.
+- 프로모션 종료 시각은 `approvedAt + durationDays - 1ns`로 계산해 전체 기간이 정확히 적용되도록 한다.
+- 동일 승격 이벤트 재처리에도 중복 저장되지 않도록 `sellerId + promotionId + approvedAt` 기준으로 기존 이력을 확인한다.
+- 신규 셀러 프로모션 마스터(`settlement_promotions`)가 없으면 예외로 처리한다.
 
 ## 정산 계산 Job
 
@@ -133,6 +169,17 @@ SettlementTargetCalculation summary paging 조회
 이 구조는 seller별 단건 조회를 반복하지 않고, 현재 chunk에 포함된 sellerIds 기준으로 필요한 데이터를 모아 가져오기 위한 것이다.
 
 월 전체 데이터를 한 번에 메모리에 올리지 않으면서도 seller 수에 비례해 쿼리가 증가하는 N+1 문제를 줄인다.
+
+또한 `SettlementTargetCalculation` 생성 시 seller의 활성 프로모션도 함께 반영한다.
+
+```text
+SettlementTarget
+  -> SettlementPromotionResolver
+    -> seller_promotions 조회
+    -> 적용 가능한 프로모션 있으면 appliedFeeRate 사용
+```
+
+즉 신규 셀러 프로모션은 이벤트 소비 시점에 `seller_promotions`에 먼저 등록되고, 이후 정산 계산 배치가 `occurredAt` 기준으로 적용 가능 여부를 판단해 수수료율을 할인한다.
 
 ## 정산 송금 Job
 

@@ -5,6 +5,7 @@ import java.util.UUID;
 
 import org.springframework.stereotype.Repository;
 
+import jabaclass.settlement.domain.model.promotion.PromotionType;
 import jabaclass.settlement.domain.model.promotion.SettlementPromotion;
 import jabaclass.settlement.domain.repository.SettlementPromotionRepository;
 import jabaclass.settlement.infrastructure.persistence.SettlementPromotionJpaRepository;
@@ -19,5 +20,10 @@ public class SettlementPromotionRepositoryAdapter implements SettlementPromotion
 	@Override
 	public Optional<SettlementPromotion> findById(UUID promotionId) {
 		return settlementPromotionJpaRepository.findById(promotionId);
+	}
+
+	@Override
+	public Optional<SettlementPromotion> findActiveByPromotionType(PromotionType promotionType) {
+		return settlementPromotionJpaRepository.findFirstByPromotionTypeAndActiveTrue(promotionType);
 	}
 }

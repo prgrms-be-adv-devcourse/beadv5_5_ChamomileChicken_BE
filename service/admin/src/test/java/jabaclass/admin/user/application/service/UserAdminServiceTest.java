@@ -26,7 +26,11 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import jabaclass.admin.common.error.BusinessException;
+import jabaclass.admin.product.domain.model.OutboxEvent;
+import jabaclass.admin.product.domain.repository.OutboxEventRepository;
 import jabaclass.admin.user.domain.dto.UserSearchCondition;
 import jabaclass.admin.user.domain.model.User;
 import jabaclass.admin.user.domain.model.UserRole;
@@ -40,6 +44,12 @@ class UserAdminServiceTest {
 
 	@Mock
 	private UserAdminRepository userAdminRepository;
+
+	@Mock
+	private OutboxEventRepository outboxEventRepository;
+
+	@Mock
+	private ObjectMapper objectMapper;
 
 	@InjectMocks
 	private UserAdminService userAdminService;
@@ -165,9 +175,10 @@ class UserAdminServiceTest {
 	}
 
 	@Test
-	void 셀러를_승인한다() {
+	void 셀러를_승인하면_아웃박스_이벤트를_저장한다() throws Exception {
 		// given
 		given(userAdminRepository.findById(userId)).willReturn(Optional.of(user));
+		given(objectMapper.writeValueAsString(any())).willReturn("{\"type\":\"SELLER_APPROVED\"}");
 
 		// when
 		userAdminService.approveSeller(userId);
@@ -175,6 +186,7 @@ class UserAdminServiceTest {
 		// then
 		assertThat(user.getRole()).isEqualTo(UserRole.SELLER);
 		then(userAdminRepository).should(times(1)).findById(userId);
+		then(outboxEventRepository).should(times(1)).save(any(OutboxEvent.class));
 	}
 
 	@Test
@@ -187,5 +199,6 @@ class UserAdminServiceTest {
 			.isInstanceOf(BusinessException.class)
 			.hasMessage("유저를 찾을 수 없습니다.");
 		then(userAdminRepository).should(times(1)).findById(userId);
+		then(outboxEventRepository).shouldHaveNoInteractions();
 	}
 }
