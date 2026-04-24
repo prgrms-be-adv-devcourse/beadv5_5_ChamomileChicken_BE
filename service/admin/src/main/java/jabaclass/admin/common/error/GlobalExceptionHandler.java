@@ -5,6 +5,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import jabaclass.admin.common.dto.ApiResponseDto;
 
@@ -34,6 +35,13 @@ public class GlobalExceptionHandler {
 		return ResponseEntity
 			.status(HttpStatus.BAD_REQUEST)
 			.body(ApiResponseDto.fail(HttpStatus.BAD_REQUEST, ex.getMessage()));
+	}
+
+	@ExceptionHandler(NoResourceFoundException.class)
+	public ResponseEntity<ApiResponseDto<Void>> handleNoResourceFound(NoResourceFoundException ex) {
+		return ResponseEntity
+			.status(HttpStatus.NOT_FOUND)
+			.body(ApiResponseDto.fail(HttpStatus.NOT_FOUND, "요청한 리소스를 찾을 수 없습니다."));
 	}
 
 	@ExceptionHandler(Exception.class)

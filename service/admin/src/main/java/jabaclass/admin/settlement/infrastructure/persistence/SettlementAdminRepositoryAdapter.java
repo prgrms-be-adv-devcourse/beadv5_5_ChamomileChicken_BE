@@ -1,5 +1,7 @@
 package jabaclass.admin.settlement.infrastructure.persistence;
 
+import java.math.BigDecimal;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
@@ -18,5 +20,10 @@ public class SettlementAdminRepositoryAdapter implements SettlementAdminReposito
 	@Override
 	public Page<Settlement> findAll(SettlementSearchCondition condition, Pageable pageable) {
 		return settlementAdminJpaRepository.findAll(SettlementAdminSpecification.withCondition(condition), pageable);
+	}
+
+	@Override
+	public BigDecimal sumSettlementAmountByMonth(String month) {
+		return settlementAdminJpaRepository.sumSettlementAmountByMonth(month);
 	}
 }

@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 
 import jabaclass.admin.product.domain.dto.ProductSearchCondition;
 import jabaclass.admin.product.domain.model.Product;
+import jabaclass.admin.product.domain.model.ProductStatus;
 import jabaclass.admin.product.domain.repository.ProductAdminRepository;
 import lombok.RequiredArgsConstructor;
 
@@ -31,5 +32,10 @@ public class ProductAdminRepositoryAdapter implements ProductAdminRepository {
 	@Override
 	public Optional<Product> findById(UUID productId) {
 		return productAdminJpaRepository.findById(productId);
+	}
+
+	@Override
+	public long countActiveProducts() {
+		return productAdminJpaRepository.countByStatusAndDeleteDtIsNull(ProductStatus.ENABLE);
 	}
 }

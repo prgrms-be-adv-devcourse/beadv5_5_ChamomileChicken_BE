@@ -4,6 +4,8 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 import jabaclass.admin.common.model.BaseEntity;
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.AttributeOverrides;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
@@ -16,6 +18,10 @@ import lombok.experimental.SuperBuilder;
 @NoArgsConstructor
 @Entity
 @Table(name = "product_reviews", schema = "public")
+@AttributeOverrides({
+	@AttributeOverride(name = "createdAt", column = @Column(name = "reg_dt", nullable = false, updatable = false)),
+	@AttributeOverride(name = "updatedAt", column = @Column(name = "modify_dt", nullable = false))
+})
 public class Review extends BaseEntity {
 
 	@Column(name = "product_id", updatable = false, nullable = false)

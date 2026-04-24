@@ -13,4 +13,5 @@ public interface ProductAdminRepository {
 	Page<Product> findAll(Pageable pageable);
 	Page<Product> findAll(ProductSearchCondition condition, Pageable pageable);
 	Optional<Product> findById(UUID productId);
+	long countActiveProducts();
 }
