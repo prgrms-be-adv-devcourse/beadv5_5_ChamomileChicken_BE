@@ -17,6 +17,7 @@ INSERT INTO gateway_route_policy (method, path_pattern, allowed_roles, descripti
 VALUES ('POST', '/api/v1/products', 'SELLER,ADMIN', '상품 등록'),
        ('PUT', '/api/v1/products/*', 'SELLER,ADMIN', '상품 수정'),
        ('DELETE', '/api/v1/products/*', 'SELLER,ADMIN', '상품 삭제'),
+       ('PUT', '/api/v1/users/me/seller-settlement-account', 'SELLER,ADMIN', '내 정산 계좌 등록 또는 수정'),
        ('POST', '/api/v1/products/*/schedules', 'SELLER,ADMIN', '일정 등록'),
        ('PUT', '/api/v1/products/*/schedules/*', 'SELLER,ADMIN', '일정 수정'),
        ('DELETE', '/api/v1/products/*/schedules/*', 'SELLER,ADMIN', '일정 삭제'),
