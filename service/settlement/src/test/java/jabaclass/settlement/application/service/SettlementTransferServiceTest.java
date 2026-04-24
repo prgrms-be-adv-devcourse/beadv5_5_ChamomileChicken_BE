@@ -17,22 +17,24 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import jabaclass.settlement.application.dto.SellerSettlementAccount;
 import jabaclass.settlement.application.dto.SettlementTransferResult;
-import jabaclass.settlement.application.exception.BusinessException;
+import jabaclass.settlement.application.dto.SettlementTransferStatusResult;
 import jabaclass.settlement.application.port.external.SellerSettlementPort;
 import jabaclass.settlement.application.port.external.SettlementTransferPort;
 import jabaclass.settlement.domain.model.grade.SellerGradeType;
 import jabaclass.settlement.domain.model.settlement.Settlement;
 import jabaclass.settlement.domain.model.settlement.SettlementStatus;
 import jabaclass.settlement.domain.model.settlement.SettlementTransfer;
-import jabaclass.settlement.domain.repository.SettlementRepository;
 import jabaclass.settlement.domain.repository.SettlementTransferRepository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.times;
 
 @SuppressWarnings("NonAsciiCharacters")
 @ExtendWith(MockitoExtension.class)
@@ -42,7 +44,7 @@ class SettlementTransferServiceTest {
 	private static final UUID SELLER_GRADE_POLICY_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
 
 	@Mock
-	private SettlementRepository settlementRepository;
+	private SettlementTransferStatePersistenceService settlementTransferStatePersistenceService;
 
 	@Mock
 	private SettlementTransferRepository settlementTransferRepository;
@@ -59,11 +61,10 @@ class SettlementTransferServiceTest {
 	@Test
 	void ready_정산을_송금_성공처리한다() {
 		// given
-		String settlementMonth = "2026-03";
 		UUID sellerId = UUID.randomUUID();
 		Settlement settlement = Settlement.createReady(
 			sellerId,
-			settlementMonth,
+			"2026-03",
 			new BigDecimal("10000"),
 			SellerGradeType.BASIC,
 			SELLER_GRADE_POLICY_ID,
@@ -74,8 +75,6 @@ class SettlementTransferServiceTest {
 		);
 		assignId(settlement);
 
-		given(settlementRepository.findBySettlementMonthAndStatus(settlementMonth, SettlementStatus.READY))
-			.willReturn(List.of(settlement));
 		given(sellerSettlementPort.fetchSellerSettlementAccounts(Set.of(sellerId)))
 			.willReturn(List.of(new SellerSettlementAccount(
 				sellerId,
@@ -86,20 +85,16 @@ class SettlementTransferServiceTest {
 			)));
 		given(settlementTransferPort.transfer(any()))
 			.willReturn(SettlementTransferResult.ok());
-		given(settlementRepository.saveAll(anyList()))
-			.willAnswer(invocation -> invocation.getArgument(0));
-		given(settlementTransferRepository.saveAll(anyList()))
-			.willAnswer(invocation -> invocation.getArgument(0));
 
-		ArgumentCaptor<List<Settlement>> settlementCaptor = ArgumentCaptor.forClass(List.class);
+		ArgumentCaptor<Settlement> settlementCaptor = ArgumentCaptor.forClass(Settlement.class);
 
 		// when
-		int actual = settlementTransferService.transferMonthly(settlementMonth);
+		settlementTransferService.transferSettlements(List.of(settlement));
 
 		// then
-		assertThat(actual).isEqualTo(1);
-		then(settlementRepository).should().saveAll(settlementCaptor.capture());
-		Settlement savedSettlement = settlementCaptor.getValue().get(0);
+		then(settlementTransferStatePersistenceService).should(atLeastOnce())
+			.saveTransferState(settlementCaptor.capture(), any());
+		Settlement savedSettlement = settlementCaptor.getAllValues().getLast();
 		assertThat(savedSettlement.getStatus()).isEqualTo(SettlementStatus.SENT);
 		assertThat(savedSettlement.getTransferredAt()).isNotNull();
 	}
@@ -107,11 +102,10 @@ class SettlementTransferServiceTest {
 	@Test
 	void 판매자_계좌가_없으면_hold_처리한다() {
 		// given
-		String settlementMonth = "2026-03";
 		UUID sellerId = UUID.randomUUID();
 		Settlement settlement = Settlement.createReady(
 			sellerId,
-			settlementMonth,
+			"2026-03",
 			new BigDecimal("10000"),
 			SellerGradeType.BASIC,
 			SELLER_GRADE_POLICY_ID,
@@ -122,22 +116,17 @@ class SettlementTransferServiceTest {
 		);
 		assignId(settlement);
 
-		given(settlementRepository.findBySettlementMonthAndStatus(settlementMonth, SettlementStatus.READY))
-			.willReturn(List.of(settlement));
 		given(sellerSettlementPort.fetchSellerSettlementAccounts(Set.of(sellerId)))
 			.willReturn(List.of());
-		given(settlementTransferRepository.saveAll(anyList()))
-			.willAnswer(invocation -> invocation.getArgument(0));
 
-		ArgumentCaptor<List<Settlement>> settlementCaptor = ArgumentCaptor.forClass(List.class);
+		ArgumentCaptor<Settlement> settlementCaptor = ArgumentCaptor.forClass(Settlement.class);
 
 		// when
-		int actual = settlementTransferService.transferMonthly(settlementMonth);
+		settlementTransferService.transferSettlements(List.of(settlement));
 
 		// then
-		assertThat(actual).isEqualTo(0);
-		then(settlementRepository).should().saveAll(settlementCaptor.capture());
-		Settlement savedSettlement = settlementCaptor.getValue().get(0);
+		then(settlementTransferStatePersistenceService).should().saveTransferState(settlementCaptor.capture(), any());
+		Settlement savedSettlement = settlementCaptor.getValue();
 		assertThat(savedSettlement.getStatus()).isEqualTo(SettlementStatus.HOLD);
 		assertThat(savedSettlement.getFailReason()).isEqualTo("판매자 정산 계좌 정보가 없습니다.");
 	}
@@ -145,11 +134,10 @@ class SettlementTransferServiceTest {
 	@Test
 	void 판매자_계좌가_비활성이면_hold_처리한다() {
 		// given
-		String settlementMonth = "2026-03";
 		UUID sellerId = UUID.randomUUID();
 		Settlement settlement = Settlement.createReady(
 			sellerId,
-			settlementMonth,
+			"2026-03",
 			new BigDecimal("10000"),
 			SellerGradeType.BASIC,
 			SELLER_GRADE_POLICY_ID,
@@ -160,8 +148,6 @@ class SettlementTransferServiceTest {
 		);
 		assignId(settlement);
 
-		given(settlementRepository.findBySettlementMonthAndStatus(settlementMonth, SettlementStatus.READY))
-			.willReturn(List.of(settlement));
 		given(sellerSettlementPort.fetchSellerSettlementAccounts(Set.of(sellerId)))
 			.willReturn(List.of(new SellerSettlementAccount(
 				sellerId,
@@ -170,17 +156,15 @@ class SettlementTransferServiceTest {
 				"판매자",
 				true
 			)));
-		given(settlementTransferRepository.saveAll(anyList()))
-			.willAnswer(invocation -> invocation.getArgument(0));
 
-		ArgumentCaptor<List<Settlement>> settlementCaptor = ArgumentCaptor.forClass(List.class);
+		ArgumentCaptor<Settlement> settlementCaptor = ArgumentCaptor.forClass(Settlement.class);
 
 		// when
-		settlementTransferService.transferMonthly(settlementMonth);
+		settlementTransferService.transferSettlements(List.of(settlement));
 
 		// then
-		then(settlementRepository).should().saveAll(settlementCaptor.capture());
-		Settlement savedSettlement = settlementCaptor.getValue().get(0);
+		then(settlementTransferStatePersistenceService).should().saveTransferState(settlementCaptor.capture(), any());
+		Settlement savedSettlement = settlementCaptor.getValue();
 		assertThat(savedSettlement.getStatus()).isEqualTo(SettlementStatus.HOLD);
 		assertThat(savedSettlement.getFailReason()).isEqualTo("판매자 정산 계좌가 비활성 상태입니다.");
 	}
@@ -188,11 +172,10 @@ class SettlementTransferServiceTest {
 	@Test
 	void 송금_실패_응답이면_failed_처리한다() {
 		// given
-		String settlementMonth = "2026-03";
 		UUID sellerId = UUID.randomUUID();
 		Settlement settlement = Settlement.createReady(
 			sellerId,
-			settlementMonth,
+			"2026-03",
 			new BigDecimal("10000"),
 			SellerGradeType.BASIC,
 			SELLER_GRADE_POLICY_ID,
@@ -203,8 +186,6 @@ class SettlementTransferServiceTest {
 		);
 		assignId(settlement);
 
-		given(settlementRepository.findBySettlementMonthAndStatus(settlementMonth, SettlementStatus.READY))
-			.willReturn(List.of(settlement));
 		given(sellerSettlementPort.fetchSellerSettlementAccounts(Set.of(sellerId)))
 			.willReturn(List.of(new SellerSettlementAccount(
 				sellerId,
@@ -215,18 +196,16 @@ class SettlementTransferServiceTest {
 			)));
 		given(settlementTransferPort.transfer(any()))
 			.willReturn(SettlementTransferResult.fail("송금 실패"));
-		given(settlementTransferRepository.saveAll(anyList()))
-			.willAnswer(invocation -> invocation.getArgument(0));
 
-		ArgumentCaptor<List<Settlement>> settlementCaptor = ArgumentCaptor.forClass(List.class);
+		ArgumentCaptor<Settlement> settlementCaptor = ArgumentCaptor.forClass(Settlement.class);
 
 		// when
-		int actual = settlementTransferService.transferMonthly(settlementMonth);
+		settlementTransferService.transferSettlements(List.of(settlement));
 
 		// then
-		assertThat(actual).isEqualTo(0);
-		then(settlementRepository).should().saveAll(settlementCaptor.capture());
-		Settlement savedSettlement = settlementCaptor.getValue().get(0);
+		then(settlementTransferStatePersistenceService).should(atLeastOnce())
+			.saveTransferState(settlementCaptor.capture(), any());
+		Settlement savedSettlement = settlementCaptor.getAllValues().getLast();
 		assertThat(savedSettlement.getStatus()).isEqualTo(SettlementStatus.FAILED);
 		assertThat(savedSettlement.getFailReason()).isEqualTo("송금 실패");
 	}
@@ -256,11 +235,90 @@ class SettlementTransferServiceTest {
 	}
 
 	@Test
-	void 정산월이_비어있으면_예외가_발생한다() {
+	void 외부_송금_성공후_db_저장에_실패해도_다음_배치에서_sent로_복구한다() {
+		// given
+		UUID sellerId = UUID.randomUUID();
+		Settlement settlement = Settlement.createReady(
+			sellerId,
+			"2026-03",
+			new BigDecimal("10000"),
+			SellerGradeType.BASIC,
+			SELLER_GRADE_POLICY_ID,
+			new BigDecimal("300000"),
+			new BigDecimal("330.00"),
+			new BigDecimal("0.033"),
+			new BigDecimal("9670.00")
+		);
+		assignId(settlement);
+		settlement.markTransferring();
+
+		SettlementTransfer transferHistory = SettlementTransfer.requested(
+			settlement.getId(),
+			"088",
+			"12345678",
+			new BigDecimal("9670.00")
+		);
+
+		given(settlementTransferRepository.findLatestBySettlementId(settlement.getId()))
+			.willReturn(java.util.Optional.of(transferHistory));
+		given(settlementTransferPort.getTransferStatus(settlement.getId()))
+			.willReturn(SettlementTransferStatusResult.sent());
+
+		ArgumentCaptor<Settlement> settlementCaptor = ArgumentCaptor.forClass(Settlement.class);
+		ArgumentCaptor<SettlementTransfer> transferCaptor = ArgumentCaptor.forClass(SettlementTransfer.class);
+
+		// when
+		settlementTransferService.reconcileTransferringSettlements(List.of(settlement));
+
+		// then
+		then(settlementTransferStatePersistenceService).should()
+			.saveTransferState(settlementCaptor.capture(), transferCaptor.capture());
+		assertThat(settlementCaptor.getValue().getStatus()).isEqualTo(SettlementStatus.SENT);
+		assertThat(transferCaptor.getValue().getTransferStatus()).isEqualTo(
+			jabaclass.settlement.domain.model.settlement.SettlementTransferStatus.SENT
+		);
+	}
+
+	@Test
+	void 외부_송금_성공후_최종_저장에_실패하면_failed로_덮어쓰지_않고_예외를_전파한다() {
+		// given
+		UUID sellerId = UUID.randomUUID();
+		Settlement settlement = Settlement.createReady(
+			sellerId,
+			"2026-03",
+			new BigDecimal("10000"),
+			SellerGradeType.BASIC,
+			SELLER_GRADE_POLICY_ID,
+			new BigDecimal("300000"),
+			new BigDecimal("330.00"),
+			new BigDecimal("0.033"),
+			new BigDecimal("9670.00")
+		);
+		assignId(settlement);
+
+		given(sellerSettlementPort.fetchSellerSettlementAccounts(Set.of(sellerId)))
+			.willReturn(List.of(new SellerSettlementAccount(
+				sellerId,
+				"088",
+				"123-456",
+				"판매자",
+				true
+			)));
+		given(settlementTransferPort.transfer(any()))
+			.willReturn(SettlementTransferResult.ok());
+		doNothing()
+			.doThrow(new RuntimeException("db save fail"))
+			.when(settlementTransferStatePersistenceService)
+			.saveTransferState(any(), any());
+
 		// when & then
-		assertThatThrownBy(() -> settlementTransferService.transferMonthly(""))
-			.isInstanceOf(BusinessException.class)
-			.hasMessage("파라미터 값을 확인해주세요.");
+		assertThatThrownBy(() -> settlementTransferService.transferSettlements(List.of(settlement)))
+			.isInstanceOf(RuntimeException.class)
+			.hasMessage("db save fail");
+
+		then(settlementTransferPort).should().transfer(any());
+		then(settlementTransferStatePersistenceService).should(times(2))
+			.saveTransferState(any(), any());
 	}
 
 	private void assignId(Settlement settlement) {

@@ -3,27 +3,35 @@ spring:
     url: r2dbc:postgresql://${POSTGRES_HOST}:${POSTGRES_PORT:5432}/${POSTGRES_DB}
     username: ${POSTGRES_USER:postgres}
     password: ${POSTGRES_PASSWORD:postgres}
+    pool:
+      enabled: true
+      initial-size: 1
+      min-idle: 2
+      max-size: 4
+      max-idle-time: 10m
+      max-life-time: 30m
+      max-acquire-time: 30s
 
-  flyway:
-    enabled: true
-    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:backend5}
-    user: ${POSTGRES_USER:postgres}
-    password: ${POSTGRES_PASSWORD:postgres}
+
+  #  flyway:
+  #    enabled: true
+  #    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:backend5}
+  #    user: ${POSTGRES_USER:postgres}
+  #    password: ${POSTGRES_PASSWORD:postgres}
 
   sql:
     init:
       mode: never
-
+  # 1000ms 500ms
   data:
     redis:
-      host: ${REDIS_HOST}
-      port: ${REDIS_PORT:6379}
-      connect-timeout: 1000ms
-      timeout: 500ms
+      host: ${APP_REDIS_HOST:redis}
+      port: ${APP_REDIS_PORT:6379}
+      connect-timeout: 2s
+      timeout: 2s
 
 cors:
-  allowed-origins:
-    - ${CORS_ALLOWED_ORIGINS}
+  allowed-origins: ${CORS_ALLOWED_ORIGINS}
 
 logging:
   level:

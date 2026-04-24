@@ -4,7 +4,6 @@ import java.util.Map;
 
 import javax.sql.DataSource;
 
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.jdbc.DataSourceBuilder;
@@ -19,30 +18,40 @@ import org.springframework.transaction.PlatformTransactionManager;
 
 @Configuration
 @EnableJpaRepositories(
-	basePackages = "jabaclass.admin.user.infrastructure.persistence",
-	entityManagerFactoryRef = "userEntityManagerFactory",
-	transactionManagerRef = "userTransactionManager"
+	basePackages = {
+		"jabaclass.admin.user.infrastructure.persistence",
+		"jabaclass.admin.product.infrastructure.persistence",
+		"jabaclass.admin.order.infrastructure.persistence",
+		"jabaclass.admin.settlement.infrastructure.persistence",
+		"jabaclass.admin.review.infrastructure.persistence"
+	},
+	entityManagerFactoryRef = "adminEntityManagerFactory",
+	transactionManagerRef = "adminTransactionManager"
 )
-public class UserDataSourceConfig {
+public class AdminDataSourceConfig {
 
 	@Value("${jpa.ddl-auto:none}")
 	private String ddlAuto;
 
 	@Primary
-	@Bean(name = "userDataSource")
-	@ConfigurationProperties(prefix = "datasource.user")
-	public DataSource userDataSource() {
+	@Bean(name = "adminDataSource")
+	@ConfigurationProperties(prefix = "datasource")
+	public DataSource adminDataSource() {
 		return DataSourceBuilder.create().build();
 	}
 
 	@Primary
-	@Bean(name = "userEntityManagerFactory")
-	public LocalContainerEntityManagerFactoryBean userEntityManagerFactory(
-		@Qualifier("userDataSource") DataSource dataSource
-	) {
+	@Bean(name = "adminEntityManagerFactory")
+	public LocalContainerEntityManagerFactoryBean adminEntityManagerFactory(DataSource dataSource) {
 		LocalContainerEntityManagerFactoryBean factory = new LocalContainerEntityManagerFactoryBean();
 		factory.setDataSource(dataSource);
-		factory.setPackagesToScan("jabaclass.admin.user.domain.model");
+		factory.setPackagesToScan(
+			"jabaclass.admin.user.domain.model",
+			"jabaclass.admin.product.domain.model",
+			"jabaclass.admin.order.domain.model",
+			"jabaclass.admin.settlement.domain.model",
+			"jabaclass.admin.review.domain.model"
+		);
 		factory.setJpaVendorAdapter(new HibernateJpaVendorAdapter());
 		factory.setJpaPropertyMap(Map.of(
 			"hibernate.hbm2ddl.auto", ddlAuto,
@@ -53,10 +62,10 @@ public class UserDataSourceConfig {
 	}
 
 	@Primary
-	@Bean(name = "userTransactionManager")
-	public PlatformTransactionManager userTransactionManager(
-		@Qualifier("userEntityManagerFactory") LocalContainerEntityManagerFactoryBean factory
+	@Bean(name = "adminTransactionManager")
+	public PlatformTransactionManager adminTransactionManager(
+		LocalContainerEntityManagerFactoryBean adminEntityManagerFactory
 	) {
-		return new JpaTransactionManager(factory.getObject());
+		return new JpaTransactionManager(adminEntityManagerFactory.getObject());
 	}
 }
