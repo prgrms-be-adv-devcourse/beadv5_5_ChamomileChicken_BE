@@ -63,7 +63,7 @@ public class SellerPromotion extends BaseEntity {
 			sellerId,
 			promotion.getId(),
 			startedAt,
-			startedAt.plusDays((long) promotion.getDurationDays() - 1),
+			startedAt.plusDays(promotion.getDurationDays()).minusNanos(1),
 			true
 		);
 	}
