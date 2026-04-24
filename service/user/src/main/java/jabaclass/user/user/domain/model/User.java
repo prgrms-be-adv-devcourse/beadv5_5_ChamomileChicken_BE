@@ -61,6 +61,12 @@ public class User extends BaseEntity {
 	@Column(name = "refresh_token", length = 512)
 	private String refreshToken;
 
+	@Column(name = "last_login_ip", length = 45)
+	private String lastLoginIp;
+
+	@Column(name = "last_login_user_agent", length = 512)
+	private String lastLoginUserAgent;
+
 	public void updateProfile(String name, String phone) {
 		this.name = name;
 		this.phone = phone;
@@ -85,4 +91,9 @@ public class User extends BaseEntity {
     public void updateRefreshToken(String refreshToken) {
 		this.refreshToken = refreshToken;
     }
+
+	public void updateLastLogin(String ip, String userAgent) {
+		this.lastLoginIp = ip;
+		this.lastLoginUserAgent = userAgent;
+	}
 }

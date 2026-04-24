@@ -2,7 +2,7 @@ package jabaclass.user.auth.presentation.controller;
 
 import java.util.UUID;
 
-import jabaclass.user.common.auth.CurrentUser;
+import jabaclass.user.auth.application.usecase.ReportTheftUseCase;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -15,9 +15,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CookieValue;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import jabaclass.user.auth.presentation.dto.response.TokenResult;
@@ -29,6 +32,7 @@ import jabaclass.user.auth.application.usecase.LogoutUseCase;
 import jabaclass.user.auth.application.usecase.ReissueUseCase;
 import jabaclass.user.auth.presentation.dto.request.LoginRequestDto;
 import jabaclass.user.common.dto.ApiResponseDto;
+import jabaclass.user.common.auth.CurrentUser;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -38,6 +42,7 @@ public class AuthController {
     private final LoginUseCase loginUseCase;
     private final LogoutUseCase logoutUseCase;
     private final ReissueUseCase reissueUseCase;
+    private final ReportTheftUseCase reportTheftUseCase;
 
     @Value("${jwt.refresh-token-validity}")
     private long refreshTokenValidity;
@@ -48,9 +53,11 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<ApiResponseDto<TokenResponseDto>> login(
         @Valid @RequestBody LoginRequestDto request,
+        @RequestHeader(value = "X-Real-IP", defaultValue = "unknown") String clientIp,
+        @RequestHeader(value = "User-Agent", defaultValue = "unknown") String userAgent,
         HttpServletResponse response) {
 
-        TokenResult result = loginUseCase.login(request);
+        TokenResult result = loginUseCase.login(request, clientIp, userAgent);
 
         response.addHeader(HttpHeaders.SET_COOKIE,
             buildRefreshTokenCookie(result.getRefreshToken(),
@@ -94,6 +101,12 @@ public class AuthController {
 
         return ResponseEntity.ok(ApiResponseDto.success(HttpStatus.OK, "토큰 재발급 성공",
             new TokenResponseDto(result.getAccessToken())));
+    }
+
+    @GetMapping("/report-theft")
+    public ResponseEntity<ApiResponseDto<Void>> reportTheft(@RequestParam String token) {
+        reportTheftUseCase.reportTheft(token);
+        return ResponseEntity.ok(ApiResponseDto.success(HttpStatus.OK, "계정 보호 조치가 완료되었습니다.", null));
     }
 
     private ResponseCookie buildRefreshTokenCookie(String value, long maxAgeSeconds) {

@@ -2,9 +2,13 @@ package jabaclass.apigateway.filter;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Date;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeoutException;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
@@ -22,6 +26,9 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.jsonwebtoken.Claims;
+
+import reactor.core.publisher.Mono;
+
 import jabaclass.apigateway.application.service.RbacService;
 import jabaclass.apigateway.application.service.WhitelistService;
 import jabaclass.apigateway.exception.AuthorizationServiceException;
@@ -32,9 +39,6 @@ import jabaclass.apigateway.exception.RedisBlacklistException;
 import jabaclass.apigateway.exception.SystemErrorCode;
 import jabaclass.apigateway.security.JwtProvider;
 import jabaclass.apigateway.security.JwtTokenResolver;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import reactor.core.publisher.Mono;
 
 @Component
 @RequiredArgsConstructor
@@ -48,7 +52,8 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 	private final WhitelistService whitelistService;
 	private final RbacService rbacService;
 
-	private static final String BLACKLIST_PREFIX = "blacklist:";
+    private static final String BLACKLIST_PREFIX = "blacklist:";
+    private static final String FORCE_LOGOUT_PREFIX = "force_logout:";
 	private static final Duration WHITELIST_TIMEOUT = Duration.ofSeconds(2);
 	private static final Duration OPTIONAL_AUTH_ENRICHMENT_TIMEOUT = Duration.ofMillis(200);
 	private static final Duration REQUIRED_AUTH_BLACKLIST_TIMEOUT = Duration.ofSeconds(2);
@@ -186,26 +191,44 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 					UUID userId = jwtProvider.getUserId(claims);
 					String role = jwtProvider.getRole(claims);
 
-					return rbacService.isAllowed(path, httpMethod, role)
-						//	.timeout(Duration.ofMillis(300))
-						.timeout(RBAC_TIMEOUT)
-						.onErrorMap(AuthorizationServiceException::new)
-						.flatMap(isAllowed -> {
-							if (!isAllowed) {
-								log.warn("[GATEWAY] Role not allowed. Path: {} {}, Role: {}", httpMethod, path, role);
-								return onForbidden(exchange);
+					return redisTemplate.opsForValue().get(FORCE_LOGOUT_PREFIX + userId)
+						.timeout(Duration.ofMillis(200))
+						.onErrorMap(RedisBlacklistException::new)
+						.defaultIfEmpty("")
+						.flatMap(forceLogoutTime -> {
+							if (!forceLogoutTime.isEmpty()) {
+								try {
+									long forceLogoutMillis = Long.parseLong(forceLogoutTime);
+									Date issuedAt = claims.getIssuedAt();
+									if (issuedAt == null || issuedAt.getTime() <= forceLogoutMillis) {
+										log.warn("[GATEWAY] Force logout detected. Path: {} {}, userId: {}", httpMethod, path, userId);
+										return onError(exchange, JwtErrorCode.INVALID_TOKEN);
+									}
+								} catch (NumberFormatException e) {
+									log.error("[GATEWAY] Invalid forceLogoutTime format in Redis, userId: {}", userId);
+								}
 							}
 
-							ServerWebExchange mutatedExchange = exchange.mutate()
-								.request(r -> {
-									r.header("X-User-Id", userId.toString());
-									if (role != null) {
-										r.header("X-User-Role", role);
+							return rbacService.isAllowed(path, httpMethod, role)
+								.timeout(RBAC_TIMEOUT)
+								.onErrorMap(AuthorizationServiceException::new)
+								.flatMap(isAllowed -> {
+									if (!isAllowed) {
+										log.warn("[GATEWAY] Role not allowed. Path: {} {}, Role: {}", httpMethod, path, role);
+										return onForbidden(exchange);
 									}
-								})
-								.build();
 
-							return chain.filter(mutatedExchange);
+									ServerWebExchange mutatedExchange = exchange.mutate()
+										.request(r -> {
+											r.header("X-User-Id", userId.toString());
+											if (role != null) {
+												r.header("X-User-Role", role);
+											}
+										})
+										.build();
+
+									return chain.filter(mutatedExchange);
+								});
 						});
 				})
 				.onErrorResume(RedisBlacklistException.class, e -> {
