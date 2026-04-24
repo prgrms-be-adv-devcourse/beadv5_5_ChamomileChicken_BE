@@ -22,6 +22,7 @@ public class RecommendationRedisRepository implements RecommendationCacheReposit
 
 	private static final String KEY_FORMAT = "user:%s:recommendation";
 	private static final Duration TTL = Duration.ofMinutes(20);
+	private static final int DELETE_BATCH_SIZE = 100;
 
 	private final StringRedisTemplate redisTemplate;
 	private final ObjectMapper objectMapper;
@@ -64,18 +65,22 @@ public class RecommendationRedisRepository implements RecommendationCacheReposit
 	public void deleteAll() {
 		ScanOptions options = ScanOptions.scanOptions()
 			.match(KEY_FORMAT.formatted("*"))
-			.count(100)
+			.count(DELETE_BATCH_SIZE)
 			.build();
 
-		List<String> keys = new ArrayList<>();
 		try (Cursor<String> cursor = redisTemplate.scan(options)) {
+			List<String> batch = new ArrayList<>(DELETE_BATCH_SIZE);
 			while (cursor.hasNext()) {
-				keys.add(cursor.next());
+				batch.add(cursor.next());
+				if (batch.size() >= DELETE_BATCH_SIZE) {
+					redisTemplate.delete(batch);
+					batch.clear();
+				}
 			}
-		}
 
-		if (!keys.isEmpty()) {
-			redisTemplate.delete(keys);
+			if (!batch.isEmpty()) {
+				redisTemplate.delete(batch);
+			}
 		}
 	}
 }
