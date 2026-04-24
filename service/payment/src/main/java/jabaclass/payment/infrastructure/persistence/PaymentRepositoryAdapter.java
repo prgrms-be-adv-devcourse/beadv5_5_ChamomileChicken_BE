@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.data.domain.PageRequest;
 
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -30,7 +31,12 @@ public class PaymentRepositoryAdapter implements PaymentRepository {
 	}
 
 	@Override
-	public Optional<Payment> findByOrderId(UUID orderId) { return paymentJpaRepository.findByOrderId(orderId); }
+	public Optional<Payment> findReusableByOrderId(UUID orderId) {
+		return selectPreferredPayment(
+			paymentJpaRepository.findAllByOrderIdOrderByCreatedAtDesc(orderId),
+			List.of(PaymentStatus.PAID, PaymentStatus.READY)
+		);
+	}
 
 	@Override
 	public List<Payment> findByStatusAndCreatedAtBefore(PaymentStatus status, LocalDateTime threshold) {
@@ -73,5 +79,33 @@ public class PaymentRepositoryAdapter implements PaymentRepository {
 				it.getOccurredAt()
 			))
 			.toList();
+	}
+
+	@Override
+	public Optional<Payment> findByOrderId(UUID orderId) {
+		return selectPreferredPayment(
+			paymentJpaRepository.findAllByOrderIdOrderByCreatedAtDesc(orderId),
+			List.of(
+				PaymentStatus.PAID,
+				PaymentStatus.CANCELLED,
+				PaymentStatus.READY,
+				PaymentStatus.FAILED,
+				PaymentStatus.EXPIRED
+			)
+		);
+	}
+
+	private Optional<Payment> selectPreferredPayment(List<Payment> payments, List<PaymentStatus> statusPriority) {
+		return payments.stream()
+			.min(
+				Comparator
+					.comparingInt((Payment payment) -> priorityOf(payment.getStatus(), statusPriority))
+					.thenComparing(Payment::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder()))
+			);
+	}
+
+	private int priorityOf(PaymentStatus status, List<PaymentStatus> statusPriority) {
+		int priority = statusPriority.indexOf(status);
+		return priority >= 0 ? priority : Integer.MAX_VALUE;
 	}
 }

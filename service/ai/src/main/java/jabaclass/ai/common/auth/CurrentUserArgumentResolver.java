@@ -40,7 +40,11 @@ public class CurrentUserArgumentResolver implements HandlerMethodArgumentResolve
 		if (userId == null || userId.isBlank()) {
 			throw new BusinessException(CommonErrorCode.INVALID_PARAMETER);
 		}
-		return UUID.fromString(userId);
+		try {
+			return UUID.fromString(userId);
+		} catch (IllegalArgumentException e) {
+			throw new BusinessException(CommonErrorCode.INVALID_PARAMETER);
+		}
 	}
 }
 
