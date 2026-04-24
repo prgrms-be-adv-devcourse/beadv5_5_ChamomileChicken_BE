@@ -104,6 +104,7 @@ Kafka 이벤트를 통해 적재되는 원천 정산 대상이다.
 - 어드민에서 판매자가 SELLER로 승격되면 `USER_SELLER_APPROVED` 이벤트가 발행된다.
 - 정산 서비스는 이 이벤트를 소비해 `NEW_SELLER` 프로모션을 찾아 seller에게 할당한다.
 - `startedAt`은 승격 승인 시각(`approvedAt`)이다.
-- `endedAt`은 `startedAt + durationDays - 1일`로 계산된다.
+- `endedAt`은 `startedAt + durationDays - 1ns`로 계산된다.
+- 즉 30일 프로모션이면 `startedAt`부터 정확히 30일 전체 구간이 적용된다.
 - 정산 계산 시 `occurredAt`이 `startedAt ~ endedAt` 구간 안에 있으면 프로모션이 적용된다.
-- 이미 같은 seller에게 같은 활성 프로모션이 있으면 중복 등록하지 않는다.
+- 동일 승격 이벤트 재처리에도 중복 등록되지 않도록 `sellerId + promotionId + startedAt(=approvedAt)` 기준으로 기존 이력을 확인한다.

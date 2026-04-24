@@ -93,7 +93,8 @@ admin-service
 
 - 이벤트에는 `sellerId`, `approvedAt`이 포함된다.
 - `approvedAt`을 신규 셀러 프로모션 시작 시각으로 사용한다.
-- 이미 같은 seller에게 같은 활성 프로모션이 있으면 중복 저장하지 않는다.
+- 프로모션 종료 시각은 `approvedAt + durationDays - 1ns`로 계산해 전체 기간이 정확히 적용되도록 한다.
+- 동일 승격 이벤트 재처리에도 중복 저장되지 않도록 `sellerId + promotionId + approvedAt` 기준으로 기존 이력을 확인한다.
 - 신규 셀러 프로모션 마스터(`settlement_promotions`)가 없으면 예외로 처리한다.
 
 ## 정산 계산 Job
