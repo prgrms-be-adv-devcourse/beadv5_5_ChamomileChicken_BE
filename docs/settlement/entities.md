@@ -87,3 +87,23 @@ Kafka 이벤트를 통해 적재되는 원천 정산 대상이다.
 `SellerGradePolicy`는 최근 3개월 판매금액 기준 등급/수수료 정책이다. 월 정산 집계 시 active 정책을 한 번 조회하고 메모리에서 판매자별 기준 금액에 맞는 정책을 찾는다.
 
 `SellerPromotion`과 `SettlementPromotion`은 건별 정산 계산 시 적용 수수료율을 판단하는 데 사용된다. 적용된 프로모션 정보는 `SettlementTargetCalculation`에 스냅샷으로 남는다.
+
+### `SettlementPromotion`
+
+정산 프로모션의 마스터 정책이다.
+
+- 현재 신규 셀러 프로모션(`NEW_SELLER`)을 사용한다.
+- `feeRate`는 할인된 수수료율이다.
+- 즉 "정산 금액에서 추가 할인액을 차감"하는 구조가 아니라, 정산 계산 시 기본 수수료율 대신 더 낮은 수수료율을 적용하는 구조다.
+- `durationDays`는 판매자에게 할당된 프로모션의 적용 기간 계산에 사용된다.
+
+### `SellerPromotion`
+
+판매자에게 실제로 할당된 프로모션 이력이다.
+
+- 어드민에서 판매자가 SELLER로 승격되면 `USER_SELLER_APPROVED` 이벤트가 발행된다.
+- 정산 서비스는 이 이벤트를 소비해 `NEW_SELLER` 프로모션을 찾아 seller에게 할당한다.
+- `startedAt`은 승격 승인 시각(`approvedAt`)이다.
+- `endedAt`은 `startedAt + durationDays - 1일`로 계산된다.
+- 정산 계산 시 `occurredAt`이 `startedAt ~ endedAt` 구간 안에 있으면 프로모션이 적용된다.
+- 이미 같은 seller에게 같은 활성 프로모션이 있으면 중복 등록하지 않는다.
