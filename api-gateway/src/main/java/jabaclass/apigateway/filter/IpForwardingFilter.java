@@ -23,7 +23,9 @@ public class IpForwardingFilter implements WebFilter {
 		ServerWebExchange mutated = exchange.mutate()
 			.request(r -> r.headers(headers -> {
 				headers.remove("X-Real-IP");
+				headers.remove("X-Forwarded-For");
 				headers.set("X-Real-IP", clientIp);
+				headers.set("X-Forwarded-For", clientIp);
 			}))
 			.build();
 
