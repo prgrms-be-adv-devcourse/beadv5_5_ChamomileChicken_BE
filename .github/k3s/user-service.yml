@@ -81,10 +81,10 @@ spec:
             httpGet:
               path: /actuator/health
               port: 9003
-            initialDelaySeconds: 5
-            periodSeconds: 5
-            timeoutSeconds: 3
-            failureThreshold: 36
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 30
 
           readinessProbe:
             httpGet:
