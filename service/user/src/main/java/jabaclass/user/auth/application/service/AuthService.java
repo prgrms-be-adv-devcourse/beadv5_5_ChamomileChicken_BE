@@ -77,7 +77,7 @@ public class AuthService implements LoginUseCase, LogoutUseCase, ReissueUseCase,
             redisTemplate.opsForValue().set(
                 THEFT_REPORT_PREFIX + theftReportToken,
                 user.getId().toString(),
-                Duration.ofMinutes(refreshTokenValidity)
+                Duration.ofMillis(refreshTokenValidity)
             );
             sendSecurityAlertAsync(user.getEmail(), user.getName(), clientIp, userAgent, theftReportToken);
         }
