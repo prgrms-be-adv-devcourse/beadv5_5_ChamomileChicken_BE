@@ -20,29 +20,6 @@ public class ProductEmbeddingRepositoryImpl implements ProductEmbeddingRepositor
 	private final JdbcTemplate jdbcTemplate;
 
 	@Override
-	public float[] findEmbeddingByProductId(UUID productId) {
-
-		String sql = """
-            SELECT embedding
-            FROM product_embeddings
-            WHERE id = ?
-        """;
-
-		return jdbcTemplate.query(
-			sql,
-			ps -> ps.setObject(1, productId),
-			rs -> {
-				if (!rs.next()) return null;
-
-				// pgvector → 문자열 형태 "[1,2,3]"로 온다고 가정
-				String vectorStr = rs.getString("embedding");
-
-				return parseVector(vectorStr);
-			}
-		);
-	}
-
-	@Override
 	public Map<UUID, float[]> findAllByProductIds(Collection<UUID> productIds) {
 		if (productIds == null || productIds.isEmpty()) {
 			return Collections.emptyMap();
