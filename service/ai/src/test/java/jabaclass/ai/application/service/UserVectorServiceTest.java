@@ -1,11 +1,13 @@
 package jabaclass.ai.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
@@ -60,7 +62,8 @@ class UserVectorServiceTest {
 		given(userVectorCacheRepository.get(USER_ID)).willReturn(null);
 		given(userActivityRepository.findByUserId(USER_ID))
 			.willReturn(List.of(UserActivity.create(USER_ID, PRODUCT_ID, ActionType.VIEW)));
-		given(productEmbeddingRepository.findEmbeddingByProductId(PRODUCT_ID)).willReturn(embedding);
+		given(productEmbeddingRepository.findAllByProductIds(anyCollection()))
+			.willReturn(Map.of(PRODUCT_ID, embedding));
 
 		UserVector result = userVectorService.getOrCreate(USER_ID);
 
@@ -82,8 +85,11 @@ class UserVectorServiceTest {
 			UserActivity.create(USER_ID, viewedProductId, ActionType.VIEW),
 			UserActivity.create(USER_ID, orderedProductId, ActionType.ORDER)
 		));
-		given(productEmbeddingRepository.findEmbeddingByProductId(viewedProductId)).willReturn(viewedEmbedding);
-		given(productEmbeddingRepository.findEmbeddingByProductId(orderedProductId)).willReturn(orderedEmbedding);
+		given(productEmbeddingRepository.findAllByProductIds(anyCollection()))
+			.willReturn(Map.of(
+				viewedProductId, viewedEmbedding,
+				orderedProductId, orderedEmbedding
+			));
 
 		UserVector result = userVectorService.generate(USER_ID);
 
@@ -96,7 +102,8 @@ class UserVectorServiceTest {
 		UUID invalidProductId = UUID.fromString("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee");
 		given(userActivityRepository.findByUserId(USER_ID))
 			.willReturn(List.of(UserActivity.create(USER_ID, invalidProductId, ActionType.WISHLIST)));
-		given(productEmbeddingRepository.findEmbeddingByProductId(invalidProductId)).willReturn(new float[] { 1.0f, 2.0f });
+		given(productEmbeddingRepository.findAllByProductIds(anyCollection()))
+			.willReturn(Map.of(invalidProductId, new float[] { 1.0f, 2.0f }));
 
 		UserVector result = userVectorService.generate(USER_ID);
 
@@ -123,8 +130,11 @@ class UserVectorServiceTest {
 			UserActivity.create(USER_ID, heavilyViewedProductId, ActionType.VIEW, now.minusMinutes(5)),
 			UserActivity.create(USER_ID, orderedProductId, ActionType.ORDER, now.minusMinutes(6))
 		));
-		given(productEmbeddingRepository.findEmbeddingByProductId(heavilyViewedProductId)).willReturn(viewedEmbedding);
-		given(productEmbeddingRepository.findEmbeddingByProductId(orderedProductId)).willReturn(orderedEmbedding);
+		given(productEmbeddingRepository.findAllByProductIds(anyCollection()))
+			.willReturn(Map.of(
+				heavilyViewedProductId, viewedEmbedding,
+				orderedProductId, orderedEmbedding
+			));
 
 		UserVector result = userVectorService.generate(USER_ID);
 
@@ -146,8 +156,11 @@ class UserVectorServiceTest {
 			UserActivity.create(USER_ID, oldProductId, ActionType.VIEW, now.minusDays(30)),
 			UserActivity.create(USER_ID, recentProductId, ActionType.VIEW, now.minusHours(1))
 		));
-		given(productEmbeddingRepository.findEmbeddingByProductId(recentProductId)).willReturn(recentEmbedding);
-		given(productEmbeddingRepository.findEmbeddingByProductId(oldProductId)).willReturn(oldEmbedding);
+		given(productEmbeddingRepository.findAllByProductIds(anyCollection()))
+			.willReturn(Map.of(
+				recentProductId, recentEmbedding,
+				oldProductId, oldEmbedding
+			));
 
 		UserVector result = userVectorService.generate(USER_ID);
 
