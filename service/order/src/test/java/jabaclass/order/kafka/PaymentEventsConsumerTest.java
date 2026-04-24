@@ -89,7 +89,11 @@ class PaymentEventsConsumerTest {
 
         // Order 상태 변경 + Outbox 저장이 같은 트랜잭션으로 원자적으로 커밋됐는지 검증
         assertThat(outboxRepository.findAll())
+            .anyMatch(e -> e.getEventType().name().equals("ORDER_COMPLETED"));
+        assertThat(outboxRepository.findAll())
             .anyMatch(e -> e.getEventType().name().equals("ORDER_RESERVATION_CONFIRMED"));
+        assertThat(outboxRepository.findAll())
+            .anyMatch(e -> e.getPayload().contains(order.getUserId().toString()));
         assertThat(outboxRepository.findAll())
             .anyMatch(e -> e.getEventType().name().equals("SETTLEMENT_PAYMENT_COMPLETED"));
         // eventId가 processed_events에 저장됐는지 — 중복 수신 시 재처리 차단 확인
@@ -105,17 +109,16 @@ class PaymentEventsConsumerTest {
             new TestFailedEvent(eventId, UUID.randomUUID(), order.getId(), new BigDecimal("3000"))
         ));
 
-        await().atMost(5, SECONDS).untilAsserted(() -> {
+        await().atMost(10, SECONDS).untilAsserted(() -> {
             Order updated = orderRepository.findById(order.getId()).orElseThrow();
             assertThat(updated.getStatus()).isEqualTo(OrderStatus.FAILED);
+            // Saga 보상 트랜잭션 — 상태 변경과 보상 이벤트 저장이 함께 끝날 때까지 대기
+            assertThat(outboxRepository.findAll())
+                .anyMatch(e -> e.getEventType().name().equals("ORDER_RESERVATION_RELEASED"));
+            assertThat(outboxRepository.findAll())
+                .anyMatch(e -> e.getEventType().name().equals("ORDER_DEPOSIT_REFUND_REQUESTED"));
+            assertThat(processedEventRepository.existsById(eventId)).isTrue();
         });
-
-        // Saga 보상 트랜잭션 — 재고 해제 + 예치금 환불 요청이 모두 Outbox에 저장됐는지 검증
-        assertThat(outboxRepository.findAll())
-            .anyMatch(e -> e.getEventType().name().equals("ORDER_RESERVATION_RELEASED"));
-        assertThat(outboxRepository.findAll())
-            .anyMatch(e -> e.getEventType().name().equals("ORDER_DEPOSIT_REFUND_REQUESTED"));
-        assertThat(processedEventRepository.existsById(eventId)).isTrue();
     }
 
     @Test

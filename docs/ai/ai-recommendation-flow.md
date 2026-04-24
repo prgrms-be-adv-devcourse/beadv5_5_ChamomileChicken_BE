@@ -23,16 +23,18 @@
 
 - `UserVectorService`
   - 사용자 활동 기반 벡터 조회/생성 담당
+  - 반복 VIEW 상한과 최근성 감쇠를 적용해 사용자 벡터 구성
 
 ## 추천 요청 흐름
 
 1. `RecommendationController`가 추천 요청을 받음
 2. `RecommendationService`가 추천 캐시를 먼저 확인
 3. 캐시가 없으면 `UserVectorService`로 사용자 벡터 조회 또는 생성
-4. `CandidateSearchRepository`로 벡터 기반 후보 상품 검색
-5. 후보가 있으면 `AiGatewayPort`로 추천 이유 생성
-6. 결과를 캐시에 저장하고 응답 반환
-7. 후보가 없으면 인기 상품 기반 fallback 반환
+4. 사용자 벡터 생성 시 행동 가중치, 최신 3회 VIEW 제한, 최근성 감쇠를 적용
+5. `CandidateSearchRepository`로 벡터 기반 후보 상품 검색
+6. 후보가 있으면 `AiGatewayPort`로 추천 이유 생성
+7. 결과를 캐시에 저장하고 응답 반환
+8. 후보가 없으면 인기 상품 기반 fallback 반환
 
 ## 데이터 적재 흐름
 
@@ -44,6 +46,7 @@
    - 상품 임베딩 삭제
 5. `PRODUCT_VIEWED`
    - `UserActivityService`가 사용자 조회 이력 저장
+   - 사용자 벡터 캐시와 추천 캐시를 함께 무효화
 
 ## 한 줄 요약
 

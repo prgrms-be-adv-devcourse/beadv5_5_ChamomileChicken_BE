@@ -83,10 +83,6 @@ public class RecommendationService implements RecommendationUseCase {
 			))
 			.toList();
 
-		RecommendationResponseDto response = new RecommendationResponseDto(items);
-
-		recommendationCacheRepository.save(userId, response);
-
-		return response;
+		return new RecommendationResponseDto(items);
 	}
 }

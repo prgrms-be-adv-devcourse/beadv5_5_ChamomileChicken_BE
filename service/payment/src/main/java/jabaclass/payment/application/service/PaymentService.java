@@ -3,6 +3,7 @@ package jabaclass.payment.application.service;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
@@ -54,6 +55,14 @@ public class PaymentService implements PaymentUseCase, PaymentSettlementQueryUse
 	@Override
 	@Transactional
 	public PaymentResponseDto create(UUID userId, PreparePaymentRequestDto request) {
+		Optional<Payment> existingPayment = paymentRepository.findReusableByOrderId(request.orderId());
+		if (existingPayment.isPresent()) {
+			Payment reusablePayment = existingPayment.get();
+			if (!reusablePayment.getUserId().equals(userId)) {
+				throw new PaymentException(PaymentErrorCode.UNAUTHORIZED_PAYMENT_ACCESS);
+			}
+			return PaymentResponseDto.from(reusablePayment);
+		}
 
 		Payment payment = Payment.create(
 			userId,

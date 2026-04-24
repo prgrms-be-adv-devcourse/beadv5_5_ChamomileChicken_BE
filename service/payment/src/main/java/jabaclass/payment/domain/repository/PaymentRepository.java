@@ -17,6 +17,8 @@ public interface PaymentRepository {
 
 	Optional<Payment> findByOrderId(UUID orderId);
 
+	Optional<Payment> findReusableByOrderId(UUID orderId);
+
 	List<Payment> findByStatusAndCreatedAtBefore(PaymentStatus status, LocalDateTime threshold);
 
 	List<SettlementPaymentSource> findSettlementPaymentSources(

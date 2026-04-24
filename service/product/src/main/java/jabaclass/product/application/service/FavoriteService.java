@@ -6,6 +6,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.annotation.Transactional;
 
 import jabaclass.product.application.exception.BusinessException;
@@ -17,6 +18,7 @@ import jabaclass.product.domain.model.Schedule;
 import jabaclass.product.domain.repository.FavoriteRepository;
 import jabaclass.product.domain.repository.ProductRepository;
 import jabaclass.product.domain.repository.ScheduleRepository;
+import jabaclass.product.infrastructure.event.dto.ProductWishlistedEvent;
 import jabaclass.product.presentation.dto.response.FavoritesResponseDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,10 +31,16 @@ public class FavoriteService implements FavoriteUseCase {
 	private final FavoriteRepository favoriteRepository;
 	private final ScheduleRepository scheduleRepository;
 	private final ProductRepository productRepository;
+	private final ApplicationEventPublisher publisher;
 
 	@Override
 	@Transactional
 	public FavoritesResponseDto createFavorite(int quantity, UUID scheduleId, UUID userId) {
+		log.info("찜 생성 요청 수신: userId={}, scheduleId={}, quantity={}", userId, scheduleId, quantity);
+		Schedule schedule = scheduleRepository.findByIdAndDeleteDtIsNull(scheduleId)
+			.orElseThrow(() -> new BusinessException(CommonErrorCode.SCHDULES_NOT_FOUND));
+		log.info("찜 대상 일정 조회 완료: scheduleId={}, productId={}", scheduleId, schedule.getProductId());
+
 		Favorite favorite = Favorite.builder()
 			.productScheduleId(scheduleId)
 			.userId(userId)
@@ -40,6 +48,10 @@ public class FavoriteService implements FavoriteUseCase {
 			.build();
 
 		Favorite savedFavorite = favoriteRepository.save(favorite);
+		log.info("찜 저장 완료: favoriteId={}, userId={}, productId={}",
+			savedFavorite.getId(), userId, schedule.getProductId());
+		publisher.publishEvent(ProductWishlistedEvent.of(userId, schedule.getProductId()));
+		log.info("찜 이벤트 발행 요청 완료: userId={}, productId={}", userId, schedule.getProductId());
 
 		return FavoritesResponseDto.from(savedFavorite);
 	}

@@ -66,6 +66,7 @@ public class CandidateSearchRepositoryImpl implements CandidateSearchRepository 
                 road_address
             FROM product_embeddings
             WHERE status = 'ENABLE'
+              AND COALESCE(popularity, 0) > 0
             ORDER BY popularity DESC
             LIMIT ?
         """;

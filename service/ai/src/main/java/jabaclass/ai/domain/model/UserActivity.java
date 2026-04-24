@@ -43,7 +43,18 @@ public class UserActivity {
 		this.createdAt = LocalDateTime.now();
 	}
 
+	public UserActivity(UUID userId, UUID productId, ActionType actionType, LocalDateTime createdAt) {
+		this.userId = userId;
+		this.productId = productId;
+		this.actionType = actionType;
+		this.createdAt = createdAt;
+	}
+
 	public static UserActivity create(UUID userId, UUID productId, ActionType actionType) {
 		return new UserActivity(userId, productId, actionType);
+	}
+
+	public static UserActivity create(UUID userId, UUID productId, ActionType actionType, LocalDateTime createdAt) {
+		return new UserActivity(userId, productId, actionType, createdAt);
 	}
 }
