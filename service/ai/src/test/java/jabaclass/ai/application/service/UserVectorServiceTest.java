@@ -167,6 +167,18 @@ class UserVectorServiceTest {
 		assertThat(result.vector()[0]).isGreaterThan(result.vector()[1]);
 	}
 
+	@Test
+	void 활동이_없으면_0벡터를_반환하고_빈_벡터로_취급한다() {
+		given(userActivityRepository.findByUserId(USER_ID)).willReturn(List.of());
+		given(productEmbeddingRepository.findAllByProductIds(anyCollection())).willReturn(Map.of());
+
+		UserVector result = userVectorService.generate(USER_ID);
+
+		assertThat(result.isEmpty()).isTrue();
+		assertThat(result.vector()).hasSize(768);
+		assertThat(result.vector()).containsOnly(0.0f);
+	}
+
 	private static org.assertj.core.data.Offset<Float> within(float value) {
 		return org.assertj.core.data.Offset.offset(value);
 	}
