@@ -1,0 +1,222 @@
+name: Deploy Environment
+
+on:
+  workflow_dispatch:
+    inputs:
+      service:
+        description: "Target service. Use common to apply only common config/secret."
+        required: true
+        type: choice
+        options:
+          - common
+          - api-gateway
+      apply_common_config:
+        description: "Apply COMMON_CONFIG_ENV to common-config"
+        required: true
+        type: boolean
+        default: true
+      apply_common_secret:
+        description: "Apply COMMON_SECRET_ENV to common-secret"
+        required: true
+        type: boolean
+        default: false
+      apply_service_config:
+        description: "Apply service-specific config env"
+        required: true
+        type: boolean
+        default: true
+      apply_service_secret:
+        description: "Apply service-specific secret env"
+        required: true
+        type: boolean
+        default: false
+      restart_service:
+        description: "Restart only for urgent env-only apply. Leave false if source deploy will run separately."
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-env-${{ inputs.service }}
+  cancel-in-progress: true
+
+jobs:
+  deploy-env:
+    runs-on: [ self-hosted, ec2, docker ]
+    env:
+      KUBECONFIG: /home/ubuntu/.kube/config
+      ENV_DIR: /home/ubuntu/apps/deploy/env
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            .github/scripts/apply-env.sh
+          sparse-checkout-cone-mode: false
+
+      - name: Grant execute permission for env apply script
+        run: chmod +x ./.github/scripts/apply-env.sh
+
+      - name: Select env payloads
+        id: select_env
+        shell: bash
+        env:
+          SELECTED_SERVICE: ${{ inputs.service }}
+          APPLY_COMMON_CONFIG: ${{ inputs.apply_common_config }}
+          APPLY_COMMON_SECRET: ${{ inputs.apply_common_secret }}
+          APPLY_SERVICE_CONFIG: ${{ inputs.apply_service_config }}
+          APPLY_SERVICE_SECRET: ${{ inputs.apply_service_secret }}
+          COMMON_CONFIG_ENV_SOURCE: ${{ secrets.COMMON_CONFIG_ENV }}
+          COMMON_SECRET_ENV_SOURCE: ${{ secrets.COMMON_SECRET_ENV }}
+          API_GATEWAY_CONFIG_ENV_SOURCE: ${{ secrets.API_GATEWAY_CONFIG_ENV }}
+          API_GATEWAY_SECRET_ENV_SOURCE: ${{ secrets.API_GATEWAY_SECRET_ENV }}
+        run: |
+          set -euo pipefail
+
+          service_config=""
+          service_secret=""
+
+          case "$SELECTED_SERVICE" in
+            common)
+              ;;
+            api-gateway)
+              service_config="${API_GATEWAY_CONFIG_ENV_SOURCE:-}"
+              service_secret="${API_GATEWAY_SECRET_ENV_SOURCE:-}"
+              ;;
+            *)
+              echo "Unsupported service: $SELECTED_SERVICE"
+              exit 1
+              ;;
+          esac
+
+          if [[ "$SELECTED_SERVICE" == "common" ]]; then
+            echo "service_name=common" >> "$GITHUB_OUTPUT"
+            echo "deployment_name=" >> "$GITHUB_OUTPUT"
+          else
+            echo "service_name=$SELECTED_SERVICE" >> "$GITHUB_OUTPUT"
+            echo "deployment_name=${SELECTED_SERVICE}-service" >> "$GITHUB_OUTPUT"
+          fi
+
+          {
+            if [[ "$APPLY_COMMON_CONFIG" == "true" ]]; then
+              echo "COMMON_CONFIG_ENV<<EOF"
+              printf '%s\n' "${COMMON_CONFIG_ENV_SOURCE:-}"
+              echo "EOF"
+            else
+              echo "COMMON_CONFIG_ENV="
+            fi
+
+            if [[ "$APPLY_COMMON_SECRET" == "true" ]]; then
+              echo "COMMON_SECRET_ENV<<EOF"
+              printf '%s\n' "${COMMON_SECRET_ENV_SOURCE:-}"
+              echo "EOF"
+            else
+              echo "COMMON_SECRET_ENV="
+            fi
+
+            if [[ "$APPLY_SERVICE_CONFIG" == "true" && "$SELECTED_SERVICE" != "common" ]]; then
+              echo "SERVICE_CONFIG_ENV<<EOF"
+              printf '%s\n' "$service_config"
+              echo "EOF"
+            else
+              echo "SERVICE_CONFIG_ENV="
+            fi
+
+            if [[ "$APPLY_SERVICE_SECRET" == "true" && "$SELECTED_SERVICE" != "common" ]]; then
+              echo "SERVICE_SECRET_ENV<<EOF"
+              printf '%s\n' "$service_secret"
+              echo "EOF"
+            else
+              echo "SERVICE_SECRET_ENV="
+            fi
+          } >> "$GITHUB_ENV"
+
+      - name: Sync env files from GitHub secrets
+        shell: bash
+        run: |
+          target_service="${{ steps.select_env.outputs.service_name }}"
+          if [[ "$target_service" == "common" ]]; then
+            target_service="noop"
+          fi
+
+          ./.github/scripts/apply-env.sh "$target_service"
+
+      - name: Apply ConfigMap and Secret resources
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "${COMMON_CONFIG_CHANGED:-false}" == "true" ]]; then
+            kubectl create configmap common-config \
+              --from-env-file="$ENV_DIR/common_config.env" \
+              --dry-run=client -o yaml | kubectl apply -f -
+          fi
+
+          if [[ "${COMMON_SECRET_CHANGED:-false}" == "true" ]]; then
+            kubectl create secret generic common-secret \
+              --from-env-file="$ENV_DIR/common_secret.env" \
+              --dry-run=client -o yaml | kubectl apply -f -
+          fi
+
+          if [[ "${{ steps.select_env.outputs.service_name }}" == "api-gateway" ]]; then
+            if [[ "${SERVICE_CONFIG_CHANGED:-false}" == "true" ]]; then
+              kubectl create configmap api-gateway-config \
+                --from-env-file="$ENV_DIR/api-gateway_config.env" \
+                --dry-run=client -o yaml | kubectl apply -f -
+            fi
+
+            if [[ "${SERVICE_SECRET_CHANGED:-false}" == "true" ]]; then
+              kubectl create secret generic api-gateway-secret \
+                --from-env-file="$ENV_DIR/api-gateway_secret.env" \
+                --dry-run=client -o yaml | kubectl apply -f -
+            fi
+          fi
+
+      - name: Show detected env changes
+        shell: bash
+        run: |
+          echo "CONFIG_CHANGED=${CONFIG_CHANGED:-false}"
+          echo "COMMON_CONFIG_CHANGED=${COMMON_CONFIG_CHANGED:-false}"
+          echo "COMMON_SECRET_CHANGED=${COMMON_SECRET_CHANGED:-false}"
+          echo "SERVICE_CONFIG_CHANGED=${SERVICE_CONFIG_CHANGED:-false}"
+          echo "SERVICE_SECRET_CHANGED=${SERVICE_SECRET_CHANGED:-false}"
+
+      - name: Restart deployment
+        if: ${{ inputs.restart_service && inputs.service == 'api-gateway' }}
+        shell: bash
+        run: |
+          if [[ "${CONFIG_CHANGED:-false}" != "true" ]]; then
+            echo "No env file changes detected. Skip rollout restart."
+            exit 0
+          fi
+
+          deployment_name="${{ steps.select_env.outputs.deployment_name }}"
+          kubectl rollout restart "deployment/${deployment_name}"
+          kubectl rollout status "deployment/${deployment_name}" --timeout=300s
+
+      - name: Verify applied resources
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "${COMMON_CONFIG_CHANGED:-false}" == "true" ]]; then
+            kubectl get configmap common-config -o yaml
+          fi
+
+          if [[ "${COMMON_SECRET_CHANGED:-false}" == "true" ]]; then
+            kubectl get secret common-secret -o yaml
+          fi
+
+          if [[ "${{ steps.select_env.outputs.service_name }}" == "api-gateway" ]]; then
+            if [[ "${SERVICE_CONFIG_CHANGED:-false}" == "true" ]]; then
+              kubectl get configmap api-gateway-config -o yaml
+            fi
+
+            if [[ "${SERVICE_SECRET_CHANGED:-false}" == "true" ]]; then
+              kubectl get secret api-gateway-secret -o yaml
+            fi
+          fi
