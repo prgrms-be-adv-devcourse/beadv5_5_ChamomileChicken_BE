@@ -251,7 +251,10 @@ public class AuthService implements LoginUseCase, LogoutUseCase, ReissueUseCase,
     }
 
     @Transactional
-    public void handleLoginSecurity(User user, String clientIp, String userAgent) {
+    public void handleLoginSecurity(UUID userId, String clientIp, String userAgent) {
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
+
         boolean isNewDevice = user.getLastLoginIp() != null &&
             (!clientIp.equals(user.getLastLoginIp()) || !userAgent.equals(user.getLastLoginUserAgent()));
 
@@ -267,7 +270,6 @@ public class AuthService implements LoginUseCase, LogoutUseCase, ReissueUseCase,
         }
 
         user.updateLastLogin(clientIp, userAgent);
-        userRepository.save(user);
         log.info("[AUTH] 로그인 성공. userId={}, ip={}", user.getId(), clientIp);
     }
 }

@@ -58,7 +58,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
 			clientIp = request.getRemoteAddr();
 		}
 		String userAgent = request.getHeader("User-Agent");
-		authService.handleLoginSecurity(user, clientIp, userAgent);
+		authService.handleLoginSecurity(user.getId(), clientIp, userAgent);
 
 		TokenResult tokens = new TokenResult(
 			tokenProvider.generateAccessToken(user.getId(), user.getRole()),
