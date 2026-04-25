@@ -101,6 +101,29 @@ public class ProductSearchRepositoryAdapter implements ProductSearchRepository {
 	}
 
 	@Override
+	public void updateSellerNameForAll(String sellerId, String newName) {
+		Criteria criteria = new Criteria("sellerId").is(sellerId);
+		CriteriaQuery query = new CriteriaQuery(criteria);
+		query.setMaxResults(10000);
+		SearchHits<ProductDocument> hits = elasticsearchOperations.search(query, ProductDocument.class);
+
+		List<ProductDocument> updated = hits.stream()
+			.map(SearchHit::getContent)
+			.map(doc -> doc.toBuilder().sellerName(newName).build())
+			.toList();
+
+		if (updated.isEmpty()) {
+			return;
+		}
+
+		List<IndexQuery> queries = updated.stream()
+			.map(doc -> new IndexQueryBuilder().withId(doc.getId()).withObject(doc).build())
+			.toList();
+		elasticsearchOperations.bulkIndex(queries, ProductDocument.class);
+		log.info("ES sellerName 업데이트 완료: sellerId={}, 건수={}", sellerId, updated.size());
+	}
+
+	@Override
 	public Page<ProductDocument> searchByKeywordAndSellerId(String keyword, String sellerId, Pageable pageable) {
 		Query query = Query.of(q -> q
 			.bool(b -> b

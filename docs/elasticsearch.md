@@ -57,7 +57,8 @@ ProductRestController
 | `regDt` | date (`date_hour_minute_second`) | — | 등록일시 — 명시적 타입 지정으로 정렬 보장 |
 
 > **비정규화 전략:** `sellerName`을 ES에 직접 저장해 검색 시 user 서비스 REST 호출을 제거한다.
-> 판매자 이름이 변경되는 경우는 드물기 때문에 허용 가능한 trade-off로 판단.
+> 판매자 이름이 변경되면 user-service가 `user.events` 토픽에 `USER_NAME_CHANGED` 이벤트를 발행하고,
+> product-service의 `UserEventsConsumer`가 해당 sellerId의 모든 ES 문서를 일괄 업데이트한다.
 
 > **@Field 명시 이유:** Spring Data ES는 `@Field` 없는 String 필드를 `text + keyword` 멀티필드로 기본 매핑한다.
 > UUID, URL, boolean, date 등 토크나이즈가 필요 없거나 정렬/필터 전용인 필드는 반드시 명시적 타입을 지정해야 한다.
@@ -386,6 +387,13 @@ spring:
 - [x] `searchByKeyword()` — `title`에 `fuzziness: AUTO + prefixLength(1)`, `description`은 일반 match
 - [x] `KafkaConsumerConfig` — `DefaultErrorHandler` + `DeadLetterPublishingRecoverer` (DLQ: `product.es.index.dlq`)
 - [x] `KafkaTopicConfig` — `PRODUCT_ES_TOPIC` 상수 + `NewTopic` 빈 (토픽명 단일 관리, `EsEventType` / `ProductEsKafkaConsumer` 참조)
+
+### 판매자 이름 변경 시 ES 동기화
+- [x] `UserEventsPublisher` (user-service) — `updateMyInfo`에서 이름 변경 감지 시 `user.events`에 `USER_NAME_CHANGED` 발행
+- [x] `UserEventsConsumer` (product-service) — `user.events` 수신 후 `updateSellerNameForAll` 호출
+- [x] `ProductSearchRepository.updateSellerNameForAll()` — 인터페이스 추가
+- [x] `ProductSearchRepositoryAdapter.updateSellerNameForAll()` — sellerId로 ES 문서 전체 조회 후 sellerName bulkIndex
+- [x] `ProductDocument` — `@Builder(toBuilder = true)` 추가 (sellerName 교체 시 불변 복사)
 
 ### 인프라
 - [x] `docker-compose.yml`에 Elasticsearch 9.0.3 컨테이너 추가 (nori 플러그인 포함)
