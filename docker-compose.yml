@@ -1,3 +1,5 @@
+name: chamomile-local
+
 version: '3.8'
 
 services:
@@ -6,14 +8,12 @@ services:
 
   zookeeper:
     image: confluentinc/cp-zookeeper:7.5.0
-    container_name: zookeeper
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
 
   kafka:
     image: confluentinc/cp-kafka:7.5.0
-    container_name: kafka
     depends_on:
       - zookeeper
     ports:
@@ -27,7 +27,6 @@ services:
 
   mysql:
     image: mysql:8
-    container_name: mysql
     ports:
       - "3306:3306"
     environment:
@@ -43,7 +42,6 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: redis
     ports:
       - "6379:6379"
     volumes:
@@ -55,7 +53,6 @@ services:
       dockerfile_inline: |
         FROM elasticsearch:9.0.3
         RUN bin/elasticsearch-plugin install --batch analysis-nori
-    container_name: elasticsearch
     environment:
       - discovery.type=single-node
       - xpack.security.enabled=false
@@ -70,7 +67,6 @@ services:
   user-service:
     build:
       context: ./service/user
-    container_name: user-service
     ports:
       - "9003:9003"
     env_file: .env
@@ -96,7 +92,6 @@ services:
   payment-service:
     build:
       context: ./service/payment
-    container_name: payment-service
     ports:
       - "9001:9001"
     env_file: .env
@@ -120,7 +115,6 @@ services:
   product-service:
     build:
       context: ./service/product
-    container_name: product-service
     ports:
       - "9004:9004"
     env_file: .env
@@ -146,7 +140,6 @@ services:
   order-service:
     build:
       context: ./service/order
-    container_name: order-service
     ports:
       - "9005:9005"
     env_file: .env
@@ -170,7 +163,6 @@ services:
   settlement-service:
     build:
       context: ./service/settlement
-    container_name: settlement-service
     ports:
       - "9002:9002"
     env_file: .env
@@ -193,7 +185,6 @@ services:
   admin-service:
     build:
       context: ./service/admin
-    container_name: admin-service
     ports:
       - "9007:9007"
     env_file: .env
@@ -211,7 +202,6 @@ services:
   ai-service:
     build:
       context: ./service/ai
-    container_name: ai-service
     ports:
       - "9009:9009"
     env_file: .env
@@ -236,7 +226,6 @@ services:
   api-gateway:
     build:
       context: ./api-gateway
-    container_name: api-gateway
     ports:
       - "8080:8080"
     env_file: .env
