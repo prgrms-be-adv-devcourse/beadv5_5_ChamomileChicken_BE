@@ -37,8 +37,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 
     // DB Driver
-    runtimeOnly 'org.postgresql:postgresql'
-    runtimeOnly 'com.h2database:h2'
+    runtimeOnly 'com.mysql:mysql-connector-j'
 
     // Jackson
     implementation 'com.fasterxml.jackson.core:jackson-databind'

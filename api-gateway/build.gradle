@@ -33,14 +33,9 @@ dependencies {
     runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.11.5'
     runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.11.5'
 
-    // R2DBC (Reactive PostgreSQL)
+    // R2DBC (Reactive MySQL)
     implementation 'org.springframework.boot:spring-boot-starter-data-r2dbc'
-    runtimeOnly 'org.postgresql:r2dbc-postgresql'
-
-    // flyway용 JDBC 드라이버
-//    implementation 'org.flywaydb:flyway-core'
-//    implementation 'org.flywaydb:flyway-database-postgresql'
-//    runtimeOnly 'org.postgresql:postgresql'
+    runtimeOnly 'io.asyncer:r2dbc-mysql:1.2.0'
 
     // Caffeine
     implementation 'com.github.ben-manes.caffeine:caffeine'
@@ -49,8 +44,8 @@ dependencies {
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
 
-    // h2
-    runtimeOnly 'io.r2dbc:r2dbc-h2'
+    // h2 (test only)
+    testRuntimeOnly 'io.r2dbc:r2dbc-h2'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'io.projectreactor:reactor-test'

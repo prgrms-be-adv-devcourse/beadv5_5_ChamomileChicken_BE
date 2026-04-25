@@ -1,0 +1,46 @@
+api:
+  user-host: ${USER_SERVICE_URL:http://localhost:9003}
+
+spring:
+  devtools:
+    restart:
+      enabled: false
+
+  elasticsearch:
+    uris: ${ES_URIS:http://localhost:9200}
+
+  datasource:
+    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/productdb?serverTimezone=UTC&characterEncoding=UTF-8
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: ${MYSQL_USER:root}
+    password: ${MYSQL_PASSWORD:1234}
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: true
+    show-sql: true
+
+  cloud:
+    aws:
+      s3:
+        bucket: ${S3_BUCKET_NAME}
+        #        배포시 수정
+        #        presigned-url-expiration: 5
+        presigned-url-expiration: 10
+      region:
+        static: ap-northeast-2
+
+  springdoc:
+    swagger-ui:
+      path: /swagger-ui.html
+    api-docs:
+      path: /v3/api-docs
+      version: OPENAPI_3_0
+
+logging:
+  level:
+    org.hibernate.SQL: DEBUG            # 실제 실행되는 SQL
+    org.hibernate.type.descriptor.sql: TRACE  # 바인딩 파라미터까지

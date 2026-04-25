@@ -1,0 +1,32 @@
+spring:
+  r2dbc:
+    url: r2dbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/gatewaydb
+    username: ${MYSQL_USER:root}
+    password: ${MYSQL_PASSWORD:1234}
+
+  sql:
+    init:
+      mode: always
+
+  flyway:
+    enabled: false
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      connect-timeout: 1000ms
+      timeout: 500ms
+
+cors:
+  allowed-origins:
+    - http://localhost:3000
+
+logging:
+  level:
+    root: INFO
+    jabaclass.apigateway: DEBUG
+    org.springframework.cloud.gateway: DEBUG
+    org.springframework.boot.sql.init: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"

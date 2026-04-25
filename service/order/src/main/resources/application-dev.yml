@@ -1,0 +1,25 @@
+spring:
+  datasource:
+    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/orderdb?serverTimezone=UTC&characterEncoding=UTF-8
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: ${MYSQL_USER:root}
+    password: ${MYSQL_PASSWORD:1234}
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+external:
+  deposits:
+    base-url: http://localhost:9003
+  products:
+    base-url: http://localhost:9004
+
+logging:
+  level:
+    jabaclass: DEBUG
+    org.springframework.web: DEBUG

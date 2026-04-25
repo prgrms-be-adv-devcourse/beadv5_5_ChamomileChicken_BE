@@ -1,0 +1,16 @@
+datasource:
+  jdbc-url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/admindb?serverTimezone=UTC&characterEncoding=UTF-8
+  driver-class-name: com.mysql.cj.jdbc.Driver
+  username: ${MYSQL_USER:root}
+  password: ${MYSQL_PASSWORD:1234}
+  maximum-pool-size: 2
+
+jpa:
+  ddl-auto: update
+
+logging:
+  level:
+    jabaclass: DEBUG
+    org.springframework.web: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.orm.jdbc.bind: TRACE
