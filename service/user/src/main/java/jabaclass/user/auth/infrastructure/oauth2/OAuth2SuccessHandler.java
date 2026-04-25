@@ -3,9 +3,11 @@ package jabaclass.user.auth.infrastructure.oauth2;
 import java.io.IOException;
 import java.time.Duration;
 
+import jabaclass.user.auth.application.service.AuthService;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
@@ -20,11 +22,19 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 @Component
-@RequiredArgsConstructor
 public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
 
 	private final TokenProvider tokenProvider;
 	private final StringRedisTemplate redisTemplate;
+	private final AuthService authService;
+
+	public OAuth2SuccessHandler(TokenProvider tokenProvider,
+								StringRedisTemplate redisTemplate,
+								@Lazy AuthService authService) {
+		this.tokenProvider = tokenProvider;
+		this.redisTemplate = redisTemplate;
+		this.authService = authService;
+	}
 
 	@Value("${jwt.refresh-token-validity}")
 	private long refreshTokenValidity;
@@ -42,6 +52,13 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
 
 		CustomOAuth2User oAuth2User = (CustomOAuth2User) authentication.getPrincipal();
 		User user = oAuth2User.getUser();
+
+		String clientIp = request.getHeader("X-Real-IP");
+		if (clientIp ==  null) {
+			clientIp = request.getRemoteAddr();
+		}
+		String userAgent = request.getHeader("User-Agent");
+		authService.handleLoginSecurity(user, clientIp, userAgent);
 
 		TokenResult tokens = new TokenResult(
 			tokenProvider.generateAccessToken(user.getId(), user.getRole()),
