@@ -86,7 +86,7 @@ public class UserService implements UserUseCase {
 	@Transactional
 	public void updateMyInfo(UUID userId, UpdateUserRequestDto request) {
 		User user = getUser(userId);
-		boolean nameChanged = !user.getName().equals(request.name());
+		boolean nameChanged = !Objects.equals(user.getName(), request.name());
 		user.updateProfile(request.name(), request.phone());
 		if (nameChanged) {
 			userEventsPublisher.publishNameChanged(userId, request.name());

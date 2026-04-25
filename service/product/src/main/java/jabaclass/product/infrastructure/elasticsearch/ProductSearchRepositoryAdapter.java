@@ -20,6 +20,11 @@ import org.springframework.data.elasticsearch.client.elc.NativeQuery;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Map;
+
+import org.springframework.data.elasticsearch.core.mapping.IndexCoordinates;
+import org.springframework.data.elasticsearch.core.query.UpdateQuery;
+import org.springframework.data.elasticsearch.core.reindex.ByQueryResponse;
 
 @Repository
 @RequiredArgsConstructor
@@ -102,25 +107,16 @@ public class ProductSearchRepositoryAdapter implements ProductSearchRepository {
 
 	@Override
 	public void updateSellerNameForAll(String sellerId, String newName) {
-		Criteria criteria = new Criteria("sellerId").is(sellerId);
-		CriteriaQuery query = new CriteriaQuery(criteria);
-		query.setMaxResults(10000);
-		SearchHits<ProductDocument> hits = elasticsearchOperations.search(query, ProductDocument.class);
+		CriteriaQuery criteriaQuery = new CriteriaQuery(new Criteria("sellerId").is(sellerId));
 
-		List<ProductDocument> updated = hits.stream()
-			.map(SearchHit::getContent)
-			.map(doc -> doc.toBuilder().sellerName(newName).build())
-			.toList();
+		UpdateQuery updateQuery = UpdateQuery.builder(criteriaQuery)
+			.withScript("ctx._source.sellerName = params.newName")
+			.withParams(Map.of("newName", newName))
+			.build();
 
-		if (updated.isEmpty()) {
-			return;
-		}
-
-		List<IndexQuery> queries = updated.stream()
-			.map(doc -> new IndexQueryBuilder().withId(doc.getId()).withObject(doc).build())
-			.toList();
-		elasticsearchOperations.bulkIndex(queries, ProductDocument.class);
-		log.info("ES sellerName 업데이트 완료: sellerId={}, 건수={}", sellerId, updated.size());
+		ByQueryResponse response = elasticsearchOperations.updateByQuery(
+			updateQuery, IndexCoordinates.of("products"));
+		log.info("ES sellerName 업데이트 완료: sellerId={}, 업데이트 건수={}", sellerId, response.getUpdated());
 	}
 
 	@Override

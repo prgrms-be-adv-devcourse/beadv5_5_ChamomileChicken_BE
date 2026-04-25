@@ -23,7 +23,12 @@ public class UserEventsConsumer {
 
 	@KafkaListener(topics = "user.events", groupId = "product-user-sync")
 	public void consume(ConsumerRecord<String, String> record) {
-		String eventType = new String(record.headers().lastHeader("eventType").value(), StandardCharsets.UTF_8);
+		var eventTypeHeader = record.headers().lastHeader("eventType");
+		if (eventTypeHeader == null) {
+			log.warn("user.events 메시지에 eventType 헤더 없음. 무시합니다. offset={}", record.offset());
+			return;
+		}
+		String eventType = new String(eventTypeHeader.value(), StandardCharsets.UTF_8);
 
 		try {
 			switch (eventType) {
