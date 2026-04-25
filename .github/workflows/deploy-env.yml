@@ -4,17 +4,18 @@ on:
   workflow_dispatch:
     inputs:
       service:
-        description: "Target service. Use common to apply only common config/secret."
+        description: "Target scope. Use common for common only, api-gateway for gateway only, all for common + gateway."
         required: true
         type: choice
         options:
           - common
           - api-gateway
+          - all
       apply_common_config:
         description: "Apply COMMON_CONFIG_ENV to common-config"
         required: true
         type: boolean
-        default: true
+        default: false
       apply_common_secret:
         description: "Apply COMMON_SECRET_ENV to common-secret"
         required: true
@@ -24,14 +25,9 @@ on:
         description: "Apply service-specific config env"
         required: true
         type: boolean
-        default: true
+        default: false
       apply_service_secret:
         description: "Apply service-specific secret env"
-        required: true
-        type: boolean
-        default: false
-      restart_service:
-        description: "Restart only for urgent env-only apply. Leave false if source deploy will run separately."
         required: true
         type: boolean
         default: false
@@ -87,6 +83,10 @@ jobs:
               service_config="${API_GATEWAY_CONFIG_ENV_SOURCE:-}"
               service_secret="${API_GATEWAY_SECRET_ENV_SOURCE:-}"
               ;;
+            all)
+              service_config="${API_GATEWAY_CONFIG_ENV_SOURCE:-}"
+              service_secret="${API_GATEWAY_SECRET_ENV_SOURCE:-}"
+              ;;
             *)
               echo "Unsupported service: $SELECTED_SERVICE"
               exit 1
@@ -97,8 +97,8 @@ jobs:
             echo "service_name=common" >> "$GITHUB_OUTPUT"
             echo "deployment_name=" >> "$GITHUB_OUTPUT"
           else
-            echo "service_name=$SELECTED_SERVICE" >> "$GITHUB_OUTPUT"
-            echo "deployment_name=${SELECTED_SERVICE}-service" >> "$GITHUB_OUTPUT"
+            echo "service_name=api-gateway" >> "$GITHUB_OUTPUT"
+            echo "deployment_name=api-gateway-service" >> "$GITHUB_OUTPUT"
           fi
 
           {
@@ -185,7 +185,7 @@ jobs:
           echo "SERVICE_SECRET_CHANGED=${SERVICE_SECRET_CHANGED:-false}"
 
       - name: Restart deployment
-        if: ${{ inputs.restart_service && inputs.service == 'api-gateway' }}
+        if: ${{ inputs.service != 'common' }}
         shell: bash
         run: |
           if [[ "${CONFIG_CHANGED:-false}" != "true" ]]; then
