@@ -52,7 +52,7 @@ spec:
             - name: POSTGRES_PASSWORD
               value: "123"
             - name: POSTGRES_DB
-              value: "postgres"
+              value: "test"
             - name: PGDATA
               value: "/var/lib/postgresql/data/pgdata"
           ports:
@@ -73,7 +73,7 @@ spec:
               command:
                 - /bin/sh
                 - -c
-                - pg_isready -h 127.0.0.1 -p 5432 -U username -d postgres
+                - pg_isready -h 127.0.0.1 -p 5432 -U $POSTGRES_USER -d $POSTGRES_DB
             initialDelaySeconds: 10
             periodSeconds: 10
             timeoutSeconds: 5
@@ -83,7 +83,7 @@ spec:
               command:
                 - /bin/sh
                 - -c
-                - pg_isready -h 127.0.0.1 -p 5432 -U username -d postgres
+                - pg_isready -h 127.0.0.1 -p 5432 -U $POSTGRES_USER -d $POSTGRES_DB
             initialDelaySeconds: 10
             periodSeconds: 10
             timeoutSeconds: 5
@@ -93,7 +93,7 @@ spec:
               command:
                 - /bin/sh
                 - -c
-                - pg_isready -h 127.0.0.1 -p 5432 -U username -d postgres
+                - pg_isready -h 127.0.0.1 -p 5432 -U $POSTGRES_USER -d $POSTGRES_DB
             initialDelaySeconds: 30
             periodSeconds: 20
             timeoutSeconds: 5

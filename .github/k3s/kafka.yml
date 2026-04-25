@@ -59,6 +59,20 @@ spec:
               mountPath: /var/lib/zookeeper/data
             - name: zookeeper-log
               mountPath: /var/lib/zookeeper/log
+          readinessProbe:
+            tcpSocket:
+              port: 2181
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          livenessProbe:
+            tcpSocket:
+              port: 2181
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 6
           resources:
             requests:
               cpu: "100m"
@@ -163,6 +177,20 @@ spec:
           volumeMounts:
             - name: kafka-data
               mountPath: /var/lib/kafka/data
+          readinessProbe:
+            tcpSocket:
+              port: 9092
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 9
+          livenessProbe:
+            tcpSocket:
+              port: 9092
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 6
           resources:
             requests:
               cpu: "200m"
