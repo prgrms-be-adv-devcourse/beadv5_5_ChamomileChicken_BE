@@ -319,20 +319,20 @@ deployment가 없으면 건너뛰고 로그를 남깁니다.
 
 ### 워크플로
 
-- [.github/workflows/deploy-env.yml](C:\project\javaclass\.github\workflows\deploy-env.yml)
-- [.github/workflows/cd-api-gateway.yml](C:\project\javaclass\.github\workflows\cd-api-gateway.yml)
-- [.github/workflows/cd-admin.yml](C:\project\javaclass\.github\workflows\cd-admin.yml)
-- [.github/workflows/cd-ai.yml](C:\project\javaclass\.github\workflows\cd-ai.yml)
-- [.github/workflows/cd-order.yml](C:\project\javaclass\.github\workflows\cd-order.yml)
-- [.github/workflows/cd-payment.yml](C:\project\javaclass\.github\workflows\cd-payment.yml)
-- [.github/workflows/cd-product.yml](C:\project\javaclass\.github\workflows\cd-product.yml)
-- [.github/workflows/cd-settlement.yml](C:\project\javaclass\.github\workflows\cd-settlement.yml)
-- [.github/workflows/cd-user.yml](C:\project\javaclass\.github\workflows\cd-user.yml)
+- `.github/workflows/deploy-env.yml`
+- `.github/workflows/cd-api-gateway.yml`
+- `.github/workflows/cd-admin.yml`
+- `.github/workflows/cd-ai.yml`
+- `.github/workflows/cd-order.yml`
+- `.github/workflows/cd-payment.yml`
+- `.github/workflows/cd-product.yml`
+- `.github/workflows/cd-settlement.yml`
+- `.github/workflows/cd-user.yml`
 
 ### 스크립트
 
-- [.github/scripts/apply-env.sh](C:\project\javaclass\.github\scripts\apply-env.sh)
-- [.github/scripts/deploy-app.sh](C:\project\javaclass\.github\scripts\deploy-app.sh)
+- `.github/scripts/apply-env.sh`
+- `.github/scripts/deploy-app.sh`
 
 ### Kubernetes manifest
 

@@ -310,18 +310,18 @@ Gradle 기준 서비스 모듈은 아래와 같습니다.
 
 주요 배포 파일은 아래와 같습니다.
 
-- [.github/k3s/api-gateway-service.yml](C:\project\javaclass\.github\k3s\api-gateway-service.yml)
-- [.github/k3s/admin-service.yml](C:\project\javaclass\.github\k3s\admin-service.yml)
-- [.github/k3s/ai-service.yml](C:\project\javaclass\.github\k3s\ai-service.yml)
-- [.github/k3s/order-service.yml](C:\project\javaclass\.github\k3s\order-service.yml)
-- [.github/k3s/payment-service.yml](C:\project\javaclass\.github\k3s\payment-service.yml)
-- [.github/k3s/product-service.yml](C:\project\javaclass\.github\k3s\product-service.yml)
-- [.github/k3s/settlement-service.yml](C:\project\javaclass\.github\k3s\settlement-service.yml)
-- [.github/k3s/user-service.yml](C:\project\javaclass\.github\k3s\user-service.yml)
-- [.github/k3s/postgres.yml](C:\project\javaclass\.github\k3s\postgres.yml)
-- [.github/k3s/kafka.yml](C:\project\javaclass\.github\k3s\kafka.yml)
-- [.github/k3s/redis.yml](C:\project\javaclass\.github\k3s\redis.yml)
-- [.github/k3s/elasticsearch.yml](C:\project\javaclass\.github\k3s\elasticsearch.yml)
+- `.github/k3s/api-gateway-service.yml`
+- `.github/k3s/admin-service.yml`
+- `.github/k3s/ai-service.yml`
+- `.github/k3s/order-service.yml`
+- `.github/k3s/payment-service.yml`
+- `.github/k3s/product-service.yml`
+- `.github/k3s/settlement-service.yml`
+- `.github/k3s/user-service.yml`
+- `.github/k3s/postgres.yml`
+- `.github/k3s/kafka.yml`
+- `.github/k3s/redis.yml`
+- `.github/k3s/elasticsearch.yml`
 
 ## 15. 요약
 
