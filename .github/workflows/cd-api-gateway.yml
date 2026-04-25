@@ -102,22 +102,6 @@ jobs:
         run: |
           cp .github/k3s/api-gateway-service.yml /home/ubuntu/apps/data/k3s-service/api-gateway-service.yml
 
-      - name: Detect manifest changes
-        id: manifest_changes
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          MANIFEST_CHANGED=false
-          IMAGE_CHANGED=true
-
-          if git diff --name-only HEAD^ HEAD | grep -Eq '^\.github/k3s/api-gateway-service\.yml$'; then
-            MANIFEST_CHANGED=true
-          fi
-
-          echo "manifest_changed=$MANIFEST_CHANGED" >> "$GITHUB_OUTPUT"
-          echo "image_changed=$IMAGE_CHANGED" >> "$GITHUB_OUTPUT"
-
       - name: Verify deploy files exist
         run: |
           ls -l /home/ubuntu/apps/deploy/scripts
@@ -133,13 +117,6 @@ jobs:
         env:
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
-          IMAGE_CHANGED: ${{ steps.manifest_changes.outputs.image_changed }}
-          MANIFEST_CHANGED: ${{ steps.manifest_changes.outputs.manifest_changed }}
-          CONFIG_CHANGED: false
-          COMMON_CONFIG_CHANGED: false
-          COMMON_SECRET_CHANGED: false
-          SERVICE_CONFIG_CHANGED: false
-          SERVICE_SECRET_CHANGED: false
         run: |
           /home/ubuntu/apps/deploy/scripts/deploy-app.sh api-gateway
 

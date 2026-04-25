@@ -4,12 +4,19 @@ on:
   workflow_dispatch:
     inputs:
       service:
-        description: "Target scope. Use common for common only, api-gateway for gateway only, all for common + gateway."
+        description: "Target scope. Use common for common only, a service for that service, all for common + all services."
         required: true
         type: choice
         options:
           - common
+          - admin
+          - ai
           - api-gateway
+          - order
+          - payment
+          - product
+          - settlement
+          - user
           - all
       apply_common_config:
         description: "Apply COMMON_CONFIG_ENV to common-config"
@@ -68,24 +75,74 @@ jobs:
           APPLY_SERVICE_SECRET: ${{ inputs.apply_service_secret }}
           COMMON_CONFIG_ENV_SOURCE: ${{ secrets.COMMON_CONFIG_ENV }}
           COMMON_SECRET_ENV_SOURCE: ${{ secrets.COMMON_SECRET_ENV }}
+          ADMIN_CONFIG_ENV_SOURCE: ${{ secrets.ADMIN_CONFIG_ENV }}
+          ADMIN_SECRET_ENV_SOURCE: ${{ secrets.ADMIN_SECRET_ENV }}
+          AI_CONFIG_ENV_SOURCE: ${{ secrets.AI_CONFIG_ENV }}
+          AI_SECRET_ENV_SOURCE: ${{ secrets.AI_SECRET_ENV }}
           API_GATEWAY_CONFIG_ENV_SOURCE: ${{ secrets.API_GATEWAY_CONFIG_ENV }}
           API_GATEWAY_SECRET_ENV_SOURCE: ${{ secrets.API_GATEWAY_SECRET_ENV }}
+          ORDER_CONFIG_ENV_SOURCE: ${{ secrets.ORDER_CONFIG_ENV }}
+          ORDER_SECRET_ENV_SOURCE: ${{ secrets.ORDER_SECRET_ENV }}
+          PAYMENT_CONFIG_ENV_SOURCE: ${{ secrets.PAYMENT_CONFIG_ENV }}
+          PAYMENT_SECRET_ENV_SOURCE: ${{ secrets.PAYMENT_SECRET_ENV }}
+          PRODUCT_CONFIG_ENV_SOURCE: ${{ secrets.PRODUCT_CONFIG_ENV }}
+          PRODUCT_SECRET_ENV_SOURCE: ${{ secrets.PRODUCT_SECRET_ENV }}
+          SETTLEMENT_CONFIG_ENV_SOURCE: ${{ secrets.SETTLEMENT_CONFIG_ENV }}
+          SETTLEMENT_SECRET_ENV_SOURCE: ${{ secrets.SETTLEMENT_SECRET_ENV }}
+          USER_CONFIG_ENV_SOURCE: ${{ secrets.USER_CONFIG_ENV }}
+          USER_SECRET_ENV_SOURCE: ${{ secrets.USER_SECRET_ENV }}
         run: |
           set -euo pipefail
 
+          service_name=""
           service_config=""
           service_secret=""
 
           case "$SELECTED_SERVICE" in
             common)
               ;;
+            admin)
+              service_name="admin"
+              service_config="${ADMIN_CONFIG_ENV_SOURCE:-}"
+              service_secret="${ADMIN_SECRET_ENV_SOURCE:-}"
+              ;;
+            ai)
+              service_name="ai"
+              service_config="${AI_CONFIG_ENV_SOURCE:-}"
+              service_secret="${AI_SECRET_ENV_SOURCE:-}"
+              ;;
             api-gateway)
+              service_name="api-gateway"
               service_config="${API_GATEWAY_CONFIG_ENV_SOURCE:-}"
               service_secret="${API_GATEWAY_SECRET_ENV_SOURCE:-}"
               ;;
+            order)
+              service_name="order"
+              service_config="${ORDER_CONFIG_ENV_SOURCE:-}"
+              service_secret="${ORDER_SECRET_ENV_SOURCE:-}"
+              ;;
+            payment)
+              service_name="payment"
+              service_config="${PAYMENT_CONFIG_ENV_SOURCE:-}"
+              service_secret="${PAYMENT_SECRET_ENV_SOURCE:-}"
+              ;;
+            product)
+              service_name="product"
+              service_config="${PRODUCT_CONFIG_ENV_SOURCE:-}"
+              service_secret="${PRODUCT_SECRET_ENV_SOURCE:-}"
+              ;;
+            settlement)
+              service_name="settlement"
+              service_config="${SETTLEMENT_CONFIG_ENV_SOURCE:-}"
+              service_secret="${SETTLEMENT_SECRET_ENV_SOURCE:-}"
+              ;;
+            user)
+              service_name="user"
+              service_config="${USER_CONFIG_ENV_SOURCE:-}"
+              service_secret="${USER_SECRET_ENV_SOURCE:-}"
+              ;;
             all)
-              service_config="${API_GATEWAY_CONFIG_ENV_SOURCE:-}"
-              service_secret="${API_GATEWAY_SECRET_ENV_SOURCE:-}"
+              service_name="all"
               ;;
             *)
               echo "Unsupported service: $SELECTED_SERVICE"
@@ -96,9 +153,12 @@ jobs:
           if [[ "$SELECTED_SERVICE" == "common" ]]; then
             echo "service_name=common" >> "$GITHUB_OUTPUT"
             echo "deployment_name=" >> "$GITHUB_OUTPUT"
+          elif [[ "$SELECTED_SERVICE" == "all" ]]; then
+            echo "service_name=all" >> "$GITHUB_OUTPUT"
+            echo "deployment_name=" >> "$GITHUB_OUTPUT"
           else
-            echo "service_name=api-gateway" >> "$GITHUB_OUTPUT"
-            echo "deployment_name=api-gateway-service" >> "$GITHUB_OUTPUT"
+            echo "service_name=$service_name" >> "$GITHUB_OUTPUT"
+            echo "deployment_name=${service_name}-service" >> "$GITHUB_OUTPUT"
           fi
 
           {
@@ -137,9 +197,51 @@ jobs:
 
       - name: Sync env files from GitHub secrets
         shell: bash
+        env:
+          ADMIN_CONFIG_ENV_SOURCE: ${{ secrets.ADMIN_CONFIG_ENV }}
+          ADMIN_SECRET_ENV_SOURCE: ${{ secrets.ADMIN_SECRET_ENV }}
+          AI_CONFIG_ENV_SOURCE: ${{ secrets.AI_CONFIG_ENV }}
+          AI_SECRET_ENV_SOURCE: ${{ secrets.AI_SECRET_ENV }}
+          API_GATEWAY_CONFIG_ENV_SOURCE: ${{ secrets.API_GATEWAY_CONFIG_ENV }}
+          API_GATEWAY_SECRET_ENV_SOURCE: ${{ secrets.API_GATEWAY_SECRET_ENV }}
+          ORDER_CONFIG_ENV_SOURCE: ${{ secrets.ORDER_CONFIG_ENV }}
+          ORDER_SECRET_ENV_SOURCE: ${{ secrets.ORDER_SECRET_ENV }}
+          PAYMENT_CONFIG_ENV_SOURCE: ${{ secrets.PAYMENT_CONFIG_ENV }}
+          PAYMENT_SECRET_ENV_SOURCE: ${{ secrets.PAYMENT_SECRET_ENV }}
+          PRODUCT_CONFIG_ENV_SOURCE: ${{ secrets.PRODUCT_CONFIG_ENV }}
+          PRODUCT_SECRET_ENV_SOURCE: ${{ secrets.PRODUCT_SECRET_ENV }}
+          SETTLEMENT_CONFIG_ENV_SOURCE: ${{ secrets.SETTLEMENT_CONFIG_ENV }}
+          SETTLEMENT_SECRET_ENV_SOURCE: ${{ secrets.SETTLEMENT_SECRET_ENV }}
+          USER_CONFIG_ENV_SOURCE: ${{ secrets.USER_CONFIG_ENV }}
+          USER_SECRET_ENV_SOURCE: ${{ secrets.USER_SECRET_ENV }}
         run: |
           if [[ "${{ steps.select_env.outputs.service_name }}" == "common" ]]; then
             ./.github/scripts/apply-env.sh
+          elif [[ "${{ steps.select_env.outputs.service_name }}" == "all" ]]; then
+            COMMON_CONFIG_ENV="${COMMON_CONFIG_ENV:-}" COMMON_SECRET_ENV="${COMMON_SECRET_ENV:-}" \
+              SERVICE_CONFIG_ENV="${ADMIN_CONFIG_ENV_SOURCE:-}" SERVICE_SECRET_ENV="${ADMIN_SECRET_ENV_SOURCE:-}" \
+              ./.github/scripts/apply-env.sh admin
+            COMMON_CONFIG_ENV="" COMMON_SECRET_ENV="" \
+              SERVICE_CONFIG_ENV="${AI_CONFIG_ENV_SOURCE:-}" SERVICE_SECRET_ENV="${AI_SECRET_ENV_SOURCE:-}" \
+              ./.github/scripts/apply-env.sh ai
+            COMMON_CONFIG_ENV="" COMMON_SECRET_ENV="" \
+              SERVICE_CONFIG_ENV="${API_GATEWAY_CONFIG_ENV_SOURCE:-}" SERVICE_SECRET_ENV="${API_GATEWAY_SECRET_ENV_SOURCE:-}" \
+              ./.github/scripts/apply-env.sh api-gateway
+            COMMON_CONFIG_ENV="" COMMON_SECRET_ENV="" \
+              SERVICE_CONFIG_ENV="${ORDER_CONFIG_ENV_SOURCE:-}" SERVICE_SECRET_ENV="${ORDER_SECRET_ENV_SOURCE:-}" \
+              ./.github/scripts/apply-env.sh order
+            COMMON_CONFIG_ENV="" COMMON_SECRET_ENV="" \
+              SERVICE_CONFIG_ENV="${PAYMENT_CONFIG_ENV_SOURCE:-}" SERVICE_SECRET_ENV="${PAYMENT_SECRET_ENV_SOURCE:-}" \
+              ./.github/scripts/apply-env.sh payment
+            COMMON_CONFIG_ENV="" COMMON_SECRET_ENV="" \
+              SERVICE_CONFIG_ENV="${PRODUCT_CONFIG_ENV_SOURCE:-}" SERVICE_SECRET_ENV="${PRODUCT_SECRET_ENV_SOURCE:-}" \
+              ./.github/scripts/apply-env.sh product
+            COMMON_CONFIG_ENV="" COMMON_SECRET_ENV="" \
+              SERVICE_CONFIG_ENV="${SETTLEMENT_CONFIG_ENV_SOURCE:-}" SERVICE_SECRET_ENV="${SETTLEMENT_SECRET_ENV_SOURCE:-}" \
+              ./.github/scripts/apply-env.sh settlement
+            COMMON_CONFIG_ENV="" COMMON_SECRET_ENV="" \
+              SERVICE_CONFIG_ENV="${USER_CONFIG_ENV_SOURCE:-}" SERVICE_SECRET_ENV="${USER_SECRET_ENV_SOURCE:-}" \
+              ./.github/scripts/apply-env.sh user
           else
             ./.github/scripts/apply-env.sh "${{ steps.select_env.outputs.service_name }}"
           fi
@@ -161,19 +263,32 @@ jobs:
               --dry-run=client -o yaml | kubectl apply -f -
           fi
 
-          if [[ "${{ steps.select_env.outputs.service_name }}" == "api-gateway" ]]; then
-            if [[ "${SERVICE_CONFIG_CHANGED:-false}" == "true" ]]; then
-              kubectl create configmap api-gateway-config \
-                --from-env-file="$ENV_DIR/api-gateway_config.env" \
+          apply_service_resources() {
+            local service_name="$1"
+
+            if [[ -f "$ENV_DIR/${service_name}_config.env" ]]; then
+              kubectl create configmap "${service_name}-config" \
+                --from-env-file="$ENV_DIR/${service_name}_config.env" \
                 --dry-run=client -o yaml | kubectl apply -f -
             fi
 
-            if [[ "${SERVICE_SECRET_CHANGED:-false}" == "true" ]]; then
-              kubectl create secret generic api-gateway-secret \
-                --from-env-file="$ENV_DIR/api-gateway_secret.env" \
+            if [[ -f "$ENV_DIR/${service_name}_secret.env" ]]; then
+              kubectl create secret generic "${service_name}-secret" \
+                --from-env-file="$ENV_DIR/${service_name}_secret.env" \
                 --dry-run=client -o yaml | kubectl apply -f -
             fi
-          fi
+          }
+
+          case "${{ steps.select_env.outputs.service_name }}" in
+            admin|ai|api-gateway|order|payment|product|settlement|user)
+              apply_service_resources "${{ steps.select_env.outputs.service_name }}"
+              ;;
+            all)
+              for service_name in admin ai api-gateway order payment product settlement user; do
+                apply_service_resources "$service_name"
+              done
+              ;;
+          esac
 
       - name: Show detected env changes
         shell: bash
@@ -188,14 +303,31 @@ jobs:
         if: ${{ inputs.service != 'common' }}
         shell: bash
         run: |
-          if [[ "${CONFIG_CHANGED:-false}" != "true" ]]; then
-            echo "No env file changes detected. Skip rollout restart."
-            exit 0
-          fi
+          restart_if_changed() {
+            local service_name="$1"
 
-          deployment_name="${{ steps.select_env.outputs.deployment_name }}"
-          kubectl rollout restart "deployment/${deployment_name}"
-          kubectl rollout status "deployment/${deployment_name}" --timeout=300s
+            kubectl rollout restart "deployment/${service_name}-service"
+            kubectl rollout status "deployment/${service_name}-service" --timeout=300s
+          }
+
+          case "${{ steps.select_env.outputs.service_name }}" in
+            admin|ai|api-gateway|order|payment|product|settlement|user)
+              if [[ "${CONFIG_CHANGED:-false}" != "true" ]]; then
+                echo "No env file changes detected. Skip rollout restart."
+                exit 0
+              fi
+              restart_if_changed "${{ steps.select_env.outputs.service_name }}"
+              ;;
+            all)
+              if [[ "${{ inputs.apply_common_config }}" != "true" && "${{ inputs.apply_common_secret }}" != "true" && "${{ inputs.apply_service_config }}" != "true" && "${{ inputs.apply_service_secret }}" != "true" ]]; then
+                echo "No apply option selected. Skip rollout restart."
+                exit 0
+              fi
+              for service_name in admin ai api-gateway order payment product settlement user; do
+                restart_if_changed "$service_name"
+              done
+              ;;
+          esac
 
       - name: Verify applied resources
         shell: bash
@@ -210,12 +342,15 @@ jobs:
             kubectl get secret common-secret -o yaml
           fi
 
-          if [[ "${{ steps.select_env.outputs.service_name }}" == "api-gateway" ]]; then
-            if [[ "${SERVICE_CONFIG_CHANGED:-false}" == "true" ]]; then
-              kubectl get configmap api-gateway-config -o yaml
-            fi
-
-            if [[ "${SERVICE_SECRET_CHANGED:-false}" == "true" ]]; then
-              kubectl get secret api-gateway-secret -o yaml
-            fi
-          fi
+          case "${{ steps.select_env.outputs.service_name }}" in
+            admin|ai|api-gateway|order|payment|product|settlement|user)
+              kubectl get configmap "${{ steps.select_env.outputs.service_name }}-config" -o yaml || true
+              kubectl get secret "${{ steps.select_env.outputs.service_name }}-secret" -o yaml || true
+              ;;
+            all)
+              for service_name in admin ai api-gateway order payment product settlement user; do
+                kubectl get configmap "${service_name}-config" -o yaml || true
+                kubectl get secret "${service_name}-secret" -o yaml || true
+              done
+              ;;
+          esac
