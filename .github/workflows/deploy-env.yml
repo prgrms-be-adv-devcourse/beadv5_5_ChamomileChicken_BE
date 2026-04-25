@@ -4,11 +4,10 @@ on:
   workflow_dispatch:
     inputs:
       service:
-        description: "Target scope. Use common for common only, a service for that service, all for common + all services."
+        description: "Target scope. Select a service or all. Common env can be applied with any selection."
         required: true
         type: choice
         options:
-          - common
           - admin
           - ai
           - api-gateway
@@ -99,8 +98,6 @@ jobs:
           service_secret=""
 
           case "$SELECTED_SERVICE" in
-            common)
-              ;;
             admin)
               service_name="admin"
               service_config="${ADMIN_CONFIG_ENV_SOURCE:-}"
@@ -150,10 +147,7 @@ jobs:
               ;;
           esac
 
-          if [[ "$SELECTED_SERVICE" == "common" ]]; then
-            echo "service_name=common" >> "$GITHUB_OUTPUT"
-            echo "deployment_name=" >> "$GITHUB_OUTPUT"
-          elif [[ "$SELECTED_SERVICE" == "all" ]]; then
+          if [[ "$SELECTED_SERVICE" == "all" ]]; then
             echo "service_name=all" >> "$GITHUB_OUTPUT"
             echo "deployment_name=" >> "$GITHUB_OUTPUT"
           else
@@ -178,7 +172,7 @@ jobs:
               echo "COMMON_SECRET_ENV="
             fi
 
-            if [[ "$APPLY_SERVICE_CONFIG" == "true" && "$SELECTED_SERVICE" != "common" ]]; then
+            if [[ "$APPLY_SERVICE_CONFIG" == "true" && "$SELECTED_SERVICE" != "all" ]]; then
               echo "SERVICE_CONFIG_ENV<<EOF"
               printf '%s\n' "$service_config"
               echo "EOF"
@@ -186,7 +180,7 @@ jobs:
               echo "SERVICE_CONFIG_ENV="
             fi
 
-            if [[ "$APPLY_SERVICE_SECRET" == "true" && "$SELECTED_SERVICE" != "common" ]]; then
+            if [[ "$APPLY_SERVICE_SECRET" == "true" && "$SELECTED_SERVICE" != "all" ]]; then
               echo "SERVICE_SECRET_ENV<<EOF"
               printf '%s\n' "$service_secret"
               echo "EOF"
@@ -215,9 +209,7 @@ jobs:
           USER_CONFIG_ENV_SOURCE: ${{ secrets.USER_CONFIG_ENV }}
           USER_SECRET_ENV_SOURCE: ${{ secrets.USER_SECRET_ENV }}
         run: |
-          if [[ "${{ steps.select_env.outputs.service_name }}" == "common" ]]; then
-            ./.github/scripts/apply-env.sh
-          elif [[ "${{ steps.select_env.outputs.service_name }}" == "all" ]]; then
+          if [[ "${{ steps.select_env.outputs.service_name }}" == "all" ]]; then
             COMMON_CONFIG_ENV="${COMMON_CONFIG_ENV:-}" COMMON_SECRET_ENV="${COMMON_SECRET_ENV:-}" \
               SERVICE_CONFIG_ENV="${ADMIN_CONFIG_ENV_SOURCE:-}" SERVICE_SECRET_ENV="${ADMIN_SECRET_ENV_SOURCE:-}" \
               ./.github/scripts/apply-env.sh admin
@@ -300,34 +292,36 @@ jobs:
           echo "SERVICE_SECRET_CHANGED=${SERVICE_SECRET_CHANGED:-false}"
 
       - name: Restart deployment
-        if: ${{ inputs.service != 'common' }}
         shell: bash
         run: |
-          restart_if_changed() {
-            local service_name="$1"
-
-            kubectl rollout restart "deployment/${service_name}-service"
-            kubectl rollout status "deployment/${service_name}-service" --timeout=300s
-          }
+          SERVICES=()
 
           case "${{ steps.select_env.outputs.service_name }}" in
             admin|ai|api-gateway|order|payment|product|settlement|user)
-              if [[ "${CONFIG_CHANGED:-false}" != "true" ]]; then
-                echo "No env file changes detected. Skip rollout restart."
-                exit 0
-              fi
-              restart_if_changed "${{ steps.select_env.outputs.service_name }}"
+              SERVICES+=("${{ steps.select_env.outputs.service_name }}")
               ;;
             all)
-              if [[ "${{ inputs.apply_common_config }}" != "true" && "${{ inputs.apply_common_secret }}" != "true" && "${{ inputs.apply_service_config }}" != "true" && "${{ inputs.apply_service_secret }}" != "true" ]]; then
-                echo "No apply option selected. Skip rollout restart."
-                exit 0
-              fi
-              for service_name in admin ai api-gateway order payment product settlement user; do
-                restart_if_changed "$service_name"
-              done
+              SERVICES=(admin ai api-gateway order payment product settlement user)
               ;;
           esac
+
+          restart_if_changed() {
+            local service_name="$1"
+            local deployment_name="${service_name}-service"
+
+            if ! kubectl get deployment "$deployment_name" >/dev/null 2>&1; then
+              echo "Deployment not found. Skip restart: $deployment_name"
+              return
+            fi
+
+            echo "Restarting deployment: $deployment_name"
+            kubectl rollout restart "deployment/${deployment_name}"
+            kubectl rollout status "deployment/${deployment_name}" --timeout=300s
+          }
+
+          for service_name in "${SERVICES[@]}"; do
+            restart_if_changed "$service_name"
+          done
 
       - name: Verify applied resources
         shell: bash
