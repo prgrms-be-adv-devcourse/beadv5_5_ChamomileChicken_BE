@@ -197,6 +197,23 @@ jobs:
 
       - name: Sync env files from GitHub secrets
         shell: bash
+        env:
+          ADMIN_CONFIG_ENV_SOURCE: ${{ secrets.ADMIN_CONFIG_ENV }}
+          ADMIN_SECRET_ENV_SOURCE: ${{ secrets.ADMIN_SECRET_ENV }}
+          AI_CONFIG_ENV_SOURCE: ${{ secrets.AI_CONFIG_ENV }}
+          AI_SECRET_ENV_SOURCE: ${{ secrets.AI_SECRET_ENV }}
+          API_GATEWAY_CONFIG_ENV_SOURCE: ${{ secrets.API_GATEWAY_CONFIG_ENV }}
+          API_GATEWAY_SECRET_ENV_SOURCE: ${{ secrets.API_GATEWAY_SECRET_ENV }}
+          ORDER_CONFIG_ENV_SOURCE: ${{ secrets.ORDER_CONFIG_ENV }}
+          ORDER_SECRET_ENV_SOURCE: ${{ secrets.ORDER_SECRET_ENV }}
+          PAYMENT_CONFIG_ENV_SOURCE: ${{ secrets.PAYMENT_CONFIG_ENV }}
+          PAYMENT_SECRET_ENV_SOURCE: ${{ secrets.PAYMENT_SECRET_ENV }}
+          PRODUCT_CONFIG_ENV_SOURCE: ${{ secrets.PRODUCT_CONFIG_ENV }}
+          PRODUCT_SECRET_ENV_SOURCE: ${{ secrets.PRODUCT_SECRET_ENV }}
+          SETTLEMENT_CONFIG_ENV_SOURCE: ${{ secrets.SETTLEMENT_CONFIG_ENV }}
+          SETTLEMENT_SECRET_ENV_SOURCE: ${{ secrets.SETTLEMENT_SECRET_ENV }}
+          USER_CONFIG_ENV_SOURCE: ${{ secrets.USER_CONFIG_ENV }}
+          USER_SECRET_ENV_SOURCE: ${{ secrets.USER_SECRET_ENV }}
         run: |
           if [[ "${{ steps.select_env.outputs.service_name }}" == "common" ]]; then
             ./.github/scripts/apply-env.sh
