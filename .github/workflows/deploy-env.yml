@@ -138,12 +138,11 @@ jobs:
       - name: Sync env files from GitHub secrets
         shell: bash
         run: |
-          target_service="${{ steps.select_env.outputs.service_name }}"
-          if [[ "$target_service" == "common" ]]; then
-            target_service="noop"
+          if [[ "${{ steps.select_env.outputs.service_name }}" == "common" ]]; then
+            ./.github/scripts/apply-env.sh
+          else
+            ./.github/scripts/apply-env.sh "${{ steps.select_env.outputs.service_name }}"
           fi
-
-          ./.github/scripts/apply-env.sh "$target_service"
 
       - name: Apply ConfigMap and Secret resources
         shell: bash

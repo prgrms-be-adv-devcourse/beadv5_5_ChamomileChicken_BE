@@ -4,11 +4,6 @@ set -euo pipefail
 SERVICE="${1:-}"
 ENV_DIR="${ENV_DIR:-/home/ubuntu/apps/deploy/env}"
 
-if [ -z "$SERVICE" ]; then
-  echo "Usage: apply-env.sh <service-name>"
-  exit 1
-fi
-
 mkdir -p "$ENV_DIR"
 chmod 700 "$ENV_DIR"
 
@@ -52,13 +47,19 @@ write_if_changed() {
 
 write_if_changed "$ENV_DIR/common_config.env" "${COMMON_CONFIG_ENV:-}" "COMMON_CONFIG_CHANGED"
 write_if_changed "$ENV_DIR/common_secret.env" "${COMMON_SECRET_ENV:-}" "COMMON_SECRET_CHANGED"
-write_if_changed "$ENV_DIR/${SERVICE}_config.env" "${SERVICE_CONFIG_ENV:-}" "SERVICE_CONFIG_CHANGED"
-write_if_changed "$ENV_DIR/${SERVICE}_secret.env" "${SERVICE_SECRET_ENV:-}" "SERVICE_SECRET_CHANGED"
+
+if [ -n "$SERVICE" ]; then
+  write_if_changed "$ENV_DIR/${SERVICE}_config.env" "${SERVICE_CONFIG_ENV:-}" "SERVICE_CONFIG_CHANGED"
+  write_if_changed "$ENV_DIR/${SERVICE}_secret.env" "${SERVICE_SECRET_ENV:-}" "SERVICE_SECRET_CHANGED"
+fi
 
 [ -f "$ENV_DIR/common_secret.env" ] && chmod 600 "$ENV_DIR/common_secret.env"
-[ -f "$ENV_DIR/${SERVICE}_secret.env" ] && chmod 600 "$ENV_DIR/${SERVICE}_secret.env"
 [ -f "$ENV_DIR/common_config.env" ] && chmod 600 "$ENV_DIR/common_config.env"
-[ -f "$ENV_DIR/${SERVICE}_config.env" ] && chmod 600 "$ENV_DIR/${SERVICE}_config.env"
+
+if [ -n "$SERVICE" ]; then
+  [ -f "$ENV_DIR/${SERVICE}_secret.env" ] && chmod 600 "$ENV_DIR/${SERVICE}_secret.env"
+  [ -f "$ENV_DIR/${SERVICE}_config.env" ] && chmod 600 "$ENV_DIR/${SERVICE}_config.env"
+fi
 
 echo "CONFIG_CHANGED=$CONFIG_CHANGED"
 echo "COMMON_CONFIG_CHANGED=$COMMON_CONFIG_CHANGED"
