@@ -1,8 +1,10 @@
 package jabaclass.user.auth.presentation.controller;
 
+import java.util.Optional;
 import java.util.UUID;
 
 import jabaclass.user.auth.application.usecase.ReportTheftUseCase;
+import jabaclass.user.common.util.ClientIpUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -18,7 +20,6 @@ import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -53,9 +54,11 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<ApiResponseDto<TokenResponseDto>> login(
         @Valid @RequestBody LoginRequestDto request,
-        @RequestHeader(value = "X-Real-IP", defaultValue = "unknown") String clientIp,
-        @RequestHeader(value = "User-Agent", defaultValue = "unknown") String userAgent,
+        HttpServletRequest servletRequest,
         HttpServletResponse response) {
+
+        String clientIp = ClientIpUtils.extractIp(servletRequest);
+        String userAgent = Optional.ofNullable(servletRequest.getHeader("User-Agent")).orElse("unknown");
 
         TokenResult result = loginUseCase.login(request, clientIp, userAgent);
 
