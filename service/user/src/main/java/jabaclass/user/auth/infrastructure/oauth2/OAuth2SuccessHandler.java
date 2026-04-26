@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.time.Duration;
 
 import jabaclass.user.auth.application.service.AuthService;
+import jabaclass.user.common.util.ClientIpUtils;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -53,10 +54,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
 		CustomOAuth2User oAuth2User = (CustomOAuth2User) authentication.getPrincipal();
 		User user = oAuth2User.getUser();
 
-		String clientIp = request.getHeader("X-Real-IP");
-		if (clientIp ==  null) {
-			clientIp = request.getRemoteAddr();
-		}
+		String clientIp = ClientIpUtils.extractIp(request);
 		String userAgent = request.getHeader("User-Agent");
 		authService.handleLoginSecurity(user.getId(), clientIp, userAgent);
 

@@ -68,7 +68,7 @@ public class AuthService implements LoginUseCase, LogoutUseCase, ReissueUseCase,
             throw new AuthException(AuthErrorCode.USER_NOT_FOUND);
         }
 
-        handleLoginSecurity(user, clientIp, userAgent);
+        handleLoginSecurity(user.getId(), clientIp, userAgent);
 
         String accessToken = tokenProvider.generateAccessToken(user.getId(), user.getRole());
         String refreshToken = tokenProvider.generateRefreshToken(user.getId(), user.getRole());
