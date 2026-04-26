@@ -49,11 +49,6 @@ public class UserRepositoryAdapter implements UserRepository {
 	}
 
 	@Override
-	public Optional<User> findByEmail(String email) {
-		return userJpaRepository.findByEmail(email);
-	}
-
-	@Override
 	public Optional<User> findBySocialTypeAndSocialId(SocialType socialType, String socialId) {
 		return userJpaRepository.findBySocialTypeAndSocialId(socialType, socialId);
 	}

@@ -17,8 +17,6 @@ public interface UserJpaRepository extends JpaRepository<User, UUID> {
 	@Query("SELECT u FROM User u WHERE u.id = :id")
 	Optional<User> findByIdWithLock(UUID id);
 
-	Optional<User> findByEmail(String email);
-
 	Optional<User> findBySocialTypeAndSocialId(SocialType socialType, String socialId);
 
 	boolean existsByEmailAndSocialType(String email, SocialType socialType);

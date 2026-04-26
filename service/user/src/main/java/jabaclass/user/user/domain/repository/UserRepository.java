@@ -21,8 +21,6 @@ public interface UserRepository {
 
 	List<User> findAllByIds(List<UUID> userIds);
 
-	Optional<User> findByEmail(String email);
-
 	Optional<User> findBySocialTypeAndSocialId(SocialType socialType, String socialId);
 
 	boolean existsByEmailAndSocialType(String email, SocialType socialType);
