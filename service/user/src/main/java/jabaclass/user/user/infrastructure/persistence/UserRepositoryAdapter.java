@@ -24,11 +24,6 @@ public class UserRepositoryAdapter implements UserRepository {
 	}
 
 	@Override
-	public boolean existsByEmail(String email) {
-		return userJpaRepository.existsByEmail(email);
-	}
-
-	@Override
 	public User save(User user) {
 		return userJpaRepository.save(user);
 	}
@@ -61,5 +56,10 @@ public class UserRepositoryAdapter implements UserRepository {
 	@Override
 	public Optional<User> findBySocialTypeAndSocialId(SocialType socialType, String socialId) {
 		return userJpaRepository.findBySocialTypeAndSocialId(socialType, socialId);
+	}
+
+	@Override
+	public boolean existsByEmailAndSocialType(String email, SocialType socialType) {
+		return userJpaRepository.existsByEmailAndSocialType(email, socialType);
 	}
 }

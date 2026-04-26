@@ -21,19 +21,18 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import jabaclass.user.common.error.BusinessException;
 import jabaclass.user.mail.application.usecase.EmailVerificationUseCase;
 import jabaclass.user.user.application.exception.UserErrorCode;
+import jabaclass.user.user.domain.model.SocialType;
 import jabaclass.user.user.domain.model.User;
 import jabaclass.user.user.domain.model.UserRole;
 import jabaclass.user.user.domain.model.SellerSettlementAccount;
 import jabaclass.user.user.domain.repository.SellerSettlementAccountRepository;
 import jabaclass.user.user.domain.repository.UserRepository;
 import jabaclass.user.user.presentation.dto.request.ChangeMyEmailRequestDto;
-import jabaclass.user.user.presentation.dto.request.RegisterUserRequestDto;
 import jabaclass.user.user.presentation.dto.request.UpsertSellerSettlementAccountRequestDto;
 import jabaclass.user.user.presentation.dto.request.UpdateUserRequestDto;
 import jabaclass.user.user.presentation.dto.response.SellerSettlementAccountResponseDto;
@@ -147,15 +146,14 @@ class UserServiceTest {
 		// given
 		String email = "duplicate@example.com";
 
-		given(userRepository.existsByEmail(email))
-			.willReturn(true);
+		given(userRepository.existsByEmailAndSocialType(email, SocialType.SYSTEM)).willReturn(true);
 
 		// when & then
 		assertThatThrownBy(() -> userService.checkEmailDuplicate(email))
 			.isInstanceOf(BusinessException.class)
 			.hasMessage(UserErrorCode.EMAIL_ALREADY_EXISTS.getMessage());
 
-		then(userRepository).should(times(1)).existsByEmail(email);
+		then(userRepository).should(times(1)).existsByEmailAndSocialType(email, SocialType.SYSTEM);
 	}
 
 	@Test
@@ -234,8 +232,7 @@ class UserServiceTest {
 			"verified-token"
 		);
 
-		given(userRepository.existsByEmail(request.newEmail()))
-			.willReturn(false);
+		given(userRepository.existsByEmailAndSocialType(request.newEmail(), SocialType.SYSTEM)).willReturn(false);
 		given(userRepository.findById(userId))
 			.willReturn(Optional.of(user));
 
@@ -245,7 +242,7 @@ class UserServiceTest {
 		// then
 		assertThat(user.getEmail()).isEqualTo("new@example.com");
 
-		then(userRepository).should(times(1)).existsByEmail(request.newEmail());
+		then(userRepository).should(times(1)).existsByEmailAndSocialType(request.newEmail(), SocialType.SYSTEM);
 		then(emailVerificationUseCase).should(times(1))
 			.validateVerifiedToken(request.newEmail(), request.verifiedToken());
 		then(userRepository).should(times(1)).findById(userId);
@@ -259,15 +256,14 @@ class UserServiceTest {
 			"verified-token"
 		);
 
-		given(userRepository.existsByEmail(request.newEmail()))
-			.willReturn(true);
+		given(userRepository.existsByEmailAndSocialType(request.newEmail(), SocialType.SYSTEM)).willReturn(true);
 
 		// when & then
 		assertThatThrownBy(() -> userService.changeEmail(userId, request))
 			.isInstanceOf(BusinessException.class)
 			.hasMessage(UserErrorCode.EMAIL_ALREADY_EXISTS.getMessage());
 
-		then(userRepository).should(times(1)).existsByEmail(request.newEmail());
+		then(userRepository).should(times(1)).existsByEmailAndSocialType(request.newEmail(), SocialType.SYSTEM);
 		then(emailVerificationUseCase).should(never()).validateVerifiedToken(anyString(), anyString());
 		then(userRepository).should(never()).findById(any());
 	}
@@ -280,8 +276,7 @@ class UserServiceTest {
 			"verified-token"
 		);
 
-		given(userRepository.existsByEmail(request.newEmail()))
-			.willReturn(false);
+		given(userRepository.existsByEmailAndSocialType(request.newEmail(), SocialType.SYSTEM)).willReturn(false);
 		given(userRepository.findById(userId))
 			.willReturn(Optional.empty());
 
@@ -290,7 +285,7 @@ class UserServiceTest {
 			.isInstanceOf(BusinessException.class)
 			.hasMessage(UserErrorCode.USER_NOT_FOUND.getMessage());
 
-		then(userRepository).should(times(1)).existsByEmail(request.newEmail());
+		then(userRepository).should(times(1)).existsByEmailAndSocialType(request.newEmail(), SocialType.SYSTEM);
 		then(emailVerificationUseCase).should(times(1))
 			.validateVerifiedToken(request.newEmail(), request.verifiedToken());
 		then(userRepository).should(times(1)).findById(userId);
