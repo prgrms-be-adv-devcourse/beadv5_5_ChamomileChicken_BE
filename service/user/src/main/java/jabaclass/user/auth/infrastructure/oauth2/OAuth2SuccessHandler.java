@@ -2,10 +2,10 @@ package jabaclass.user.auth.infrastructure.oauth2;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.util.Optional;
 
 import jabaclass.user.auth.application.service.AuthService;
 import jabaclass.user.common.util.ClientIpUtils;
-import lombok.RequiredArgsConstructor;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
@@ -55,7 +55,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
 		User user = oAuth2User.getUser();
 
 		String clientIp = ClientIpUtils.extractIp(request);
-		String userAgent = request.getHeader("User-Agent");
+		String userAgent = Optional.ofNullable(request.getHeader("User-Agent")).orElse("unknown");
 		authService.handleLoginSecurity(user.getId(), clientIp, userAgent);
 
 		TokenResult tokens = new TokenResult(
