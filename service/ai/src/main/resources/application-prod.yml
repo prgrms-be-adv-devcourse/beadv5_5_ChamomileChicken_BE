@@ -27,4 +27,7 @@ spring:
 
 logging:
   level:
+    root: INFO
     org.hibernate.SQL: WARN
+    jabaclass.ai.application.service: DEBUG
+    jabaclass.ai.common.error: INFO
