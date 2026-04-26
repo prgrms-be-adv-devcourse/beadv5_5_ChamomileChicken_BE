@@ -31,3 +31,13 @@ logging:
     org.hibernate.SQL: WARN
     jabaclass.ai.application.service: DEBUG
     jabaclass.ai.common.error: INFO
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
