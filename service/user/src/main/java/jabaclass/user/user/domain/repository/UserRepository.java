@@ -26,4 +26,6 @@ public interface UserRepository {
 	Optional<User> findBySocialTypeAndSocialId(SocialType socialType, String socialId);
 
 	boolean existsByEmailAndSocialType(String email, SocialType socialType);
+
+	Optional<User> findByEmailAndSocialType(String email, SocialType socialType);
 }

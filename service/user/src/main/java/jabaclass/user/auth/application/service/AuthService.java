@@ -7,6 +7,7 @@ import java.util.concurrent.CompletableFuture;
 
 import io.jsonwebtoken.Claims;
 
+import jabaclass.user.user.domain.model.SocialType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -61,8 +62,8 @@ public class AuthService implements LoginUseCase, LogoutUseCase, ReissueUseCase,
     @Transactional
     public TokenResult login(LoginRequestDto request, String clientIp, String userAgent) {
 
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
+        User user = userRepository.findByEmailAndSocialType(request.getEmail(), SocialType.SYSTEM)
+            .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             throw new AuthException(AuthErrorCode.USER_NOT_FOUND);

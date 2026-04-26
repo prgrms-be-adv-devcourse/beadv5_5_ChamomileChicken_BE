@@ -62,4 +62,9 @@ public class UserRepositoryAdapter implements UserRepository {
 	public boolean existsByEmailAndSocialType(String email, SocialType socialType) {
 		return userJpaRepository.existsByEmailAndSocialType(email, socialType);
 	}
+
+	@Override
+	public Optional<User> findByEmailAndSocialType(String email, SocialType socialType) {
+		return userJpaRepository.findByEmailAndSocialType(email, socialType);
+	}
 }
