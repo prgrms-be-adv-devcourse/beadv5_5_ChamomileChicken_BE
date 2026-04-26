@@ -125,4 +125,4 @@ spec:
       targetPort: 9004
       nodePort: 30904
       protocol: TCP
-  type: ClusterIP
+  type: NodePort
