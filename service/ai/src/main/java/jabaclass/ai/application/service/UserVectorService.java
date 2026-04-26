@@ -20,9 +20,11 @@ import jabaclass.ai.domain.repository.ProductEmbeddingRepository;
 import jabaclass.ai.domain.repository.UserActivityRepository;
 import jabaclass.ai.domain.repository.UserVectorCacheRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class UserVectorService {
 
 	private static final int VECTOR_SIZE = 768;
@@ -35,21 +37,31 @@ public class UserVectorService {
 
 	// Redis에 있으면 가져오고 없으면 생성
 	public UserVector getOrCreate(UUID userId) {
+		long startedAt = System.currentTimeMillis();
+		log.info("[USER_VECTOR] start userId={}", userId);
 
+		log.info("[USER_VECTOR] cache lookup start userId={}", userId);
 		UserVector cached = userVectorCacheRepository.get(userId);
 		if (cached != null && !cached.isEmpty()) {
+			log.info("[USER_VECTOR] cache hit userId={} elapsedMs={}", userId, System.currentTimeMillis() - startedAt);
 			return cached;
 		}
+		log.info("[USER_VECTOR] cache miss userId={}", userId);
 
 		UserVector created = generate(userId);
+		log.info("[USER_VECTOR] generated userId={} isEmpty={}", userId, created.isEmpty());
 		userVectorCacheRepository.save(userId, created);
+		log.info("[USER_VECTOR] cache save complete userId={} elapsedMs={}",
+			userId, System.currentTimeMillis() - startedAt);
 
 		return created;
 	}
 
 	// UserActivity 기반 벡터 생성
 	public UserVector generate(UUID userId) {
+		long startedAt = System.currentTimeMillis();
 		List<UserActivity> activities = userActivityRepository.findByUserId(userId);
+		log.info("[USER_VECTOR] activity loaded userId={} activityCount={}", userId, activities.size());
 		activities = activities.stream()
 			.sorted(Comparator.comparing(UserActivity::getCreatedAt).reversed())
 			.toList();
@@ -66,11 +78,15 @@ public class UserVectorService {
 
 			filteredActivities.add(activity);
 		}
+		log.info("[USER_VECTOR] activities filtered userId={} filteredCount={}", userId, filteredActivities.size());
 
 		Set<UUID> productIds = filteredActivities.stream()
 			.map(UserActivity::getProductId)
 			.collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+		log.info("[USER_VECTOR] embedding lookup start userId={} productCount={}", userId, productIds.size());
 		Map<UUID, float[]> embeddingsByProductId = productEmbeddingRepository.findAllByProductIds(productIds);
+		log.info("[USER_VECTOR] embedding lookup complete userId={} embeddingCount={}",
+			userId, embeddingsByProductId.size());
 
 		for (UserActivity activity : filteredActivities) {
 			float weight = getWeight(activity.getActionType()) * getRecencyWeight(activity.getCreatedAt(), now);
@@ -89,7 +105,10 @@ public class UserVectorService {
 		}
 
 		// 정규화 (코사인 유사도 안정화)
-		return new UserVector(normalize(vector));
+		UserVector userVector = new UserVector(normalize(vector));
+		log.info("[USER_VECTOR] generate complete userId={} isEmpty={} elapsedMs={}",
+			userId, userVector.isEmpty(), System.currentTimeMillis() - startedAt);
+		return userVector;
 	}
 
 	// 행동 가중치

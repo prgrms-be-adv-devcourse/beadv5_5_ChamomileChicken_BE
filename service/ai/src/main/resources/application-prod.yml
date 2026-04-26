@@ -14,8 +14,8 @@ spring:
     redis:
       host: ${APP_REDIS_HOST:redis}
       port: ${APP_REDIS_PORT:6379}
-      connect-timeout: 2s
-      timeout: 2s
+      connect-timeout: 5s
+      timeout: 5s
 
   jpa:
     hibernate:
@@ -27,4 +27,17 @@ spring:
 
 logging:
   level:
+    root: INFO
     org.hibernate.SQL: WARN
+    jabaclass.ai.application.service: DEBUG
+    jabaclass.ai.common.error: INFO
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
