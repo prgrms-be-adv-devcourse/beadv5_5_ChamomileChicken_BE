@@ -1,9 +1,7 @@
 package jabaclass.apigateway.application.service;
 
-import java.util.Arrays;
 import java.util.List;
 
-import jabaclass.apigateway.config.GatewayRulesProperties;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.http.HttpMethod;
@@ -11,6 +9,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.AntPathMatcher;
 
 import reactor.core.publisher.Mono;
+
+import jabaclass.apigateway.config.GatewayRulesProperties;
 
 @Service
 @RequiredArgsConstructor
