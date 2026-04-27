@@ -47,5 +47,6 @@ public class UserEventsConsumer {
 		productSearchRepository.updateSellerNameForAll(event.userId().toString(), event.newName());
 	}
 
-	record UserNameChangedEvent(UUID userId, String newName) {}
+	record UserNameChangedEvent(UUID userId, String newName) {
+	}
 }
