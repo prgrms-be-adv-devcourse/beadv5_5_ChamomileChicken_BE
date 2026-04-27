@@ -18,7 +18,8 @@ public interface RecommendationApi {
 
 			- Redis 캐시 조회
 			- 사용자 벡터 기반 추천
-			- GPT 추천 이유 생성
+			- GPT 추천 이유 비동기 생성
+			- 결과 상태는 polling으로 확인
 			"""
 	)
 	ResponseEntity<RecommendationResponseDto> recommend(@CurrentUser UUID userId);
