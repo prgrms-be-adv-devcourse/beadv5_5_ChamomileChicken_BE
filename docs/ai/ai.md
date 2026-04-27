@@ -432,6 +432,7 @@ LIMIT ?
 - 추천 이유 생성은 OpenAI 응답이 JSON 형식을 지켜야 하므로 프롬프트/모델 변경 시 파싱 안정성을 함께 점검해야 합니다.
 - 추천 API 첫 응답은 `PENDING`일 수 있으므로 클라이언트는 polling을 고려해야 합니다.
 - 추천 이유 생성은 비동기 executor에서 동작하므로 OpenAI 장애 시에도 추천 API 자체는 기본 추천 결과를 반환합니다.
+- 비동기 추천 이유 생성 작업이 스레드 풀 포화로 제출되지 못하면, 추천 상태는 `PENDING`으로 유지되지 않고 즉시 `FAILED`로 갱신됩니다.
 - Kafka 문서(`docs/kafka-topics.md`)에는 현재 `ai` 서비스가 소비하는 `PRODUCT_AI_SYNCED`, `PRODUCT_DELETED`, `PRODUCT_VIEWED` 이벤트가 아직 반영되지 않았습니다.
 
 ---

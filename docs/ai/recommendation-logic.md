@@ -171,6 +171,7 @@ LIMIT 5
 - OpenAI 추천 이유 생성은 `RecommendationReasonAsyncService`에서 비동기로 수행합니다.
 - 성공 시 캐시를 `COMPLETED`로 갱신합니다.
 - timeout, 5xx, 파싱 실패가 나면 기본 추천 이유를 유지한 채 `FAILED`로 갱신합니다.
+- 비동기 작업 제출 자체가 거절되면 캐시를 즉시 `FAILED`로 갱신해, 클라이언트가 `PENDING` 상태를 계속 polling 하지 않도록 합니다.
 
 ## 5. fallback 추천
 
