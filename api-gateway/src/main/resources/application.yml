@@ -7,10 +7,6 @@ spring:
   profiles:
     active: dev
 
-#  flyway:
-#    baseline-on-migrate: true
-#    baseline-version: 0 # 현재 상태를 version 0으로 기준점 설정
-
   cloud:
     gateway:
       server:

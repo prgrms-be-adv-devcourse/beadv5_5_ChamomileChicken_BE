@@ -1,4 +1,6 @@
 spring:
+  config:
+    import: "file:/etc/config/gateway-rules.yml"
   data:
     redis:
       host: ${APP_REDIS_HOST:redis}

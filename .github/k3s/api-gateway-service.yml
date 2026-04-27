@@ -22,12 +22,6 @@ spec:
         prometheus.io/port: "8080"
     spec:
       initContainers:
-        - name: wait-for-postgres
-          image: busybox:1.36
-          command:
-            - /bin/sh
-            - -c
-            - until nc -z postgres-headless 5432; do echo waiting for postgres-headless:5432; sleep 2; done
         - name: wait-for-redis
           image: busybox:1.36
           command:
@@ -38,7 +32,10 @@ spec:
         - name: api-gateway-service
           image: ${DOCKERHUB_USERNAME}/chamomile-api-gateway:${IMAGE_TAG}
           imagePullPolicy: IfNotPresent
-
+          volumeMounts:
+            - mountPath: /etc/config
+              name: gateway-rules
+              readOnly: true
           env:
             - name: JAVA_TOOL_OPTIONS
               value: "-Xms128m -Xmx256m"
@@ -53,9 +50,6 @@ spec:
             - secretRef:
                 name: common-secret
                 optional: true
-            - secretRef:
-                name: db-secret
-                optional: false
             - secretRef:
                 name: api-gateway-secret
                 optional: true
@@ -97,6 +91,10 @@ spec:
             periodSeconds: 10
             timeoutSeconds: 10
             failureThreshold: 3
+      volumes:
+        - name: gateway-rules
+          configMap:
+            name: gateway-rules-config
 ---
 apiVersion: v1
 kind: Service
