@@ -18,9 +18,11 @@ import org.mockito.quality.Strictness;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import jabaclass.settlement.application.dto.AppliedPromotion;
+import jabaclass.settlement.application.dto.MonthlySettlementAggregationItem;
 import jabaclass.settlement.application.dto.SellerSalesAmount;
 import jabaclass.settlement.application.dto.SettlementTargetSummary;
 import jabaclass.settlement.application.exception.BusinessException;
+import jabaclass.settlement.application.service.calculation.SettlementAggregationItemAssembler;
 import jabaclass.settlement.application.service.calculation.SettlementCalculateService;
 import jabaclass.settlement.application.service.calculation.SettlementFeeCalculator;
 import jabaclass.settlement.application.service.calculation.SettlementPromotionResolver;
@@ -76,6 +78,9 @@ class SettlementCalculateServiceTest {
 	@Mock
 	private SettlementFeeCalculator settlementFeeCalculator;
 
+	@Mock
+	private SettlementAggregationItemAssembler settlementAggregationItemAssembler;
+
 	@InjectMocks
 	private SettlementCalculateService settlementCalculateService;
 
@@ -126,11 +131,19 @@ class SettlementCalculateServiceTest {
 		)).willReturn(List.of(new SellerSalesAmount(sellerId, new BigDecimal("1200000"))));
 		given(sellerGradePolicyRepository.findActivePolicies()).willReturn(List.of(goldPolicy(), basicPolicy()));
 		given(sellerGradeRepository.findBySellerIds(org.mockito.ArgumentMatchers.anyList())).willReturn(List.of());
+		SettlementTargetSummary summary = new SettlementTargetSummary(
+			sellerId,
+			settlementMonth,
+			new BigDecimal("7000.00")
+		);
 		given(settlementTargetCalculationRepository.findSummaryBySettlementMonth(settlementMonth))
-			.willReturn(List.of(new SettlementTargetSummary(
-				sellerId,
-				settlementMonth,
-				new BigDecimal("7000.00")
+			.willReturn(List.of(summary));
+		given(settlementAggregationItemAssembler.assemble(List.of(summary), settlementMonth))
+			.willReturn(List.of(aggregationItem(
+				summary,
+				null,
+				new BigDecimal("1200000"),
+				List.of(paymentCalculation, refundCalculation)
 			)));
 		given(settlementTargetCalculationRepository.findBySettlementMonthAndSellerIds(
 			org.mockito.ArgumentMatchers.eq(settlementMonth),
@@ -180,11 +193,19 @@ class SettlementCalculateServiceTest {
 		UUID sellerId = UUID.randomUUID();
 		String settlementMonth = "2026-03";
 
+		SettlementTargetSummary summary = new SettlementTargetSummary(
+			sellerId,
+			settlementMonth,
+			new BigDecimal("-1000.00")
+		);
 		given(settlementTargetCalculationRepository.findSummaryBySettlementMonth(settlementMonth))
-			.willReturn(List.of(new SettlementTargetSummary(
-				sellerId,
-				settlementMonth,
-				new BigDecimal("-1000.00")
+			.willReturn(List.of(summary));
+		given(settlementAggregationItemAssembler.assemble(List.of(summary), settlementMonth))
+			.willReturn(List.of(aggregationItem(
+				summary,
+				null,
+				new BigDecimal("100000"),
+				List.of()
 			)));
 		given(settlementTargetCalculationRepository.findBySettlementMonthAndSellerIds(
 			org.mockito.ArgumentMatchers.eq(settlementMonth),
@@ -233,11 +254,19 @@ class SettlementCalculateServiceTest {
 		String settlementMonth = "2026-03";
 		Settlement existingSettlement = readySettlement(sellerId, settlementMonth);
 
+		SettlementTargetSummary summary = new SettlementTargetSummary(
+			sellerId,
+			settlementMonth,
+			new BigDecimal("9000.00")
+		);
 		given(settlementTargetCalculationRepository.findSummaryBySettlementMonth(settlementMonth))
-			.willReturn(List.of(new SettlementTargetSummary(
-				sellerId,
-				settlementMonth,
-				new BigDecimal("9000.00")
+			.willReturn(List.of(summary));
+		given(settlementAggregationItemAssembler.assemble(List.of(summary), settlementMonth))
+			.willReturn(List.of(aggregationItem(
+				summary,
+				existingSettlement,
+				new BigDecimal("9000.00"),
+				List.of()
 			)));
 		given(settlementTargetCalculationRepository.findBySettlementMonthAndSellerIds(
 			org.mockito.ArgumentMatchers.eq(settlementMonth),
@@ -289,11 +318,19 @@ class SettlementCalculateServiceTest {
 		Settlement sentSettlement = readySettlement(sellerId, settlementMonth);
 		sentSettlement.markSent(LocalDateTime.of(2026, 4, 1, 10, 0));
 
+		SettlementTargetSummary summary = new SettlementTargetSummary(
+			sellerId,
+			settlementMonth,
+			new BigDecimal("9000.00")
+		);
 		given(settlementTargetCalculationRepository.findSummaryBySettlementMonth(settlementMonth))
-			.willReturn(List.of(new SettlementTargetSummary(
-				sellerId,
-				settlementMonth,
-				new BigDecimal("9000.00")
+			.willReturn(List.of(summary));
+		given(settlementAggregationItemAssembler.assemble(List.of(summary), settlementMonth))
+			.willReturn(List.of(aggregationItem(
+				summary,
+				sentSettlement,
+				BigDecimal.ZERO,
+				List.of()
 			)));
 		given(settlementRepository.findBySettlementMonthAndSellerIds(
 			org.mockito.ArgumentMatchers.eq(settlementMonth),
@@ -318,11 +355,19 @@ class SettlementCalculateServiceTest {
 		UUID sellerId = UUID.randomUUID();
 		String settlementMonth = "2026-03";
 
+		SettlementTargetSummary summary = new SettlementTargetSummary(
+			sellerId,
+			settlementMonth,
+			new BigDecimal("10000.00")
+		);
 		given(settlementTargetCalculationRepository.findSummaryBySettlementMonth(settlementMonth))
-			.willReturn(List.of(new SettlementTargetSummary(
-				sellerId,
-				settlementMonth,
-				new BigDecimal("10000.00")
+			.willReturn(List.of(summary));
+		given(settlementAggregationItemAssembler.assemble(List.of(summary), settlementMonth))
+			.willReturn(List.of(aggregationItem(
+				summary,
+				null,
+				new BigDecimal("10000"),
+				List.of()
 			)));
 		given(settlementTargetCalculationRepository.findBySettlementMonthAndSellerIds(
 			org.mockito.ArgumentMatchers.eq(settlementMonth),
@@ -396,11 +441,19 @@ class SettlementCalculateServiceTest {
 				calculation.getAppliedPromotionType(),
 				calculation.getAppliedFeeRate()
 			));
+		SettlementTargetSummary summary = new SettlementTargetSummary(
+			sellerId,
+			settlementMonth,
+			new BigDecimal("10000.00")
+		);
 		given(settlementTargetCalculationRepository.findSummaryBySettlementMonth(settlementMonth))
-			.willReturn(List.of(new SettlementTargetSummary(
-				sellerId,
-				settlementMonth,
-				new BigDecimal("10000.00")
+			.willReturn(List.of(summary));
+		given(settlementAggregationItemAssembler.assemble(List.of(summary), settlementMonth))
+			.willReturn(List.of(aggregationItem(
+				summary,
+				null,
+				new BigDecimal("10000"),
+				List.of(calculation)
 			)));
 		given(settlementTargetCalculationRepository.findBySettlementMonthAndSellerIds(
 			org.mockito.ArgumentMatchers.eq(settlementMonth),
@@ -509,6 +562,21 @@ class SettlementCalculateServiceTest {
 		);
 		assignId(policy);
 		return policy;
+	}
+
+	private MonthlySettlementAggregationItem aggregationItem(
+		SettlementTargetSummary summary,
+		Settlement existingSettlement,
+		BigDecimal recentThreeMonthSalesAmount,
+		List<SettlementTargetCalculation> calculations
+	) {
+		return new MonthlySettlementAggregationItem(
+			summary,
+			existingSettlement,
+			recentThreeMonthSalesAmount,
+			calculations,
+			null
+		);
 	}
 
 	private Settlement readySettlement(UUID sellerId, String settlementMonth) {
