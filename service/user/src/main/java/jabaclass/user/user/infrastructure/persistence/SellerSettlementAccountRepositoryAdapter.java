@@ -25,4 +25,9 @@ public class SellerSettlementAccountRepositoryAdapter implements SellerSettlemen
 	public List<SellerSettlementAccount> findAllByUserIds(List<UUID> userIds) {
 		return sellerSettlementAccountJpaRepository.findAllByUserIdIn(userIds);
 	}
+
+	@Override
+	public SellerSettlementAccount save(SellerSettlementAccount sellerSettlementAccount) {
+		return sellerSettlementAccountJpaRepository.save(sellerSettlementAccount);
+	}
 }

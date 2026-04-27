@@ -4,7 +4,7 @@
 
 > 외부 호출은 API Gateway 기준 경로(`/api/v1/...`)를 사용한다.
 
-> 정산 대상(`SettlementTarget`) 적재는 외부 REST 호출이 아니라 Kafka `settlement.events` 소비로 들어온다.
+> 정산 관련 비동기 이벤트는 Kafka `settlement.events` 소비로 처리된다. 결제/환불은 `SettlementTarget` 적재로, 판매자 승격은 신규 셀러 프로모션 등록으로 이어진다.
 
 ---
 
@@ -281,6 +281,7 @@
 - `settlement.events` 소비로 `SettlementTarget`이 저장된다.
 - 이벤트 payload의 `eventId`는 `SettlementTarget.sourceEventId`로 저장된다.
 - `sourceEventId` 유니크 제약으로 동일 이벤트 재수신을 멱등 처리한다.
+- `USER_SELLER_APPROVED` 이벤트는 정산 타겟이 아니라 신규 셀러 프로모션 등록에 사용된다.
 
 **Response** `200 OK`
 

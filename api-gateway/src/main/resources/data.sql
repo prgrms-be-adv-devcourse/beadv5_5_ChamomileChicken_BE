@@ -11,12 +11,14 @@ VALUES ('POST', '/api/v1/auth/login', '로그인'),
        ('GET', '/api/v1/products/*/reviewList', '상품 리뷰 목록 조회'),
        ('GET', '/api/v1/products/*/reviews/*', '리뷰 단건 조회'),
        ('GET', '/oauth2/authorization/**', '소셜 로그인 시작'),
-       ('GET', '/login/oauth2/code/**', '소셜 로그인 콜백');
+       ('GET', '/login/oauth2/code/**', '소셜 로그인 콜백'),
+       ('GET', '/api/v1/auth/report-theft', '토큰 탈취 신고 (본인 아님)');
 
 INSERT INTO gateway_route_policy (method, path_pattern, allowed_roles, description)
 VALUES ('POST', '/api/v1/products', 'SELLER,ADMIN', '상품 등록'),
        ('PUT', '/api/v1/products/*', 'SELLER,ADMIN', '상품 수정'),
        ('DELETE', '/api/v1/products/*', 'SELLER,ADMIN', '상품 삭제'),
+       ('PUT', '/api/v1/users/me/seller-settlement-account', 'SELLER,ADMIN', '내 정산 계좌 등록 또는 수정'),
        ('POST', '/api/v1/products/*/schedules', 'SELLER,ADMIN', '일정 등록'),
        ('PUT', '/api/v1/products/*/schedules/*', 'SELLER,ADMIN', '일정 수정'),
        ('DELETE', '/api/v1/products/*/schedules/*', 'SELLER,ADMIN', '일정 삭제'),

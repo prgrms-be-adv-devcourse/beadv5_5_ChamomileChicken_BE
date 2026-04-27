@@ -117,5 +117,6 @@ spec:
   ports:
     - port: 9005
       targetPort: 9005
+      nodePort: 30905
       protocol: TCP
-  type: ClusterIP
+  type: NodePort

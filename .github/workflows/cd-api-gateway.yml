@@ -17,6 +17,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: cd-api-gateway-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
@@ -29,10 +33,11 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 21
+          cache: gradle
 
       - name: Grant execute permission for gradlew
         run: chmod +x ./gradlew
@@ -73,24 +78,21 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            .github/scripts
+            .github/k3s/api-gateway-service.yml
+          sparse-checkout-cone-mode: false
 
       - name: Prepare directories
         run: |
-          mkdir -p /home/ubuntu/apps/repo
-          mkdir -p /home/ubuntu/apps/deploy/env
           mkdir -p /home/ubuntu/apps/deploy/scripts
           mkdir -p /home/ubuntu/apps/data/k3s-service
 
-      - name: Sync repository to fixed path
-        run: |
-          rsync -av --delete ./ /home/ubuntu/apps/repo/
-
       - name: Copy deploy scripts
         run: |
-          cp /home/ubuntu/apps/repo/.github/scripts/deploy-app.sh /home/ubuntu/apps/deploy/scripts/deploy-app.sh
-          cp /home/ubuntu/apps/repo/.github/scripts/apply-env.sh /home/ubuntu/apps/deploy/scripts/apply-env.sh
+          cp .github/scripts/deploy-app.sh /home/ubuntu/apps/deploy/scripts/deploy-app.sh
           chmod +x /home/ubuntu/apps/deploy/scripts/deploy-app.sh
-          chmod +x /home/ubuntu/apps/deploy/scripts/apply-env.sh
 
       - name: Check envsubst
         run: |
@@ -98,46 +100,10 @@ jobs:
 
       - name: Copy Kubernetes YAML to fixed path
         run: |
-          cp /home/ubuntu/apps/repo/.github/k3s/api-gateway-service.yml /home/ubuntu/apps/data/k3s-service/api-gateway-service.yml
-
-      - name: Apply env files and detect changes
-        env:
-          COMMON_CONFIG_ENV: ${{ secrets.COMMON_CONFIG_ENV }}
-          COMMON_SECRET_ENV: ${{ secrets.COMMON_SECRET_ENV }}
-          SERVICE_CONFIG_ENV: ${{ secrets.API_GATEWAY_CONFIG_ENV }}
-          SERVICE_SECRET_ENV: ${{ secrets.API_GATEWAY_SECRET_ENV }}
-        run: |
-          /home/ubuntu/apps/deploy/scripts/apply-env.sh api-gateway
-
-      - name: Export env change outputs
-        id: env_changes
-        shell: bash
-        run: |
-          echo "config_changed=${CONFIG_CHANGED:-false}" >> "$GITHUB_OUTPUT"
-          echo "common_config_changed=${COMMON_CONFIG_CHANGED:-false}" >> "$GITHUB_OUTPUT"
-          echo "common_secret_changed=${COMMON_SECRET_CHANGED:-false}" >> "$GITHUB_OUTPUT"
-          echo "service_config_changed=${SERVICE_CONFIG_CHANGED:-false}" >> "$GITHUB_OUTPUT"
-          echo "service_secret_changed=${SERVICE_SECRET_CHANGED:-false}" >> "$GITHUB_OUTPUT"
-
-      - name: Detect manifest changes
-        id: manifest_changes
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          MANIFEST_CHANGED=false
-          IMAGE_CHANGED=true
-
-          if git diff --name-only HEAD^ HEAD | grep -Eq '^\.github/k3s/api-gateway-service\.yml$'; then
-            MANIFEST_CHANGED=true
-          fi
-
-          echo "manifest_changed=$MANIFEST_CHANGED" >> "$GITHUB_OUTPUT"
-          echo "image_changed=$IMAGE_CHANGED" >> "$GITHUB_OUTPUT"
+          cp .github/k3s/api-gateway-service.yml /home/ubuntu/apps/data/k3s-service/api-gateway-service.yml
 
       - name: Verify deploy files exist
         run: |
-          ls -l /home/ubuntu/apps/deploy/env
           ls -l /home/ubuntu/apps/deploy/scripts
           ls -l /home/ubuntu/apps/data/k3s-service
 
@@ -151,13 +117,6 @@ jobs:
         env:
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
-          IMAGE_CHANGED: ${{ steps.manifest_changes.outputs.image_changed }}
-          MANIFEST_CHANGED: ${{ steps.manifest_changes.outputs.manifest_changed }}
-          CONFIG_CHANGED: ${{ steps.env_changes.outputs.config_changed }}
-          COMMON_CONFIG_CHANGED: ${{ steps.env_changes.outputs.common_config_changed }}
-          COMMON_SECRET_CHANGED: ${{ steps.env_changes.outputs.common_secret_changed }}
-          SERVICE_CONFIG_CHANGED: ${{ steps.env_changes.outputs.service_config_changed }}
-          SERVICE_SECRET_CHANGED: ${{ steps.env_changes.outputs.service_secret_changed }}
         run: |
           /home/ubuntu/apps/deploy/scripts/deploy-app.sh api-gateway
 
@@ -184,10 +143,13 @@ jobs:
         run: |
           kubectl port-forward svc/api-gateway-service 8080:8080 >/tmp/api-gateway-portforward.log 2>&1 &
           PF_PID=$!
+          trap 'kill $PF_PID || true' EXIT
 
           STATUS_CODE="000"
 
-          for i in 1 2 3 4 5; do
+          sleep 1
+
+          for i in 1 2 3; do
             STATUS_CODE=$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' --max-time 5 \
               "http://localhost:8080/actuator/health/readiness" || echo "000")
 
@@ -195,10 +157,11 @@ jobs:
               break
             fi
 
-            sleep 3
+            sleep 2
           done
 
           kill $PF_PID || true
+          trap - EXIT
 
           if [[ "$STATUS_CODE" != "200" ]]; then
             echo "Health check failed with status=$STATUS_CODE"

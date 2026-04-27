@@ -38,6 +38,7 @@ dependencies {
 
     // DB Driver
     runtimeOnly 'org.postgresql:postgresql'
+    runtimeOnly 'com.h2database:h2'
 
     // Jackson
     implementation 'com.fasterxml.jackson.core:jackson-databind'
