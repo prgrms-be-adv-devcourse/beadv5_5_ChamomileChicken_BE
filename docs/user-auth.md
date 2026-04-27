@@ -16,7 +16,10 @@ User 서비스는 API Gateway 중앙집중 인증 구조에서 두 가지 역할
 ```
 POST /api/v1/auth/login
   → AuthController.login()
-  → AuthService: 이메일/비밀번호 검증
+      - ClientIpUtils.extractIp(): X-Real-IP 헤더 → 없으면 remoteAddr
+      - User-Agent 헤더 추출 (null이면 "unknown")
+  → AuthService: (email, SocialType.SYSTEM)으로 유저 조회 → 비밀번호 검증
+  → AuthService.handleLoginSecurity(): 새 기기 감지 → 보안 알림 이메일 발송 (비동기)
   → JwtProvider: Access Token + Refresh Token 생성
   → Redis: Refresh Token 저장 (key: "refresh:{userId}")
   → 응답: Access Token (body) + Refresh Token (HttpOnly Cookie)
@@ -41,6 +44,8 @@ GET /login/oauth2/code/{provider}?code=AUTH_CODE&state=...
        - 없으면 신규 가입 ((email, social_type) 복합 unique — 동일 이메일 + 다른 소셜타입은 허용)
        - CustomOAuth2User 반환
   → OAuth2SuccessHandler.onAuthenticationSuccess()
+       - ClientIpUtils.extractIp(): X-Real-IP 헤더 → 없으면 remoteAddr
+       - AuthService.handleLoginSecurity(): 새 기기 감지 → 보안 알림 이메일 발송 (비동기)
        - Access Token + Refresh Token 생성
        - Redis: Refresh Token 저장 (key: "refresh:{userId}")
        - Refresh Token → HttpOnly Cookie
@@ -67,6 +72,22 @@ POST /api/v1/auth/logout
   → Access Token → Redis 블랙리스트 등록 (만료 시간까지 유지)
   → Redis에서 Refresh Token 삭제
   → Refresh Token Cookie 만료 처리
+```
+
+### 새 기기 감지 및 토큰 탈취 신고
+
+```
+[로그인 시 - 일반/OAuth2 공통]
+  → handleLoginSecurity(userId, clientIp, userAgent)
+      - lastLoginIp 또는 lastLoginUserAgent 변경 감지 시 새 기기로 판단
+      - theft_report 토큰 생성 → Redis 저장 (key: "theft_report:{token}", TTL: 7일)
+      - 보안 알림 이메일 비동기 발송 (CompletableFuture.runAsync)
+      - lastLoginIp / lastLoginUserAgent 업데이트
+
+GET /api/v1/auth/report-theft?token={token}
+  → Redis에서 theft_report 토큰으로 userId 조회
+  → force_logout:{userId} 설정 → Redis에서 Refresh Token 삭제
+  → 이후 해당 userId의 모든 기존 Access Token 차단
 ```
 
 ---
@@ -197,10 +218,10 @@ OAuth2 state를 쿠키에 직렬화하는 방식은 Java `SerializationUtils`를
 |---|---|---|
 | `password` | BCrypt 해시값 | `null` |
 | `phone` | 필수 | `null` (선택) |
-| `social_type` | `null` | `GOOGLE` / `KAKAO` / `NAVER` |
+| `social_type` | `SYSTEM` | `GOOGLE` / `KAKAO` / `NAVER` |
 | `social_id` | `null` | provider가 발급한 고유 ID |
 | 로그인 방식 | 이메일 + 비밀번호 | OAuth2 provider 인증 |
-| 동일 이메일 중복 가입 | 불가 | 허용 (`(email, social_type)` 복합 unique — 동일 이메일 + 다른 소셜타입은 별개 계정) |
+| 동일 이메일 중복 가입 | 불가 (`(email, SYSTEM)` 기준) | 허용 (`(email, social_type)` 복합 unique — 동일 이메일 + 다른 소셜타입은 별개 계정) |
 
 ---
 
@@ -245,8 +266,9 @@ public ResponseEntity<UserResponseDto> getMyInfo(
 | `common/auth/CurrentUserRoleArgumentResolver.java` | X-User-Role 헤더 → String 변환 |
 | `common/config/WebMvcConfig.java` | ArgumentResolver 등록 |
 | `common/config/SecurityConfig.java` | Spring Security 설정 (OAuth2 로그인 포함) |
-| `auth/application/AuthService.java` | 일반 로그인/로그아웃/재발급 비즈니스 로직 |
+| `auth/application/AuthService.java` | 일반 로그인/로그아웃/재발급/토큰탈취신고/새기기감지 비즈니스 로직 |
 | `auth/presentation/AuthController.java` | 인증 API 엔드포인트 |
+| `common/util/ClientIpUtils.java` | IP 추출 유틸 (X-Real-IP → remoteAddr fallback) |
 | `auth/infrastructure/oauth2/OAuthAttributes.java` | provider별 응답 정규화 값 객체 |
 | `auth/infrastructure/oauth2/CustomOAuth2User.java` | OAuth2User ↔ User 엔티티 브리지 |
 | `auth/infrastructure/oauth2/CustomOAuth2UserService.java` | OAuth2 유저 조회/신규 가입 처리 |

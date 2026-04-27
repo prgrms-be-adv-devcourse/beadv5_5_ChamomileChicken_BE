@@ -13,13 +13,13 @@ import jakarta.persistence.LockModeType;
 
 public interface UserJpaRepository extends JpaRepository<User, UUID> {
 
-	boolean existsByEmail(String email);
-
 	@Lock(LockModeType.PESSIMISTIC_WRITE)
 	@Query("SELECT u FROM User u WHERE u.id = :id")
 	Optional<User> findByIdWithLock(UUID id);
 
-	Optional<User> findByEmail(String email);
-
 	Optional<User> findBySocialTypeAndSocialId(SocialType socialType, String socialId);
+
+	boolean existsByEmailAndSocialType(String email, SocialType socialType);
+
+	Optional<User> findByEmailAndSocialType(String email, SocialType socialType);
 }
