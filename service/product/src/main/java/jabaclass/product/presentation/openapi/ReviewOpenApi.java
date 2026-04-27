@@ -12,7 +12,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jabaclass.product.common.exception.ApiResponseDto;
 import jabaclass.product.presentation.dto.request.ReviewRequestDto;
-import jabaclass.product.presentation.dto.respose.ReviewResponseDto;
+import jabaclass.product.presentation.dto.response.ReviewResponseDto;
 
 @Tag(name = "Review", description = "리뷰 API")
 public interface ReviewOpenApi {

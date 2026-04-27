@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -21,6 +22,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import jabaclass.product.application.acl.SellerRepository;
 import jabaclass.product.application.exception.BusinessException;
 import jabaclass.product.application.service.ReviewService;
 import jabaclass.product.application.usecase.ReviewUseCase;
@@ -28,9 +30,10 @@ import jabaclass.product.common.exception.ApiResponseDto;
 import jabaclass.product.common.exception.CommonErrorCode;
 import jabaclass.product.domain.model.Review;
 import jabaclass.product.domain.repository.ReviewRepository;
+import jabaclass.product.infrastructure.acl.dto.response.UserResponseDto;
 import jabaclass.product.presentation.controller.ReviewRestController;
 import jabaclass.product.presentation.dto.request.ReviewRequestDto;
-import jabaclass.product.presentation.dto.respose.ReviewResponseDto;
+import jabaclass.product.presentation.dto.response.ReviewResponseDto;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
@@ -46,6 +49,9 @@ class ReviewTest {
 
 	@Mock
 	private ReviewRepository reviewRepository;
+
+	@Mock
+	private SellerRepository sellerRepository;
 
 	@Mock
 	private ReviewUseCase reviewUseCase;
@@ -111,21 +117,28 @@ class ReviewTest {
 	@Test
 	void 내_리뷰_목록을_조회한다() {
 		given(reviewRepository.findByUserIdAndDeleteDtIsNull(USER_ID)).willReturn(List.of(review));
+		given(sellerRepository.findSellerList(List.of(USER_ID)))
+			.willReturn(Optional.of(List.of(new UserResponseDto(USER_ID, "테스트유저", "BUYER"))));
 
 		List<ReviewResponseDto> result = reviewService.userReview(USER_ID);
 
 		assertThat(result).hasSize(1);
 		assertThat(result.get(0).id()).isEqualTo(REVIEW_ID);
+		assertThat(result.get(0).userName()).isEqualTo("테스트유저");
+		assertThat(result.get(0).createdAt()).isEqualTo(review.getRegDt());
 	}
 
 	@Test
 	void 상품_리뷰_목록을_조회한다() {
 		given(reviewRepository.findByProductIdAndDeleteDtIsNull(PRODUCT_ID)).willReturn(List.of(review));
+		given(sellerRepository.findSellerList(List.of(USER_ID)))
+			.willReturn(Optional.of(List.of(new UserResponseDto(USER_ID, "테스트유저", "BUYER"))));
 
 		List<ReviewResponseDto> result = reviewService.productReview(PRODUCT_ID);
 
 		assertThat(result).hasSize(1);
 		assertThat(result.get(0).content()).isEqualTo("정말 좋았어요");
+		assertThat(result.get(0).userName()).isEqualTo("테스트유저");
 	}
 
 	@Test
@@ -159,7 +172,7 @@ class ReviewTest {
 
 	@Test
 	void 리뷰_생성_요청이_들어오면_컨트롤러가_유스케이스를_호출한다() {
-		ReviewResponseDto response = new ReviewResponseDto(REVIEW_ID, 5, "정말 좋았어요");
+		ReviewResponseDto response = new ReviewResponseDto(REVIEW_ID, 5, "정말 좋았어요", null, null);
 		given(reviewUseCase.createReview(request, PRODUCT_ID, USER_ID)).willReturn(response);
 
 		ResponseEntity<ApiResponseDto<ReviewResponseDto>> result = reviewRestController.create(request, PRODUCT_ID, USER_ID);
@@ -172,7 +185,7 @@ class ReviewTest {
 
 	@Test
 	void 리뷰_수정_요청이_들어오면_컨트롤러가_유스케이스를_호출한다() {
-		ReviewResponseDto response = new ReviewResponseDto(REVIEW_ID, 3, "보통이었어요");
+		ReviewResponseDto response = new ReviewResponseDto(REVIEW_ID, 3, "보통이었어요", null, null);
 		ReviewRequestDto updateRequest = new ReviewRequestDto(3, "보통이었어요");
 		given(reviewUseCase.updateReview(updateRequest, REVIEW_ID, USER_ID)).willReturn(response);
 
@@ -194,7 +207,7 @@ class ReviewTest {
 
 	@Test
 	void 내_리뷰_조회_요청이_들어오면_컨트롤러가_유스케이스를_호출한다() {
-		List<ReviewResponseDto> response = List.of(new ReviewResponseDto(REVIEW_ID, 5, "정말 좋았어요"));
+		List<ReviewResponseDto> response = List.of(new ReviewResponseDto(REVIEW_ID, 5, "정말 좋았어요", null, null));
 		given(reviewUseCase.userReview(USER_ID)).willReturn(response);
 
 		ResponseEntity<ApiResponseDto<List<ReviewResponseDto>>> result = reviewRestController.userReview(USER_ID);
@@ -207,7 +220,7 @@ class ReviewTest {
 
 	@Test
 	void 상품_리뷰_조회_요청이_들어오면_컨트롤러가_유스케이스를_호출한다() {
-		List<ReviewResponseDto> response = List.of(new ReviewResponseDto(REVIEW_ID, 5, "정말 좋았어요"));
+		List<ReviewResponseDto> response = List.of(new ReviewResponseDto(REVIEW_ID, 5, "정말 좋았어요", null, null));
 		given(reviewUseCase.productReview(PRODUCT_ID)).willReturn(response);
 
 		ResponseEntity<ApiResponseDto<List<ReviewResponseDto>>> result = reviewRestController.productReview(PRODUCT_ID);
@@ -220,7 +233,7 @@ class ReviewTest {
 
 	@Test
 	void 리뷰_단건_조회_요청이_들어오면_컨트롤러가_유스케이스를_호출한다() {
-		ReviewResponseDto response = new ReviewResponseDto(REVIEW_ID, 5, "정말 좋았어요");
+		ReviewResponseDto response = new ReviewResponseDto(REVIEW_ID, 5, "정말 좋았어요", null, null);
 		given(reviewUseCase.review(REVIEW_ID)).willReturn(response);
 
 		ResponseEntity<ApiResponseDto<ReviewResponseDto>> result = reviewRestController.review(REVIEW_ID);

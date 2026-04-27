@@ -24,6 +24,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import static org.mockito.Mockito.lenient;
 
 import jabaclass.payment.application.port.external.OrderPort;
@@ -82,11 +83,13 @@ class PaymentTest {
 			outboxRepository,
 			paymentConfirmHandler,
 			paymentRefundHandler,
-			new ObjectMapper()
+			new ObjectMapper().registerModule(new JavaTimeModule())
 		);
 
 		lenient().when(paymentRepository.save(any(Payment.class)))
 			.thenAnswer(invocation -> invocation.getArgument(0));
+		lenient().when(paymentRepository.findReusableByOrderId(any(UUID.class)))
+			.thenReturn(Optional.empty());
 		lenient().when(outboxRepository.save(any(OutboxEvent.class)))
 			.thenAnswer(invocation -> invocation.getArgument(0));
 	}
@@ -140,6 +143,30 @@ class PaymentTest {
 		assertEquals(PaymentStatus.READY, savedPayment.getStatus());
 		assertEquals(paymentId, response.paymentId());
 		assertEquals(BigDecimal.valueOf(10000), response.totalAmount());
+		verify(outboxRepository, never()).save(any(OutboxEvent.class));
+	}
+
+	@Test
+	void create_같은주문의기존Ready결제가있으면_재사용한다() {
+		UUID orderId = UUID.randomUUID();
+		Payment payment = createPayment(TEST_USER_ID, orderId, BigDecimal.valueOf(7000), BigDecimal.valueOf(3000));
+		assignPaymentId(payment);
+		when(paymentRepository.findReusableByOrderId(orderId)).thenReturn(Optional.of(payment));
+
+		PaymentResponseDto response = paymentService.create(
+			TEST_USER_ID,
+			new PreparePaymentRequestDto(
+				UUID.randomUUID(),
+				orderId,
+				TEST_USER_ID,
+				PaymentMethod.TOSS,
+				BigDecimal.valueOf(7000),
+				BigDecimal.valueOf(3000)
+			)
+		);
+
+		assertEquals(payment.getId(), response.paymentId());
+		verify(paymentRepository, never()).save(any(Payment.class));
 		verify(outboxRepository, never()).save(any(OutboxEvent.class));
 	}
 

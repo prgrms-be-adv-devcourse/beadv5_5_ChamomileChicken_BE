@@ -1,0 +1,122 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-service
+  labels:
+    app: ai-service
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: ai-service
+  template:
+    metadata:
+      labels:
+        app: ai-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/actuator/prometheus"
+        prometheus.io/port: "9009"
+    spec:
+      initContainers:
+        - name: wait-for-postgres
+          image: busybox:1.36
+          command:
+            - /bin/sh
+            - -c
+            - until nc -z postgres-headless 5432; do echo waiting for postgres-headless:5432; sleep 2; done
+        - name: wait-for-kafka
+          image: busybox:1.36
+          command:
+            - /bin/sh
+            - -c
+            - until nc -z kafka-service 9092; do echo waiting for kafka-service:9092; sleep 2; done
+        - name: wait-for-redis
+          image: busybox:1.36
+          command:
+            - /bin/sh
+            - -c
+            - until nc -z redis 6379; do echo waiting for redis:6379; sleep 2; done
+      containers:
+        - name: ai-service
+          image: ${DOCKERHUB_USERNAME}/chamomile-ai:${IMAGE_TAG}
+          imagePullPolicy: IfNotPresent
+
+          env:
+            - name: JAVA_TOOL_OPTIONS
+              value: "-Xms128m -Xmx256m"
+
+          envFrom:
+            - configMapRef:
+                name: common-config
+                optional: true
+            - configMapRef:
+                name: ai-config
+                optional: true
+            - secretRef:
+                name: common-secret
+                optional: true
+            - secretRef:
+                name: db-secret
+                optional: false
+            - secretRef:
+                name: ai-secret
+                optional: true
+
+          ports:
+            - containerPort: 9009
+
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "300m"
+              memory: "512Mi"
+
+          startupProbe:
+            httpGet:
+              path: /actuator/health
+              port: 9009
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 30
+
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 9009
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 9009
+            initialDelaySeconds: 120
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-service
+  labels:
+    app: ai-service
+spec:
+  selector:
+    app: ai-service
+  ports:
+    - port: 9009
+      targetPort: 9009
+      nodePort: 30909
+      protocol: TCP
+  type: NodePort

@@ -75,7 +75,10 @@ class PaymentEventsConsumerTest {
         UUID eventId = UUID.randomUUID();
 
         send("PAYMENT_COMPLETED", objectMapper.writeValueAsString(
-            new TestEvent(eventId, UUID.randomUUID(), order.getId())
+            new TestEvent(
+                eventId, UUID.randomUUID(), order.getId(), UUID.randomUUID(),
+                new BigDecimal("10000"), null
+            )
         ));
 
         // Kafka Consumer는 별도 스레드 — await으로 비동기 처리 완료 대기
@@ -86,7 +89,13 @@ class PaymentEventsConsumerTest {
 
         // Order 상태 변경 + Outbox 저장이 같은 트랜잭션으로 원자적으로 커밋됐는지 검증
         assertThat(outboxRepository.findAll())
+            .anyMatch(e -> e.getEventType().name().equals("ORDER_COMPLETED"));
+        assertThat(outboxRepository.findAll())
             .anyMatch(e -> e.getEventType().name().equals("ORDER_RESERVATION_CONFIRMED"));
+        assertThat(outboxRepository.findAll())
+            .anyMatch(e -> e.getPayload().contains(order.getUserId().toString()));
+        assertThat(outboxRepository.findAll())
+            .anyMatch(e -> e.getEventType().name().equals("SETTLEMENT_PAYMENT_COMPLETED"));
         // eventId가 processed_events에 저장됐는지 — 중복 수신 시 재처리 차단 확인
         assertThat(processedEventRepository.existsById(eventId)).isTrue();
     }
@@ -100,17 +109,16 @@ class PaymentEventsConsumerTest {
             new TestFailedEvent(eventId, UUID.randomUUID(), order.getId(), new BigDecimal("3000"))
         ));
 
-        await().atMost(5, SECONDS).untilAsserted(() -> {
+        await().atMost(10, SECONDS).untilAsserted(() -> {
             Order updated = orderRepository.findById(order.getId()).orElseThrow();
             assertThat(updated.getStatus()).isEqualTo(OrderStatus.FAILED);
+            // Saga 보상 트랜잭션 — 상태 변경과 보상 이벤트 저장이 함께 끝날 때까지 대기
+            assertThat(outboxRepository.findAll())
+                .anyMatch(e -> e.getEventType().name().equals("ORDER_RESERVATION_RELEASED"));
+            assertThat(outboxRepository.findAll())
+                .anyMatch(e -> e.getEventType().name().equals("ORDER_DEPOSIT_REFUND_REQUESTED"));
+            assertThat(processedEventRepository.existsById(eventId)).isTrue();
         });
-
-        // Saga 보상 트랜잭션 — 재고 해제 + 예치금 환불 요청이 모두 Outbox에 저장됐는지 검증
-        assertThat(outboxRepository.findAll())
-            .anyMatch(e -> e.getEventType().name().equals("ORDER_RESERVATION_RELEASED"));
-        assertThat(outboxRepository.findAll())
-            .anyMatch(e -> e.getEventType().name().equals("ORDER_DEPOSIT_REFUND_REQUESTED"));
-        assertThat(processedEventRepository.existsById(eventId)).isTrue();
     }
 
     @Test
@@ -134,27 +142,14 @@ class PaymentEventsConsumerTest {
     }
 
     @Test
-    void PAYMENT_REFUNDED_수신시_Order가_REFUNDED로_변경된다() throws Exception {
-        // 환불은 이미 PAID된 주문에서 시작
-        Order order = savedPaidOrder();
-        UUID eventId = UUID.randomUUID();
-
-        send("PAYMENT_REFUNDED", objectMapper.writeValueAsString(
-            new TestRefundedEvent(eventId, UUID.randomUUID(), order.getId(), new BigDecimal("3000"))
-        ));
-
-        await().atMost(5, SECONDS).untilAsserted(() -> {
-            Order updated = orderRepository.findById(order.getId()).orElseThrow();
-            assertThat(updated.getStatus()).isEqualTo(OrderStatus.REFUNDED);
-        });
-    }
-
-    @Test
     void 동일_eventId로_중복_수신시_한_번만_처리된다() throws Exception {
         Order order = savedPendingOrder();
         UUID eventId = UUID.randomUUID();
         String payload = objectMapper.writeValueAsString(
-            new TestEvent(eventId, UUID.randomUUID(), order.getId())
+            new TestEvent(
+                eventId, UUID.randomUUID(), order.getId(), UUID.randomUUID(),
+                new BigDecimal("10000"), null
+            )
         );
 
         // 첫 번째 전송 후 processedEvent 커밋 확인 뒤 두 번째 전송
@@ -179,19 +174,10 @@ class PaymentEventsConsumerTest {
 
     private Order savedPendingOrder() {
         Order order = Order.create(
-            UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), 1, new BigDecimal("10000")
+            UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), 1, new BigDecimal("10000")
         );
         return orderRepository.save(order);
     }
-
-    private Order savedPaidOrder() {
-        Order order = Order.create(
-            UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), 1, new BigDecimal("10000")
-        );
-        order.pay();
-        return orderRepository.save(order);
-    }
-
     // eventType 헤더를 포함한 Kafka 메시지 전송 — 실제 PaymentEventsConsumer가 헤더로 이벤트 종류를 구분
     private void send(String eventType, String payload) {
         ProducerRecord<String, String> record = new ProducerRecord<>("payment.events", payload);
@@ -200,7 +186,13 @@ class PaymentEventsConsumerTest {
     }
 
     // 테스트용 이벤트 페이로드 — 실제 Payment 서비스가 발행하는 이벤트 구조와 동일하게 맞춤
-    record TestEvent(UUID eventId, UUID paymentId, UUID orderId) {}
+    record TestEvent(
+        UUID eventId,
+        UUID paymentId,
+        UUID orderId,
+        UUID productId,
+        BigDecimal totalAmount,
+        java.time.LocalDateTime occurredAt
+    ) {}
     record TestFailedEvent(UUID eventId, UUID paymentId, UUID orderId, BigDecimal depositAmount) {}
-    record TestRefundedEvent(UUID eventId, UUID paymentId, UUID orderId, BigDecimal depositRefundAmount) {}
 }

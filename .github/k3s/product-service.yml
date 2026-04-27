@@ -6,6 +6,9 @@ metadata:
     app: product-service
 spec:
   replicas: 1
+  revisionHistoryLimit: 3
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: product-service
@@ -13,15 +16,44 @@ spec:
     metadata:
       labels:
         app: product-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/actuator/prometheus"
+        prometheus.io/port: "9004"
     spec:
+      initContainers:
+        - name: wait-for-postgres
+          image: busybox:1.36
+          command:
+            - /bin/sh
+            - -c
+            - until nc -z postgres-headless 5432; do echo waiting for postgres-headless:5432; sleep 2; done
+        - name: wait-for-kafka
+          image: busybox:1.36
+          command:
+            - /bin/sh
+            - -c
+            - until nc -z kafka-service 9092; do echo waiting for kafka-service:9092; sleep 2; done
+        - name: wait-for-redis
+          image: busybox:1.36
+          command:
+            - /bin/sh
+            - -c
+            - until nc -z redis 6379; do echo waiting for redis:6379; sleep 2; done
+        - name: wait-for-elasticsearch
+          image: busybox:1.36
+          command:
+            - /bin/sh
+            - -c
+            - until nc -z elasticsearch 9200; do echo waiting for elasticsearch:9200; sleep 2; done
       containers:
         - name: product-service
           image: ${DOCKERHUB_USERNAME}/chamomile-product:${IMAGE_TAG}
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
 
           env:
             - name: JAVA_TOOL_OPTIONS
-              value: "-Xms256m -Xmx512m"
+              value: "-Xms128m -Xmx256m"
 
           envFrom:
             - configMapRef:
@@ -45,27 +77,36 @@ spec:
 
           resources:
             requests:
-              cpu: "250m"
-              memory: "384Mi"
+              cpu: "100m"
+              memory: "256Mi"
             limits:
-              cpu: "500m"
-              memory: "768Mi"
+              cpu: "300m"
+              memory: "512Mi"
+
+          startupProbe:
+            httpGet:
+              path: /actuator/health
+              port: 9004
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 30
 
           readinessProbe:
             httpGet:
               path: /actuator/health/readiness
               port: 9004
-            initialDelaySeconds: 20
+            initialDelaySeconds: 10
             periodSeconds: 10
             timeoutSeconds: 3
-            failureThreshold: 3
+            failureThreshold: 6
 
           livenessProbe:
             httpGet:
               path: /actuator/health/liveness
               port: 9004
-            initialDelaySeconds: 40
-            periodSeconds: 15
+            initialDelaySeconds: 60
+            periodSeconds: 10
             timeoutSeconds: 3
             failureThreshold: 3
 
@@ -82,5 +123,6 @@ spec:
   ports:
     - port: 9004
       targetPort: 9004
+      nodePort: 30904
       protocol: TCP
-  type: ClusterIP
+  type: NodePort

@@ -1,5 +1,5 @@
 api:
-  user-host: ${USER_SERVICE_HOST}
+  user-host: ${USER_SERVICE_URL}
 
 spring:
   datasource:
@@ -7,6 +7,12 @@ spring:
     username: ${POSTGRES_USER:postgres}
     password: ${POSTGRES_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      minimum-idle: 2
+      maximum-pool-size: 4
+      connection-timeout: 5000
+      idle-timeout: 60000
+      max-lifetime: 180000
 
   jpa:
     hibernate:
@@ -19,3 +25,25 @@ spring:
 logging:
   level:
     org.hibernate.SQL: WARN
+
+settlement:
+  batch:
+    calculate:
+      cron: "${SETTLEMENT_BATCH_CALCULATE_CRON:0 */5 * * * *}"
+    transfer:
+      cron: "${SETTLEMENT_BATCH_TRANSFER_CRON:30 */5 * * * *}"
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+    prometheus:
+      enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}

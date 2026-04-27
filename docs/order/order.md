@@ -9,7 +9,7 @@
 | 주문 생성 | Product 재고 예약 + User 예치금 차감 + Order 저장 |
 | 결제 결과 처리 | PAYMENT_COMPLETED/FAILED 이벤트 수신 → 상태 변경 + 후속 이벤트 발행 |
 | 만료 처리 | PAYMENT_EXPIRED 이벤트 수신 → 상태 변경 + 재고/예치금 복구 이벤트 발행 |
-| 환불 처리 | PAYMENT_REFUNDED 이벤트 수신 → REFUNDED 상태 변경 |
+| 환불 처리 | Payment 서비스 동기 환불 응답 기반으로 REFUNDED 상태 변경 + 후속 이벤트 발행 |
 | 이벤트 발행 | Outbox 패턴으로 order.events 토픽에 발행 |
 | 정산 연동 | 주문 다건 조회 내부 API 제공 |
 
@@ -25,7 +25,7 @@
 | `PAID` | `PAYMENT_COMPLETED` Kafka 이벤트 수신 |
 | `FAILED` | `PAYMENT_FAILED` Kafka 이벤트 수신 |
 | `EXPIRED` | `PAYMENT_EXPIRED` Kafka 이벤트 수신 |
-| `REFUNDED` | `PAYMENT_REFUNDED` Kafka 이벤트 수신 |
+| `REFUNDED` | Payment 서비스 동기 환불 성공 응답 수신 |
 
 ---
 
@@ -74,8 +74,9 @@ infrastructure/outbox/
 |------|------|
 | 주문 생성 (`create`) | 재고 예약 → 예치금 차감 → Order 저장 (tx 없음, 외부 호출 포함) |
 | 주문 조회 | 단건/목록/정산용 다건 조회 |
+| 환불 정보 조회 (`getRefundInfo`) | Payment 서비스 환불 상세 + 수업 시작일 조합하여 응답 |
 | 금액 검증 | Payment 서비스가 confirm 전 호출하는 내부 API |
-| 상태 변경 위임 | `updatePaymentStatus` → 핸들러 위임 |
+| 결제 결과 반영 | Kafka `payment.events` 수신 후 성공/실패 핸들러 위임 |
 
 ### OrderPaymentResultHandler
 
@@ -83,7 +84,7 @@ infrastructure/outbox/
 
 | 메서드 | 처리 내용 |
 |--------|-----------|
-| `onSuccess` | eventId 중복 체크 → order.pay() → ORDER_RESERVATION_CONFIRMED Outbox 저장 |
+| `onSuccess` | eventId 중복 체크 → order.pay() → ORDER_RESERVATION_CONFIRMED + SETTLEMENT_PAYMENT_COMPLETED Outbox 저장 |
 | `onFailed` | eventId 중복 체크 → order.failPayment() → ORDER_RESERVATION_RELEASED Outbox 저장 + (depositAmount > 0) ORDER_DEPOSIT_REFUND_REQUESTED Outbox 저장 |
 
 ### OrderExpireHandler
@@ -138,10 +139,11 @@ sequenceDiagram
     participant Outbox
 
     Kafka->>Consumer: PAYMENT_COMPLETED
-    Consumer->>Handler: onSuccess(eventId, orderId)
+    Consumer->>Handler: onSuccess(event)
     Handler->>Handler: eventId 중복 체크
     Handler->>Handler: order.pay() → PENDING → PAID [트랜잭션]
     Handler->>Outbox: ORDER_RESERVATION_CONFIRMED 저장
+    Handler->>Outbox: SETTLEMENT_PAYMENT_COMPLETED 저장
     Handler->>Handler: processed_events 저장
 ```
 
@@ -201,6 +203,13 @@ sequenceDiagram
 |--------|-----------|------|
 | `validateAndUse` | `POST /api/v1/deposits/use` | 예치금 잔액 확인 + 차감 |
 
+### Payment 서비스 — `PaymentAdapter` (`PaymentPort` 구현)
+
+| 메서드 | 엔드포인트 | 용도 |
+|--------|-----------|------|
+| `refund` | `POST /api/v1/payments/internal/refunds` | 환불 요청 (PG + 예치금 환불금액 반환) |
+| `getRefundInfo` | `GET /api/v1/payments/internal/refunds/orders/{orderId}` | 환불 상세 정보 조회 |
+
 ---
 
 ## Outbox 패턴
@@ -225,6 +234,8 @@ sequenceDiagram
 | `ORDER_RESERVATION_RELEASED` | 결제 실패/만료 후 재고 복구 | `order.events` |
 | `ORDER_DEPOSIT_REFUND_REQUESTED` | 결제 실패 + 예치금 사용 시 환불 요청 | `order.events` |
 | `ORDER_EXPIRED` | 만료 시 예치금 복구 요청 | `order.events` |
+| `SETTLEMENT_PAYMENT_COMPLETED` | 결제 성공 후 정산 타겟 적재 요청 | `settlement.events` |
+| `SETTLEMENT_REFUND_COMPLETED` | 환불 성공 후 정산 타겟 적재 요청 | `settlement.events` |
 
 > 이벤트 페이로드 상세는 `docs/kafka-topics.md` 참고.
 

@@ -1,24 +1,33 @@
 package jabaclass.settlement.domain.repository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
-import jabaclass.settlement.application.dto.SettlementTargetSummary;
-import jabaclass.settlement.domain.model.SettlementTarget;
+import jabaclass.settlement.domain.model.settlement.SettlementTarget;
+import jabaclass.settlement.domain.model.settlement.SettlementTargetCalculationStatus;
+import jabaclass.settlement.domain.model.settlement.SettlementTargetType;
+import jabaclass.settlement.application.dto.SellerSalesAmount;
 
 public interface SettlementTargetRepository {
 
-	SettlementTarget save(SettlementTarget settlementTarget);
-
 	List<SettlementTarget> saveAll(List<SettlementTarget> settlementTargets);
 
-	boolean existsByPaymentId(UUID paymentId);
+	SettlementTarget save(SettlementTarget settlementTarget);
 
-	boolean existsByRefundId(UUID refundId);
+	Optional<SettlementTarget> findByPaymentIdAndTargetType(UUID paymentId, SettlementTargetType targetType);
 
-	List<SettlementTarget> findBySettlementMonth(String settlementMonth);
+	Optional<SettlementTarget> findByRefundId(UUID refundId);
 
-	List<SettlementTarget> findBySettlementMonthAndSellerId(String settlementMonth, UUID sellerId);
+	List<SettlementTarget> findAllByIds(List<UUID> ids);
 
-	List<SettlementTargetSummary> findSummaryBySettlementMonth(String settlementMonth);
+	List<SettlementTarget> findBySettlementMonthAndCalculationStatus(
+		String settlementMonth,
+		SettlementTargetCalculationStatus calculationStatus
+	);
+
+	List<SellerSalesAmount> sumSettlementBaseAmountBySellerIdsAndSettlementMonths(
+		List<UUID> sellerIds,
+		List<String> settlementMonths
+	);
 }

@@ -1,23 +1,22 @@
 api:
-  user-host: ${USER_SERVICE_HOST}
-
-internal:
-  file:
-    url: ${FILE_SERVICE_HOST}
-  api:
-    key: ${INTERNAL_KEY:test-internal-key}
-
+  user-host: ${USER_SERVICE_URL}
 
 spring:
   elasticsearch:
-    uris: ${ES_URIS:http://localhost:9200}
+    uris: ${ES_URL:http://localhost:9200}
 
   datasource:
     url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:backend5}
     username: ${POSTGRES_USER:postgres}
     password: ${POSTGRES_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
-
+    hikari:
+      minimum-idle: 1
+      maximum-pool-size: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+  
   jpa:
     hibernate:
       ddl-auto: validate
@@ -26,6 +25,29 @@ spring:
       hibernate:
         format_sql: false
 
+  cloud:
+    aws:
+      s3:
+        bucket: ${S3_BUCKET_NAME}
+        presigned-url-expiration: 5
+      region:
+        static: ap-northeast-2
+
 logging:
   level:
     org.hibernate.SQL: WARN
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+    prometheus:
+      enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}

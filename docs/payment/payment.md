@@ -91,7 +91,7 @@ infrastructure/outbox/
 |------|------|
 | 결제 준비 (`create`) | Payment 생성, 예치금 100%면 즉시 PAID + PAYMENT_COMPLETED Outbox 저장 |
 | 결제 승인 (`confirm`) | Order 금액 검증 → PG confirm → 핸들러 위임 (tx 없음) |
-| 환불 (`refund`) | PAID 검증 → Refund 생성 → PG 환불 → CANCELLED + PAYMENT_REFUNDED Outbox |
+| 환불 (`refund`) | PAID 검증 → Refund 생성 → PG 환불 → CANCELLED + 상세 환불 응답 반환 |
 | 정산 조회 | 결제/환불 슬라이스 커서 페이지네이션 |
 
 ### PaymentConfirmHandler
@@ -171,7 +171,7 @@ PaymentController.refund()
     → Refund.create() 저장 (PENDING)
     → paymentAmount > 0 이면 PG 환불 호출
     → Payment.markCancelled() / Refund.markCompleted()
-    → OutboxEvent(PAYMENT_REFUNDED) 저장
+    → InternalRefundResponseDto(refundId, paymentId, productId, depositRefundAmount, totalRefundAmount, occurredAt) 반환
     실패 시 → Refund.markFailed()
 ```
 
@@ -220,9 +220,7 @@ sequenceDiagram
 | 메서드 | 엔드포인트 | 용도 |
 |--------|-----------|------|
 | `validateOrder` | `GET /api/v1/orders/{orderId}/payment-amount/validate` | 결제 승인 전 금액 검증 |
-| `updatePaymentStatus` | `PUT /api/v1/orders/{orderId}/payment-status` | 결제 결과 전달 (미사용 — Kafka로 대체) |
-
-> 현재 결제 결과는 Kafka(PAYMENT_COMPLETED/FAILED)로 전달한다. `updatePaymentStatus`는 레거시 HTTP 경로로 현재 미사용 상태다.
+> 현재 결제 결과 반영은 HTTP 내부 호출이 아니라 Kafka(`payment.events`)로만 전달한다.
 
 ### User 서비스 — `UserClient` (`UserPort` 구현)
 
@@ -262,6 +260,5 @@ sequenceDiagram
 | `PAYMENT_COMPLETED` | PG 승인 성공 / 예치금 100% 결제 | `payment.events` |
 | `PAYMENT_FAILED` | PG 승인 실패 | `payment.events` |
 | `PAYMENT_EXPIRED` | 10분 경과 만료 | `payment.events` |
-| `PAYMENT_REFUNDED` | 환불 완료 | `payment.events` |
 
 > 이벤트 페이로드 상세는 `docs/kafka-topics.md` 참고.

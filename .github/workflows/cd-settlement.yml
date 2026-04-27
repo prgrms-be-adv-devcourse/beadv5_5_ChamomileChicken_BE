@@ -18,6 +18,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: cd-settlement-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
@@ -30,10 +34,11 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 21
+          cache: gradle
 
       - name: Grant execute permission for gradlew
         run: chmod +x ./gradlew
@@ -68,25 +73,26 @@ jobs:
   deploy:
     needs: build-and-push
     runs-on: [ self-hosted, ec2, docker ]
+    env:
+      KUBECONFIG: /home/ubuntu/.kube/config
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            .github/scripts
+            .github/k3s/settlement-service.yml
+          sparse-checkout-cone-mode: false
 
       - name: Prepare directories
         run: |
-          mkdir -p /home/ubuntu/apps/repo
-          mkdir -p /home/ubuntu/apps/deploy/env
           mkdir -p /home/ubuntu/apps/deploy/scripts
           mkdir -p /home/ubuntu/apps/data/k3s-service
 
-      - name: Sync repository to fixed path
+      - name: Copy deploy scripts
         run: |
-          rsync -av --delete ./ /home/ubuntu/apps/repo/
-
-      - name: Copy deploy script to EC2 deploy directory
-        run: |
-          cp /home/ubuntu/apps/repo/.github/scripts/deploy-app.sh /home/ubuntu/apps/deploy/scripts/deploy-app.sh
+          cp .github/scripts/deploy-app.sh /home/ubuntu/apps/deploy/scripts/deploy-app.sh
           chmod +x /home/ubuntu/apps/deploy/scripts/deploy-app.sh
 
       - name: Check envsubst
@@ -95,28 +101,10 @@ jobs:
 
       - name: Copy Kubernetes YAML to fixed path
         run: |
-          cp /home/ubuntu/apps/repo/.github/k3s/settlement-service.yml \
-             /home/ubuntu/apps/data/k3s-service/settlement-service.yml
-
-      - name: Create common_config.env
-        run: |
-          printf '%s\n' '${{ secrets.COMMON_CONFIG_ENV }}' > /home/ubuntu/apps/deploy/env/common_config.env
-
-      - name: Create common_secret.env
-        run: |
-          printf '%s\n' '${{ secrets.COMMON_SECRET_ENV }}' > /home/ubuntu/apps/deploy/env/common_secret.env
-
-      - name: Create settlement_config.env
-        run: |
-          printf '%s\n' '${{ secrets.SETTLEMENT_CONFIG_ENV }}' > /home/ubuntu/apps/deploy/env/settlement_config.env
-
-      - name: Create settlement_secret.env
-        run: |
-          printf '%s\n' '${{ secrets.SETTLEMENT_SECRET_ENV }}' > /home/ubuntu/apps/deploy/env/settlement_secret.env
+          cp .github/k3s/settlement-service.yml /home/ubuntu/apps/data/k3s-service/settlement-service.yml
 
       - name: Verify deploy files exist
         run: |
-          ls -l /home/ubuntu/apps/deploy/env
           ls -l /home/ubuntu/apps/deploy/scripts
           ls -l /home/ubuntu/apps/data/k3s-service
 
@@ -134,6 +122,9 @@ jobs:
           /home/ubuntu/apps/deploy/scripts/deploy-app.sh settlement
 
       - name: Debug Kubernetes state
+        if: always()
+        env:
+          KUBECONFIG: /home/ubuntu/.kube/config
         run: |
           echo "===== pods ====="
           kubectl get pods -o wide
@@ -151,16 +142,27 @@ jobs:
         env:
           KUBECONFIG: /home/ubuntu/.kube/config
         run: |
-          kubectl rollout status deployment/settlement-service --timeout=120s
-
           kubectl port-forward svc/settlement-service 9002:9002 >/tmp/settlement-portforward.log 2>&1 &
           PF_PID=$!
-          sleep 5
+          trap 'kill $PF_PID || true' EXIT
 
-          STATUS_CODE=$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' --max-time 5 \
-            "http://localhost:9002/actuator/health/readiness" || echo "000")
+          STATUS_CODE="000"
+
+          sleep 1
+
+          for i in 1 2 3; do
+            STATUS_CODE=$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' --max-time 5 \
+              "http://localhost:9002/actuator/health/readiness" || echo "000")
+
+            if [[ "$STATUS_CODE" == "200" ]]; then
+              break
+            fi
+
+            sleep 2
+          done
 
           kill $PF_PID || true
+          trap - EXIT
 
           if [[ "$STATUS_CODE" != "200" ]]; then
             echo "Health check failed with status=$STATUS_CODE"

@@ -6,6 +6,9 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -13,31 +16,37 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import jabaclass.product.application.acl.SellerRepository;
 import jabaclass.product.application.exception.BusinessException;
 import jabaclass.product.application.usecase.ProductUseCase;
+import jabaclass.product.application.usecase.ValidateFileUseCase;
 import jabaclass.product.common.exception.CommonErrorCode;
 import jabaclass.product.domain.model.Product;
 import jabaclass.product.domain.model.ProductImageItem;
 import jabaclass.product.domain.model.status.ProductStatus;
 import jabaclass.product.domain.repository.ProductRepository;
 import jabaclass.product.domain.repository.ProductSearchRepository;
-import jabaclass.product.infrastructure.acl.client.FileConfirmClient;
-import jabaclass.product.infrastructure.acl.client.FileConfirmResponse;
 import jabaclass.product.infrastructure.acl.dto.response.UserResponseDto;
 import jabaclass.product.infrastructure.elasticsearch.ProductDocument;
-import jabaclass.product.infrastructure.event.dto.ProductEsDeleteEvent;
-import jabaclass.product.infrastructure.event.dto.ProductEsSaveEvent;
+import jabaclass.product.infrastructure.event.dto.ProductAiSyncedEvent;   // 추가
+import jabaclass.product.infrastructure.event.dto.ProductDeletedEvent;    // 추가
 import jabaclass.product.infrastructure.event.dto.ProductEventResponseDto;
+import jabaclass.product.infrastructure.event.dto.ProductViewedEvent;
+import jabaclass.product.infrastructure.kafka.ProductEsIndexMessage;
+import jabaclass.product.infrastructure.outbox.EsEventType;
+import jabaclass.product.infrastructure.outbox.OutboxEvent;
+import jabaclass.product.infrastructure.outbox.OutboxRepository;
 import jabaclass.product.presentation.dto.request.CreateProductRequestDto;
 import jabaclass.product.presentation.dto.request.SearchProductRequestDto;
 import jabaclass.product.presentation.dto.request.UpdateProductRequestDto;
-import jabaclass.product.presentation.dto.respose.DeleteProductResposeDto;
-import jabaclass.product.presentation.dto.respose.ProductResponseDto;
-import jabaclass.product.presentation.dto.respose.ProductSettlementItemResponseDto;
-import jabaclass.product.presentation.dto.respose.SearchProductResponseDto;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import jabaclass.product.presentation.dto.response.DeleteProductResponseDto;
+import jabaclass.product.application.dto.FileConfirmResponse;
+import jabaclass.product.presentation.dto.response.ProductResponseDto;
+import jabaclass.product.presentation.dto.response.ProductSettlementItemResponseDto;
+import jabaclass.product.presentation.dto.response.SearchProductResponseDto;
 
 @Service
 @Transactional(readOnly = true)
@@ -48,15 +57,18 @@ public class ProductService implements ProductUseCase {
 	private final ProductSearchRepository productSearchRepository;
 	private final SellerRepository sellerRepository;
 	private final ApplicationEventPublisher publisher;
-	private final FileConfirmClient fileConfirmClient;
+	private final ValidateFileUseCase validateFileUseCase;
+	private final OutboxRepository outboxRepository;
+	private final ObjectMapper objectMapper;
 
 	@Override
 	@Transactional
 	public ProductResponseDto create(CreateProductRequestDto requestDto, UUID sellerId) {
 		List<ProductImageItem> images = List.of();
 		if (requestDto.imageIds() != null && !requestDto.imageIds().isEmpty()) {
-			List<FileConfirmResponse> confirmed =
-				fileConfirmClient.confirmBulk(requestDto.imageIds());
+			List<FileConfirmResponse> confirmed = requestDto.imageIds().stream()
+				.map(validateFileUseCase::validateAndConfirm)
+				.toList();
 			images = confirmed.stream()
 				.map(r -> new ProductImageItem(r.fileId(), r.storagePath()))
 				.toList();
@@ -82,10 +94,10 @@ public class ProductService implements ProductUseCase {
 		UserResponseDto seller = findBySellerIdOrThrow(sellerId);
 
 		publisher.publishEvent(new ProductEventResponseDto(saved.getId()));
-		publisher.publishEvent(new ProductEsSaveEvent(ProductDocument.from(saved, seller.name())));
+		publisher.publishEvent(ProductAiSyncedEvent.from(saved));           // 추가
+		saveEsSaveOutbox(saved, seller.name());
 		return ProductResponseDto.from(saved, seller.name());
 	}
-
 	@Override
 	@Transactional
 	public ProductResponseDto update(UpdateProductRequestDto requestDto, UUID productId, UUID sellerId) {
@@ -108,8 +120,9 @@ public class ProductService implements ProductUseCase {
 		if (requestDto.imageIds() != null) {
 			List<ProductImageItem> images = List.of();
 			if (!requestDto.imageIds().isEmpty()) {
-				List<FileConfirmResponse> confirmed =
-					fileConfirmClient.confirmBulk(requestDto.imageIds());
+				List<FileConfirmResponse> confirmed = requestDto.imageIds().stream()
+					.map(validateFileUseCase::validateAndConfirm)
+					.toList();
 				images = confirmed.stream()
 					.map(r -> new ProductImageItem(r.fileId(), r.storagePath()))
 					.toList();
@@ -117,13 +130,14 @@ public class ProductService implements ProductUseCase {
 			product.changeImages(images);
 		}
 		UserResponseDto seller = findBySellerIdOrThrow(sellerId);
-		publisher.publishEvent(new ProductEsSaveEvent(ProductDocument.from(product, seller.name())));
+		publisher.publishEvent(ProductAiSyncedEvent.from(product));         // 추가
+		saveEsSaveOutbox(product, seller.name());
 		return ProductResponseDto.from(product, seller.name());
 	}
 
 	@Override
 	@Transactional
-	public DeleteProductResposeDto delete(UUID productId, UUID sellerId) {
+	public DeleteProductResponseDto delete(UUID productId, UUID sellerId) {
 		// 상품 존재하는지 확인
 		Product product = findByIdOrThrow(productId);
 		// 본인 상품인지 확인
@@ -131,9 +145,10 @@ public class ProductService implements ProductUseCase {
 
 		product.changeStatus(ProductStatus.DISABLE);
 		product.changeDelete();
-		publisher.publishEvent(new ProductEsDeleteEvent(productId.toString()));
+		publisher.publishEvent(ProductDeletedEvent.of(productId));          // 추가
+		saveEsDeleteOutbox(productId.toString());
 
-		return DeleteProductResposeDto.from(productId, ProductStatus.DISABLE);
+		return DeleteProductResponseDto.from(productId, ProductStatus.DISABLE);
 	}
 
 	// es 추가
@@ -157,11 +172,34 @@ public class ProductService implements ProductUseCase {
 	}
 
 	@Override
-	public ProductResponseDto searchById(UUID productId) {
+	public SearchProductResponseDto searchMy(SearchProductRequestDto requestDto, UUID sellerId) {
+		Pageable pageable = PageRequest.of(requestDto.thisPage(), requestDto.pageSize());
+		String sellerIdStr = sellerId.toString();
+
+		Page<ProductDocument> page;
+		if (requestDto.title() == null || requestDto.title().isBlank()) {
+			page = productSearchRepository.findAllBySellerId(sellerIdStr, pageable);
+		} else {
+			page = productSearchRepository.searchByKeywordAndSellerId(requestDto.title(), sellerIdStr, pageable);
+		}
+
+		List<ProductResponseDto> content = page.getContent().stream()
+			.map(ProductResponseDto::from)
+			.toList();
+
+		return SearchProductResponseDto.fromEs(page, content);
+	}
+
+	@Override
+	public ProductResponseDto searchById(UUID productId, UUID userId) {
 		Product product = findByIdOrThrow(productId);
 
-		// sellerId를 확인
 		UserResponseDto seller = findBySellerIdOrThrow(product.getSellerId());
+		if (userId != null) {
+			log.info("상품 조회 이벤트 발행 준비: userId={}, productId={}", userId, productId);
+			publisher.publishEvent(ProductViewedEvent.of(userId, productId));
+			log.info("상품 조회 이벤트 발행 완료: userId={}, productId={}", userId, productId);
+		}
 
 		return ProductResponseDto.from(product, seller.name());
 	}
@@ -239,6 +277,25 @@ public class ProductService implements ProductUseCase {
 
 		log.info("ES 마이그레이션 완료: 총 {}건", totalIndexed);
 		return totalIndexed;
+	}
+
+	private void saveEsOutbox(String aggregateId, EsEventType eventType, Object message) {
+		try {
+			String payload = objectMapper.writeValueAsString(message);
+			outboxRepository.save(OutboxEvent.create("PRODUCT", aggregateId, eventType, payload));
+		} catch (JsonProcessingException e) {
+			log.error("ES outbox 직렬화 실패: type={}, id={}", eventType, aggregateId, e);
+			throw new RuntimeException("ES outbox 직렬화 실패", e);
+		}
+	}
+
+	private void saveEsSaveOutbox(Product product, String sellerName) {
+		saveEsOutbox(product.getId().toString(), EsEventType.ES_SAVE,
+			ProductEsIndexMessage.save(ProductDocument.from(product, sellerName)));
+	}
+
+	private void saveEsDeleteOutbox(String productId) {
+		saveEsOutbox(productId, EsEventType.ES_DELETE, ProductEsIndexMessage.delete(productId));
 	}
 
 	// 로그인 계정 여부

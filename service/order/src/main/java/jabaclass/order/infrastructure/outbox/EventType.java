@@ -1,11 +1,14 @@
 package jabaclass.order.infrastructure.outbox;
 
 public enum EventType {
+	ORDER_COMPLETED("order.events"),
 	ORDER_RESERVATION_CONFIRMED("order.events"),
 	ORDER_RESERVATION_RELEASED("order.events"),
 	ORDER_DEPOSIT_REFUND_REQUESTED("order.events"),
 	ORDER_EXPIRED("order.events"),
-	ORDER_REFUNDED("order.events");
+	ORDER_REFUNDED("order.events"),
+	SETTLEMENT_PAYMENT_COMPLETED("settlement.events"),
+	SETTLEMENT_REFUND_COMPLETED("settlement.events");
 
 	private final String topic;
 

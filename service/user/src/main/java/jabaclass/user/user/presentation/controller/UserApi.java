@@ -11,13 +11,16 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jabaclass.user.common.apidocs.ApiErrorSpec;
 import jabaclass.user.common.apidocs.ApiErrorSpecs;
 import jabaclass.user.common.auth.CurrentUser;
+import jabaclass.user.common.auth.CurrentUserRole;
 import jabaclass.user.mail.application.exception.MailErrorCode;
 import jabaclass.user.user.application.exception.UserErrorCode;
 import jabaclass.user.user.presentation.dto.request.ChangeMyEmailRequestDto;
 import jabaclass.user.user.presentation.dto.request.EmailCheckRequestDto;
 import jabaclass.user.user.presentation.dto.request.RegisterUserRequestDto;
+import jabaclass.user.user.presentation.dto.request.UpsertSellerSettlementAccountRequestDto;
 import jabaclass.user.user.presentation.dto.request.UpdateUserRequestDto;
 import jabaclass.user.user.presentation.dto.response.EmailCheckResponseDto;
+import jabaclass.user.user.presentation.dto.response.SellerSettlementAccountResponseDto;
 import jabaclass.user.user.presentation.dto.response.UserResponseDto;
 import jakarta.validation.Valid;
 
@@ -173,6 +176,34 @@ public interface UserApi {
 	})
 	ResponseEntity<Void> withdraw(
 		@CurrentUser UUID userId
+	);
+
+	@Operation(
+		summary = "내 정산 계좌 등록 또는 수정",
+		description = """
+			현재 로그인한 판매자 또는 관리자의 정산 계좌를 등록하거나 수정합니다.
+			- 기존 정산 계좌가 없으면 새로 등록합니다.
+			- 기존 정산 계좌가 있으면 입력값으로 수정합니다.
+			- SELLER, ADMIN 권한만 요청할 수 있습니다.
+			"""
+	)
+	@SecurityRequirement(name = "bearerAuth")
+	@ApiErrorSpecs({
+		@ApiErrorSpec(
+			value = UserErrorCode.class,
+			constant = "USER_NOT_FOUND",
+			summary = "사용자를 찾을 수 없습니다"
+		),
+		@ApiErrorSpec(
+			value = UserErrorCode.class,
+			constant = "SELLER_SETTLEMENT_ACCOUNT_ACCESS_DENIED",
+			summary = "판매자 또는 관리자만 정산 계좌를 등록할 수 있습니다"
+		)
+	})
+	ResponseEntity<SellerSettlementAccountResponseDto> upsertSellerSettlementAccount(
+		@CurrentUser UUID userId,
+		@CurrentUserRole String currentUserRole,
+		@Valid @RequestBody UpsertSellerSettlementAccountRequestDto request
 	);
 
 	@Operation(

@@ -18,12 +18,14 @@ import jabaclass.user.mail.application.usecase.EmailVerificationUseCase;
 import jabaclass.user.user.application.exception.UserErrorCode;
 import jabaclass.user.user.application.usercase.UserUseCase;
 import jabaclass.user.user.domain.model.SellerSettlementAccount;
+import jabaclass.user.user.domain.model.SocialType;
 import jabaclass.user.user.domain.model.User;
 import jabaclass.user.user.domain.model.UserRole;
 import jabaclass.user.user.domain.repository.SellerSettlementAccountRepository;
 import jabaclass.user.user.domain.repository.UserRepository;
 import jabaclass.user.user.presentation.dto.request.ChangeMyEmailRequestDto;
 import jabaclass.user.user.presentation.dto.request.RegisterUserRequestDto;
+import jabaclass.user.user.presentation.dto.request.UpsertSellerSettlementAccountRequestDto;
 import jabaclass.user.user.presentation.dto.request.UpdateUserRequestDto;
 import jabaclass.user.user.presentation.dto.response.SellerSettlementAccountResponseDto;
 import jabaclass.user.user.presentation.dto.response.SellerSettlementDetailResponseDto;
@@ -62,6 +64,7 @@ public class UserService implements UserUseCase {
 			.password(passwordEncoder.encode(request.password()))
 			.phone(request.phone())
 			.role(UserRole.USER)
+			.socialType(SocialType.SYSTEM)
 			.deposit(BigDecimal.ZERO)
 			.build();
 
@@ -99,6 +102,37 @@ public class UserService implements UserUseCase {
 	public void withdraw(UUID userId) {
 		User user = getUser(userId);
 		userRepository.delete(user);
+	}
+
+	@Override
+	@Transactional
+	public SellerSettlementAccountResponseDto upsertSellerSettlementAccount(
+		UUID userId,
+		String currentUserRole,
+		UpsertSellerSettlementAccountRequestDto request
+	) {
+		User user = getUser(userId);
+		validateSellerSettlementAccountAccess(currentUserRole, user);
+
+		SellerSettlementAccount account = sellerSettlementAccountRepository.findByUserId(userId)
+			.map(existing -> {
+				existing.updateAccount(
+					request.bankCode(),
+					request.accountNumber(),
+					request.accountHolder(),
+					request.active()
+				);
+				return existing;
+			})
+			.orElseGet(() -> SellerSettlementAccount.register(
+				userId,
+				request.bankCode(),
+				request.accountNumber(),
+				request.accountHolder(),
+				request.active()
+			));
+
+		return SellerSettlementAccountResponseDto.from(sellerSettlementAccountRepository.save(account));
 	}
 
 	@Override
@@ -178,6 +212,28 @@ public class UserService implements UserUseCase {
 		log.info("UserService.getUser lookup userId={}", userId);
 		return userRepository.findById(userId)
 			.orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
+	}
+
+	private void validateSellerSettlementAccountAccess(String currentUserRole, User user) {
+		UserRole role = resolveRole(currentUserRole);
+		if (!isSellerSettlementAccountAllowed(role) || !isSellerSettlementAccountAllowed(user.getRole())) {
+			throw new BusinessException(UserErrorCode.SELLER_SETTLEMENT_ACCOUNT_ACCESS_DENIED);
+		}
+	}
+
+	private UserRole resolveRole(String currentUserRole) {
+		if (currentUserRole == null) {
+			throw new BusinessException(UserErrorCode.SELLER_SETTLEMENT_ACCOUNT_ACCESS_DENIED);
+		}
+		try {
+			return UserRole.valueOf(currentUserRole);
+		} catch (IllegalArgumentException e) {
+			throw new BusinessException(UserErrorCode.SELLER_SETTLEMENT_ACCOUNT_ACCESS_DENIED);
+		}
+	}
+
+	private boolean isSellerSettlementAccountAllowed(UserRole role) {
+		return role == UserRole.SELLER || role == UserRole.ADMIN;
 	}
 
 	private void saveUser(User user) {

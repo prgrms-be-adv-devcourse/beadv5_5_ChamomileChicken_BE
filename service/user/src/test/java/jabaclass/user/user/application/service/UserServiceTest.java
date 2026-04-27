@@ -29,10 +29,14 @@ import jabaclass.user.mail.application.usecase.EmailVerificationUseCase;
 import jabaclass.user.user.application.exception.UserErrorCode;
 import jabaclass.user.user.domain.model.User;
 import jabaclass.user.user.domain.model.UserRole;
+import jabaclass.user.user.domain.model.SellerSettlementAccount;
+import jabaclass.user.user.domain.repository.SellerSettlementAccountRepository;
 import jabaclass.user.user.domain.repository.UserRepository;
 import jabaclass.user.user.presentation.dto.request.ChangeMyEmailRequestDto;
 import jabaclass.user.user.presentation.dto.request.RegisterUserRequestDto;
+import jabaclass.user.user.presentation.dto.request.UpsertSellerSettlementAccountRequestDto;
 import jabaclass.user.user.presentation.dto.request.UpdateUserRequestDto;
+import jabaclass.user.user.presentation.dto.response.SellerSettlementAccountResponseDto;
 import jabaclass.user.user.presentation.dto.response.UserResponseDto;
 
 @ExtendWith(MockitoExtension.class)
@@ -46,6 +50,9 @@ class UserServiceTest {
 
 	@Mock
 	private EmailVerificationUseCase emailVerificationUseCase;
+
+	@Mock
+	private SellerSettlementAccountRepository sellerSettlementAccountRepository;
 
 	private UUID userId;
 	private User user;
@@ -398,6 +405,136 @@ class UserServiceTest {
 		assertThat(result.get(1).name()).isEqualTo("철수");
 
 		then(userRepository).should(times(1)).findAllByIds(List.of(userId, secondUserId));
+	}
+
+	@Test
+	void 판매자는_정산_계좌를_등록할_수_있다() {
+		// given
+		user = User.builder()
+			.name("판매자")
+			.email("seller@example.com")
+			.password("encoded-password")
+			.phone("010-1111-2222")
+			.role(UserRole.SELLER)
+			.deposit(BigDecimal.ZERO)
+			.build();
+		ReflectionTestUtils.setField(user, "id", userId);
+
+		UpsertSellerSettlementAccountRequestDto request = new UpsertSellerSettlementAccountRequestDto(
+			"088",
+			"123-456-789",
+			"판매자",
+			true
+		);
+
+		given(userRepository.findById(userId)).willReturn(Optional.of(user));
+		given(sellerSettlementAccountRepository.findByUserId(userId)).willReturn(Optional.empty());
+		given(sellerSettlementAccountRepository.save(any(SellerSettlementAccount.class)))
+			.willAnswer(invocation -> invocation.getArgument(0));
+
+		// when
+		SellerSettlementAccountResponseDto result = userService.upsertSellerSettlementAccount(
+			userId,
+			UserRole.SELLER.name(),
+			request
+		);
+
+		// then
+		assertThat(result.sellerId()).isEqualTo(userId);
+		assertThat(result.bankCode()).isEqualTo("088");
+		assertThat(result.accountNumber()).isEqualTo("123-456-789");
+		assertThat(result.accountHolder()).isEqualTo("판매자");
+		assertThat(result.active()).isTrue();
+	}
+
+	@Test
+	void 기존_정산_계좌가_있으면_수정한다() {
+		// given
+		user = User.builder()
+			.name("관리자")
+			.email("admin@example.com")
+			.password("encoded-password")
+			.phone("010-1111-2222")
+			.role(UserRole.ADMIN)
+			.deposit(BigDecimal.ZERO)
+			.build();
+		ReflectionTestUtils.setField(user, "id", userId);
+
+		SellerSettlementAccount existing = SellerSettlementAccount.register(
+			userId,
+			"088",
+			"111-111-111",
+			"이전예금주",
+			true
+		);
+
+		UpsertSellerSettlementAccountRequestDto request = new UpsertSellerSettlementAccountRequestDto(
+			"090",
+			"999-888-777",
+			"새예금주",
+			false
+		);
+
+		given(userRepository.findById(userId)).willReturn(Optional.of(user));
+		given(sellerSettlementAccountRepository.findByUserId(userId)).willReturn(Optional.of(existing));
+		given(sellerSettlementAccountRepository.save(existing)).willReturn(existing);
+
+		// when
+		SellerSettlementAccountResponseDto result = userService.upsertSellerSettlementAccount(
+			userId,
+			UserRole.ADMIN.name(),
+			request
+		);
+
+		// then
+		assertThat(result.bankCode()).isEqualTo("090");
+		assertThat(result.accountNumber()).isEqualTo("999-888-777");
+		assertThat(result.accountHolder()).isEqualTo("새예금주");
+		assertThat(result.active()).isFalse();
+	}
+
+	@Test
+	void 일반_사용자는_정산_계좌를_등록할_수_없다() {
+		// given
+		UpsertSellerSettlementAccountRequestDto request = new UpsertSellerSettlementAccountRequestDto(
+			"088",
+			"123-456-789",
+			"일반사용자",
+			true
+		);
+
+		given(userRepository.findById(userId)).willReturn(Optional.of(user));
+
+		// when & then
+		assertThatThrownBy(() -> userService.upsertSellerSettlementAccount(
+			userId,
+			UserRole.USER.name(),
+			request
+		))
+			.isInstanceOf(BusinessException.class)
+			.hasMessage(UserErrorCode.SELLER_SETTLEMENT_ACCOUNT_ACCESS_DENIED.getMessage());
+	}
+
+	@Test
+	void 현재_사용자_권한이_null이면_정산_계좌를_등록할_수_없다() {
+		// given
+		UpsertSellerSettlementAccountRequestDto request = new UpsertSellerSettlementAccountRequestDto(
+			"088",
+			"123-456-789",
+			"권한없음",
+			true
+		);
+
+		given(userRepository.findById(userId)).willReturn(Optional.of(user));
+
+		// when & then
+		assertThatThrownBy(() -> userService.upsertSellerSettlementAccount(
+			userId,
+			null,
+			request
+		))
+			.isInstanceOf(BusinessException.class)
+			.hasMessage(UserErrorCode.SELLER_SETTLEMENT_ACCOUNT_ACCESS_DENIED.getMessage());
 	}
 
 }

@@ -5,6 +5,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import jabaclass.admin.order.domain.dto.OrderSearchCondition;
 import jabaclass.admin.order.application.usecase.OrderAdminUseCase;
 import jabaclass.admin.order.domain.repository.OrderAdminRepository;
 import jabaclass.admin.order.presentation.dto.response.OrderAdminResponseDto;
@@ -17,9 +18,9 @@ public class OrderAdminService implements OrderAdminUseCase {
 	private final OrderAdminRepository orderAdminRepository;
 
 	@Override
-	@Transactional(readOnly = true, transactionManager = "orderTransactionManager")
-	public Page<OrderAdminResponseDto> getOrders(Pageable pageable) {
-		return orderAdminRepository.findAll(pageable)
+	@Transactional(readOnly = true)
+	public Page<OrderAdminResponseDto> getOrders(Pageable pageable, OrderSearchCondition condition) {
+		return orderAdminRepository.findAll(condition, pageable)
 			.map(OrderAdminResponseDto::from);
 	}
 }

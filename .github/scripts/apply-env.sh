@@ -1,0 +1,78 @@
+#!/bin/bash
+set -euo pipefail
+
+SERVICE="${1:-}"
+ENV_DIR="${ENV_DIR:-/home/ubuntu/apps/deploy/env}"
+
+mkdir -p "$ENV_DIR"
+chmod 700 "$ENV_DIR"
+
+CONFIG_CHANGED=false
+COMMON_CONFIG_CHANGED=false
+COMMON_SECRET_CHANGED=false
+SERVICE_CONFIG_CHANGED=false
+SERVICE_SECRET_CHANGED=false
+
+write_if_changed() {
+  local target_file="$1"
+  local content="${2:-}"
+  local change_flag_name="$3"
+
+  if [ -z "$content" ]; then
+    echo "Empty content, skipping: $target_file"
+    return
+  fi
+
+  local temp_file
+  temp_file=$(mktemp)
+
+  printf "%s" "$content" > "$temp_file"
+
+  if [ ! -f "$target_file" ]; then
+    cp "$temp_file" "$target_file"
+    echo "Created: $target_file"
+    CONFIG_CHANGED=true
+    printf -v "$change_flag_name" '%s' "true"
+  elif ! cmp -s "$target_file" "$temp_file"; then
+    cp "$temp_file" "$target_file"
+    echo "Updated: $target_file"
+    CONFIG_CHANGED=true
+    printf -v "$change_flag_name" '%s' "true"
+  else
+    echo "Unchanged: $target_file"
+  fi
+
+  rm -f "$temp_file"
+}
+
+write_if_changed "$ENV_DIR/common_config.env" "${COMMON_CONFIG_ENV:-}" "COMMON_CONFIG_CHANGED"
+write_if_changed "$ENV_DIR/common_secret.env" "${COMMON_SECRET_ENV:-}" "COMMON_SECRET_CHANGED"
+
+if [ -n "$SERVICE" ]; then
+  write_if_changed "$ENV_DIR/${SERVICE}_config.env" "${SERVICE_CONFIG_ENV:-}" "SERVICE_CONFIG_CHANGED"
+  write_if_changed "$ENV_DIR/${SERVICE}_secret.env" "${SERVICE_SECRET_ENV:-}" "SERVICE_SECRET_CHANGED"
+fi
+
+[ -f "$ENV_DIR/common_secret.env" ] && chmod 600 "$ENV_DIR/common_secret.env"
+[ -f "$ENV_DIR/common_config.env" ] && chmod 600 "$ENV_DIR/common_config.env"
+
+if [ -n "$SERVICE" ]; then
+  [ -f "$ENV_DIR/${SERVICE}_secret.env" ] && chmod 600 "$ENV_DIR/${SERVICE}_secret.env"
+  [ -f "$ENV_DIR/${SERVICE}_config.env" ] && chmod 600 "$ENV_DIR/${SERVICE}_config.env"
+fi
+
+echo "CONFIG_CHANGED=$CONFIG_CHANGED"
+echo "COMMON_CONFIG_CHANGED=$COMMON_CONFIG_CHANGED"
+echo "COMMON_SECRET_CHANGED=$COMMON_SECRET_CHANGED"
+echo "SERVICE_CONFIG_CHANGED=$SERVICE_CONFIG_CHANGED"
+echo "SERVICE_SECRET_CHANGED=$SERVICE_SECRET_CHANGED"
+
+if [ -n "${GITHUB_ENV:-}" ]; then
+  {
+    echo "CONFIG_CHANGED=$CONFIG_CHANGED"
+    echo "COMMON_CONFIG_CHANGED=$COMMON_CONFIG_CHANGED"
+    echo "COMMON_SECRET_CHANGED=$COMMON_SECRET_CHANGED"
+    echo "SERVICE_CONFIG_CHANGED=$SERVICE_CONFIG_CHANGED"
+    echo "SERVICE_SECRET_CHANGED=$SERVICE_SECRET_CHANGED"
+  } >> "$GITHUB_ENV"
+fi

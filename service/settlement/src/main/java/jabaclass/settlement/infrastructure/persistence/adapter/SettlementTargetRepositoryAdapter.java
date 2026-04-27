@@ -1,12 +1,15 @@
 package jabaclass.settlement.infrastructure.persistence.adapter;
 
-import org.springframework.stereotype.Repository;
-
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
-import jabaclass.settlement.application.dto.SettlementTargetSummary;
-import jabaclass.settlement.domain.model.SettlementTarget;
+import org.springframework.stereotype.Repository;
+
+import jabaclass.settlement.application.dto.SellerSalesAmount;
+import jabaclass.settlement.domain.model.settlement.SettlementTarget;
+import jabaclass.settlement.domain.model.settlement.SettlementTargetCalculationStatus;
+import jabaclass.settlement.domain.model.settlement.SettlementTargetType;
 import jabaclass.settlement.domain.repository.SettlementTargetRepository;
 import jabaclass.settlement.infrastructure.persistence.SettlementTargetJpaRepository;
 import lombok.RequiredArgsConstructor;
@@ -18,46 +21,56 @@ public class SettlementTargetRepositoryAdapter implements SettlementTargetReposi
 	private final SettlementTargetJpaRepository settlementTargetJpaRepository;
 
 	@Override
-	public SettlementTarget save(SettlementTarget settlementTarget) {
-		return settlementTargetJpaRepository.save(settlementTarget);
-	}
-
-	@Override
 	public List<SettlementTarget> saveAll(List<SettlementTarget> settlementTargets) {
 		return settlementTargetJpaRepository.saveAll(settlementTargets);
 	}
 
 	@Override
-	public boolean existsByPaymentId(UUID paymentId) {
-		return settlementTargetJpaRepository.existsByPaymentId(paymentId);
+	public SettlementTarget save(SettlementTarget settlementTarget) {
+		return settlementTargetJpaRepository.save(settlementTarget);
 	}
 
 	@Override
-	public boolean existsByRefundId(UUID refundId) {
-		return settlementTargetJpaRepository.existsByRefundId(refundId);
+	public Optional<SettlementTarget> findByPaymentIdAndTargetType(UUID paymentId, SettlementTargetType targetType) {
+		return settlementTargetJpaRepository.findByPaymentIdAndTargetType(paymentId, targetType);
 	}
 
 	@Override
-	public List<SettlementTarget> findBySettlementMonth(String settlementMonth) {
-		return settlementTargetJpaRepository.findBySettlementMonth(settlementMonth);
+	public Optional<SettlementTarget> findByRefundId(UUID refundId) {
+		return settlementTargetJpaRepository.findByRefundId(refundId);
 	}
 
 	@Override
-	public List<SettlementTarget> findBySettlementMonthAndSellerId(String settlementMonth, UUID sellerId) {
-		return settlementTargetJpaRepository.findBySettlementMonthAndSellerId(settlementMonth, sellerId);
+	public List<SettlementTarget> findAllByIds(List<UUID> ids) {
+		if (ids == null || ids.isEmpty()) {
+			return List.of();
+		}
+
+		return settlementTargetJpaRepository.findByIdIn(ids);
 	}
 
 	@Override
-	public List<SettlementTargetSummary> findSummaryBySettlementMonth(String settlementMonth) {
-		return settlementTargetJpaRepository.findSummaryBySettlementMonth(settlementMonth)
-			.stream()
-			.map(it -> new SettlementTargetSummary(
-				it.getSellerId(),
-				it.getSettlementMonth(),
-				it.getTotalSettlementAmount(),
-				it.getTargetCount(),
-				it.getOrderCount()
-			))
+	public List<SettlementTarget> findBySettlementMonthAndCalculationStatus(
+		String settlementMonth,
+		SettlementTargetCalculationStatus calculationStatus
+	) {
+		return settlementTargetJpaRepository.findBySettlementMonthAndCalculationStatus(settlementMonth, calculationStatus);
+	}
+
+	@Override
+	public List<SellerSalesAmount> sumSettlementBaseAmountBySellerIdsAndSettlementMonths(
+		List<UUID> sellerIds,
+		List<String> settlementMonths
+	) {
+		if (sellerIds == null || sellerIds.isEmpty() || settlementMonths == null || settlementMonths.isEmpty()) {
+			return List.of();
+		}
+
+		return settlementTargetJpaRepository.sumSettlementBaseAmountBySellerIdsAndSettlementMonths(
+				sellerIds,
+				settlementMonths
+			).stream()
+			.map(it -> new SellerSalesAmount(it.getSellerId(), it.getSalesAmount()))
 			.toList();
 	}
 }

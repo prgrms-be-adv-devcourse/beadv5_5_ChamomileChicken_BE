@@ -16,7 +16,7 @@ public class OutboxService {
 
 	private final OutboxEventRepository outboxEventRepository;
 
-	@Transactional(transactionManager = "productTransactionManager")
+	@Transactional
 	public List<OutboxEvent> findAndMarkSending(LocalDateTime threshold, int limit) {
 		List<OutboxEvent> events = outboxEventRepository.findProcessableEvents(threshold, limit);
 		for (OutboxEvent event : events) {
@@ -28,19 +28,19 @@ public class OutboxService {
 		return events;
 	}
 
-	@Transactional(transactionManager = "productTransactionManager")
+	@Transactional
 	public void markPublished(OutboxEvent event) {
 		event.markPublished();
 		outboxEventRepository.save(event);
 	}
 
-	@Transactional(transactionManager = "productTransactionManager")
+	@Transactional
 	public void markFailed(OutboxEvent event) {
 		event.markFailed();
 		outboxEventRepository.save(event);
 	}
 
-	@Transactional(transactionManager = "productTransactionManager")
+	@Transactional
 	public void retry(OutboxEvent event) {
 		event.increaseRetry();
 		event.markPending();

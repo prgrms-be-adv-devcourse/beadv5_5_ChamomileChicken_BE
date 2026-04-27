@@ -1,41 +1,48 @@
 package jabaclass.settlement.infrastructure.persistence;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
-import jabaclass.settlement.domain.model.SettlementTarget;
+import jabaclass.settlement.domain.model.settlement.SettlementTarget;
+import jabaclass.settlement.domain.model.settlement.SettlementTargetCalculationStatus;
 
 public interface SettlementTargetJpaRepository extends JpaRepository<SettlementTarget, UUID> {
 
-	boolean existsByPaymentId(UUID paymentId);
+	java.util.Optional<SettlementTarget> findByPaymentIdAndTargetType(
+		UUID paymentId,
+		jabaclass.settlement.domain.model.settlement.SettlementTargetType targetType
+	);
 
-	boolean existsByRefundId(UUID refundId);
+	java.util.Optional<SettlementTarget> findByRefundId(UUID refundId);
 
-	List<SettlementTarget> findBySettlementMonth(String settlementMonth);
+	List<SettlementTarget> findByIdIn(List<UUID> ids);
 
-	List<SettlementTarget> findBySettlementMonthAndSellerId(String settlementMonth, UUID sellerId);
+	List<SettlementTarget> findBySettlementMonthAndCalculationStatus(
+		String settlementMonth,
+		SettlementTargetCalculationStatus calculationStatus
+	);
 
 	@Query("""
-        select
-            st.sellerId as sellerId,
-            st.settlementMonth as settlementMonth,
-            sum(st.settlementAmount) as totalSettlementAmount,
-            count(st.id) as targetCount,
-            count(distinct st.orderId) as orderCount
-        from SettlementTarget st
-        where st.settlementMonth = :settlementMonth
-        group by st.sellerId, st.settlementMonth
-        """)
-	List<SettlementTargetSummaryProjection> findSummaryBySettlementMonth(String settlementMonth);
+		select
+			st.sellerId as sellerId,
+			coalesce(sum(st.settlementBaseAmount), 0) as salesAmount
+		from SettlementTarget st
+		where st.sellerId in :sellerIds
+		  and st.settlementMonth in :settlementMonths
+		group by st.sellerId
+		""")
+	List<SellerSalesAmountProjection> sumSettlementBaseAmountBySellerIdsAndSettlementMonths(
+		@Param("sellerIds") List<UUID> sellerIds,
+		@Param("settlementMonths") List<String> settlementMonths
+	);
 
-	interface SettlementTargetSummaryProjection {
+	interface SellerSalesAmountProjection {
 		UUID getSellerId();
-		String getSettlementMonth();
-		java.math.BigDecimal getTotalSettlementAmount();
-		Long getTargetCount();
-		Long getOrderCount();
+		BigDecimal getSalesAmount();
 	}
 }

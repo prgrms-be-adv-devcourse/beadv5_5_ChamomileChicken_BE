@@ -36,6 +36,10 @@ public class CurrentUserArgumentResolver implements HandlerMethodArgumentResolve
 		}
 		String userId = request.getHeader(USER_ID_HEADER);
 		if (userId == null || userId.isBlank()) {
+			CurrentUser currentUser = parameter.getParameterAnnotation(CurrentUser.class);
+			if (currentUser != null && !currentUser.required()) {
+				return null;
+			}
 			throw new AuthException(AuthErrorCode.INVALID_REQUEST);
 		}
 		return UUID.fromString(userId);

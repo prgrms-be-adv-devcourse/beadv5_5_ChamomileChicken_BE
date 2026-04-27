@@ -27,10 +27,10 @@ import jabaclass.product.presentation.controller.ProductRestController;
 import jabaclass.product.presentation.dto.request.CreateProductRequestDto;
 import jabaclass.product.presentation.dto.request.SearchProductRequestDto;
 import jabaclass.product.presentation.dto.request.UpdateProductRequestDto;
-import jabaclass.product.presentation.dto.respose.DeleteProductResposeDto;
-import jabaclass.product.presentation.dto.respose.ProductResponseDto;
-import jabaclass.product.presentation.dto.respose.ProductUserResponseDto;
-import jabaclass.product.presentation.dto.respose.SearchProductResponseDto;
+import jabaclass.product.presentation.dto.response.DeleteProductResponseDto;
+import jabaclass.product.presentation.dto.response.ProductResponseDto;
+import jabaclass.product.presentation.dto.response.ProductUserResponseDto;
+import jabaclass.product.presentation.dto.response.SearchProductResponseDto;
 
 @ExtendWith(MockitoExtension.class)
 class ProductRestControllerTest {
@@ -130,10 +130,10 @@ class ProductRestControllerTest {
 
 	@Test
 	void 상품_삭제_요청이_들어오면_유스케이스를_호출한다() {
-		DeleteProductResposeDto response = DeleteProductResposeDto.from(PRODUCT_ID, ProductStatus.DISABLE);
+		DeleteProductResponseDto response = DeleteProductResponseDto.from(PRODUCT_ID, ProductStatus.DISABLE);
 		given(productUseCase.delete(PRODUCT_ID, SELLER_ID)).willReturn(response);
 
-		ResponseEntity<ApiResponseDto<DeleteProductResposeDto>> result = productRestController.delete(PRODUCT_ID, SELLER_ID);
+		ResponseEntity<ApiResponseDto<DeleteProductResponseDto>> result = productRestController.delete(PRODUCT_ID, SELLER_ID);
 
 		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
 		assertThat(result.getBody()).isNotNull();
@@ -157,14 +157,14 @@ class ProductRestControllerTest {
 
 	@Test
 	void 상품_단건_조회_요청이_들어오면_유스케이스를_호출한다() {
-		given(productUseCase.searchById(PRODUCT_ID)).willReturn(productResponse);
+		given(productUseCase.searchById(PRODUCT_ID, null)).willReturn(productResponse);
 
-		ResponseEntity<ApiResponseDto<ProductResponseDto>> result = productRestController.searchProduct(PRODUCT_ID);
+		ResponseEntity<ApiResponseDto<ProductResponseDto>> result = productRestController.searchProduct(PRODUCT_ID, null);
 
 		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
 		assertThat(result.getBody()).isNotNull();
 		assertThat(result.getBody().getData()).isEqualTo(productResponse);
-		then(productUseCase).should().searchById(PRODUCT_ID);
+		then(productUseCase).should().searchById(PRODUCT_ID, null);
 	}
 
 	@Test

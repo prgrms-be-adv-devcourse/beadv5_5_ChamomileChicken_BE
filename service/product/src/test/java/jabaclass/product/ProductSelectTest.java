@@ -26,17 +26,17 @@ import org.springframework.test.util.ReflectionTestUtils;
 import jabaclass.product.application.acl.SellerRepository;
 import jabaclass.product.application.exception.BusinessException;
 import jabaclass.product.application.service.ProductService;
+import jabaclass.product.application.usecase.ValidateFileUseCase;
 import jabaclass.product.common.exception.CommonErrorCode;
 import jabaclass.product.domain.model.Product;
 import jabaclass.product.domain.model.status.ProductStatus;
 import jabaclass.product.domain.repository.ProductRepository;
 import jabaclass.product.domain.repository.ProductSearchRepository;
-import jabaclass.product.infrastructure.acl.client.FileConfirmClient;
 import jabaclass.product.infrastructure.acl.dto.response.UserResponseDto;
 import jabaclass.product.infrastructure.elasticsearch.ProductDocument;
 import jabaclass.product.presentation.dto.request.SearchProductRequestDto;
-import jabaclass.product.presentation.dto.respose.ProductResponseDto;
-import jabaclass.product.presentation.dto.respose.SearchProductResponseDto;
+import jabaclass.product.presentation.dto.response.ProductResponseDto;
+import jabaclass.product.presentation.dto.response.SearchProductResponseDto;
 
 @ExtendWith(MockitoExtension.class)
 class ProductSelectTest {
@@ -57,7 +57,7 @@ class ProductSelectTest {
 	private ApplicationEventPublisher publisher;
 
 	@Mock
-	private FileConfirmClient fileConfirmClient;
+	private ValidateFileUseCase validateFileUseCase;
 
 	private static final BigDecimal PRICE = new BigDecimal("1000.50");
 	private static final UUID SELLER_ID = UUID.fromString("123e4567-e89b-12d3-a456-426614174000");
@@ -123,7 +123,7 @@ class ProductSelectTest {
 		given(sellerRepository.findSeller(SELLER_ID))
 			.willReturn(Optional.of(new UserResponseDto(SELLER_ID, "테스트판매자", "SELLER")));
 
-		ProductResponseDto result = productService.searchById(PRODUCT_ID);
+		ProductResponseDto result = productService.searchById(PRODUCT_ID, null);
 
 		assertThat(result.title()).isEqualTo("상품A");
 		then(productRepository).should().findById(PRODUCT_ID);
@@ -133,7 +133,7 @@ class ProductSelectTest {
 	void 특정_상품_조회에_실패한다() {
 		given(productRepository.findById(PRODUCT_ID)).willReturn(Optional.empty());
 
-		assertThatThrownBy(() -> productService.searchById(PRODUCT_ID))
+		assertThatThrownBy(() -> productService.searchById(PRODUCT_ID, null))
 			.isInstanceOf(BusinessException.class)
 			.hasMessage(CommonErrorCode.PRODUCT_NOT_FOUND.getMessage());
 		then(productRepository).should().findById(PRODUCT_ID);

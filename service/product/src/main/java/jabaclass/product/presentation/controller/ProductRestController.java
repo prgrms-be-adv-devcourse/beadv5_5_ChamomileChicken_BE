@@ -22,10 +22,10 @@ import jabaclass.product.common.exception.ApiResponseDto;
 import jabaclass.product.presentation.dto.request.CreateProductRequestDto;
 import jabaclass.product.presentation.dto.request.SearchProductRequestDto;
 import jabaclass.product.presentation.dto.request.UpdateProductRequestDto;
-import jabaclass.product.presentation.dto.respose.DeleteProductResposeDto;
-import jabaclass.product.presentation.dto.respose.ProductResponseDto;
-import jabaclass.product.presentation.dto.respose.ProductUserResponseDto;
-import jabaclass.product.presentation.dto.respose.SearchProductResponseDto;
+import jabaclass.product.presentation.dto.response.DeleteProductResponseDto;
+import jabaclass.product.presentation.dto.response.ProductResponseDto;
+import jabaclass.product.presentation.dto.response.ProductUserResponseDto;
+import jabaclass.product.presentation.dto.response.SearchProductResponseDto;
 import jabaclass.product.presentation.openapi.ProductOpenApi;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -70,9 +70,9 @@ public class ProductRestController implements ProductOpenApi {
 	// 상품 삭제
 	@Override
 	@DeleteMapping("/{productId}")
-	public ResponseEntity<ApiResponseDto<DeleteProductResposeDto>> delete(@PathVariable UUID productId,
+	public ResponseEntity<ApiResponseDto<DeleteProductResponseDto>> delete(@PathVariable UUID productId,
 		@CurrentUser UUID userId) {
-		DeleteProductResposeDto response = productUseCase.delete(productId, userId);
+		DeleteProductResponseDto response = productUseCase.delete(productId, userId);
 
 		return ResponseEntity.ok()
 			.body(ApiResponseDto.success(HttpStatus.OK, "성공적으로 삭제 되었습니다.", response));
@@ -89,11 +89,26 @@ public class ProductRestController implements ProductOpenApi {
 			.body(ApiResponseDto.success(HttpStatus.OK, "성공적으로 전체 검색이 되었습니다.", response));
 	}
 
+	// 내 상품 목록 조회 (SELLER 본인)
+	@Override
+	@GetMapping("/my")
+	public ResponseEntity<ApiResponseDto<SearchProductResponseDto>> searchMyProducts(
+		@ModelAttribute SearchProductRequestDto request,
+		@CurrentUser UUID userId
+	) {
+		SearchProductResponseDto response = productUseCase.searchMy(request, userId);
+		return ResponseEntity.ok()
+			.body(ApiResponseDto.success(HttpStatus.OK, "성공적으로 내 상품 목록을 조회하였습니다.", response));
+	}
+
 	// 특정 상품 검색
 	@Override
 	@GetMapping("/{productId}")
-	public ResponseEntity<ApiResponseDto<ProductResponseDto>> searchProduct(@PathVariable UUID productId) {
-		ProductResponseDto response = productUseCase.searchById(productId);
+	public ResponseEntity<ApiResponseDto<ProductResponseDto>> searchProduct(
+		@PathVariable UUID productId,
+		@CurrentUser(required = false) UUID userId
+	) {
+		ProductResponseDto response = productUseCase.searchById(productId, userId);
 
 		return ResponseEntity.ok()
 			.body(ApiResponseDto.success(HttpStatus.OK, "성공적으로 검색이 되었습니다.", response));

@@ -70,7 +70,7 @@ Kafka 이벤트:
 ```
 Topic:  payment.events
 Header: eventType = PAYMENT_COMPLETED
-Body:   { "eventId": "UUID", "orderId": "UUID" }
+Body:   { "eventId": "UUID", "paymentId": "UUID", "orderId": "UUID", "productId": "UUID", "totalAmount": 10000, "occurredAt": "2026-04-20T12:00:00" }
 ```
 
 ### Order — `PaymentEventsConsumer` → `OrderPaymentResultHandler.onSuccess()`
@@ -81,6 +81,7 @@ Body:   { "eventId": "UUID", "orderId": "UUID" }
 4. 하나의 트랜잭션으로 처리:
    - `order.pay()` → `PENDING → PAID`
    - Outbox 저장 (`ORDER_RESERVATION_CONFIRMED`)
+   - Outbox 저장 (`SETTLEMENT_PAYMENT_COMPLETED`)
    - `processed_events` 저장
 
 Kafka 이벤트:

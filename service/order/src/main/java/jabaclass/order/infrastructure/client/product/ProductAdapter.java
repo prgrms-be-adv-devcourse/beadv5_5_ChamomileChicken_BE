@@ -8,7 +8,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
+import jabaclass.order.application.exception.OrderErrorCode;
 import jabaclass.order.application.port.external.ProductPort;
+import jabaclass.order.common.error.BusinessException;
 import jabaclass.order.infrastructure.client.product.dto.ProductReservationRequestDto;
 import jabaclass.order.infrastructure.client.product.dto.ProductReservationResponseDto;
 import jabaclass.order.infrastructure.client.product.dto.ProductScheduleDateResponseDto;
@@ -45,7 +47,7 @@ public class ProductAdapter implements ProductPort {
 			ProductScheduleDateResponseDto.class
 		);
 		if (response == null) {
-			throw new RuntimeException("스케줄 날짜 조회 실패: " + productScheduleId);
+			throw new BusinessException(OrderErrorCode.EXTERNAL_PRODUCT_ERROR);
 		}
 		return response.startDate();
 	}

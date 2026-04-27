@@ -1,0 +1,70 @@
+package jabaclass.ai.infrastructure.kafka;
+
+import java.nio.charset.StandardCharsets;
+
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.common.header.Header;
+import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.stereotype.Component;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import jabaclass.ai.application.service.ProductEmbeddingSyncService;
+import jabaclass.ai.application.service.UserActivityService;
+import jabaclass.ai.domain.model.ActionType;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
+@Component
+@RequiredArgsConstructor
+@Slf4j
+public class ProductAiEventsConsumer {
+
+	private final ProductEmbeddingSyncService productEmbeddingSyncService;
+	private final UserActivityService userActivityService;
+	private final ObjectMapper objectMapper;
+
+	@KafkaListener(
+		topics = "product.events",
+		groupId = "ai-product-indexer"
+	)
+	public void consume(ConsumerRecord<String, String> record) {
+		Header eventTypeHeader = record.headers().lastHeader("eventType");
+		if (eventTypeHeader == null) {
+			log.error("product.events eventType 헤더가 누락되었습니다. record={}", record);
+			return;
+		}
+		String eventType = new String(eventTypeHeader.value(), StandardCharsets.UTF_8);
+		String message = record.value();
+
+		try {
+			switch (eventType) {
+				case "PRODUCT_AI_SYNCED" -> {
+					ProductAiSyncedEvent event = objectMapper.readValue(message, ProductAiSyncedEvent.class);
+					productEmbeddingSyncService.saveOrUpdate(event);
+					log.debug("AI 임베딩 저장 완료: {}", event.productId());
+				}
+				case "PRODUCT_DELETED" -> {
+					ProductDeletedEvent event = objectMapper.readValue(message, ProductDeletedEvent.class);
+					productEmbeddingSyncService.delete(event.productId());
+					log.debug("AI 임베딩 삭제 완료: {}", event.productId());
+				}
+				case "PRODUCT_VIEWED" -> {
+					ProductViewedEvent event = objectMapper.readValue(message, ProductViewedEvent.class);
+					log.info("상품 조회 이벤트 수신: userId={}, productId={}", event.userId(), event.productId());
+					userActivityService.recordActivity(event.userId(), event.productId(), ActionType.VIEW);
+					log.info("사용자 상품 조회 기록 저장 완료: userId={}, productId={}", event.userId(), event.productId());
+				}
+				case "PRODUCT_WISHLISTED" -> {
+					ProductWishlistedEvent event = objectMapper.readValue(message, ProductWishlistedEvent.class);
+					log.info("상품 찜 이벤트 수신: userId={}, productId={}", event.userId(), event.productId());
+					userActivityService.recordActivity(event.userId(), event.productId(), ActionType.WISHLIST);
+					log.info("사용자 상품 찜 기록 저장 완료: userId={}, productId={}", event.userId(), event.productId());
+				}
+				default -> log.warn("알 수 없는 eventType: {}", eventType);
+			}
+		} catch (Exception e) {
+			throw new RuntimeException("product.events 이벤트 처리 실패: " + eventType, e);
+		}
+	}
+}

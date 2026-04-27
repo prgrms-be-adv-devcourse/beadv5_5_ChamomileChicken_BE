@@ -10,10 +10,12 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import jabaclass.admin.common.dto.ApiResponseDto;
 import jabaclass.admin.user.application.usecase.UserAdminUseCase;
+import jabaclass.admin.user.domain.dto.UserSearchCondition;
 import jabaclass.admin.user.presentation.dto.response.UserAdminResponseDto;
 import lombok.RequiredArgsConstructor;
 
@@ -26,9 +28,15 @@ public class UserAdminController implements UserAdminApi {
 
 	@Override
 	@GetMapping
-	public ResponseEntity<ApiResponseDto<Page<UserAdminResponseDto>>> getUsers(Pageable pageable) {
+	public ResponseEntity<ApiResponseDto<Page<UserAdminResponseDto>>> getUsers(
+		Pageable pageable,
+		@RequestParam(required = false) String role,
+		@RequestParam(required = false) String name,
+		@RequestParam(required = false) String email
+	) {
+		UserSearchCondition condition = new UserSearchCondition(role, name, email);
 		return ResponseEntity.ok(
-			ApiResponseDto.success(HttpStatus.OK, "유저 목록 조회 성공", userAdminUseCase.getUsers(pageable))
+			ApiResponseDto.success(HttpStatus.OK, "유저 목록 조회 성공", userAdminUseCase.getUsers(pageable, condition))
 		);
 	}
 

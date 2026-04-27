@@ -1,11 +1,14 @@
 package jabaclass.admin.order.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.times;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -23,6 +26,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import jabaclass.admin.order.domain.dto.OrderSearchCondition;
 import jabaclass.admin.order.domain.model.Order;
 import jabaclass.admin.order.domain.model.OrderStatus;
 import jabaclass.admin.order.domain.repository.OrderAdminRepository;
@@ -40,34 +44,95 @@ class OrderAdminServiceTest {
 	private OrderAdminService orderAdminService;
 
 	private UUID orderId;
+	private UUID sellerId;
 	private Order order;
 
 	@BeforeEach
 	void setUp() {
 		orderId = UUID.randomUUID();
+		sellerId = UUID.randomUUID();
 		order = new Order();
 		ReflectionTestUtils.setField(order, "id", orderId);
+		ReflectionTestUtils.setField(order, "createdAt", LocalDateTime.of(2025, 4, 1, 12, 0));
 		ReflectionTestUtils.setField(order, "productScheduleId", UUID.randomUUID());
 		ReflectionTestUtils.setField(order, "userId", UUID.randomUUID());
+		ReflectionTestUtils.setField(order, "sellerId", sellerId);
 		ReflectionTestUtils.setField(order, "quantity", 2);
 		ReflectionTestUtils.setField(order, "price", new BigDecimal("100000"));
 		ReflectionTestUtils.setField(order, "status", OrderStatus.PAID);
 	}
 
 	@Test
-	void 전체_주문_목록을_조회한다() {
+	void 조건_없으면_전체_조회_성공() {
 		// given
 		Pageable pageable = PageRequest.of(0, 10);
-		given(orderAdminRepository.findAll(pageable))
+		OrderSearchCondition condition = new OrderSearchCondition(null, null, null, null);
+		given(orderAdminRepository.findAll(any(OrderSearchCondition.class), eq(pageable)))
 			.willReturn(new PageImpl<>(List.of(order)));
 
 		// when
-		Page<OrderAdminResponseDto> result = orderAdminService.getOrders(pageable);
+		Page<OrderAdminResponseDto> result = orderAdminService.getOrders(pageable, condition);
 
 		// then
 		assertThat(result.getContent()).hasSize(1);
 		assertThat(result.getContent().get(0).id()).isEqualTo(orderId);
 		assertThat(result.getContent().get(0).status()).isEqualTo(OrderStatus.PAID);
-		then(orderAdminRepository).should(times(1)).findAll(pageable);
+		assertThat(result.getContent().get(0).sellerId()).isNotNull();
+		assertThat(result.getContent().get(0).createdAt()).isEqualTo(LocalDateTime.of(2025, 4, 1, 12, 0));
+		then(orderAdminRepository).should(times(1)).findAll(any(OrderSearchCondition.class), eq(pageable));
+	}
+
+	@Test
+	void 상태_PAID_필터_조회_성공() {
+		// given
+		Pageable pageable = PageRequest.of(0, 10);
+		OrderSearchCondition condition = new OrderSearchCondition("PAID", null, null, null);
+		given(orderAdminRepository.findAll(any(OrderSearchCondition.class), eq(pageable)))
+			.willReturn(new PageImpl<>(List.of(order)));
+
+		// when
+		Page<OrderAdminResponseDto> result = orderAdminService.getOrders(pageable, condition);
+
+		// then
+		assertThat(result.getContent()).hasSize(1);
+		assertThat(result.getContent().get(0).status()).isEqualTo(OrderStatus.PAID);
+		then(orderAdminRepository).should(times(1)).findAll(any(OrderSearchCondition.class), eq(pageable));
+	}
+
+	@Test
+	void 판매자ID_필터_조회_성공() {
+		// given
+		Pageable pageable = PageRequest.of(0, 10);
+		OrderSearchCondition condition = new OrderSearchCondition(null, sellerId, null, null);
+		given(orderAdminRepository.findAll(any(OrderSearchCondition.class), eq(pageable)))
+			.willReturn(new PageImpl<>(List.of(order)));
+
+		// when
+		Page<OrderAdminResponseDto> result = orderAdminService.getOrders(pageable, condition);
+
+		// then
+		assertThat(result.getContent()).hasSize(1);
+		assertThat(result.getContent().get(0).sellerId()).isEqualTo(sellerId);
+		then(orderAdminRepository).should(times(1)).findAll(any(OrderSearchCondition.class), eq(pageable));
+	}
+
+	@Test
+	void 날짜_범위_필터_조회_성공() {
+		// given
+		Pageable pageable = PageRequest.of(0, 10);
+		LocalDateTime startDate = LocalDateTime.of(2025, 3, 1, 0, 0);
+		LocalDateTime endDate = LocalDateTime.of(2025, 5, 1, 0, 0);
+		OrderSearchCondition condition = new OrderSearchCondition(null, null, startDate, endDate);
+		given(orderAdminRepository.findAll(any(OrderSearchCondition.class), eq(pageable)))
+			.willReturn(new PageImpl<>(List.of(order)));
+
+		// when
+		Page<OrderAdminResponseDto> result = orderAdminService.getOrders(pageable, condition);
+
+		// then
+		assertThat(result.getContent()).hasSize(1);
+		assertThat(result.getContent().get(0).createdAt()).isAfter(startDate);
+		assertThat(result.getContent().get(0).createdAt()).isBefore(endDate);
+		then(orderAdminRepository).should(times(1)).findAll(any(OrderSearchCondition.class), eq(pageable));
 	}
 }

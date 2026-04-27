@@ -51,6 +51,7 @@ public class TokenProvider {
     private String generate(UUID userId, String role, long validity, TokenType tokenType) {
         Date now = new Date();
         return Jwts.builder()
+                .setId(UUID.randomUUID().toString())
                 .claim(CLAIM_USER_ID, userId.toString())
                 .claim(CLAIM_TYPE, tokenType.name())
                 .claim(CLAIM_ROLE, role)
