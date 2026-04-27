@@ -1,6 +1,8 @@
 package jabaclass.apigateway.application.service;
 
+import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 
 import lombok.RequiredArgsConstructor;
 
@@ -20,18 +22,16 @@ public class RbacService {
 	private final GatewayRulesProperties properties;
 
 	public Mono<Boolean> isAllowed(String path, HttpMethod method, String role) {
-		List<GatewayRulesProperties.RbacEntry> matched = properties.rbac().stream()
+		Optional<GatewayRulesProperties.RbacEntry> best = properties.rbac().stream()
 			.filter(e -> e.method().equalsIgnoreCase(method.name())
 				&& PATH_MATCHER.match(e.path(), path))
-			.sorted((a, b) -> b.path().length() - a.path().length())
-			.toList();
+			.max(Comparator.comparingInt(e -> e.path().length()));
 
-		if (matched.isEmpty()) {
+		if (best.isEmpty()) {
 			return Mono.just(true);
 		}
 
-		GatewayRulesProperties.RbacEntry best = matched.get(0);
-		List<String> allowedRoles = best.allowedRoles() == null ? List.of() : best.allowedRoles();
+		List<String> allowedRoles = best.get().allowedRoles() == null ? List.of() : best.get().allowedRoles();
 		boolean allowed = allowedRoles.stream()
 			.anyMatch(r -> role != null && r.equalsIgnoreCase(role));
 
