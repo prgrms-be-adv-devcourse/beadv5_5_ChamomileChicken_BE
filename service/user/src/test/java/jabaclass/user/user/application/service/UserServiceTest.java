@@ -32,6 +32,7 @@ import jabaclass.user.user.domain.model.UserRole;
 import jabaclass.user.user.domain.model.SellerSettlementAccount;
 import jabaclass.user.user.domain.repository.SellerSettlementAccountRepository;
 import jabaclass.user.user.domain.repository.UserRepository;
+import jabaclass.user.user.infrastructure.kafka.UserEventsPublisher;
 import jabaclass.user.user.presentation.dto.request.ChangeMyEmailRequestDto;
 import jabaclass.user.user.presentation.dto.request.RegisterUserRequestDto;
 import jabaclass.user.user.presentation.dto.request.UpsertSellerSettlementAccountRequestDto;
@@ -53,6 +54,9 @@ class UserServiceTest {
 
 	@Mock
 	private SellerSettlementAccountRepository sellerSettlementAccountRepository;
+
+	@Mock
+	private UserEventsPublisher userEventsPublisher;
 
 	private UUID userId;
 	private User user;
