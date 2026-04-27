@@ -12,6 +12,8 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import jabaclass.user.common.error.BusinessException;
 import jabaclass.user.mail.application.usecase.EmailVerificationUseCase;
@@ -23,6 +25,7 @@ import jabaclass.user.user.domain.model.User;
 import jabaclass.user.user.domain.model.UserRole;
 import jabaclass.user.user.domain.repository.SellerSettlementAccountRepository;
 import jabaclass.user.user.domain.repository.UserRepository;
+import jabaclass.user.user.infrastructure.kafka.UserEventsPublisher;
 import jabaclass.user.user.presentation.dto.request.ChangeMyEmailRequestDto;
 import jabaclass.user.user.presentation.dto.request.RegisterUserRequestDto;
 import jabaclass.user.user.presentation.dto.request.UpsertSellerSettlementAccountRequestDto;
@@ -43,6 +46,7 @@ public class UserService implements UserUseCase {
 	private final UserRepository userRepository;
 	private final SellerSettlementAccountRepository sellerSettlementAccountRepository;
 	private final EmailVerificationUseCase emailVerificationUseCase;
+	private final UserEventsPublisher userEventsPublisher;
 
 
 	@Override
@@ -84,7 +88,21 @@ public class UserService implements UserUseCase {
 	@Transactional
 	public void updateMyInfo(UUID userId, UpdateUserRequestDto request) {
 		User user = getUser(userId);
+		boolean nameChanged = !Objects.equals(user.getName(), request.name());
 		user.updateProfile(request.name(), request.phone());
+		if (nameChanged) {
+			String newName = request.name();
+			if (TransactionSynchronizationManager.isSynchronizationActive()) {
+				TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+					@Override
+					public void afterCommit() {
+						userEventsPublisher.publishNameChanged(userId, newName);
+					}
+				});
+			} else {
+				userEventsPublisher.publishNameChanged(userId, newName);
+			}
+		}
 	}
 
 	@Override

@@ -2,7 +2,7 @@
 
 ## 설계 원칙
 
-- 토픽은 **Producer 서비스 기준**으로 1개씩 운영 (총 4개)
+- 토픽은 **Producer 서비스 기준**으로 1개씩 운영 (총 5개)
 - 하나의 토픽 안에서 Kafka **header `eventType`** 으로 이벤트 종류 구분
 - **토픽 생성은 Producer 서비스의 `KafkaTopicConfig`에서만** 담당
 - Consumer는 토픽을 생성하지 않음
@@ -22,6 +22,7 @@
 | 상품 | `product.events` | product-service |
 | 예치금 | `deposit.events` | user-service |
 | 정산 | `settlement.events` | order-service, admin-service |
+| 사용자 | `user.events` | user-service |
 
 ---
 
@@ -66,6 +67,12 @@
 | eventType | 설명 | Consumer |
 |-----------|------|----------|
 | (추후 정의) | | |
+
+### `user.events` (user-service → 여러 서비스)
+
+| eventType | 설명 | Consumer |
+|-----------|------|----------|
+| `USER_NAME_CHANGED` | 사용자 이름 변경 — ES `sellerName` 동기화 | product-service |
 
 ---
 
@@ -140,6 +147,10 @@ Kafka는 같은 파티션 키를 가진 메시지만 순서를 보장한다. 파
 
 모든 `payment.events` 이벤트는 `paymentId`를 파티션 키로 사용한다. 같은 결제의 이벤트(COMPLETED, FAILED, EXPIRED 등)가 항상 같은 파티션에서 처리된다.
 
+### user.events 파티션 키: `userId`
+
+`USER_NAME_CHANGED`는 `userId`를 파티션 키로 사용한다. 동일 사용자의 이름 변경 이벤트가 항상 같은 파티션에서 순서대로 처리된다.
+
 ### Eventual Consistency — 결제 완료 후 즉시 환불 시도 문제
 
 Payment 서비스가 결제를 완료하고 `PAYMENT_COMPLETED`를 Kafka에 발행한 뒤, Order 서비스 컨슈머가 이를 처리해 Order 상태를 `PAID`로 바꾸기까지 짧은 지연이 존재한다.
@@ -160,3 +171,4 @@ Payment 서비스가 결제를 완료하고 `PAYMENT_COMPLETED`를 Kafka에 발�
 | 토픽명 | 용도 | 비고 |
 |--------|------|------|
 | `product.es.index` | product-service 내부 ES 색인 | 외부 서비스 미소비, 독립 운영 |
+| `product.es.index.dlq` | product.es.index DLQ | 3회 재시도 초과 메시지 라우팅 |

@@ -27,4 +27,7 @@ public interface ProductSearchRepository {
 
 	// 판매자 본인 상품 키워드 검색
 	Page<ProductDocument> searchByKeywordAndSellerId(String keyword, String sellerId, Pageable pageable);
+
+	// 판매자명 변경 시 해당 판매자의 모든 ES 문서 sellerName 일괄 업데이트
+	void updateSellerNameForAll(String sellerId, String newName);
 }
