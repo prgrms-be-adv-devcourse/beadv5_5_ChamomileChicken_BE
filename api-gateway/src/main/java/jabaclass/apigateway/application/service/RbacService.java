@@ -24,7 +24,8 @@ public class RbacService {
 		Optional<GatewayRulesProperties.RbacEntry> best = properties.rbac().stream()
 			.filter(e -> e.method().equalsIgnoreCase(method.name())
 				&& PATH_MATCHER.match(e.path(), path))
-			.max(Comparator.comparingInt(e -> e.path().length()));
+			.min(Comparator.comparing(GatewayRulesProperties.RbacEntry::path,
+				PATH_MATCHER.getPatternComparator(path)));
 
 		if (best.isEmpty()) {
 			return Mono.just(true);

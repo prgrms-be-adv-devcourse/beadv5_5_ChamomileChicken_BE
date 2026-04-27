@@ -21,7 +21,7 @@ public record GatewayRulesProperties (
 
 	public record WhitelistEntry(@NotBlank String method, @NotBlank String path) {}
 
-	public record RbacEntry(@NotBlank String method, @NotBlank String path, List<String> allowedRoles) {
+	public record RbacEntry(@NotBlank String method, @NotBlank String path, List<@NotBlank String> allowedRoles) {
 		public RbacEntry {
 			allowedRoles = allowedRoles == null ? List.of() : allowedRoles;
 		}
