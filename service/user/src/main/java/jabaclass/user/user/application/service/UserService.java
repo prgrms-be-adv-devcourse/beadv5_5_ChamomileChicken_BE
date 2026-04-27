@@ -92,12 +92,16 @@ public class UserService implements UserUseCase {
 		user.updateProfile(request.name(), request.phone());
 		if (nameChanged) {
 			String newName = request.name();
-			TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-				@Override
-				public void afterCommit() {
-					userEventsPublisher.publishNameChanged(userId, newName);
-				}
-			});
+			if (TransactionSynchronizationManager.isSynchronizationActive()) {
+				TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+					@Override
+					public void afterCommit() {
+						userEventsPublisher.publishNameChanged(userId, newName);
+					}
+				});
+			} else {
+				userEventsPublisher.publishNameChanged(userId, newName);
+			}
 		}
 	}
 
