@@ -79,8 +79,59 @@ gateway:
     # ...
 ```
 
-정책 변경은 `gateway-rules.yml` 수정 후 롤링 재배포로 반영한다.
-k3s 환경에서는 ConfigMap으로 마운트되며, `kubectl rollout restart`로 무중단 적용한다.
+환경별 로드 방식이 다르다.
+
+| 환경 | 로드 방식 | 파일 위치 |
+|------|-----------|-----------|
+| dev | `spring.config.import: classpath:gateway-rules.yml` | `src/main/resources/gateway-rules.yml` |
+| prod | `spring.config.import: file:/etc/config/gateway-rules.yml` | k3s ConfigMap → Pod 볼륨 마운트 |
+
+**prod 구성 — k3s ConfigMap**
+
+정책 파일은 `.github/k3s/gateway-rules-config.yml`로 관리된다.
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gateway-rules-config
+data:
+  gateway-rules.yml: |
+    gateway:
+      whitelist: ...
+      rbac: ...
+```
+
+`api-gateway-service.yml` Deployment에서 해당 ConfigMap을 `/etc/config`에 마운트한다.
+
+```yaml
+volumeMounts:
+  - mountPath: /etc/config
+    name: gateway-rules
+    readOnly: true
+volumes:
+  - name: gateway-rules
+    configMap:
+      name: gateway-rules-config
+```
+
+**정책 변경 절차 (prod)**
+
+```bash
+# 1. .github/k3s/gateway-rules-config.yml 수정 후
+kubectl apply -f .github/k3s/gateway-rules-config.yml
+
+# 2. Pod 롤링 재시작 (새 ConfigMap 반영)
+kubectl rollout restart deployment/api-gateway-service
+
+# 3. 완료 확인
+kubectl rollout status deployment/api-gateway-service
+
+# 4. 마운트된 파일 검증 (선택)
+kubectl exec -it <pod-name> -- cat /etc/config/gateway-rules.yml
+```
+
+이미지 재빌드 없이 정책만 변경된다. dev는 `src/main/resources/gateway-rules.yml` 수정 후 앱 재시작으로 반영된다.
 
 ---
 
