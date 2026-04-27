@@ -25,6 +25,7 @@ import jabaclass.settlement.domain.model.settlement.SettlementTarget;
 import jabaclass.settlement.domain.model.settlement.SettlementTargetType;
 import jabaclass.settlement.infrastructure.batch.dto.SettlementTargetCalculationBatchItem;
 import jabaclass.settlement.infrastructure.batch.listener.SettlementJobExecutionListener;
+import jabaclass.settlement.infrastructure.batch.listener.SettlementStepPhaseTimingListener;
 import jabaclass.settlement.infrastructure.batch.listener.SettlementStepExecutionListener;
 import jabaclass.settlement.infrastructure.batch.processor.SettlementTargetCalculationItemProcessor;
 import jabaclass.settlement.infrastructure.batch.support.SettlementMonthResolver;
@@ -79,7 +80,8 @@ public class SettlementCalculateJobConfig {
 		@Qualifier("settlementPaymentTargetItemReader") ItemReader<SettlementTarget> settlementTargetItemReader,
 		SettlementTargetCalculationItemProcessor settlementTargetCalculationItemProcessor,
 		SettlementTargetCalculationItemWriter settlementTargetCalculationItemWriter,
-		SettlementStepExecutionListener settlementStepExecutionListener
+		SettlementStepExecutionListener settlementStepExecutionListener,
+		SettlementStepPhaseTimingListener settlementStepPhaseTimingListener
 	) {
 		return new StepBuilder("settlementPaymentTargetCalculationStep", jobRepository)
 			.<SettlementTarget, SettlementTargetCalculationBatchItem>chunk(CHUNK_SIZE)
@@ -88,6 +90,7 @@ public class SettlementCalculateJobConfig {
 			.processor(settlementTargetCalculationItemProcessor)
 			.writer(settlementTargetCalculationItemWriter)
 			.listener(settlementStepExecutionListener)
+			.listener(settlementStepPhaseTimingListener)
 			.build();
 	}
 
@@ -98,7 +101,8 @@ public class SettlementCalculateJobConfig {
 		@Qualifier("settlementRefundTargetItemReader") ItemReader<SettlementTarget> settlementTargetItemReader,
 		SettlementTargetCalculationItemProcessor settlementTargetCalculationItemProcessor,
 		SettlementTargetCalculationItemWriter settlementTargetCalculationItemWriter,
-		SettlementStepExecutionListener settlementStepExecutionListener
+		SettlementStepExecutionListener settlementStepExecutionListener,
+		SettlementStepPhaseTimingListener settlementStepPhaseTimingListener
 	) {
 		return new StepBuilder("settlementRefundTargetCalculationStep", jobRepository)
 			.<SettlementTarget, SettlementTargetCalculationBatchItem>chunk(CHUNK_SIZE)
@@ -107,6 +111,7 @@ public class SettlementCalculateJobConfig {
 			.processor(settlementTargetCalculationItemProcessor)
 			.writer(settlementTargetCalculationItemWriter)
 			.listener(settlementStepExecutionListener)
+			.listener(settlementStepPhaseTimingListener)
 			.build();
 	}
 
