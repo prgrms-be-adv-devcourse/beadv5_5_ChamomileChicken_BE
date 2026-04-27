@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
+import org.springframework.core.task.TaskRejectedException;
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -83,7 +84,16 @@ public class RecommendationService implements RecommendationUseCase {
 		recommendationCacheRepository.save(userId, response);
 
 		// 5. 추천 이유 생성은 비동기로 수행
-		recommendationReasonAsyncService.generateAndCache(userId, userVector, candidates);
+		try {
+			recommendationReasonAsyncService.generateAndCache(userId, userVector, candidates);
+		} catch (TaskRejectedException e) {
+			RecommendationResponseDto failedResponse = new RecommendationResponseDto(
+				RecommendationStatus.FAILED,
+				items
+			);
+			recommendationCacheRepository.save(userId, failedResponse);
+			return failedResponse;
+		}
 
 		// 6. 즉시 반환
 		return response;
