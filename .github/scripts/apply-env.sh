@@ -13,44 +13,28 @@ COMMON_SECRET_CHANGED=false
 SERVICE_CONFIG_CHANGED=false
 SERVICE_SECRET_CHANGED=false
 
-write_if_changed() {
+write_env_file() {
   local target_file="$1"
   local content="${2:-}"
-  local change_flag_name="$3"
+  local applied_flag_name="$3"
 
   if [ -z "$content" ]; then
     echo "Empty content, skipping: $target_file"
     return
   fi
 
-  local temp_file
-  temp_file=$(mktemp)
-
-  printf "%s" "$content" > "$temp_file"
-
-  if [ ! -f "$target_file" ]; then
-    cp "$temp_file" "$target_file"
-    echo "Created: $target_file"
-    CONFIG_CHANGED=true
-    printf -v "$change_flag_name" '%s' "true"
-  elif ! cmp -s "$target_file" "$temp_file"; then
-    cp "$temp_file" "$target_file"
-    echo "Updated: $target_file"
-    CONFIG_CHANGED=true
-    printf -v "$change_flag_name" '%s' "true"
-  else
-    echo "Unchanged: $target_file"
-  fi
-
-  rm -f "$temp_file"
+  printf "%s" "$content" > "$target_file"
+  echo "Applied: $target_file"
+  CONFIG_CHANGED=true
+  printf -v "$applied_flag_name" '%s' "true"
 }
 
-write_if_changed "$ENV_DIR/common_config.env" "${COMMON_CONFIG_ENV:-}" "COMMON_CONFIG_CHANGED"
-write_if_changed "$ENV_DIR/common_secret.env" "${COMMON_SECRET_ENV:-}" "COMMON_SECRET_CHANGED"
+write_env_file "$ENV_DIR/common_config.env" "${COMMON_CONFIG_ENV:-}" "COMMON_CONFIG_CHANGED"
+write_env_file "$ENV_DIR/common_secret.env" "${COMMON_SECRET_ENV:-}" "COMMON_SECRET_CHANGED"
 
 if [ -n "$SERVICE" ]; then
-  write_if_changed "$ENV_DIR/${SERVICE}_config.env" "${SERVICE_CONFIG_ENV:-}" "SERVICE_CONFIG_CHANGED"
-  write_if_changed "$ENV_DIR/${SERVICE}_secret.env" "${SERVICE_SECRET_ENV:-}" "SERVICE_SECRET_CHANGED"
+  write_env_file "$ENV_DIR/${SERVICE}_config.env" "${SERVICE_CONFIG_ENV:-}" "SERVICE_CONFIG_CHANGED"
+  write_env_file "$ENV_DIR/${SERVICE}_secret.env" "${SERVICE_SECRET_ENV:-}" "SERVICE_SECRET_CHANGED"
 fi
 
 [ -f "$ENV_DIR/common_secret.env" ] && chmod 600 "$ENV_DIR/common_secret.env"
