@@ -15,5 +15,5 @@ public record GatewayRulesProperties (List<WhitelistEntry> whitelist, List<RbacE
 
 	public record WhitelistEntry(String method, String path) {}
 
-	public record RbacEntry(String method, String path, String allowedRoles) {}
+	public record RbacEntry(String method, String path, List<String> allowedRoles) {}
 }
