@@ -17,6 +17,9 @@ spring:
 openai:
   api:
     key: ${OPENAI_API_KEY:}
+  http:
+    connect-timeout: 2s
+    read-timeout: 8s
 
 management:
   endpoints:
