@@ -29,8 +29,13 @@ public class UserEventsPublisher {
 			String payload = objectMapper.writeValueAsString(new UserNameChangedEvent(userId, newName));
 			ProducerRecord<String, String> record = new ProducerRecord<>(USER_EVENTS_TOPIC, userId.toString(), payload);
 			record.headers().add(new RecordHeader("eventType", "USER_NAME_CHANGED".getBytes(StandardCharsets.UTF_8)));
-			kafkaTemplate.send(record);
-			log.info("USER_NAME_CHANGED 이벤트 발행: userId={}", userId);
+			kafkaTemplate.send(record).whenComplete((result, ex) -> {
+				if (ex != null) {
+					log.error("USER_NAME_CHANGED 이벤트 발행 실패: userId={}", userId, ex);
+				} else {
+					log.info("USER_NAME_CHANGED 이벤트 발행: userId={}", userId);
+				}
+			});
 		} catch (JsonProcessingException e) {
 			log.error("USER_NAME_CHANGED 이벤트 직렬화 실패: userId={}", userId, e);
 		}

@@ -392,8 +392,7 @@ spring:
 - [x] `UserEventsPublisher` (user-service) — `updateMyInfo`에서 이름 변경 감지 시 `user.events`에 `USER_NAME_CHANGED` 발행
 - [x] `UserEventsConsumer` (product-service) — `user.events` 수신 후 `updateSellerNameForAll` 호출
 - [x] `ProductSearchRepository.updateSellerNameForAll()` — 인터페이스 추가
-- [x] `ProductSearchRepositoryAdapter.updateSellerNameForAll()` — sellerId로 ES 문서 전체 조회 후 sellerName bulkIndex
-- [x] `ProductDocument` — `@Builder(toBuilder = true)` 추가 (sellerName 교체 시 불변 복사)
+- [x] `ProductSearchRepositoryAdapter.updateSellerNameForAll()` — `updateByQuery` + Painless 스크립트로 sellerId 조건의 모든 ES 문서 sellerName 일괄 업데이트
 
 ### 인프라
 - [x] `docker-compose.yml`에 Elasticsearch 9.0.3 컨테이너 추가 (nori 플러그인 포함)

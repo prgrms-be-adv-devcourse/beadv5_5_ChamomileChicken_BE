@@ -24,7 +24,7 @@ import java.util.Map;
 
 import org.springframework.data.elasticsearch.core.mapping.IndexCoordinates;
 import org.springframework.data.elasticsearch.core.query.UpdateQuery;
-import org.springframework.data.elasticsearch.core.reindex.ByQueryResponse;
+import org.springframework.data.elasticsearch.core.query.ByQueryResponse;
 
 @Repository
 @RequiredArgsConstructor

@@ -12,6 +12,8 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import jabaclass.user.common.error.BusinessException;
 import jabaclass.user.mail.application.usecase.EmailVerificationUseCase;
@@ -89,7 +91,13 @@ public class UserService implements UserUseCase {
 		boolean nameChanged = !Objects.equals(user.getName(), request.name());
 		user.updateProfile(request.name(), request.phone());
 		if (nameChanged) {
-			userEventsPublisher.publishNameChanged(userId, request.name());
+			String newName = request.name();
+			TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+				@Override
+				public void afterCommit() {
+					userEventsPublisher.publishNameChanged(userId, newName);
+				}
+			});
 		}
 	}
 
