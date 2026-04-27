@@ -11,8 +11,6 @@ public interface UserRepository {
 
 	Optional<User> findById(UUID userId);
 
-	boolean existsByEmail(String email);
-
 	User save(User user);
 
 	User saveAndFlush(User user);
@@ -23,7 +21,9 @@ public interface UserRepository {
 
 	List<User> findAllByIds(List<UUID> userIds);
 
-	Optional<User> findByEmail(String email);
-
 	Optional<User> findBySocialTypeAndSocialId(SocialType socialType, String socialId);
+
+	boolean existsByEmailAndSocialType(String email, SocialType socialType);
+
+	Optional<User> findByEmailAndSocialType(String email, SocialType socialType);
 }

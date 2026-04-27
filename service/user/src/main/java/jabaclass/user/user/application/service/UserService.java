@@ -51,7 +51,7 @@ public class UserService implements UserUseCase {
 
 	@Override
 	public void checkEmailDuplicate(String email) {
-		if (userRepository.existsByEmail(email)) {
+		if (userRepository.existsByEmailAndSocialType(email, SocialType.SYSTEM)) {
 			throw new BusinessException(UserErrorCode.EMAIL_ALREADY_EXISTS);
 		}
 	}
@@ -270,7 +270,7 @@ public class UserService implements UserUseCase {
 		Throwable cause = e;
 		while (cause != null) {
 			String message = cause.getMessage();
-			if (message != null && message.contains("uk_users_email")) {
+			if (message != null && message.contains("uk_users_email_social_type")) {
 				return true;
 			}
 			cause = cause.getCause();
