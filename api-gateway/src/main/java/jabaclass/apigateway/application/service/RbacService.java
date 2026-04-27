@@ -1,7 +1,6 @@
 package jabaclass.apigateway.application.service;
 
 import java.util.Comparator;
-import java.util.List;
 import java.util.Optional;
 
 import lombok.RequiredArgsConstructor;
@@ -31,9 +30,12 @@ public class RbacService {
 			return Mono.just(true);
 		}
 
-		List<String> allowedRoles = best.get().allowedRoles() == null ? List.of() : best.get().allowedRoles();
-		boolean allowed = allowedRoles.stream()
-			.anyMatch(r -> role != null && r.equalsIgnoreCase(role));
+		if (role == null) {
+			return Mono.just(false);
+		}
+
+		boolean allowed = best.get().allowedRoles().stream()
+			.anyMatch(r -> r.equalsIgnoreCase(role));
 
 		return Mono.just(allowed);
 	}
