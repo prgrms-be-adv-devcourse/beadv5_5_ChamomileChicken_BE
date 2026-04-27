@@ -1,36 +1,46 @@
 package jabaclass.settlement.infrastructure.batch.writer;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.batch.infrastructure.item.Chunk;
 import org.springframework.batch.infrastructure.item.ItemWriter;
 
-import jabaclass.settlement.application.dto.SettlementTargetSummary;
-import jabaclass.settlement.application.service.calculation.SettlementCalculateService;
-import jabaclass.settlement.domain.model.grade.SellerGradePolicy;
+import jabaclass.settlement.application.dto.MonthlySettlementAggregationResult;
+import jabaclass.settlement.domain.model.grade.SellerGrade;
+import jabaclass.settlement.domain.model.settlement.Settlement;
+import jabaclass.settlement.domain.repository.SellerGradeRepository;
+import jabaclass.settlement.domain.repository.SettlementRepository;
 import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
-public class SettlementAggregationItemWriter implements ItemWriter<SettlementTargetSummary> {
+public class SettlementAggregationItemWriter implements ItemWriter<MonthlySettlementAggregationResult> {
 
-	private final SettlementCalculateService settlementCalculateService;
-	private final String settlementMonth;
-	private final List<SellerGradePolicy> activeSellerGradePolicies;
+	private final SettlementRepository settlementRepository;
+	private final SellerGradeRepository sellerGradeRepository;
 
 	@Override
-	public void write(Chunk<? extends SettlementTargetSummary> items) {
-		List<SettlementTargetSummary> summaries = items.getItems().stream()
-			.map(SettlementTargetSummary.class::cast)
+	public void write(Chunk<? extends MonthlySettlementAggregationResult> items) {
+		List<MonthlySettlementAggregationResult> results = items.getItems().stream()
+			.map(MonthlySettlementAggregationResult.class::cast)
 			.toList();
 
-		if (summaries.isEmpty()) {
+		if (results.isEmpty()) {
 			return;
 		}
 
-		settlementCalculateService.createAndSaveMonthlySettlements(
-			summaries,
-			settlementMonth,
-			activeSellerGradePolicies
-		);
+		List<Settlement> settlements = new ArrayList<>();
+		List<SellerGrade> sellerGrades = new ArrayList<>();
+		for (MonthlySettlementAggregationResult result : results) {
+			settlements.add(result.settlement());
+			sellerGrades.add(result.sellerGrade());
+		}
+
+		if (!sellerGrades.isEmpty()) {
+			sellerGradeRepository.saveAll(sellerGrades);
+		}
+		if (!settlements.isEmpty()) {
+			settlementRepository.saveAll(settlements);
+		}
 	}
 }

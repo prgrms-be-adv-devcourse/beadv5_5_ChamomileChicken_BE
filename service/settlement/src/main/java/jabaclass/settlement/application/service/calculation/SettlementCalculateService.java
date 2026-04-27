@@ -1,19 +1,16 @@
 package jabaclass.settlement.application.service.calculation;
 
 import java.math.BigDecimal;
-import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import jabaclass.settlement.application.dto.AppliedPromotion;
-import jabaclass.settlement.application.dto.SellerSalesAmount;
+import jabaclass.settlement.application.dto.MonthlySettlementAggregationItem;
+import jabaclass.settlement.application.dto.MonthlySettlementAggregationResult;
 import jabaclass.settlement.application.dto.SettlementTargetSummary;
 import jabaclass.settlement.application.exception.BusinessException;
 import jabaclass.settlement.application.exception.CommonErrorCode;
@@ -48,6 +45,7 @@ public class SettlementCalculateService implements SettlementCalculateUseCase {
 	private final SettlementPromotionResolver settlementPromotionResolver;
 	private final SettlementRefundCalculationService settlementRefundCalculationService;
 	private final SettlementFeeCalculator settlementFeeCalculator;
+	private final SettlementAggregationItemAssembler settlementAggregationItemAssembler;
 
 	@Override
 	@Transactional
@@ -179,89 +177,62 @@ public class SettlementCalculateService implements SettlementCalculateUseCase {
 			return MonthlySettlementCreationResult.empty();
 		}
 
-		List<UUID> sellerIds = summaries.stream()
-			.map(SettlementTargetSummary::sellerId)
-			.distinct()
-			.toList();
-		Map<UUID, Settlement> existingSettlementBySellerId = settlementRepository.findBySettlementMonthAndSellerIds(
-				settlementMonth,
-				sellerIds
-			).stream()
-			.collect(Collectors.toMap(Settlement::getSellerId, Function.identity(), (existing, replacement) -> existing));
-		Map<UUID, BigDecimal> recentThreeMonthSalesAmountBySellerId =
-			findRecentThreeMonthSalesAmountBySellerIds(sellerIds, settlementMonth);
-		Map<UUID, List<SettlementTargetCalculation>> calculationsBySellerId =
-			settlementTargetCalculationRepository.findBySettlementMonthAndSellerIds(settlementMonth, sellerIds)
-				.stream()
-				.collect(Collectors.groupingBy(SettlementTargetCalculation::getSellerId));
-		Map<UUID, SellerGrade> sellerGradeBySellerId = sellerGradeRepository.findBySellerIds(sellerIds)
-			.stream()
-			.collect(Collectors.toMap(SellerGrade::getSellerId, Function.identity(), (existing, replacement) -> existing));
+		List<MonthlySettlementAggregationItem> aggregationItems =
+			settlementAggregationItemAssembler.assemble(summaries, settlementMonth);
 
 		List<Settlement> settlements = new ArrayList<>();
 		List<SellerGrade> sellerGrades = new ArrayList<>();
-		for (SettlementTargetSummary summary : summaries) {
-			Settlement existingSettlement = existingSettlementBySellerId.get(summary.sellerId());
-			if (existingSettlement != null && !existingSettlement.canRecalculate()) {
-				continue;
-			}
-
-			BigDecimal recentThreeMonthSalesAmount = recentThreeMonthSalesAmountBySellerId.getOrDefault(
-				summary.sellerId(),
-				BigDecimal.ZERO
-			);
-			SellerGradePolicy sellerGradePolicy = resolveSellerGradePolicy(
-				recentThreeMonthSalesAmount,
+		for (MonthlySettlementAggregationItem aggregationItem : aggregationItems) {
+			MonthlySettlementAggregationResult result = aggregateMonthlySettlement(
+				aggregationItem,
 				activeSellerGradePolicies
 			);
-			List<SettlementTargetCalculation> sellerTargets = calculationsBySellerId.getOrDefault(
-				summary.sellerId(),
-				List.of()
-			);
-
-			settlements.add(resolveMonthlySettlement(
-				summary,
-				settlementMonth,
-				recentThreeMonthSalesAmount,
-				sellerGradePolicy,
-				sellerTargets,
-				existingSettlement
-			));
-			sellerGrades.add(resolveSellerGrade(
-				summary.sellerId(),
-				sellerGradePolicy,
-				settlementMonth,
-				sellerGradeBySellerId
-			));
+			if (result == null) {
+				continue;
+			}
+			settlements.add(result.settlement());
+			sellerGrades.add(result.sellerGrade());
 		}
 
 		return new MonthlySettlementCreationResult(settlements, sellerGrades);
 	}
 
-	public List<SellerGradePolicy> findActiveSellerGradePolicies() {
-		return sellerGradePolicyRepository.findActivePolicies();
-	}
-
-	private Map<UUID, BigDecimal> findRecentThreeMonthSalesAmountBySellerIds(
-		List<UUID> sellerIds,
-		String settlementMonth
+	public MonthlySettlementAggregationResult aggregateMonthlySettlement(
+		MonthlySettlementAggregationItem item,
+		List<SellerGradePolicy> activeSellerGradePolicies
 	) {
-		YearMonth baseMonth = YearMonth.parse(settlementMonth);
-		List<String> recentThreeMonths = List.of(
-			baseMonth.minusMonths(2).toString(),
-			baseMonth.minusMonths(1).toString(),
-			baseMonth.toString()
+		SettlementTargetSummary summary = item.summary();
+		Settlement existingSettlement = item.existingSettlement();
+
+		if (existingSettlement != null && !existingSettlement.canRecalculate()) {
+			return null;
+		}
+
+		SellerGradePolicy sellerGradePolicy = resolveSellerGradePolicy(
+			item.recentThreeMonthSalesAmount(),
+			activeSellerGradePolicies
 		);
 
-		return settlementTargetRepository.sumSettlementBaseAmountBySellerIdsAndSettlementMonths(
-				sellerIds,
-				recentThreeMonths
-			).stream()
-			.collect(Collectors.toMap(
-				SellerSalesAmount::sellerId,
-				SellerSalesAmount::salesAmount,
-				BigDecimal::add
-			));
+		return new MonthlySettlementAggregationResult(
+			resolveMonthlySettlement(
+				summary,
+				summary.settlementMonth(),
+				item.recentThreeMonthSalesAmount(),
+				sellerGradePolicy,
+				item.calculations(),
+				existingSettlement
+			),
+			resolveSellerGrade(
+				summary.sellerId(),
+				sellerGradePolicy,
+				summary.settlementMonth(),
+				item.sellerGrade()
+			)
+		);
+	}
+
+	public List<SellerGradePolicy> findActiveSellerGradePolicies() {
+		return sellerGradePolicyRepository.findActivePolicies();
 	}
 
 	private Settlement resolveMonthlySettlement(
@@ -321,16 +292,15 @@ public class SettlementCalculateService implements SettlementCalculateUseCase {
 		UUID sellerId,
 		SellerGradePolicy sellerGradePolicy,
 		String settlementMonth,
-		Map<UUID, SellerGrade> sellerGradeBySellerId
+		SellerGrade existingSellerGrade
 	) {
-		SellerGrade sellerGrade = sellerGradeBySellerId.getOrDefault(
-			sellerId,
-			SellerGrade.create(
+		SellerGrade sellerGrade = existingSellerGrade != null
+			? existingSellerGrade
+			: SellerGrade.create(
 				sellerId,
 				sellerGradePolicy.getId(),
 				settlementMonth
-			)
-		);
+			);
 
 		sellerGrade.update(
 			sellerGradePolicy.getId(),

@@ -1,5 +1,6 @@
 package jabaclass.settlement.infrastructure.batch.config;
 
+import java.util.List;
 import java.util.Map;
 
 import jakarta.persistence.EntityManagerFactory;
@@ -11,6 +12,8 @@ import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.Step;
 import org.springframework.batch.core.step.builder.StepBuilder;
 import org.springframework.batch.infrastructure.item.ItemReader;
+import org.springframework.batch.infrastructure.item.ItemProcessor;
+import org.springframework.batch.infrastructure.item.ItemStreamReader;
 import org.springframework.batch.infrastructure.item.database.JpaPagingItemReader;
 import org.springframework.batch.infrastructure.item.database.builder.JpaPagingItemReaderBuilder;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -19,15 +22,23 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.transaction.PlatformTransactionManager;
 
+import jabaclass.settlement.application.dto.MonthlySettlementAggregationItem;
+import jabaclass.settlement.application.dto.MonthlySettlementAggregationResult;
 import jabaclass.settlement.application.dto.SettlementTargetSummary;
+import jabaclass.settlement.application.service.calculation.SettlementAggregationItemAssembler;
 import jabaclass.settlement.application.service.calculation.SettlementCalculateService;
+import jabaclass.settlement.domain.model.grade.SellerGradePolicy;
+import jabaclass.settlement.domain.repository.SellerGradeRepository;
+import jabaclass.settlement.domain.repository.SettlementRepository;
 import jabaclass.settlement.domain.model.settlement.SettlementTarget;
 import jabaclass.settlement.domain.model.settlement.SettlementTargetType;
 import jabaclass.settlement.infrastructure.batch.dto.SettlementTargetCalculationBatchItem;
 import jabaclass.settlement.infrastructure.batch.listener.SettlementJobExecutionListener;
 import jabaclass.settlement.infrastructure.batch.listener.SettlementStepPhaseTimingListener;
 import jabaclass.settlement.infrastructure.batch.listener.SettlementStepExecutionListener;
+import jabaclass.settlement.infrastructure.batch.processor.SettlementAggregationItemProcessor;
 import jabaclass.settlement.infrastructure.batch.processor.SettlementTargetCalculationItemProcessor;
+import jabaclass.settlement.infrastructure.batch.reader.SettlementAggregationItemReader;
 import jabaclass.settlement.infrastructure.batch.support.SettlementMonthResolver;
 import jabaclass.settlement.infrastructure.batch.writer.SettlementAggregationItemWriter;
 import jabaclass.settlement.infrastructure.batch.writer.SettlementTargetCalculationItemWriter;
@@ -166,22 +177,26 @@ public class SettlementCalculateJobConfig {
 	public Step settlementAggregationStep(
 		JobRepository jobRepository,
 		PlatformTransactionManager transactionManager,
-		ItemReader<SettlementTargetSummary> settlementAggregationReader,
+		ItemStreamReader<MonthlySettlementAggregationItem> settlementAggregationReader,
+		ItemProcessor<MonthlySettlementAggregationItem, MonthlySettlementAggregationResult> settlementAggregationProcessor,
 		SettlementAggregationItemWriter settlementAggregationWriter,
-		SettlementStepExecutionListener settlementStepExecutionListener
+		SettlementStepExecutionListener settlementStepExecutionListener,
+		SettlementStepPhaseTimingListener settlementStepPhaseTimingListener
 	) {
 		return new StepBuilder("settlementAggregationStep", jobRepository)
-			.<SettlementTargetSummary, SettlementTargetSummary>chunk(CHUNK_SIZE)
+			.<MonthlySettlementAggregationItem, MonthlySettlementAggregationResult>chunk(CHUNK_SIZE)
 			.transactionManager(transactionManager)
 			.reader(settlementAggregationReader)
+			.processor(settlementAggregationProcessor)
 			.writer(settlementAggregationWriter)
 			.listener(settlementStepExecutionListener)
+			.listener(settlementStepPhaseTimingListener)
 			.build();
 	}
 
 	@Bean
 	@StepScope
-	public JpaPagingItemReader<SettlementTargetSummary> settlementAggregationReader(
+	public JpaPagingItemReader<SettlementTargetSummary> settlementAggregationSummaryReader(
 		EntityManagerFactory entityManagerFactory,
 		@Value("#{jobParameters['settlementMonth']}") String settlementMonthParam
 	) {
@@ -197,15 +212,35 @@ public class SettlementCalculateJobConfig {
 
 	@Bean
 	@StepScope
-	public SettlementAggregationItemWriter settlementAggregationWriter(
-		SettlementCalculateService settlementCalculateService,
+	public ItemStreamReader<MonthlySettlementAggregationItem> settlementAggregationReader(
+		JpaPagingItemReader<SettlementTargetSummary> settlementAggregationSummaryReader,
+		SettlementAggregationItemAssembler settlementAggregationItemAssembler,
 		@Value("#{jobParameters['settlementMonth']}") String settlementMonthParam
 	) {
 		String settlementMonth = SettlementMonthResolver.resolve(settlementMonthParam);
-		return new SettlementAggregationItemWriter(
-			settlementCalculateService,
+		return new SettlementAggregationItemReader(
+			settlementAggregationSummaryReader,
+			settlementAggregationItemAssembler,
 			settlementMonth,
-			settlementCalculateService.findActiveSellerGradePolicies()
+			CHUNK_SIZE
 		);
+	}
+
+	@Bean
+	@StepScope
+	public ItemProcessor<MonthlySettlementAggregationItem, MonthlySettlementAggregationResult> settlementAggregationProcessor(
+		SettlementCalculateService settlementCalculateService
+	) {
+		List<SellerGradePolicy> activeSellerGradePolicies = settlementCalculateService.findActiveSellerGradePolicies();
+		return new SettlementAggregationItemProcessor(settlementCalculateService, activeSellerGradePolicies);
+	}
+
+	@Bean
+	@StepScope
+	public SettlementAggregationItemWriter settlementAggregationWriter(
+		SettlementRepository settlementRepository,
+		SellerGradeRepository sellerGradeRepository
+	) {
+		return new SettlementAggregationItemWriter(settlementRepository, sellerGradeRepository);
 	}
 }
