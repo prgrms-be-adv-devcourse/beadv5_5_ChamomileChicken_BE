@@ -31,8 +31,8 @@ public class RbacService {
 		}
 
 		GatewayRulesProperties.RbacEntry best = matched.get(0);
-		boolean allowed = Arrays.stream(best.allowedRoles().split(","))
-			.map(String::trim)
+		List<String> allowedRoles = best.allowedRoles() == null ? List.of() : best.allowedRoles();
+		boolean allowed = allowedRoles.stream()
 			.anyMatch(r -> role != null && r.equalsIgnoreCase(role));
 
 		return Mono.just(allowed);
