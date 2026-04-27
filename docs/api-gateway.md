@@ -75,7 +75,9 @@ gateway:
   rbac:
     - method: POST
       path: /api/v1/products
-      allowedRoles: SELLER,ADMIN
+      allowedRoles: 
+        - SELLER
+        - ADMIN
     # ...
 ```
 
