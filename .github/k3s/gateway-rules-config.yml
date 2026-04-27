@@ -38,58 +38,89 @@ data:
       rbac:
         - method: POST
           path: /api/v1/products
-          allowedRoles: SELLER,ADMIN
+          allowedRoles:
+            - SELLER
+            - ADMIN
         - method: PUT
           path: /api/v1/products/*
-          allowedRoles: SELLER,ADMIN
+          allowedRoles:
+            - SELLER
+            - ADMIN
         - method: DELETE
           path: /api/v1/products/*
-          allowedRoles: SELLER,ADMIN
+          allowedRoles:
+            - SELLER
+            - ADMIN
         - method: GET
           path: /api/v1/products/my
-          allowedRoles: SELLER
+          allowedRoles:
+            - SELLER
         - method: POST
           path: /api/v1/products/*/schedules
-          allowedRoles: SELLER,ADMIN
+          allowedRoles:
+            - SELLER
+            - ADMIN
         - method: PUT
           path: /api/v1/products/*/schedules/*
-          allowedRoles: SELLER,ADMIN
+          allowedRoles:
+            - SELLER
+            - ADMIN
         - method: DELETE
           path: /api/v1/products/*/schedules/*
-          allowedRoles: SELLER,ADMIN
+          allowedRoles:
+            - SELLER
+            - ADMIN
         - method: PUT
           path: /api/v1/users/me/seller-settlement-account
-          allowedRoles: SELLER,ADMIN
+          allowedRoles:
+            - SELLER
+            - ADMIN
         - method: GET
           path: /api/v1/settlements
-          allowedRoles: SELLER,ADMIN
+          allowedRoles:
+            - SELLER
+            - ADMIN
         - method: GET
           path: /api/v1/settlements/ready
-          allowedRoles: SELLER,ADMIN
+          allowedRoles:
+            - SELLER
+            - ADMIN
         - method: GET
           path: /api/v1/settlements/*
-          allowedRoles: SELLER,ADMIN
+          allowedRoles:
+            - SELLER
+            - ADMIN
         - method: GET
           path: /api/v1/settlements/me
-          allowedRoles: SELLER,ADMIN
+          allowedRoles:
+            - SELLER
+            - ADMIN
         - method: GET
           path: /api/v1/settlements/me/*/details
-          allowedRoles: SELLER,ADMIN
+          allowedRoles:
+            - SELLER
+            - ADMIN
         - method: POST
           path: /api/v1/internal-batch/settlements/calculate
-          allowedRoles: ADMIN
+          allowedRoles:
+            - ADMIN
         - method: POST
           path: /api/v1/internal-batch/settlements/transfer
-          allowedRoles: ADMIN
+          allowedRoles:
+            - ADMIN
         - method: GET
           path: /api/v1/admins/**
-          allowedRoles: ADMIN
+          allowedRoles:
+            - ADMIN
         - method: POST
           path: /api/v1/admins/**
-          allowedRoles: ADMIN
+          allowedRoles:
+            - ADMIN
         - method: PATCH
           path: /api/v1/admins/**
-          allowedRoles: ADMIN
+          allowedRoles:
+            - ADMIN
         - method: DELETE
           path: /api/v1/admins/**
-          allowedRoles: ADMIN
+          allowedRoles:
+            - ADMIN
