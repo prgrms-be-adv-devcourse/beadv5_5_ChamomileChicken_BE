@@ -243,13 +243,13 @@ jobs:
         run: |
           set -euo pipefail
 
-          if [[ "${COMMON_CONFIG_CHANGED:-false}" == "true" ]]; then
+          if [[ "${{ inputs.apply_common_config }}" == "true" ]]; then
             kubectl create configmap common-config \
               --from-env-file="$ENV_DIR/common_config.env" \
               --dry-run=client -o yaml | kubectl apply -f -
           fi
 
-          if [[ "${COMMON_SECRET_CHANGED:-false}" == "true" ]]; then
+          if [[ "${{ inputs.apply_common_secret }}" == "true" ]]; then
             kubectl create secret generic common-secret \
               --from-env-file="$ENV_DIR/common_secret.env" \
               --dry-run=client -o yaml | kubectl apply -f -
@@ -258,13 +258,13 @@ jobs:
           apply_service_resources() {
             local service_name="$1"
 
-            if [[ -f "$ENV_DIR/${service_name}_config.env" ]]; then
+            if [[ "${{ inputs.apply_service_config }}" == "true" ]]; then
               kubectl create configmap "${service_name}-config" \
                 --from-env-file="$ENV_DIR/${service_name}_config.env" \
                 --dry-run=client -o yaml | kubectl apply -f -
             fi
 
-            if [[ -f "$ENV_DIR/${service_name}_secret.env" ]]; then
+            if [[ "${{ inputs.apply_service_secret }}" == "true" ]]; then
               kubectl create secret generic "${service_name}-secret" \
                 --from-env-file="$ENV_DIR/${service_name}_secret.env" \
                 --dry-run=client -o yaml | kubectl apply -f -
@@ -282,7 +282,7 @@ jobs:
               ;;
           esac
 
-      - name: Show detected env changes
+      - name: Show selected env apply results
         shell: bash
         run: |
           echo "CONFIG_CHANGED=${CONFIG_CHANGED:-false}"
@@ -328,23 +328,31 @@ jobs:
         run: |
           set -euo pipefail
 
-          if [[ "${COMMON_CONFIG_CHANGED:-false}" == "true" ]]; then
+          if [[ "${{ inputs.apply_common_config }}" == "true" ]]; then
             kubectl get configmap common-config -o yaml
           fi
 
-          if [[ "${COMMON_SECRET_CHANGED:-false}" == "true" ]]; then
+          if [[ "${{ inputs.apply_common_secret }}" == "true" ]]; then
             kubectl get secret common-secret -o yaml
           fi
 
           case "${{ steps.select_env.outputs.service_name }}" in
             admin|ai|api-gateway|order|payment|product|settlement|user)
-              kubectl get configmap "${{ steps.select_env.outputs.service_name }}-config" -o yaml || true
-              kubectl get secret "${{ steps.select_env.outputs.service_name }}-secret" -o yaml || true
+              if [[ "${{ inputs.apply_service_config }}" == "true" ]]; then
+                kubectl get configmap "${{ steps.select_env.outputs.service_name }}-config" -o yaml || true
+              fi
+              if [[ "${{ inputs.apply_service_secret }}" == "true" ]]; then
+                kubectl get secret "${{ steps.select_env.outputs.service_name }}-secret" -o yaml || true
+              fi
               ;;
             all)
               for service_name in admin ai api-gateway order payment product settlement user; do
-                kubectl get configmap "${service_name}-config" -o yaml || true
-                kubectl get secret "${service_name}-secret" -o yaml || true
+                if [[ "${{ inputs.apply_service_config }}" == "true" ]]; then
+                  kubectl get configmap "${service_name}-config" -o yaml || true
+                fi
+                if [[ "${{ inputs.apply_service_secret }}" == "true" ]]; then
+                  kubectl get secret "${service_name}-secret" -o yaml || true
+                fi
               done
               ;;
           esac
