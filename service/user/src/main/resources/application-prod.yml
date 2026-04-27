@@ -81,7 +81,9 @@ spring:
             enable: ${MAIL_SMTP_STARTTLS:true}
 
 cookie:
-  secure: true
+#  https 도메인 구매 후 수정
+#  secure: true
+  secure: false
 
 oauth2:
   redirect-uri: ${FRONTEND_SERVICE_URL:http://3.37.179.13:30080}/oauth2/callback
