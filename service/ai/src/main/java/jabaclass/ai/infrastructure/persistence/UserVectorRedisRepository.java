@@ -4,7 +4,6 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -15,7 +14,6 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Repository;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import jabaclass.ai.domain.model.UserVector;
@@ -84,36 +82,37 @@ public class UserVectorRedisRepository implements UserVectorCacheRepository {
 
 	@Override
 	public Set<UUID> getExcludedProductIds(UUID userId) {
-		String value = redisTemplate.opsForValue().get(excludeKey(userId));
-		if (value == null) {
+		Set<String> members = redisTemplate.opsForSet().members(excludeKey(userId));
+		if (members == null) {
 			return null;
 		}
 
-		try {
-			List<UUID> excluded = objectMapper.readValue(value, new TypeReference<List<UUID>>() {
-			});
-			return new LinkedHashSet<>(excluded);
-		} catch (JsonProcessingException e) {
-			throw new IllegalStateException("excluded product ids 역직렬화 실패", e);
-		}
+		return members.stream()
+			.map(UUID::fromString)
+			.collect(java.util.stream.Collectors.toCollection(java.util.LinkedHashSet::new));
 	}
 
 	@Override
 	public void saveExcludedProductIds(UUID userId, Set<UUID> excludedProductIds) {
-		try {
-			String value = objectMapper.writeValueAsString(excludedProductIds == null ? Set.of() : excludedProductIds);
-			redisTemplate.opsForValue().set(excludeKey(userId), value, TTL);
-		} catch (JsonProcessingException e) {
-			throw new IllegalStateException("excluded product ids 직렬화 실패", e);
+		String key = excludeKey(userId);
+		redisTemplate.delete(key);
+
+		if (excludedProductIds == null || excludedProductIds.isEmpty()) {
+			return;
 		}
+
+		String[] members = excludedProductIds.stream()
+			.map(UUID::toString)
+			.toArray(String[]::new);
+		redisTemplate.opsForSet().add(key, members);
+		redisTemplate.expire(key, TTL);
 	}
 
 	@Override
 	public void addExcludedProductId(UUID userId, UUID productId) {
-		Set<UUID> excludedProductIds = getExcludedProductIds(userId);
-		Set<UUID> updated = excludedProductIds == null ? new LinkedHashSet<>() : new LinkedHashSet<>(excludedProductIds);
-		updated.add(productId);
-		saveExcludedProductIds(userId, updated);
+		String key = excludeKey(userId);
+		redisTemplate.opsForSet().add(key, productId.toString());
+		redisTemplate.expire(key, TTL);
 	}
 
 	@Override
