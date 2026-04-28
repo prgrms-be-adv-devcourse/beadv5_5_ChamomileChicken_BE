@@ -86,6 +86,8 @@ public class AuthService
         String accessToken = tokenProvider.generateAccessToken(user.getId(), user.getRole());
         String refreshToken = tokenProvider.generateRefreshToken(user.getId(), user.getRole());
 
+        user.updateRefreshToken(refreshToken);
+
         redisTemplate.opsForValue().set(
             "refresh:" + user.getId(),
             refreshToken,
@@ -107,16 +109,30 @@ public class AuthService
         UUID userId = jwtProvider.getUserId(claims);
         String role = jwtProvider.getRole(claims);
 
-        String stored = redisTemplate.opsForValue().get("refresh:" + userId);
+        String stored;
+
+        try {
+            stored = redisTemplate.opsForValue().get("refresh:" + userId);
+        } catch (Exception e) {
+            log.warn("[AUTH] Redis 장애, DB fallback. userId={}", userId);
+            stored = null;
+        }
 
         if (stored == null) {
-            throw new AuthException(AuthErrorCode.ALREADY_LOGGED_OUT);
+            User fallbackUser = userRepository.findById(userId)
+                .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
+            if (fallbackUser.getRefreshToken() == null) {
+                throw new AuthException(AuthErrorCode.ALREADY_LOGGED_OUT);
+            }
+
+            stored = fallbackUser.getRefreshToken();
         }
 
         if (!stored.equals(refreshToken)) {
             User targetuser = userRepository.findById(userId)
                 .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
             targetuser.forceLogout();
+            targetuser.updateRefreshToken(null);
 
             redisTemplate.opsForValue().set(
                 FORCE_LOGOUT_PREFIX + userId,
@@ -138,6 +154,10 @@ public class AuthService
         String newAccessToken = tokenProvider.generateAccessToken(userId, userRole);
         String newRefreshToken = tokenProvider.generateRefreshToken(userId, userRole);
 
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
+        user.updateRefreshToken(newRefreshToken);
+
         redisTemplate.opsForValue().set("refresh:" + userId, newRefreshToken,
             Duration.ofMillis(refreshTokenValidity));
 
@@ -147,6 +167,11 @@ public class AuthService
     @Override
     @Transactional
     public void logout(UUID userId, String accessToken) {
+
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
+        user.updateRefreshToken(null);
+
         redisTemplate.delete("refresh:" + userId);
 
         try {
@@ -189,6 +214,7 @@ public class AuthService
         User user = userRepository.findById(userId)
             .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
         user.forceLogout();
+        user.updateRefreshToken(null);
 
         redisTemplate.opsForValue().set(
             FORCE_LOGOUT_PREFIX + userId,
