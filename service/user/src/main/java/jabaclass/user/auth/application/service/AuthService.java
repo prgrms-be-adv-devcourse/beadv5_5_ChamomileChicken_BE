@@ -387,6 +387,22 @@ public class AuthService
         log.info("[AUTH] 로그인 성공. userId={}, ip={}", user.getId(), clientIp);
     }
 
+    @Transactional
+    public TokenResult issueOAuth2Tokens(UUID userId, UserRole role) {
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
+
+        String accessToken = tokenProvider.generateAccessToken(userId, role);
+        String refreshToken = tokenProvider.generateRefreshToken(userId, role);
+
+        user.updateRefreshToken(refreshToken);
+        executeWriteWithCb(() -> redisTemplate.opsForValue().set(
+            "refresh:" + userId, refreshToken, Duration.ofMillis(refreshTokenValidity)
+        ), "refresh:" + userId);
+
+        return new TokenResult(accessToken, refreshToken);
+    }
+
     private static String sha256(String input) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
