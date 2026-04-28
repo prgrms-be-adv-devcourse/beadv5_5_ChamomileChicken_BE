@@ -1,6 +1,6 @@
 package jabaclass.user.auth.presentation.dto.response;
 
-public record TokenStatusResult(boolean valid, String reason) {
+public record TokenStatusResult(boolean tokenValid, String reason) {
 
 	public static TokenStatusResult valid() {
 		return new TokenStatusResult(true, null);

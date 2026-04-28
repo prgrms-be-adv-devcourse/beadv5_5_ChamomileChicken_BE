@@ -211,7 +211,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 					return tokenStatusClient.check(token, userId, iat)
 						.retryWhen(Retry.fixedDelay(1, Duration.ofMillis(100)))
 						.flatMap(status -> {
-							if (!status.valid()) {
+							if (!status.tokenValid()) {
 								log.warn("[GATEWAY] Fallback 차단. reason={}, userId={}", status.reason(), userId);
 								return onError(exchange, JwtErrorCode.INVALID_TOKEN);
 							}
