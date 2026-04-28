@@ -84,7 +84,7 @@ class UserVectorServiceTest {
 	}
 
 	@Test
-	void 조회와_주문_모두_제외목록에_추가한다() {
+	void 조회는_제외목록에_넣지_않고_주문만_제외목록에_추가한다() {
 		UserVector cached = new UserVector(new float[768]);
 		UserVectorProfile profile = new UserVectorProfile(cached, LocalDateTime.now().minusHours(1), 2);
 		float[] embedding = new float[768];
@@ -96,7 +96,7 @@ class UserVectorServiceTest {
 		userVectorService.updateOnActivity(USER_ID, PRODUCT_ID, ActionType.VIEW);
 		userVectorService.updateOnActivity(USER_ID, PRODUCT_ID, ActionType.ORDER);
 
-		then(userVectorCacheRepository).should(org.mockito.Mockito.times(2))
+		then(userVectorCacheRepository).should(org.mockito.Mockito.times(1))
 			.addExcludedProductId(USER_ID, PRODUCT_ID);
 	}
 
