@@ -234,14 +234,29 @@ public class AuthService
         user.forceLogout();
         user.updateRefreshToken(null);
 
-        redisTemplate.opsForValue().set(
-            FORCE_LOGOUT_PREFIX + userId,
-            LocalDateTime.now().toString(),
-            Duration.ofMillis(accessTokenValidity)
-        );
-        redisTemplate.delete("refresh:" + userId);
-        redisTemplate.delete(THEFT_REPORT_PREFIX + token);
-        log.warn("[AUTH] 본인 아님 신고 처리 완료. userId={}", userId);
+		try {
+			redisTemplate.opsForValue().set(
+				FORCE_LOGOUT_PREFIX + userId,
+				LocalDateTime.now().toString(),
+				Duration.ofMillis(accessTokenValidity)
+			);
+		} catch (Exception e) {
+            log.warn("[AUTH] Redis force_logout 캐싱 실패, DB에는 저장됨. userId={}", userId);
+		}
+
+		try {
+			redisTemplate.delete("refresh:" + userId);
+		} catch (Exception e) {
+            log.warn("[AUTH] Redis delete 실패, 무시. key=refresh:{}", userId);
+        }
+
+		try {
+			redisTemplate.delete(THEFT_REPORT_PREFIX + token);
+		} catch (Exception e) {
+            log.warn("[AUTH] Redis delete 실패, 무시. key=theft_report:{}", token);
+		}
+
+		log.warn("[AUTH] 본인 아님 신고 처리 완료. userId={}", userId);
     }
 
     @Override
