@@ -70,8 +70,9 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
     private static final String BLACKLIST_PREFIX = "blacklist:";
     private static final String FORCE_LOGOUT_PREFIX = "force_logout:";
 	private static final Duration WHITELIST_TIMEOUT = Duration.ofSeconds(2);
-	private static final Duration OPTIONAL_AUTH_ENRICHMENT_TIMEOUT = Duration.ofMillis(200);
-	private static final Duration REQUIRED_AUTH_BLACKLIST_TIMEOUT = Duration.ofSeconds(2);
+	private static final Duration OPTIONAL_AUTH_ENRICHMENT_TIMEOUT = Duration.ofMillis(300);
+	private static final Duration REQUIRED_AUTH_BLACKLIST_TIMEOUT = Duration.ofMillis(300);
+	private static final Duration FORCED_LOGOUT_TIMEOUT = Duration.ofMillis(300);
 	private static final Duration RBAC_TIMEOUT = Duration.ofSeconds(3);
 
 	private static final byte[] FORBIDDEN_BODY =
@@ -282,7 +283,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 					return Mono.just(TokenCheckResult.BLACKLISTED);
 				}
 				return redisTemplate.opsForValue().get(FORCE_LOGOUT_PREFIX + userId)
-					.timeout(Duration.ofMillis(200))
+					.timeout(FORCED_LOGOUT_TIMEOUT)
 					.defaultIfEmpty("")
 					.map(forceLogoutTime -> {
 						if (forceLogoutTime.isEmpty()) return TokenCheckResult.OK;

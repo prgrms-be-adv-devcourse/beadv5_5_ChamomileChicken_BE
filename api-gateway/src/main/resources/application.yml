@@ -94,10 +94,11 @@ resilience4j:
     instances:
       redis-auth:
         sliding-window-type: COUNT_BASED
-        sliding-window-size: 10
-        failure-rate-threshold: 50
+        sliding-window-size: 3
+        minimum-number-of-calls: 1
+        failure-rate-threshold: 34
         wait-duration-in-open-state: 30s
-        permitted-number-of-calls-in-half-open-state: 5
+        permitted-number-of-calls-in-half-open-state: 2
 
 internal:
   secret: ${USER_INTERNAL_SECRET}
