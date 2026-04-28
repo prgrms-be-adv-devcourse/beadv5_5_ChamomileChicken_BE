@@ -130,7 +130,8 @@ public class AuthService
         }
 
         if (!stored.equals(refreshToken)) {
-            User targetuser = userRepository.findById(userId)...;
+            User targetuser = userRepository.findById(userId)
+                .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
             targetuser.forceLogout();
             targetuser.updateRefreshToken(null);
 
