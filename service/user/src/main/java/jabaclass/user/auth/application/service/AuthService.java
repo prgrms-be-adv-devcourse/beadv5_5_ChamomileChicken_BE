@@ -81,8 +81,8 @@ public class AuthService
 
     @PostConstruct
     void init() {
-        this.redisReadCb = circuitBreakerRegistry.circuitBreaker("redis-read");
-        this.redisWriteCb = circuitBreakerRegistry.circuitBreaker("redis-write");
+        this.redisReadCb = circuitBreakerRegistry.circuitBreaker("redis-read", "redis-read");
+        this.redisWriteCb = circuitBreakerRegistry.circuitBreaker("redis-write", "redis-write");
     }
 
     @Override
@@ -109,7 +109,7 @@ public class AuthService
 		return new TokenResult(accessToken, refreshToken);
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = AuthException.class)
     @Override
     public TokenResult reissue(String refreshToken) {
         Claims claims = jwtProvider.parseClaims(refreshToken);
