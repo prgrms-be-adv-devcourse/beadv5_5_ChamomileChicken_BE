@@ -111,34 +111,3 @@ spec:
       nodePort: 30100
       protocol: TCP
   type: NodePort
----
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: api-gateway-ingress
-spec:
-  ingressClassName: traefik
-  rules:
-    - http:
-        paths:
-          - path: /api
-            pathType: Prefix
-            backend:
-              service:
-                name: api-gateway-service
-                port:
-                  number: 8080
-          - path: /oauth2
-            pathType: Prefix
-            backend:
-              service:
-                name: api-gateway-service
-                port:
-                  number: 8080
-          - path: /login/oauth2
-            pathType: Prefix
-            backend:
-              service:
-                name: api-gateway-service
-                port:
-                  number: 8080
