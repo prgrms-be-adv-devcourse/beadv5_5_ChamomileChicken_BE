@@ -89,13 +89,17 @@ public class AuthService
 
         user.updateRefreshToken(refreshToken);
 
-        redisTemplate.opsForValue().set(
-            "refresh:" + user.getId(),
-            refreshToken,
-            Duration.ofMillis(refreshTokenValidity)
-        );
+		try {
+			redisTemplate.opsForValue().set(
+				"refresh:" + user.getId(),
+				refreshToken,
+				Duration.ofMillis(refreshTokenValidity)
+			);
+		} catch (Exception e) {
+            log.warn("[AUTH] Redis refresh token 캐싱 실패, DB에는 저장됨. userId={}", user.getId());
+        }
 
-        return new TokenResult(accessToken, refreshToken);
+		return new TokenResult(accessToken, refreshToken);
     }
 
     @Transactional
@@ -372,12 +376,17 @@ public class AuthService
         if (isNewDevice) {
             log.warn("[AUTH] 새 기기 로그인 감지. userId={}, ip={}", user.getId(), clientIp);
             String theftReportToken = UUID.randomUUID().toString();
-            redisTemplate.opsForValue().set(
-                THEFT_REPORT_PREFIX + theftReportToken,
-                user.getId().toString(),
-                Duration.ofMillis(refreshTokenValidity)
-            );
-            sendSecurityAlertAsync(user.getEmail(), user.getName(), clientIp, userAgent, theftReportToken);
+			try {
+				redisTemplate.opsForValue().set(
+					THEFT_REPORT_PREFIX + theftReportToken,
+					user.getId().toString(),
+					Duration.ofMillis(refreshTokenValidity)
+				);
+			} catch (Exception e) {
+                log.warn("[AUTH] 새 기기 보안 알림 등록 실패, 로그인 계속 진행. userId={}", userId);
+            }
+
+			sendSecurityAlertAsync(user.getEmail(), user.getName(), clientIp, userAgent, theftReportToken);
         }
 
         user.updateLastLogin(clientIp, userAgent);
