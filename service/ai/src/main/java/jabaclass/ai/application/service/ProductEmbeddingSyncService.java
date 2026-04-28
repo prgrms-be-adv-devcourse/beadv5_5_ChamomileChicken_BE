@@ -4,6 +4,8 @@ import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import jabaclass.ai.domain.repository.ProductEmbeddingRepository;
 import jabaclass.ai.domain.repository.RecommendationCacheRepository;
@@ -45,14 +47,31 @@ public class ProductEmbeddingSyncService {
 				embedding
 			)
 		);
-		userVectorCacheRepository.deleteAllProfiles();
-		recommendationCacheRepository.deleteAll();
+		invalidateRecommendationCachesAfterCommit();
 	}
 
 	@Transactional
 	public void delete(UUID productId) {
 		productEmbeddingRepository.deleteByProductId(productId);
-		userVectorCacheRepository.deleteAllProfiles();
-		recommendationCacheRepository.deleteAll();
+		invalidateRecommendationCachesAfterCommit();
+	}
+
+	private void invalidateRecommendationCachesAfterCommit() {
+		Runnable invalidateTask = () -> {
+			userVectorCacheRepository.deleteAllProfiles();
+			recommendationCacheRepository.deleteAll();
+		};
+
+		if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+			invalidateTask.run();
+			return;
+		}
+
+		TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+			@Override
+			public void afterCommit() {
+				invalidateTask.run();
+			}
+		});
 	}
 }
