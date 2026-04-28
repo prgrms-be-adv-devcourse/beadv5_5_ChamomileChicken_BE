@@ -82,8 +82,7 @@ spring:
 
 cookie:
   #  https 도메인 구매 후 수정
-  #  secure: true
-  secure: false
+  secure: true
 
 oauth2:
   redirect-uri: ${FRONTEND_SERVICE_URL:https://jabaclass.store}/oauth2/callback
