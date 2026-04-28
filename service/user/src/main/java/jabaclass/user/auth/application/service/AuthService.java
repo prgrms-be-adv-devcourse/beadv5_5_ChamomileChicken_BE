@@ -225,9 +225,15 @@ public class AuthService
     @Override
     @Transactional
     public void reportTheft(String token) {
-        String userIdStr = redisTemplate.opsForValue().get(THEFT_REPORT_PREFIX + token);
+		String userIdStr = null;
+		try {
+			userIdStr = redisTemplate.opsForValue().get(THEFT_REPORT_PREFIX + token);
+		} catch (Exception e) {
+            log.warn("[AUTH] Redis 장애, theft_report 조회 실패. 만료 처리.");
+            throw new AuthException(AuthErrorCode.THEFT_REPORT_TOKEN_EXPIRED);
+		}
 
-        if (userIdStr == null) {
+		if (userIdStr == null) {
             throw new AuthException(AuthErrorCode.THEFT_REPORT_TOKEN_EXPIRED);
         }
 
