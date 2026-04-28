@@ -20,6 +20,11 @@ import org.springframework.data.elasticsearch.client.elc.NativeQuery;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Map;
+
+import org.springframework.data.elasticsearch.core.mapping.IndexCoordinates;
+import org.springframework.data.elasticsearch.core.query.UpdateQuery;
+import org.springframework.data.elasticsearch.core.query.ByQueryResponse;
 
 @Repository
 @RequiredArgsConstructor
@@ -98,6 +103,20 @@ public class ProductSearchRepositoryAdapter implements ProductSearchRepository {
 		SearchHits<ProductDocument> hits = elasticsearchOperations.search(query, ProductDocument.class);
 		List<ProductDocument> content = hits.stream().map(SearchHit::getContent).toList();
 		return new PageImpl<>(content, pageable, hits.getTotalHits());
+	}
+
+	@Override
+	public void updateSellerNameForAll(String sellerId, String newName) {
+		CriteriaQuery criteriaQuery = new CriteriaQuery(new Criteria("sellerId").is(sellerId));
+
+		UpdateQuery updateQuery = UpdateQuery.builder(criteriaQuery)
+			.withScript("ctx._source.sellerName = params.newName")
+			.withParams(Map.of("newName", newName))
+			.build();
+
+		ByQueryResponse response = elasticsearchOperations.updateByQuery(
+			updateQuery, IndexCoordinates.of("products"));
+		log.info("ES sellerName 업데이트 완료: sellerId={}, 업데이트 건수={}", sellerId, response.getUpdated());
 	}
 
 	@Override

@@ -13,7 +13,7 @@
 | 사용자 벡터 생성 | 행동 이력과 상품 임베딩을 합성해 사용자 취향 벡터 생성 |
 | 상품 임베딩 관리 | 상품 이벤트를 받아 OpenAI 임베딩 생성 및 갱신 |
 | 후보 탐색 | pgvector 코사인 유사도 기반 Top-K 후보 검색 |
-| 추천 이유 생성 | OpenAI Chat Completions로 추천 이유 생성 |
+| 추천 이유 생성 | OpenAI Chat Completions로 추천 이유를 비동기 생성 |
 | 캐시 | 사용자 벡터 및 추천 결과를 Redis에 저장 |
 
 ---
@@ -46,6 +46,7 @@ Controller
 - 행동 가중치는 `VIEW=1.0`, `WISHLIST=2.0`, `ORDER=3.0`입니다.
 - 추천 후보가 없으면 인기 상품 fallback 추천으로 내려갑니다.
 - 추천 결과는 Redis에 20분, 사용자 벡터는 Redis에 1시간 캐시됩니다.
+- 추천 응답 상태는 `PENDING`, `COMPLETED`, `FAILED`입니다.
 - 상품 임베딩은 PostgreSQL `pgvector` 확장을 전제로 `product_embeddings` 테이블에 저장됩니다.
 - OpenAI는 임베딩 생성과 추천 이유 생성 두 용도로 사용됩니다.
 
@@ -79,6 +80,7 @@ presentation/controller/
 
 application/service/
   RecommendationService.java
+  RecommendationReasonAsyncService.java
   UserVectorService.java
   UserActivityService.java
   ProductEmbeddingSyncService.java
@@ -129,9 +131,18 @@ infrastructure/kafka/
 | 추천 조회 | Redis 추천 캐시 확인 |
 | 사용자 벡터 확보 | 캐시 조회 후 없으면 새로 생성 |
 | 후보 검색 | pgvector 유사도 기반 Top-K 추천 후보 조회 |
-| 추천 이유 생성 | OpenAI Chat Completions 호출 |
+| 1차 응답 생성 | 기본 추천 이유로 `PENDING` 응답 생성 |
+| 비동기 작업 시작 | 추천 이유 생성 워커 호출 |
 | fallback 추천 | 후보가 없으면 인기 상품 기반 추천 생성 |
-| 추천 캐시 저장 | 최종 추천 결과를 Redis에 저장 |
+| 추천 캐시 저장 | `PENDING`, `COMPLETED`, `FAILED` 상태를 Redis에 저장 |
+
+### RecommendationReasonAsyncService
+
+| 기능 | 설명 |
+|------|------|
+| 비동기 추천 이유 생성 | OpenAI Chat Completions 호출 |
+| 성공 처리 | GPT 추천 이유로 캐시를 `COMPLETED` 갱신 |
+| 실패 처리 | 기본 추천 이유로 캐시를 `FAILED` 갱신 |
 
 ### UserVectorService
 
@@ -167,6 +178,7 @@ infrastructure/kafka/
 RecommendationController
   -> RecommendationService.recommend(userId)
     -> RecommendationRedisRepository.get()
+    -> 캐시 있으면 즉시 반환
     -> UserVectorService.getOrCreate()
       -> UserVectorRedisRepository.get()
       -> 없으면 UserActivityRepository.findByUserId()
@@ -174,9 +186,14 @@ RecommendationController
       -> 사용자 벡터 생성 및 정규화
       -> UserVectorRedisRepository.save()
     -> CandidateSearchRepository.findTopK()
-    -> OpenAiClient.generateRecommendationReasons()
-    -> RecommendationRedisRepository.save()
+    -> RecommendationRedisRepository.save(PENDING)
+    -> RecommendationReasonAsyncService.generateAndCache()
     -> RecommendationResponseDto 반환
+
+RecommendationReasonAsyncService
+  -> OpenAiClient.generateRecommendationReasons()
+  -> 성공 시 RecommendationRedisRepository.save(COMPLETED)
+  -> 실패 시 RecommendationRedisRepository.save(FAILED)
 ```
 
 ### 추천 fallback 흐름
@@ -186,7 +203,7 @@ RecommendationService.recommend()
   -> 후보 없음
   -> CandidateSearchRepository.findPopular()
   -> "현재 인기 있는 클래스입니다." 사유로 응답 생성
-  -> Redis 캐시 저장
+  -> RecommendationResponseDto 반환
 ```
 
 > 추천 캐시 전체 무효화는 Redis `SCAN` 결과를 배치 단위로 삭제해 애플리케이션 메모리 사용량과 대량 `DEL` 호출로 인한 Redis 부하를 줄입니다.
@@ -261,7 +278,7 @@ LIMIT ?
 
 ### 3. 추천 이유 생성
 
-후보 목록이 정해지면 OpenAI Chat Completions에 배치 프롬프트를 보내고, 각 상품별 추천 사유를 JSON으로 반환받습니다.
+후보 목록이 정해지면 기본 추천 이유로 먼저 응답하고, OpenAI Chat Completions는 백그라운드에서 각 상품별 추천 사유를 생성합니다.
 
 출력 목표:
 
@@ -285,6 +302,8 @@ LIMIT ?
 |------|-----------|------------|
 | 상품 임베딩 생성 | `EmbeddingService` | `POST /v1/embeddings` |
 | 추천 이유 생성 | `OpenAiClient` | `POST /v1/chat/completions` |
+
+추천 이유 생성 호출은 요청 스레드가 아니라 `RecommendationReasonAsyncService`의 async executor에서 수행됩니다.
 
 임베딩 입력 텍스트는 아래 필드를 이어붙여 생성합니다.
 
@@ -312,7 +331,7 @@ LIMIT ?
 | 키 | 의미 | TTL |
 |----|------|-----|
 | `user:{userId}:vector` | 사용자 벡터 캐시 | 1시간 |
-| `user:{userId}:recommendation` | 추천 결과 캐시 | 20분 |
+| `user:{userId}:recommendation` | 추천 결과 캐시 (`PENDING`, `COMPLETED`, `FAILED`) | 20분 |
 
 ### PostgreSQL 연동
 
@@ -331,6 +350,7 @@ LIMIT ?
 
 ```json
 {
+  "status": "COMPLETED",
   "recommendations": [
     {
       "productId": "11111111-1111-1111-1111-111111111111",
@@ -345,10 +365,25 @@ LIMIT ?
 
 | 필드 | 설명 |
 |------|------|
+| `status` | 추천 생성 상태. `PENDING`, `COMPLETED`, `FAILED` |
 | `recommendations` | 추천 결과 목록 |
 | `productId` | 추천 상품 ID |
 | `title` | 추천 상품 제목 |
 | `reason` | 생성된 추천 사유 |
+
+클라이언트 연동 규칙:
+
+- `status`가 `PENDING`이면 기본 추천 결과를 먼저 표시합니다.
+- 클라이언트는 동일한 `GET /api/v1/recommendations` API를 polling 하여 `COMPLETED` 또는 `FAILED` 상태를 확인해야 합니다.
+- `FAILED`면 기본 추천 이유를 유지한 채 화면을 표시할 수 있습니다.
+
+현재 프론트 구현 기준:
+
+- 추천 화면은 `PENDING` 응답을 받으면 기본 추천 이유를 먼저 노출합니다.
+- 이후 동일 API를 `1.5초` 간격으로 다시 호출합니다.
+- polling은 최대 `5회`까지 시도합니다.
+- 그 안에 `COMPLETED`가 오면 GPT 추천 이유로 화면을 갱신합니다.
+- `FAILED`면 기본 추천 이유를 유지하고 상태 안내 문구를 노출합니다.
 
 ---
 
@@ -362,6 +397,8 @@ LIMIT ?
 | 프로파일 | `SPRING_PROFILES_ACTIVE` |
 | Kafka 주소 | `KAFKA_BOOTSTRAP_SERVERS` |
 | OpenAI 키 | `OPENAI_API_KEY` |
+| OpenAI connect timeout | `openai.http.connect-timeout` |
+| OpenAI read timeout | `openai.http.read-timeout` |
 
 `application-prod.yml` 기준:
 
@@ -393,8 +430,10 @@ LIMIT ?
 - 사용자 활동이 추가로 적재돼도 기존 사용자 벡터 캐시는 즉시 무효화되지 않습니다.
 - 현재 코드상 `UserVectorRedisRepository.delete()`는 구현돼 있지만 이벤트 기반 무효화 로직은 연결되어 있지 않습니다.
 - 추천 이유 생성은 OpenAI 응답이 JSON 형식을 지켜야 하므로 프롬프트/모델 변경 시 파싱 안정성을 함께 점검해야 합니다.
+- 추천 API 첫 응답은 `PENDING`일 수 있으므로 클라이언트는 polling을 고려해야 합니다.
+- 추천 이유 생성은 비동기 executor에서 동작하므로 OpenAI 장애 시에도 추천 API 자체는 기본 추천 결과를 반환합니다.
+- 비동기 추천 이유 생성 작업이 스레드 풀 포화로 제출되지 못하면, 추천 상태는 `PENDING`으로 유지되지 않고 즉시 `FAILED`로 갱신됩니다.
 - Kafka 문서(`docs/kafka-topics.md`)에는 현재 `ai` 서비스가 소비하는 `PRODUCT_AI_SYNCED`, `PRODUCT_DELETED`, `PRODUCT_VIEWED` 이벤트가 아직 반영되지 않았습니다.
-- `RecommendationService`는 fallback 추천도 캐시하므로 초기 데이터 부족 상황에서 같은 결과가 20분간 유지될 수 있습니다.
 
 ---
 
@@ -407,6 +446,8 @@ LIMIT ?
 - [x] 후보 검색 pgvector 쿼리 구현
 - [x] 인기 상품 fallback 추천 구현
 - [x] OpenAI 추천 이유 생성 구현
+- [x] 추천 이유 생성 비동기화
+- [x] OpenAI timeout 적용
 
 ### 데이터 파이프라인
 

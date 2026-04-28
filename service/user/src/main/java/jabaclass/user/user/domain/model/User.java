@@ -24,7 +24,9 @@ import lombok.experimental.SuperBuilder;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @Entity
-@Table(name = "users", uniqueConstraints = {@UniqueConstraint(columnNames = {"email", "socialType"})})
+@Table(name = "users", uniqueConstraints = {
+	@UniqueConstraint(name = "uk_users_email_social_type", columnNames = {"email", "social_type"})
+})
 public class User extends BaseEntity {
 
 	@Column(name = "name", nullable = false, length = 50)

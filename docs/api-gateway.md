@@ -10,8 +10,8 @@
 | JWT 파싱 위치 | 각 서비스마다 중복 처리 | Gateway 단일 처리 |
 | common 모듈 의존 | 모든 서비스가 JWT 코드 의존 | 의존성 제거 가능 |
 | 인증 일관성 | 서비스마다 구현 방식 상이 | Gateway에서 통일 |
-| 화이트리스트 관리 | 코드 하드코딩 | DB 관리 (gateway_whitelist) |
-| 역할 기반 접근 제어 | 없음 | DB 관리 (gateway_route_policy) |
+| 화이트리스트 관리 | 코드 하드코딩 | YAML 파일 관리 (gateway-rules.yml) |
+| 역할 기반 접근 제어 | 없음 | YAML 파일 관리 (gateway-rules.yml) |
 
 ---
 
@@ -22,10 +22,10 @@
   → Authorization: Bearer <access_token>
   → API Gateway (:8080)
       1. X-User-Id / X-User-Role 헤더 위조 방지 (sanitize)
-      2. DB(gateway_whitelist) 조회 → 화이트리스트 경로면 바로 통과
+      2. gateway-rules.yml(whitelist) 조회 → 화이트리스트 경로면 바로 통과
       3. JWT 서명 검증 및 Access Token 타입 확인
       4. Redis 블랙리스트 조회 (로그아웃 여부 확인)
-      5. DB(gateway_route_policy) 조회 → RBAC 역할 검사
+      5. gateway-rules.yml(rbac) 조회 → RBAC 역할 검사
       6. X-User-Id, X-User-Role 헤더 주입
   → 각 서비스 (내부망)
       @CurrentUser UUID userId       ← X-User-Id 헤더 파싱
@@ -41,10 +41,10 @@
 요청마다 실행되는 `GlobalFilter`. 처리 순서:
 
 1. **헤더 위조 방지**: 요청의 `X-User-Id`, `X-User-Role` 헤더를 제거 (클라이언트 위조 차단)
-2. **화이트리스트 확인**: `WhitelistService`에서 DB 조회 → 해당하면 JWT 검증 없이 통과
+2. **화이트리스트 확인**: `WhitelistService`에서 `gateway-rules.yml` 조회 → 해당하면 JWT 검증 없이 통과
 3. **JWT 검증**: `Authorization` 헤더에서 Access Token 추출, 서명 검증, 토큰 타입 확인
 4. **Redis 블랙리스트 조회**: 로그아웃 처리된 토큰 차단
-5. **RBAC 검사**: `RbacService`에서 DB 조회 → role이 허용되지 않으면 403 반환
+5. **RBAC 검사**: `RbacService`에서 `gateway-rules.yml` 조회 → role이 허용되지 않으면 403 반환
 6. **헤더 주입**: claims에서 `userId`, `role` 추출 후 내부 헤더로 주입
 
 ```java
@@ -60,14 +60,92 @@ ServerWebExchange mutatedExchange = exchange.mutate()
 
 ---
 
+### gateway-rules.yml — 정책 파일
+
+화이트리스트와 RBAC 정책을 모두 담는 YAML 파일이다.
+`@ConfigurationProperties(prefix = "gateway")`를 통해 `GatewayRulesProperties` 레코드로 바인딩된다.
+
+```yaml
+gateway:
+  whitelist:
+    - method: POST
+      path: /api/v1/auth/login
+    # ...
+
+  rbac:
+    - method: POST
+      path: /api/v1/products
+      allowedRoles: 
+        - SELLER
+        - ADMIN
+    # ...
+```
+
+환경별 로드 방식이 다르다.
+
+| 환경 | 로드 방식 | 파일 위치 |
+|------|-----------|-----------|
+| dev | `spring.config.import: classpath:gateway-rules.yml` | `src/main/resources/gateway-rules.yml` |
+| prod | `spring.config.import: file:/etc/config/gateway-rules.yml` | k3s ConfigMap → Pod 볼륨 마운트 |
+
+**prod 구성 — k3s ConfigMap**
+
+정책 파일은 `.github/k3s/gateway-rules-config.yml`로 관리된다.
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gateway-rules-config
+data:
+  gateway-rules.yml: |
+    gateway:
+      whitelist: ...
+      rbac: ...
+```
+
+`api-gateway-service.yml` Deployment에서 해당 ConfigMap을 `/etc/config`에 마운트한다.
+
+```yaml
+volumeMounts:
+  - mountPath: /etc/config
+    name: gateway-rules
+    readOnly: true
+volumes:
+  - name: gateway-rules
+    configMap:
+      name: gateway-rules-config
+```
+
+**정책 변경 절차 (prod)**
+
+```bash
+# 1. .github/k3s/gateway-rules-config.yml 수정 후
+kubectl apply -f .github/k3s/gateway-rules-config.yml
+
+# 2. Pod 롤링 재시작 (새 ConfigMap 반영)
+kubectl rollout restart deployment/api-gateway-service
+
+# 3. 완료 확인
+kubectl rollout status deployment/api-gateway-service
+
+# 4. 마운트된 파일 검증 (선택)
+kubectl exec -it <pod-name> -- cat /etc/config/gateway-rules.yml
+```
+
+이미지 재빌드 없이 정책만 변경된다. dev는 `src/main/resources/gateway-rules.yml` 수정 후 앱 재시작으로 반영된다.
+
+---
+
 ### WhitelistService — 화이트리스트 (JWT 불필요 경로)
 
-DB(`gateway_whitelist`)에서 조회하며, Caffeine 로컬 캐시(TTL 10분)로 매 요청 DB I/O를 방지한다.
+`GatewayRulesProperties`에서 직접 조회한다. DB I/O와 캐시가 없으므로 정책 변경이 즉시 반영된다.
 
 | Method | Path | 설명 |
 |--------|------|------|
 | POST | /api/v1/auth/login | 로그인 |
 | POST | /api/v1/auth/reissue | 토큰 재발급 |
+| GET | /api/v1/auth/report-theft | 토큰 탈취 신고 |
 | POST | /api/v1/users/register | 회원가입 |
 | POST | /api/v1/users/email-check | 이메일 중복 확인 |
 | POST | /api/v1/email/** | 이메일 인증 |
@@ -80,26 +158,28 @@ DB(`gateway_whitelist`)에서 조회하며, Caffeine 로컬 캐시(TTL 10분)로
 | GET | /oauth2/authorization/** | 소셜 로그인 시작 |
 | GET | /login/oauth2/code/** | 소셜 로그인 콜백 |
 
-화이트리스트 정책 변경은 DB 데이터 수정만으로 적용 가능하다. 캐시 TTL(10분) 이내엔 기존 정책이 유지된다.
+화이트리스트 정책 변경은 `gateway-rules.yml` 수정 + 롤링 재배포로 적용한다.
 
 ---
 
 ### RbacService — 역할 기반 접근 제어
 
-DB(`gateway_route_policy`)에서 조회하며, Caffeine 로컬 캐시(TTL 3분)를 사용한다.
+`GatewayRulesProperties`에서 직접 조회한다. DB I/O와 캐시가 없으므로 정책 변경이 즉시 반영된다.
 
 **매칭 로직**: 경로 패턴이 일치하는 모든 정책 중 **패턴 길이 기준 내림차순 정렬** 후 가장 구체적인 정책 하나를 선택한다.
 - 정책이 없는 경로: 통과 (인증만 되면 허용)
-- 정책이 있는 경로: `allowed_roles`에 포함된 경우만 허용
+- 정책이 있는 경로: `allowedRoles`에 포함된 경우만 허용
 
-| Method | Path | allowed_roles | 설명 |
-|--------|------|---------------|------|
+| Method | Path | allowedRoles | 설명 |
+|--------|------|--------------|------|
 | POST | /api/v1/products | SELLER,ADMIN | 상품 등록 |
 | PUT | /api/v1/products/* | SELLER,ADMIN | 상품 수정 |
 | DELETE | /api/v1/products/* | SELLER,ADMIN | 상품 삭제 |
+| GET | /api/v1/products/my | SELLER | 내 상품 목록 조회 |
 | POST | /api/v1/products/*/schedules | SELLER,ADMIN | 일정 등록 |
 | PUT | /api/v1/products/*/schedules/* | SELLER,ADMIN | 일정 수정 |
 | DELETE | /api/v1/products/*/schedules/* | SELLER,ADMIN | 일정 삭제 |
+| PUT | /api/v1/users/me/seller-settlement-account | SELLER,ADMIN | 판매자 정산계좌 수정 |
 | GET | /api/v1/settlements | SELLER,ADMIN | 정산 목록 조회 |
 | GET | /api/v1/settlements/ready | SELLER,ADMIN | READY 정산 목록 |
 | GET | /api/v1/settlements/* | SELLER,ADMIN | 정산 단건 조회 |
@@ -111,23 +191,6 @@ DB(`gateway_route_policy`)에서 조회하며, Caffeine 로컬 캐시(TTL 3분)�
 | POST | /api/v1/admins/** | ADMIN | 어드민 등록 |
 | PATCH | /api/v1/admins/** | ADMIN | 어드민 수정 |
 | DELETE | /api/v1/admins/** | ADMIN | 어드민 삭제 |
-
----
-
-### DB 연동 — R2DBC
-
-Spring Cloud Gateway는 WebFlux(Netty 이벤트 루프) 기반이므로 JDBC(블로킹)을 사용할 수 없다.
-`spring-boot-starter-data-r2dbc`를 사용하여 DB 조회를 논블로킹으로 처리한다.
-
-| 환경 | Driver | URL |
-|------|--------|-----|
-| dev | r2dbc-h2 (in-memory) | `r2dbc:h2:mem:///gateway` |
-| prod | r2dbc-postgresql | `r2dbc:postgresql://${POSTGRES_HOST}/...` |
-
-환경별 초기화 방식이 다르다.
-
-- **dev**: `schema.sql` / `data.sql` (resources 루트)을 `spring.sql.init.mode=always` 설정으로 앱 시작 시 자동 실행. H2 인메모리 특성상 재시작마다 초기화되므로 매번 재실행된다.
-- **prod**: Flyway가 `db/migration/V1__init_schema.sql` / `V2__insert_data.sql`을 순서대로 실행. 이미 적용된 버전은 `flyway_schema_history` 테이블로 추적하여 재실행하지 않는다.
 
 ---
 
