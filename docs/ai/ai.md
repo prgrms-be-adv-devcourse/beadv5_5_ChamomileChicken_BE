@@ -21,7 +21,8 @@
 - 추천 API는 `@CurrentUser`로 전달된 `X-User-Id` 헤더를 기준으로 동작합니다.
 - 사용자 벡터는 상품 임베딩 768차원 벡터의 가중합으로 계산합니다.
 - 행동 가중치는 `VIEW=1.0`, `WISHLIST=3.0`, `ORDER=5.0`입니다.
-- 조회/찜/주문한 상품은 모두 추천 후보에서 제외합니다.
+- 조회한 상품은 추천 후보에서 제외하지 않습니다.
+- 찜/주문한 상품만 추천 후보에서 제외합니다.
 - recommendation snapshot은 Redis에 20분, user profile / exclude는 Redis에 6시간 저장합니다.
 - 추천 응답 상태는 `PENDING`, `COMPLETED`, `FAILED`입니다.
 - 추천 후보가 없으면 인기 상품 fallback 추천으로 내려갑니다.
@@ -200,7 +201,8 @@ LIMIT 5
 
 ### 3. 제외 정책
 
-- `VIEW`, `WISHLIST`, `ORDER` 모두 추천 후보에서 제외합니다.
+- `VIEW`는 추천 후보에서 제외하지 않습니다.
+- `WISHLIST`, `ORDER`만 추천 후보에서 제외합니다.
 - 제외 상품은 Redis `user:exclude:v2:{userId}`에 저장합니다.
 
 ### 4. 추천 이유 생성

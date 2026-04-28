@@ -15,7 +15,7 @@ flowchart TD
     H -- 아니오 --> J["user_activities 조회"]
     J --> K["userVector / exclude full rebuild"]
     K --> I
-    I --> L["pgvector 후보 5개 조회<br/>조회/찜/주문 상품 제외"]
+    I --> L["pgvector 후보 5개 조회<br/>찜/주문 상품 제외"]
     L --> M{"후보 있음?"}
     M -- 아니오 --> N["인기 상품 fallback 반환<br/>COMPLETED"]
     M -- 예 --> O["기본 추천 이유로 PENDING 응답 생성"]
@@ -95,7 +95,7 @@ sequenceDiagram
 | 벡터 차원 | 768 |
 | 행동 가중치 | `VIEW=1.0`, `WISHLIST=3.0`, `ORDER=5.0` |
 | 최근성 기준 | 반감기 14일 |
-| VIEW 제외 여부 | 제외함 |
+| VIEW 제외 여부 | 제외하지 않음 |
 | 응답 상태 | `PENDING`, `COMPLETED`, `FAILED` |
 | fallback | 인기 상품 추천 |
 
@@ -141,7 +141,8 @@ user_vector = normalize(
 
 ## 3. 제외 상품 정책
 
-- `VIEW`, `WISHLIST`, `ORDER` 모두 추천 후보에서 제외합니다.
+- `VIEW`는 추천 후보에서 제외하지 않습니다.
+- `WISHLIST`, `ORDER`만 추천 후보에서 제외합니다.
 - 제외 상품 ID는 Redis `user:exclude:v2:{userId}`에 저장합니다.
 - full rebuild 시에도 `user_activities` 전체에서 다시 구성합니다.
 

@@ -94,7 +94,8 @@ sequenceDiagram
 
 제외 정책:
 
-- `VIEW`, `WISHLIST`, `ORDER` 모두 추천 후보에서 제외합니다.
+- `VIEW`는 userVector에는 반영하지만 추천 후보에서는 제외하지 않습니다.
+- `WISHLIST`, `ORDER`만 추천 후보에서 제외합니다.
 
 ## 한 줄 요약
 
