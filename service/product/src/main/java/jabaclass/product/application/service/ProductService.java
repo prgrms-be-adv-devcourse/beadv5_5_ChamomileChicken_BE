@@ -185,10 +185,14 @@ public class ProductService implements ProductUseCase {
 				requestDto.title(), pageable);
 		}
 
+		if (page.isEmpty()) {
+			return SearchProductResponseDto.from(page, List.of());
+		}
+
 		List<UUID> sellerIds = page.getContent().stream().map(Product::getSellerId).distinct().toList();
 		Map<UUID, String> sellerNameMap = sellerRepository.findSellerList(sellerIds)
 			.map(list -> list.stream()
-				.collect(Collectors.toMap(UserResponseDto::userId, UserResponseDto::name)))
+				.collect(Collectors.toMap(UserResponseDto::userId, UserResponseDto::name, (existing, replacement) -> existing)))
 			.orElse(Map.of());
 
 		List<ProductResponseDto> content = page.getContent().stream()
@@ -228,6 +232,10 @@ public class ProductService implements ProductUseCase {
 		} else {
 			page = productRepository.findBySellerIdAndStatusAndTitleContainingAndDeleteDtIsNull(sellerId,
 				ProductStatus.ENABLE, requestDto.title(), pageable);
+		}
+
+		if (page.isEmpty()) {
+			return SearchProductResponseDto.from(page, List.of());
 		}
 
 		UserResponseDto seller = findBySellerIdOrThrow(sellerId);
