@@ -102,4 +102,8 @@ public class User extends BaseEntity {
 		this.lastLoginIp = ip;
 		this.lastLoginUserAgent = userAgent;
 	}
+
+	public void forceLogout() {
+		this.forceLogoutAt = LocalDateTime.now();
+	}
 }

@@ -22,7 +22,7 @@ public class TokenBlacklist {
 	@Id
 	@GeneratedValue(strategy = GenerationType.UUID)
 	@Column(name = "id", updatable = false, nullable = false)
-	private UUID Id;
+	private UUID id;
 
 	@Column(name = "token_hash", nullable = false, length = 64, unique = true)
 	private String tokenHash;
