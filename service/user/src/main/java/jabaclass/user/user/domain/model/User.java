@@ -1,6 +1,7 @@
 package jabaclass.user.user.domain.model;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 import jabaclass.user.common.model.BaseEntity;
 import jabaclass.user.deposit.domain.exception.DepositErrorCode;
@@ -68,6 +69,9 @@ public class User extends BaseEntity {
 
 	@Column(name = "last_login_user_agent", length = 512)
 	private String lastLoginUserAgent;
+
+	@Column(name = "force_logout_at")
+	private LocalDateTime forceLogoutAt;
 
 	public void updateProfile(String name, String phone) {
 		this.name = name;
