@@ -47,4 +47,4 @@ management:
         enabled: true
 
 internal:
-  secret: ${INTERNAL_SECRET:local-dev-secret}
+  secret: ${USER_INTERNAL_SECRET}

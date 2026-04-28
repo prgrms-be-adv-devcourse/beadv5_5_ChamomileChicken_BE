@@ -102,3 +102,6 @@ management:
   metrics:
     tags:
       application: ${spring.application.name}
+
+internal:
+  secret: ${USER_INTERNAL_SECRET}

@@ -89,4 +89,16 @@ management:
     health:
       probes:
         enabled: true
+resilience4j:
+  circuitbreaker:
+    instances:
+      redis-auth:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 5
 
+internal:
+  secret: ${USER_INTERNAL_SECRET}
+  user-service-url: ${USER_SERVICE_URL:http://localhost:9003}

@@ -16,3 +16,7 @@ logging:
     root: WARN
     jabaclass.apigateway: INFO
     org.springframework.cloud.gateway: WARN
+
+internal:
+  secret: ${USER_INTERNAL_SECRET}
+  user-service-url: ${USER_SERVICE_URL}

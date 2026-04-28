@@ -118,3 +118,6 @@ gateway:
       path: /api/v1/admins/**
       allowedRoles:
         - ADMIN
+    - method: GET
+      path: /api/v1/auth/internal/**
+      allowedRoles: []
