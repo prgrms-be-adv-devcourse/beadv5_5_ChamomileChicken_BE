@@ -1,7 +1,6 @@
 package jabaclass.ai.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 
@@ -15,8 +14,9 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import jabaclass.ai.domain.repository.RecommendationCacheRepository;
 import jabaclass.ai.domain.repository.ProductEmbeddingRepository;
+import jabaclass.ai.domain.repository.RecommendationCacheRepository;
+import jabaclass.ai.domain.repository.UserVectorCacheRepository;
 import jabaclass.ai.infrastructure.external.openai.EmbeddingService;
 import jabaclass.ai.infrastructure.kafka.ProductAiSyncedEvent;
 import jabaclass.ai.infrastructure.persistence.command.ProductEmbeddingUpsertCommand;
@@ -34,10 +34,13 @@ class ProductEmbeddingSyncServiceTest {
 	private ProductEmbeddingRepository productEmbeddingRepository;
 
 	@Mock
+	private UserVectorCacheRepository userVectorCacheRepository;
+
+	@Mock
 	private RecommendationCacheRepository recommendationCacheRepository;
 
 	@Test
-	void 상품_동기화시_임베딩을_생성하고_upsert한_뒤_추천캐시를_삭제한다() {
+	void 상품_동기화시_임베딩을_생성하고_profile과_snapshot캐시를_무효화한다() {
 		UUID eventId = UUID.fromString("11111111-2222-3333-4444-555555555555");
 		UUID productId = UUID.fromString("66666666-7777-8888-9999-000000000000");
 		ProductAiSyncedEvent payload = new ProductAiSyncedEvent(
@@ -69,16 +72,18 @@ class ProductEmbeddingSyncServiceTest {
 		assertThat(command.status()).isEqualTo("ENABLE");
 		assertThat(command.popularity()).isEqualTo(12);
 		assertThat(command.embedding()).isSameAs(embedding);
+		then(userVectorCacheRepository).should().deleteAllProfiles();
 		then(recommendationCacheRepository).should().deleteAll();
 	}
 
 	@Test
-	void 상품_삭제시_임베딩과_추천캐시를_삭제한다() {
+	void 상품_삭제시_profile과_snapshot캐시를_무효화한다() {
 		UUID productId = UUID.fromString("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");
 
 		productEmbeddingSyncService.delete(productId);
 
 		then(productEmbeddingRepository).should().deleteByProductId(productId);
+		then(userVectorCacheRepository).should().deleteAllProfiles();
 		then(recommendationCacheRepository).should().deleteAll();
 		then(embeddingService).shouldHaveNoInteractions();
 	}
