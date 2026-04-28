@@ -382,11 +382,10 @@ public class AuthService
 					user.getId().toString(),
 					Duration.ofMillis(refreshTokenValidity)
 				);
+			    sendSecurityAlertAsync(user.getEmail(), user.getName(), clientIp, userAgent, theftReportToken);
 			} catch (Exception e) {
                 log.warn("[AUTH] 새 기기 보안 알림 등록 실패, 로그인 계속 진행. userId={}", userId);
             }
-
-			sendSecurityAlertAsync(user.getEmail(), user.getName(), clientIp, userAgent, theftReportToken);
         }
 
         user.updateLastLogin(clientIp, userAgent);
