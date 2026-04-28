@@ -1,5 +1,6 @@
 package jabaclass.user.auth.domain.model;
 
+import java.util.UUID;
 import java.time.LocalDateTime;
 
 import lombok.AccessLevel;
@@ -19,8 +20,9 @@ import jakarta.persistence.Table;
 public class TokenBlacklist {
 
 	@Id
-	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	private Long Id;
+	@GeneratedValue(strategy = GenerationType.UUID)
+	@Column(name = "id", updatable = false, nullable = false)
+	private UUID Id;
 
 	@Column(name = "token_hash", nullable = false, length = 64, unique = true)
 	private String tokenHash;
