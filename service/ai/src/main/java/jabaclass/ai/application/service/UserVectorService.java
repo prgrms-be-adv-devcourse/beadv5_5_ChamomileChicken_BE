@@ -147,7 +147,7 @@ public class UserVectorService {
 	}
 
 	private boolean shouldExclude(ActionType actionType) {
-		return true;
+		return actionType == ActionType.WISHLIST || actionType == ActionType.ORDER;
 	}
 
 	private float getRecencyWeight(LocalDateTime createdAt, LocalDateTime now) {
