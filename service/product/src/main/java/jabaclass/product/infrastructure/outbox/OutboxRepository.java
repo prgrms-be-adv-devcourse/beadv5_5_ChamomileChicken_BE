@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
 public interface OutboxRepository extends JpaRepository<OutboxEvent, UUID> {
@@ -19,10 +20,12 @@ public interface OutboxRepository extends JpaRepository<OutboxEvent, UUID> {
 	""", nativeQuery = true)
 	List<OutboxEvent> findProcessableEvents(LocalDateTime threshold, int limit);
 
+	@Modifying
 	@Query(value = """
-		SELECT * FROM product_outbox_events
+		UPDATE product_outbox_events
+		SET status = 'PENDING', retry_count = 0
 		WHERE status = 'FAILED'
 		  AND event_type IN ('ES_SAVE', 'ES_DELETE')
 	""", nativeQuery = true)
-	List<OutboxEvent> findFailedEsEvents();
+	int resetFailedEsEvents();
 }

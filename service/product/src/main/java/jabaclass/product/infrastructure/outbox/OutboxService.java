@@ -51,9 +51,6 @@ public class OutboxService {
 
 	@Transactional
 	public int resetFailedEsEvents() {
-		List<OutboxEvent> failed = outboxRepository.findFailedEsEvents();
-		failed.forEach(OutboxEvent::resetForRetry);
-		outboxRepository.saveAll(failed);
-		return failed.size();
+		return outboxRepository.resetFailedEsEvents();
 	}
 }
