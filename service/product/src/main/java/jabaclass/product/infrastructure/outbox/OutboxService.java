@@ -48,4 +48,12 @@ public class OutboxService {
 		}
 		outboxRepository.save(event);
 	}
+
+	@Transactional
+	public int resetFailedEsEvents() {
+		List<OutboxEvent> failed = outboxRepository.findFailedEsEvents();
+		failed.forEach(OutboxEvent::resetForRetry);
+		outboxRepository.saveAll(failed);
+		return failed.size();
+	}
 }

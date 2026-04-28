@@ -18,4 +18,11 @@ public interface OutboxRepository extends JpaRepository<OutboxEvent, UUID> {
 		FOR UPDATE SKIP LOCKED
 	""", nativeQuery = true)
 	List<OutboxEvent> findProcessableEvents(LocalDateTime threshold, int limit);
+
+	@Query(value = """
+		SELECT * FROM product_outbox_events
+		WHERE status = 'FAILED'
+		  AND event_type IN ('ES_SAVE', 'ES_DELETE')
+	""", nativeQuery = true)
+	List<OutboxEvent> findFailedEsEvents();
 }

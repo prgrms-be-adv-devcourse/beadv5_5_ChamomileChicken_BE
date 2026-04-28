@@ -6,6 +6,7 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -153,6 +154,7 @@ public class ProductService implements ProductUseCase {
 
 	// es 추가
 	@Override
+	@CircuitBreaker(name = "elasticsearchCB", fallbackMethod = "searchAllFallback")
 	public SearchProductResponseDto searchAll(SearchProductRequestDto requestDto) {
 		Pageable pageable = PageRequest.of(requestDto.thisPage(), requestDto.pageSize());
 
@@ -171,7 +173,33 @@ public class ProductService implements ProductUseCase {
 		return SearchProductResponseDto.fromEs(page, content);
 	}
 
+	private SearchProductResponseDto searchAllFallback(SearchProductRequestDto requestDto, Throwable t) {
+		log.warn("ES 장애 감지 — DB fallback 실행. circuit: elasticsearchCB, 원인: {}", t.getMessage());
+		Pageable pageable = PageRequest.of(requestDto.thisPage(), requestDto.pageSize());
+
+		Page<Product> page;
+		if (requestDto.title() == null || requestDto.title().isBlank()) {
+			page = productRepository.findByStatusAndDeleteDtIsNull(ProductStatus.ENABLE, pageable);
+		} else {
+			page = productRepository.findByStatusAndTitleContainingAndDeleteDtIsNull(ProductStatus.ENABLE,
+				requestDto.title(), pageable);
+		}
+
+		List<UUID> sellerIds = page.getContent().stream().map(Product::getSellerId).distinct().toList();
+		Map<UUID, String> sellerNameMap = sellerRepository.findSellerList(sellerIds)
+			.map(list -> list.stream()
+				.collect(Collectors.toMap(UserResponseDto::userId, UserResponseDto::name)))
+			.orElse(Map.of());
+
+		List<ProductResponseDto> content = page.getContent().stream()
+			.map(p -> ProductResponseDto.from(p, sellerNameMap.getOrDefault(p.getSellerId(), "")))
+			.toList();
+
+		return SearchProductResponseDto.from(page, content);
+	}
+
 	@Override
+	@CircuitBreaker(name = "elasticsearchCB", fallbackMethod = "searchMyFallback")
 	public SearchProductResponseDto searchMy(SearchProductRequestDto requestDto, UUID sellerId) {
 		Pageable pageable = PageRequest.of(requestDto.thisPage(), requestDto.pageSize());
 		String sellerIdStr = sellerId.toString();
@@ -188,6 +216,26 @@ public class ProductService implements ProductUseCase {
 			.toList();
 
 		return SearchProductResponseDto.fromEs(page, content);
+	}
+
+	private SearchProductResponseDto searchMyFallback(SearchProductRequestDto requestDto, UUID sellerId, Throwable t) {
+		log.warn("ES 장애 감지 — DB fallback 실행. circuit: elasticsearchCB, 원인: {}", t.getMessage());
+		Pageable pageable = PageRequest.of(requestDto.thisPage(), requestDto.pageSize());
+
+		Page<Product> page;
+		if (requestDto.title() == null || requestDto.title().isBlank()) {
+			page = productRepository.findBySellerIdAndStatusAndDeleteDtIsNull(sellerId, ProductStatus.ENABLE, pageable);
+		} else {
+			page = productRepository.findBySellerIdAndStatusAndTitleContainingAndDeleteDtIsNull(sellerId,
+				ProductStatus.ENABLE, requestDto.title(), pageable);
+		}
+
+		UserResponseDto seller = findBySellerIdOrThrow(sellerId);
+		List<ProductResponseDto> content = page.getContent().stream()
+			.map(p -> ProductResponseDto.from(p, seller.name()))
+			.toList();
+
+		return SearchProductResponseDto.from(page, content);
 	}
 
 	@Override
