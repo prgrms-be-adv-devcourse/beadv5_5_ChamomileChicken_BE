@@ -130,17 +130,22 @@ public class AuthService
         }
 
         if (!stored.equals(refreshToken)) {
-            User targetuser = userRepository.findById(userId)
-                .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
+            User targetuser = userRepository.findById(userId)...;
             targetuser.forceLogout();
             targetuser.updateRefreshToken(null);
 
-            redisTemplate.opsForValue().set(
-                FORCE_LOGOUT_PREFIX + userId,
-                LocalDateTime.now().toString(),
-                Duration.ofMillis(accessTokenValidity)
-            );
-            redisTemplate.delete("refresh:" + userId);
+            try {
+                redisTemplate.opsForValue().set(
+                    FORCE_LOGOUT_PREFIX + userId,
+                    LocalDateTime.now().toString(),
+                    Duration.ofMillis(accessTokenValidity)
+                );
+            } catch (Exception e) {
+                log.warn("[AUTH] Redis force_logout 캐싱 실패, DB에는 저장됨. userId={}", userId);
+            }
+            try { redisTemplate.delete("refresh:" + userId); }
+            catch (Exception e) { log.warn("[AUTH] Redis delete 실패, 무시. userId={}", userId); }
+
             log.warn("[AUTH] RTR 재사용 감지 - force_logout 설정. userId={}", userId);
             throw new AuthException(AuthErrorCode.SUSPECTED_TOKEN_THEFT);
         }
