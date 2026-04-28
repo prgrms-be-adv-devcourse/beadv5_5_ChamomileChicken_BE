@@ -2,14 +2,16 @@ package jabaclass.apigateway.filter;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.Date;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.TimeoutException;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import org.springframework.cloud.client.circuitbreaker.ReactiveCircuitBreaker;
+import org.springframework.cloud.client.circuitbreaker.ReactiveCircuitBreakerFactory;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
@@ -25,10 +27,15 @@ import org.springframework.web.server.ServerWebExchange;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import io.jsonwebtoken.Claims;
 
 import reactor.core.publisher.Mono;
 
+import jakarta.annotation.PostConstruct;
+
+import jabaclass.apigateway.client.TokenStatusClient;
+import jabaclass.apigateway.exception.RedisCircuitOpenException;
 import jabaclass.apigateway.application.service.RbacService;
 import jabaclass.apigateway.application.service.WhitelistService;
 import jabaclass.apigateway.exception.AuthorizationServiceException;
@@ -51,6 +58,14 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 	private final ReactiveStringRedisTemplate redisTemplate;
 	private final WhitelistService whitelistService;
 	private final RbacService rbacService;
+	private final ReactiveCircuitBreakerFactory<?, ?> circuitBreakerFactory;
+	private final TokenStatusClient tokenStatusClient;
+	private ReactiveCircuitBreaker redisCircuitBreaker;
+
+	@PostConstruct
+	void init() {
+		this.redisCircuitBreaker = circuitBreakerFactory.create("redis-auth");
+	}
 
     private static final String BLACKLIST_PREFIX = "blacklist:";
     private static final String FORCE_LOGOUT_PREFIX = "force_logout:";
@@ -118,44 +133,32 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 			UUID userId = jwtProvider.getUserId(claims);
 			String role = jwtProvider.getRole(claims);
 
-			long blacklistStart = System.currentTimeMillis(); // 로그
-
-			return redisTemplate.hasKey(BLACKLIST_PREFIX + token)
-				//.timeout(Duration.ofMillis(200))
-				.timeout(OPTIONAL_AUTH_ENRICHMENT_TIMEOUT)
-				.doOnNext(r -> log.debug("[GATEWAY] blacklist check: {}ms",
-					System.currentTimeMillis() - blacklistStart)) // 로그
+			return redisCircuitBreaker.run(
+					redisTemplate.hasKey(BLACKLIST_PREFIX + token)
+						.timeout(OPTIONAL_AUTH_ENRICHMENT_TIMEOUT),
+					throwable -> Mono.just(false)
+				)
 				.flatMap(isBlacklisted -> {
-					if (isBlacklisted) {
-						log.debug("[GATEWAY] Ignore blacklisted token on whitelisted path: {} {}", httpMethod, path);
+					if (Boolean.TRUE.equals(isBlacklisted)) {
+						log.debug("[GATEWAY] Blacklisted token on whitelist path, skip enrichment: {} {}", httpMethod,
+							path);
 						return chain.filter(exchange);
 					}
-
 					ServerWebExchange mutatedExchange = exchange.mutate()
 						.request(r -> {
 							r.header("X-User-Id", userId.toString());
-							if (role != null) {
+							if (role != null)
 								r.header("X-User-Role", role);
-							}
 						})
 						.build();
-
 					return chain.filter(mutatedExchange);
 				})
-				.onErrorResume(TimeoutException.class, e -> {
-					log.warn("[GATEWAY] Optional auth enrichment timed out, continuing without user context: {} {}",
-						httpMethod,
-						path);
-					return chain.filter(exchange);
-				})
 				.onErrorResume(e -> {
-					log.warn("[GATEWAY] Optional auth enrichment failed, continuing without user context: {} {}",
-						httpMethod,
-						path, e);
+					log.warn("[GATEWAY] Optional auth enrichment 실패: {} {}", httpMethod, path);
 					return chain.filter(exchange);
 				});
 		} catch (Exception e) {
-			log.debug("[GATEWAY] Ignore invalid token on whitelisted path: {} {}", httpMethod, path);
+			log.debug("[GATEWAY] Invalid token on whitelisted path, skip enrichment: {} {}", httpMethod, path);
 			return chain.filter(exchange);
 		}
 	}
@@ -164,6 +167,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 		GatewayFilterChain chain,
 		String path,
 		HttpMethod httpMethod) {
+
 		String token = tokenResolver.resolveToken(exchange);
 
 		if (token == null) {
@@ -178,69 +182,51 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 				return onError(exchange, JwtErrorCode.INVALID_TOKEN);
 			}
 
-			return redisTemplate.hasKey(BLACKLIST_PREFIX + token)
-				//	.timeout(Duration.ofMillis(200))
-				.timeout(REQUIRED_AUTH_BLACKLIST_TIMEOUT)
-				.onErrorMap(RedisBlacklistException::new)
-				.flatMap(isBlacklisted -> {
-					if (isBlacklisted) {
-						log.warn("[GATEWAY] Blacklisted token. Path: {} {}", httpMethod, path);
+			UUID userId = jwtProvider.getUserId(claims);
+			String role = jwtProvider.getRole(claims);
+
+			return redisCircuitBreaker.run(
+					checkTokenViaRedis(token, userId, claims),
+					throwable -> {
+						if (throwable instanceof CallNotPermittedException) {
+							return Mono.error(new RedisCircuitOpenException(throwable));
+						}
+						return Mono.error(new RedisBlacklistException(throwable));
+					}
+				)
+				.flatMap(result -> {
+					if (result != TokenCheckResult.OK) {
+						log.warn("[GATEWAY] Token rejected. result={}, path={} {}", result, httpMethod, path);
 						return onError(exchange, JwtErrorCode.INVALID_TOKEN);
 					}
-
-					UUID userId = jwtProvider.getUserId(claims);
-					String role = jwtProvider.getRole(claims);
-
-					return redisTemplate.opsForValue().get(FORCE_LOGOUT_PREFIX + userId)
-						.timeout(Duration.ofMillis(200))
-						.onErrorMap(RedisBlacklistException::new)
-						.defaultIfEmpty("")
-						.flatMap(forceLogoutTime -> {
-							if (!forceLogoutTime.isEmpty()) {
-								try {
-									long forceLogoutMillis = Long.parseLong(forceLogoutTime);
-									Date issuedAt = claims.getIssuedAt();
-									if (issuedAt == null || issuedAt.getTime() <= forceLogoutMillis) {
-										log.warn("[GATEWAY] Force logout detected. Path: {} {}, userId: {}", httpMethod, path, userId);
-										return onError(exchange, JwtErrorCode.INVALID_TOKEN);
-									}
-								} catch (NumberFormatException e) {
-									log.error("[GATEWAY] Invalid forceLogoutTime format in Redis, userId: {}", userId);
-								}
+					return proceedAfterAuth(exchange, chain, path, httpMethod, userId, role);
+				})
+				.onErrorResume(RedisCircuitOpenException.class, e -> {
+					log.warn("[GATEWAY] Redis CB OPEN - UserService fallback. userId={}", userId);
+					long iat = claims.getIssuedAt() != null ? claims.getIssuedAt().getTime() : 0L;
+					return tokenStatusClient.check(token, userId, iat)
+						.flatMap(status -> {
+							if (!status.valid()) {
+								log.warn("[GATEWAY] Fallback 차단. reason={}, userId={}", status.reason(), userId);
+								return onError(exchange, JwtErrorCode.INVALID_TOKEN);
 							}
-
-							return rbacService.isAllowed(path, httpMethod, role)
-								.timeout(RBAC_TIMEOUT)
-								.onErrorMap(AuthorizationServiceException::new)
-								.flatMap(isAllowed -> {
-									if (!isAllowed) {
-										log.warn("[GATEWAY] Role not allowed. Path: {} {}, Role: {}", httpMethod, path, role);
-										return onForbidden(exchange);
-									}
-
-									ServerWebExchange mutatedExchange = exchange.mutate()
-										.request(r -> {
-											r.header("X-User-Id", userId.toString());
-											if (role != null) {
-												r.header("X-User-Role", role);
-											}
-										})
-										.build();
-
-									return chain.filter(mutatedExchange);
-								});
+							return proceedAfterAuth(exchange, chain, path, httpMethod, userId, role);
+						})
+						.onErrorResume(e2 -> {
+							log.error("[GATEWAY] UserService fallback 실패. fail-closed. userId={}", userId);
+							return onError(exchange, SystemErrorCode.AUTH_SERVICE_UNAVAILABLE);
 						});
 				})
 				.onErrorResume(RedisBlacklistException.class, e -> {
-					log.error("[GATEWAY] Redis blacklist check failed: {}", extractMessage(e));
+					log.error("[GATEWAY] Redis 오류: {}", extractMessage(e));
 					return onError(exchange, SystemErrorCode.AUTH_SERVICE_UNAVAILABLE);
 				})
 				.onErrorResume(AuthorizationServiceException.class, e -> {
-					log.error("[GATEWAY] RBAC system error: {}", extractMessage(e));
+					log.error("[GATEWAY] RBAC 오류: {}", extractMessage(e));
 					return onError(exchange, SystemErrorCode.INTERNAL_ERROR);
 				})
 				.onErrorResume(e -> {
-					log.error("[GATEWAY] Unexpected error: {}", extractMessage(e));
+					log.error("[GATEWAY] 예상치 못한 오류: {}", extractMessage(e));
 					return onError(exchange, SystemErrorCode.INTERNAL_ERROR);
 				});
 
@@ -282,5 +268,56 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
 	private String extractMessage(Throwable e) {
 		return e.getCause() != null ? e.getCause().getMessage() : e.getMessage();
+	}
+
+	private enum TokenCheckResult {
+		OK, BLACKLISTED, FORCE_LOGOUT
+	}
+
+	private Mono<TokenCheckResult> checkTokenViaRedis(String token, UUID userId, Claims claims) {
+		return redisTemplate.hasKey(BLACKLIST_PREFIX + token)
+			.timeout(REQUIRED_AUTH_BLACKLIST_TIMEOUT)
+			.flatMap(isBlacklisted -> {
+				if (Boolean.TRUE.equals(isBlacklisted)) {
+					return Mono.just(TokenCheckResult.BLACKLISTED);
+				}
+				return redisTemplate.opsForValue().get(FORCE_LOGOUT_PREFIX + userId)
+					.timeout(Duration.ofMillis(200))
+					.defaultIfEmpty("")
+					.map(forceLogoutTime -> {
+						if (forceLogoutTime.isEmpty()) return TokenCheckResult.OK;
+						try {
+							LocalDateTime forceLogoutDt = LocalDateTime.parse(forceLogoutTime);
+							LocalDateTime tokenIssuedAt = claims.getIssuedAt().toInstant()
+								.atZone(ZoneId.systemDefault()).toLocalDateTime();
+							if (!tokenIssuedAt.isAfter(forceLogoutDt)) {
+								return TokenCheckResult.FORCE_LOGOUT;
+							}
+						} catch (Exception e) {
+							log.error("[GATEWAY] force_logout 파싱 실패. userId={}", userId);
+						}
+						return TokenCheckResult.OK;
+					});
+			});
+	}
+
+	private Mono<Void> proceedAfterAuth(ServerWebExchange exchange, GatewayFilterChain chain,
+		String path, HttpMethod httpMethod, UUID userId, String role) {
+		return rbacService.isAllowed(path, httpMethod, role)
+			.timeout(RBAC_TIMEOUT)
+			.onErrorMap(AuthorizationServiceException::new)
+			.flatMap(isAllowed -> {
+				if (!isAllowed) {
+					log.warn("[GATEWAY] Role not allowed. path={} {}, role={}", httpMethod, path, role);
+					return onForbidden(exchange);
+				}
+				ServerWebExchange mutated = exchange.mutate()
+					.request(r -> {
+						r.header("X-User-Id", userId.toString());
+						if (role != null) r.header("X-User-Role", role);
+					})
+					.build();
+				return chain.filter(mutated);
+			});
 	}
 }
