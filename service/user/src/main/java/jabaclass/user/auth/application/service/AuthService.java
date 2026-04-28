@@ -12,19 +12,20 @@ import java.util.concurrent.CompletableFuture;
 
 import io.jsonwebtoken.Claims;
 
-import jabaclass.user.auth.application.usecase.TokenStatusUseCase;
-import jabaclass.user.auth.domain.model.TokenBlacklist;
-import jabaclass.user.auth.presentation.dto.response.TokenStatusResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import jabaclass.user.auth.application.usecase.TokenStatusUseCase;
+import jabaclass.user.auth.domain.model.TokenBlacklist;
+import jabaclass.user.auth.presentation.dto.response.TokenStatusResult;
 import jabaclass.user.auth.domain.repository.TokenBlacklistRepository;
 import jabaclass.user.user.domain.model.SocialType;
 import jabaclass.user.user.domain.model.UserRole;
@@ -164,6 +165,7 @@ public class AuthService
         return new TokenResult(newAccessToken, newRefreshToken);
     }
 
+    @CacheEvict(cacheNames = "tokenStatus", key = "#accessToken")
     @Override
     @Transactional
     public void logout(UUID userId, String accessToken) {
@@ -172,7 +174,11 @@ public class AuthService
             .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
         user.updateRefreshToken(null);
 
-        redisTemplate.delete("refresh:" + userId);
+        try {
+            redisTemplate.delete("refresh:" + userId);
+        } catch (Exception e) {
+            log.warn("[AUTH] Redis delete 실패, 무시. key=refresh:{}", userId);
+        }
 
         try {
             Claims claims = jwtProvider.parseClaims(accessToken);
@@ -186,12 +192,14 @@ public class AuthService
                 );
                 tokenBlacklistRepository.save(TokenBlacklist.of(hash, expiresAt));
 
-                log.info("[AUTH] Blacklist 등록. key={}, ttl={}ms", BLACKLIST_PREFIX + accessToken, remainingMillis);
-                redisTemplate.opsForValue().set(
-                    BLACKLIST_PREFIX + accessToken,
-                    "logout",
-                    Duration.ofMillis(remainingMillis)
-                );
+                log.info("[AUTH] Blacklist DB 등록. ttl={}ms", remainingMillis);
+
+                try {
+                    redisTemplate.opsForValue().set(
+                        BLACKLIST_PREFIX + accessToken, "logout", Duration.ofMillis(remainingMillis));
+                } catch (Exception e) {
+                    log.warn("[AUTH] Blacklist Redis 캐싱 실패, DB에는 저장됨.");
+                }
             } else {
                 log.warn("[AUTH] 토큰 이미 만료. remainingMillis={}", remainingMillis);
             }
