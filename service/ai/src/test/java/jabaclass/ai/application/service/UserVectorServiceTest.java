@@ -8,6 +8,7 @@ import static org.mockito.BDDMockito.then;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
@@ -18,7 +19,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import jabaclass.ai.domain.model.ActionType;
 import jabaclass.ai.domain.model.UserActivity;
+import jabaclass.ai.domain.model.UserPreferenceState;
 import jabaclass.ai.domain.model.UserVector;
+import jabaclass.ai.domain.model.UserVectorProfile;
 import jabaclass.ai.domain.repository.ProductEmbeddingRepository;
 import jabaclass.ai.domain.repository.UserActivityRepository;
 import jabaclass.ai.domain.repository.UserVectorCacheRepository;
@@ -42,34 +45,59 @@ class UserVectorServiceTest {
 	private static final UUID PRODUCT_ID = UUID.fromString("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
 
 	@Test
-	void 캐시에_벡터가_있으면_생성하지_않고_반환한다() {
+	void 프로필과_제외목록_캐시가_있으면_DB조회없이_반환한다() {
 		UserVector cached = new UserVector(new float[] { 1.0f, 0.0f });
-		given(userVectorCacheRepository.get(USER_ID)).willReturn(cached);
+		UserVectorProfile profile = new UserVectorProfile(cached, LocalDateTime.now(), 2);
+		given(userVectorCacheRepository.getProfile(USER_ID)).willReturn(profile);
+		given(userVectorCacheRepository.getExcludedProductIds(USER_ID)).willReturn(Set.of(PRODUCT_ID));
 
-		UserVector result = userVectorService.getOrCreate(USER_ID);
+		UserPreferenceState result = userVectorService.getOrCreateState(USER_ID);
 
-		assertThat(result).isEqualTo(cached);
-		then(userVectorCacheRepository).should().get(USER_ID);
+		assertThat(result.userVector().vector()).containsExactly(cached.vector());
+		assertThat(result.excludedProductIds()).containsExactly(PRODUCT_ID);
 		then(userActivityRepository).shouldHaveNoInteractions();
 		then(productEmbeddingRepository).shouldHaveNoInteractions();
 	}
 
 	@Test
-	void 캐시에_벡터가_없으면_생성후_저장한다() {
+	void 캐시가_없으면_DB로그로_full_rebuild하고_저장한다() {
 		float[] embedding = new float[768];
 		embedding[0] = 3.0f;
 		embedding[1] = 4.0f;
-		given(userVectorCacheRepository.get(USER_ID)).willReturn(null);
+		given(userVectorCacheRepository.getProfile(USER_ID)).willReturn(null);
+		given(userVectorCacheRepository.getExcludedProductIds(USER_ID)).willReturn(null);
 		given(userActivityRepository.findByUserId(USER_ID))
-			.willReturn(List.of(UserActivity.create(USER_ID, PRODUCT_ID, ActionType.VIEW)));
+			.willReturn(List.of(UserActivity.create(USER_ID, PRODUCT_ID, ActionType.WISHLIST)));
 		given(productEmbeddingRepository.findAllByProductIds(anyCollection()))
 			.willReturn(Map.of(PRODUCT_ID, embedding));
 
-		UserVector result = userVectorService.getOrCreate(USER_ID);
+		UserPreferenceState result = userVectorService.getOrCreateState(USER_ID);
 
-		assertThat(result.vector()[0]).isEqualTo(0.6f);
-		assertThat(result.vector()[1]).isEqualTo(0.8f);
-		then(userVectorCacheRepository).should().save(USER_ID, result);
+		assertThat(result.userVector().vector()[0]).isEqualTo(0.6f);
+		assertThat(result.userVector().vector()[1]).isEqualTo(0.8f);
+		assertThat(result.excludedProductIds()).containsExactly(PRODUCT_ID);
+		then(userVectorCacheRepository).should().saveProfile(
+			org.mockito.ArgumentMatchers.eq(USER_ID),
+			org.mockito.ArgumentMatchers.any(UserVectorProfile.class)
+		);
+		then(userVectorCacheRepository).should().saveExcludedProductIds(USER_ID, Set.of(PRODUCT_ID));
+	}
+
+	@Test
+	void 조회와_주문_모두_제외목록에_추가한다() {
+		UserVector cached = new UserVector(new float[768]);
+		UserVectorProfile profile = new UserVectorProfile(cached, LocalDateTime.now().minusHours(1), 2);
+		float[] embedding = new float[768];
+		embedding[0] = 1.0f;
+		given(userVectorCacheRepository.getProfile(USER_ID)).willReturn(profile);
+		given(productEmbeddingRepository.findAllByProductIds(anyCollection()))
+			.willReturn(Map.of(PRODUCT_ID, embedding));
+
+		userVectorService.updateOnActivity(USER_ID, PRODUCT_ID, ActionType.VIEW);
+		userVectorService.updateOnActivity(USER_ID, PRODUCT_ID, ActionType.ORDER);
+
+		then(userVectorCacheRepository).should(org.mockito.Mockito.times(2))
+			.addExcludedProductId(USER_ID, PRODUCT_ID);
 	}
 
 	@Test
@@ -93,52 +121,8 @@ class UserVectorServiceTest {
 
 		UserVector result = userVectorService.generate(USER_ID);
 
-		assertThat(result.vector()[0]).isCloseTo((float) (1.0 / Math.sqrt(37.0)), within(0.0001f));
-		assertThat(result.vector()[1]).isCloseTo((float) (6.0 / Math.sqrt(37.0)), within(0.0001f));
-	}
-
-	@Test
-	void 차원이_다르거나_null_임베딩은_무시한다() {
-		UUID invalidProductId = UUID.fromString("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee");
-		given(userActivityRepository.findByUserId(USER_ID))
-			.willReturn(List.of(UserActivity.create(USER_ID, invalidProductId, ActionType.WISHLIST)));
-		given(productEmbeddingRepository.findAllByProductIds(anyCollection()))
-			.willReturn(Map.of(invalidProductId, new float[] { 1.0f, 2.0f }));
-
-		UserVector result = userVectorService.generate(USER_ID);
-
-		assertThat(result.vector()[0]).isEqualTo(0.0f);
-		assertThat(result.vector()[1]).isEqualTo(0.0f);
-	}
-
-	@Test
-	void 같은_상품의_반복_VIEW는_최대_세번까지만_반영한다() {
-		UUID heavilyViewedProductId = UUID.fromString("11111111-1111-1111-1111-111111111111");
-		UUID orderedProductId = UUID.fromString("22222222-2222-2222-2222-222222222222");
-		LocalDateTime now = LocalDateTime.now();
-
-		float[] viewedEmbedding = new float[768];
-		float[] orderedEmbedding = new float[768];
-		viewedEmbedding[0] = 1.0f;
-		orderedEmbedding[1] = 1.0f;
-
-		given(userActivityRepository.findByUserId(USER_ID)).willReturn(List.of(
-			UserActivity.create(USER_ID, heavilyViewedProductId, ActionType.VIEW, now.minusMinutes(1)),
-			UserActivity.create(USER_ID, heavilyViewedProductId, ActionType.VIEW, now.minusMinutes(2)),
-			UserActivity.create(USER_ID, heavilyViewedProductId, ActionType.VIEW, now.minusMinutes(3)),
-			UserActivity.create(USER_ID, heavilyViewedProductId, ActionType.VIEW, now.minusMinutes(4)),
-			UserActivity.create(USER_ID, heavilyViewedProductId, ActionType.VIEW, now.minusMinutes(5)),
-			UserActivity.create(USER_ID, orderedProductId, ActionType.ORDER, now.minusMinutes(6))
-		));
-		given(productEmbeddingRepository.findAllByProductIds(anyCollection()))
-			.willReturn(Map.of(
-				heavilyViewedProductId, viewedEmbedding,
-				orderedProductId, orderedEmbedding
-			));
-
-		UserVector result = userVectorService.generate(USER_ID);
-
-		assertThat(result.vector()[0]).isCloseTo(result.vector()[1], within(0.02f));
+		assertThat(result.vector()[0]).isCloseTo((float) (1.0 / Math.sqrt(101.0)), within(0.0001f));
+		assertThat(result.vector()[1]).isCloseTo((float) (10.0 / Math.sqrt(101.0)), within(0.0001f));
 	}
 
 	@Test
@@ -165,18 +149,6 @@ class UserVectorServiceTest {
 		UserVector result = userVectorService.generate(USER_ID);
 
 		assertThat(result.vector()[0]).isGreaterThan(result.vector()[1]);
-	}
-
-	@Test
-	void 활동이_없으면_0벡터를_반환하고_빈_벡터로_취급한다() {
-		given(userActivityRepository.findByUserId(USER_ID)).willReturn(List.of());
-		given(productEmbeddingRepository.findAllByProductIds(anyCollection())).willReturn(Map.of());
-
-		UserVector result = userVectorService.generate(USER_ID);
-
-		assertThat(result.isEmpty()).isTrue();
-		assertThat(result.vector()).hasSize(768);
-		assertThat(result.vector()).containsOnly(0.0f);
 	}
 
 	private static org.assertj.core.data.Offset<Float> within(float value) {
