@@ -7,17 +7,22 @@ import org.springframework.transaction.annotation.Transactional;
 
 import jabaclass.ai.domain.repository.ProductEmbeddingRepository;
 import jabaclass.ai.domain.repository.RecommendationCacheRepository;
+import jabaclass.ai.domain.repository.UserVectorCacheRepository;
 import jabaclass.ai.infrastructure.external.openai.EmbeddingService;
 import jabaclass.ai.infrastructure.kafka.ProductAiSyncedEvent;
 import jabaclass.ai.infrastructure.persistence.command.ProductEmbeddingUpsertCommand;
 import lombok.RequiredArgsConstructor;
 
+/**
+ * 상품 정보를 OpenAI 임베딩으로 바꿔 product_embeddings에 저장/갱신하는 서비스
+ */
 @Service
 @RequiredArgsConstructor
 public class ProductEmbeddingSyncService {
 
 	private final EmbeddingService embeddingService;
 	private final ProductEmbeddingRepository productEmbeddingRepository;
+	private final UserVectorCacheRepository userVectorCacheRepository;
 	private final RecommendationCacheRepository recommendationCacheRepository;
 
 	@Transactional
@@ -40,12 +45,14 @@ public class ProductEmbeddingSyncService {
 				embedding
 			)
 		);
+		userVectorCacheRepository.deleteAllProfiles();
 		recommendationCacheRepository.deleteAll();
 	}
 
 	@Transactional
 	public void delete(UUID productId) {
 		productEmbeddingRepository.deleteByProductId(productId);
+		userVectorCacheRepository.deleteAllProfiles();
 		recommendationCacheRepository.deleteAll();
 	}
 }
