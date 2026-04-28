@@ -46,6 +46,7 @@ import jabaclass.apigateway.exception.RedisBlacklistException;
 import jabaclass.apigateway.exception.SystemErrorCode;
 import jabaclass.apigateway.security.JwtProvider;
 import jabaclass.apigateway.security.JwtTokenResolver;
+import reactor.util.retry.Retry;
 
 @Component
 @RequiredArgsConstructor
@@ -136,7 +137,8 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
 			return redisCircuitBreaker.run(
 					redisTemplate.hasKey(BLACKLIST_PREFIX + token)
-						.timeout(OPTIONAL_AUTH_ENRICHMENT_TIMEOUT),
+						.timeout(OPTIONAL_AUTH_ENRICHMENT_TIMEOUT)
+						.retryWhen(Retry.fixedDelay(2, Duration.ofMillis(30))),
 					throwable -> Mono.just(false)
 				)
 				.flatMap(isBlacklisted -> {
@@ -187,7 +189,8 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 			String role = jwtProvider.getRole(claims);
 
 			return redisCircuitBreaker.run(
-					checkTokenViaRedis(token, userId, claims),
+					checkTokenViaRedis(token, userId, claims)
+						.retryWhen(Retry.fixedDelay(1, Duration.ofMillis(50))),
 					throwable -> {
 						if (throwable instanceof CallNotPermittedException) {
 							return Mono.error(new RedisCircuitOpenException(throwable));
@@ -206,6 +209,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 					log.warn("[GATEWAY] Redis CB OPEN - UserService fallback. userId={}", userId);
 					long iat = claims.getIssuedAt() != null ? claims.getIssuedAt().getTime() : 0L;
 					return tokenStatusClient.check(token, userId, iat)
+						.retryWhen(Retry.fixedDelay(1, Duration.ofMillis(100)))
 						.flatMap(status -> {
 							if (!status.valid()) {
 								log.warn("[GATEWAY] Fallback 차단. reason={}, userId={}", status.reason(), userId);
