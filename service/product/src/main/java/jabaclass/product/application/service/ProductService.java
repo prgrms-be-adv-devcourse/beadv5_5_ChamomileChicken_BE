@@ -174,7 +174,7 @@ public class ProductService implements ProductUseCase {
 	}
 
 	private SearchProductResponseDto searchAllFallback(SearchProductRequestDto requestDto, Throwable t) {
-		log.warn("ES 장애 감지 — DB fallback 실행. circuit: elasticsearchCB, 원인: {}", t.getMessage());
+		log.warn("ES 장애 감지 — DB fallback 실행. circuit: elasticsearchCB", t);
 		Pageable pageable = PageRequest.of(requestDto.thisPage(), requestDto.pageSize());
 
 		Page<Product> page;
@@ -223,7 +223,7 @@ public class ProductService implements ProductUseCase {
 	}
 
 	private SearchProductResponseDto searchMyFallback(SearchProductRequestDto requestDto, UUID sellerId, Throwable t) {
-		log.warn("ES 장애 감지 — DB fallback 실행. circuit: elasticsearchCB, 원인: {}", t.getMessage());
+		log.warn("ES 장애 감지 — DB fallback 실행. circuit: elasticsearchCB", t);
 		Pageable pageable = PageRequest.of(requestDto.thisPage(), requestDto.pageSize());
 
 		Page<Product> page;

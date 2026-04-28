@@ -51,6 +51,7 @@ public class OutboxService {
 
 	@Transactional
 	public int resetFailedEsEvents() {
-		return outboxRepository.resetFailedEsEvents();
+		List<String> esEventTypes = List.of(EsEventType.ES_SAVE.name(), EsEventType.ES_DELETE.name());
+		return outboxRepository.resetFailedEsEvents(esEventTypes);
 	}
 }
