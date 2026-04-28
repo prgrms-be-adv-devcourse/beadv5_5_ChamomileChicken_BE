@@ -8,10 +8,15 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.UUID;
+import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
+import io.github.resilience4j.circuitbreaker.CircuitBreaker;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import io.jsonwebtoken.Claims;
 
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -56,6 +61,9 @@ public class AuthService
     private final JwtProvider jwtProvider;
     private final MailService mailService;
     private final TokenBlacklistRepository tokenBlacklistRepository;
+    private final CircuitBreakerRegistry circuitBreakerRegistry;
+    private CircuitBreaker redisReadCb;
+    private CircuitBreaker redisWriteCb;
 
     private static final String BLACKLIST_PREFIX = "blacklist:";
     private static final String FORCE_LOGOUT_PREFIX = "force_logout:";
@@ -70,6 +78,12 @@ public class AuthService
 
     @Value("${app.base-url}")
     private String baseUrl;
+
+    @PostConstruct
+    void init() {
+        this.redisReadCb = circuitBreakerRegistry.circuitBreaker("redis-read");
+        this.redisWriteCb = circuitBreakerRegistry.circuitBreaker("redis-write");
+    }
 
     @Override
     @Transactional
@@ -88,16 +102,9 @@ public class AuthService
         String refreshToken = tokenProvider.generateRefreshToken(user.getId(), user.getRole());
 
         user.updateRefreshToken(refreshToken);
-
-		try {
-			redisTemplate.opsForValue().set(
-				"refresh:" + user.getId(),
-				refreshToken,
-				Duration.ofMillis(refreshTokenValidity)
-			);
-		} catch (Exception e) {
-            log.warn("[AUTH] Redis refresh token 캐싱 실패, DB에는 저장됨. userId={}", user.getId());
-        }
+        executeWriteWithCb(() -> redisTemplate.opsForValue().set(
+            "refresh:" + user.getId(), refreshToken, Duration.ofMillis(refreshTokenValidity)
+        ), "refresh:" + user.getId());
 
 		return new TokenResult(accessToken, refreshToken);
     }
@@ -115,9 +122,13 @@ public class AuthService
         String role = jwtProvider.getRole(claims);
 
         String stored;
-
         try {
-            stored = redisTemplate.opsForValue().get("refresh:" + userId);
+            stored = redisReadCb.executeCallable(
+                () -> executeWithRedisRetry(() -> redisTemplate.opsForValue().get("refresh:" + userId))
+            );
+        } catch (CallNotPermittedException e) {
+            log.warn("[AUTH] Redis read CB OPEN, DB fallback. userId={}", userId);
+            stored = null;
         } catch (Exception e) {
             log.warn("[AUTH] Redis 장애, DB fallback. userId={}", userId);
             stored = null;
@@ -139,17 +150,13 @@ public class AuthService
             targetuser.forceLogout();
             targetuser.updateRefreshToken(null);
 
-            try {
-                redisTemplate.opsForValue().set(
-                    FORCE_LOGOUT_PREFIX + userId,
-                    LocalDateTime.now().toString(),
-                    Duration.ofMillis(accessTokenValidity)
-                );
-            } catch (Exception e) {
-                log.warn("[AUTH] Redis force_logout 캐싱 실패, DB에는 저장됨. userId={}", userId);
-            }
-            try { redisTemplate.delete("refresh:" + userId); }
-            catch (Exception e) { log.warn("[AUTH] Redis delete 실패, 무시. userId={}", userId); }
+            executeWriteWithCb(() -> redisTemplate.opsForValue().set(
+                FORCE_LOGOUT_PREFIX + userId,
+                LocalDateTime.now().toString(),
+                Duration.ofMillis(accessTokenValidity)
+            ), FORCE_LOGOUT_PREFIX + userId);
+
+            executeWriteWithCb(() -> redisTemplate.delete("refresh:" + userId), "refresh:" + userId);
 
             log.warn("[AUTH] RTR 재사용 감지 - force_logout 설정. userId={}", userId);
             throw new AuthException(AuthErrorCode.SUSPECTED_TOKEN_THEFT);
@@ -167,14 +174,11 @@ public class AuthService
 
         User user = userRepository.findById(userId)
             .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
-        user.updateRefreshToken(newRefreshToken);
 
-		try {
-			redisTemplate.opsForValue().set("refresh:" + userId, newRefreshToken,
-				Duration.ofMillis(refreshTokenValidity));
-		} catch (Exception e) {
-            log.warn("[AUTH] Redis refresh token 캐싱 실패, DB에는 저장됨. userId={}", userId);
-		}
+        user.updateRefreshToken(newRefreshToken);
+        executeWriteWithCb(() -> redisTemplate.opsForValue().set(
+            "refresh:" + userId, newRefreshToken, Duration.ofMillis(refreshTokenValidity)
+        ), "refresh:" + userId);
 
 		return new TokenResult(newAccessToken, newRefreshToken);
     }
@@ -188,11 +192,7 @@ public class AuthService
             .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
         user.updateRefreshToken(null);
 
-        try {
-            redisTemplate.delete("refresh:" + userId);
-        } catch (Exception e) {
-            log.warn("[AUTH] Redis delete 실패, 무시. key=refresh:{}", userId);
-        }
+        executeWriteWithCb(() -> redisTemplate.delete("refresh:" + userId), "refresh:" + userId);
 
         try {
             Claims claims = jwtProvider.parseClaims(accessToken);
@@ -201,19 +201,14 @@ public class AuthService
             if (remainingMillis > 0) {
                 String hash = sha256(accessToken);
                 LocalDateTime expiresAt = LocalDateTime.ofInstant(
-                    Instant.ofEpochMilli(claims.getExpiration().getTime()),
-                    ZoneId.systemDefault()
-                );
+                    Instant.ofEpochMilli(claims.getExpiration().getTime()), ZoneId.systemDefault());
                 tokenBlacklistRepository.save(TokenBlacklist.of(hash, expiresAt));
 
                 log.info("[AUTH] Blacklist DB 등록. ttl={}ms", remainingMillis);
 
-                try {
-                    redisTemplate.opsForValue().set(
-                        BLACKLIST_PREFIX + accessToken, "logout", Duration.ofMillis(remainingMillis));
-                } catch (Exception e) {
-                    log.warn("[AUTH] Blacklist Redis 캐싱 실패, DB에는 저장됨.");
-                }
+                executeWriteWithCb(() -> redisTemplate.opsForValue().set(
+                    BLACKLIST_PREFIX + accessToken, "logout", Duration.ofMillis(remainingMillis)
+                ), BLACKLIST_PREFIX + "***");
             } else {
                 log.warn("[AUTH] 토큰 이미 만료. remainingMillis={}", remainingMillis);
             }
@@ -225,48 +220,40 @@ public class AuthService
     @Override
     @Transactional
     public void reportTheft(String token) {
-		String userIdStr = null;
-		try {
-			userIdStr = redisTemplate.opsForValue().get(THEFT_REPORT_PREFIX + token);
-		} catch (Exception e) {
+
+        String userIdStr;
+        try {
+            userIdStr = redisReadCb.executeCallable(
+                () -> executeWithRedisRetry(() -> redisTemplate.opsForValue().get(THEFT_REPORT_PREFIX + token))
+            );
+        } catch (CallNotPermittedException e) {
+            log.warn("[AUTH] Redis read CB OPEN, theft_report 조회 불가.");
+            throw new AuthException(AuthErrorCode.THEFT_REPORT_TOKEN_EXPIRED);
+        } catch (Exception e) {
             log.warn("[AUTH] Redis 장애, theft_report 조회 실패. 만료 처리.");
             throw new AuthException(AuthErrorCode.THEFT_REPORT_TOKEN_EXPIRED);
-		}
+        }
 
-		if (userIdStr == null) {
+        if (userIdStr == null) {
             throw new AuthException(AuthErrorCode.THEFT_REPORT_TOKEN_EXPIRED);
         }
 
         UUID userId = UUID.fromString(userIdStr);
-
         User user = userRepository.findById(userId)
             .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
         user.forceLogout();
         user.updateRefreshToken(null);
 
-		try {
-			redisTemplate.opsForValue().set(
-				FORCE_LOGOUT_PREFIX + userId,
-				LocalDateTime.now().toString(),
-				Duration.ofMillis(accessTokenValidity)
-			);
-		} catch (Exception e) {
-            log.warn("[AUTH] Redis force_logout 캐싱 실패, DB에는 저장됨. userId={}", userId);
-		}
+        executeWriteWithCb(() -> redisTemplate.opsForValue().set(
+            FORCE_LOGOUT_PREFIX + userId,
+            LocalDateTime.now().toString(),
+            Duration.ofMillis(accessTokenValidity)
+        ), FORCE_LOGOUT_PREFIX + userId);
 
-		try {
-			redisTemplate.delete("refresh:" + userId);
-		} catch (Exception e) {
-            log.warn("[AUTH] Redis delete 실패, 무시. key=refresh:{}", userId);
-        }
+        executeWriteWithCb(() -> redisTemplate.delete("refresh:" + userId), "refresh:" + userId);
+        executeWriteWithCb(() -> redisTemplate.delete(THEFT_REPORT_PREFIX + token), THEFT_REPORT_PREFIX + "***");
 
-		try {
-			redisTemplate.delete(THEFT_REPORT_PREFIX + token);
-		} catch (Exception e) {
-            log.warn("[AUTH] Redis delete 실패, 무시. key=theft_report:{}", token);
-		}
-
-		log.warn("[AUTH] 본인 아님 신고 처리 완료. userId={}", userId);
+        log.warn("[AUTH] 본인 아님 신고 처리 완료. userId={}", userId);
     }
 
     @Override
@@ -382,14 +369,16 @@ public class AuthService
         if (isNewDevice) {
             log.warn("[AUTH] 새 기기 로그인 감지. userId={}, ip={}", user.getId(), clientIp);
             String theftReportToken = UUID.randomUUID().toString();
-			try {
-				redisTemplate.opsForValue().set(
-					THEFT_REPORT_PREFIX + theftReportToken,
-					user.getId().toString(),
-					Duration.ofMillis(refreshTokenValidity)
-				);
-			    sendSecurityAlertAsync(user.getEmail(), user.getName(), clientIp, userAgent, theftReportToken);
-			} catch (Exception e) {
+            try {
+                redisWriteCb.executeRunnable(() -> redisTemplate.opsForValue().set(
+                    THEFT_REPORT_PREFIX + theftReportToken,
+                    user.getId().toString(),
+                    Duration.ofMillis(refreshTokenValidity)
+                ));
+                sendSecurityAlertAsync(user.getEmail(), user.getName(), clientIp, userAgent, theftReportToken);
+            } catch (CallNotPermittedException e) {
+                log.warn("[AUTH] Redis write CB OPEN, 새 기기 보안 알림 스킵. userId={}", userId);
+            } catch (Exception e) {
                 log.warn("[AUTH] 새 기기 보안 알림 등록 실패, 로그인 계속 진행. userId={}", userId);
             }
         }
@@ -407,6 +396,32 @@ public class AuthService
             return hex.toString();
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException("SHA-256 not available", e);
+        }
+    }
+
+    private <T> T executeWithRedisRetry(Callable<T> action) throws Exception {
+        Exception last = null;
+        for (int i = 0; i < 2; i++) {
+            try {
+                return action.call();
+            } catch (Exception e) {
+                last = e;
+                if (i < 1) {
+                    try { Thread.sleep(50); }
+                    catch (InterruptedException ie) { Thread.currentThread().interrupt(); throw e; }
+                }
+            }
+        }
+        throw last;
+    }
+
+    private void executeWriteWithCb(Runnable action, String keyHint) {
+        try {
+            redisWriteCb.executeRunnable(action);
+        } catch (CallNotPermittedException e) {
+            log.warn("[AUTH] Redis write CB OPEN, 스킵. key={}", keyHint);
+        } catch (Exception e) {
+            log.warn("[AUTH] Redis write 실패, 무시. key={}", keyHint);
         }
     }
 }
