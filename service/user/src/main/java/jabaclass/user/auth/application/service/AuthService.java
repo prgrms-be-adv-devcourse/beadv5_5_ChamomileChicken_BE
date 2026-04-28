@@ -165,10 +165,14 @@ public class AuthService
             .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
         user.updateRefreshToken(newRefreshToken);
 
-        redisTemplate.opsForValue().set("refresh:" + userId, newRefreshToken,
-            Duration.ofMillis(refreshTokenValidity));
+		try {
+			redisTemplate.opsForValue().set("refresh:" + userId, newRefreshToken,
+				Duration.ofMillis(refreshTokenValidity));
+		} catch (Exception e) {
+            log.warn("[AUTH] Redis refresh token 캐싱 실패, DB에는 저장됨. userId={}", userId);
+		}
 
-        return new TokenResult(newAccessToken, newRefreshToken);
+		return new TokenResult(newAccessToken, newRefreshToken);
     }
 
     @CacheEvict(cacheNames = "tokenStatus", key = "#accessToken")
