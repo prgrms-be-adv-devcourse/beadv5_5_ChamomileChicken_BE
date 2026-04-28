@@ -3,8 +3,6 @@ package jabaclass.user.auth.presentation.controller;
 import java.util.Optional;
 import java.util.UUID;
 
-import jabaclass.user.auth.application.usecase.ReportTheftUseCase;
-import jabaclass.user.common.util.ClientIpUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -20,10 +18,12 @@ import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import jabaclass.user.auth.application.usecase.TokenStatusUseCase;
 import jabaclass.user.auth.presentation.dto.response.TokenResult;
 import jabaclass.user.auth.presentation.dto.response.TokenResponseDto;
 import jabaclass.user.auth.application.exception.AuthErrorCode;
@@ -34,6 +34,9 @@ import jabaclass.user.auth.application.usecase.ReissueUseCase;
 import jabaclass.user.auth.presentation.dto.request.LoginRequestDto;
 import jabaclass.user.common.dto.ApiResponseDto;
 import jabaclass.user.common.auth.CurrentUser;
+import jabaclass.user.auth.application.usecase.ReportTheftUseCase;
+import jabaclass.user.auth.presentation.dto.response.TokenStatusResult;
+import jabaclass.user.common.util.ClientIpUtils;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -44,12 +47,30 @@ public class AuthController {
     private final LogoutUseCase logoutUseCase;
     private final ReissueUseCase reissueUseCase;
     private final ReportTheftUseCase reportTheftUseCase;
+    private final TokenStatusUseCase tokenStatusUseCase;
 
     @Value("${jwt.refresh-token-validity}")
     private long refreshTokenValidity;
 
     @Value("${cookie.secure}")
     private boolean cookieSecure;
+
+    @Value("${internal.secret}")
+    private String internalSecret;
+
+    @GetMapping("/internal/token-status")
+    public ResponseEntity<TokenStatusResult> checkTokenStatus(
+        @RequestHeader("X-Token") String token,
+        @RequestHeader("X-User-Id") UUID userId,
+        @RequestHeader("X-Token-Iat") long tokenIssuedAtMillis,
+        @RequestHeader(value = "X-Internal-Secret", required = false) String secret) {
+
+        if (!internalSecret.equals(secret)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        return ResponseEntity.ok(tokenStatusUseCase.checkTokenStatus(token, userId, tokenIssuedAtMillis));
+    }
 
     @PostMapping("/login")
     public ResponseEntity<ApiResponseDto<TokenResponseDto>> login(

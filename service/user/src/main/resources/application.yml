@@ -45,3 +45,6 @@ management:
     health:
       probes:
         enabled: true
+
+internal:
+  secret: ${INTERNAL_SECRET:local-dev-secret}

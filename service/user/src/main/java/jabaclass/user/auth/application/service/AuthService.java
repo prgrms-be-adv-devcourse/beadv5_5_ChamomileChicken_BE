@@ -1,22 +1,32 @@
 package jabaclass.user.auth.application.service;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 import io.jsonwebtoken.Claims;
 
-import jabaclass.user.user.domain.model.SocialType;
+import jabaclass.user.auth.application.usecase.TokenStatusUseCase;
+import jabaclass.user.auth.domain.model.TokenBlacklist;
+import jabaclass.user.auth.presentation.dto.response.TokenStatusResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import jabaclass.user.auth.domain.repository.TokenBlacklistRepository;
+import jabaclass.user.user.domain.model.SocialType;
 import jabaclass.user.user.domain.model.UserRole;
 import jabaclass.user.auth.infrastructure.jwt.JwtProvider;
 import jabaclass.user.auth.application.exception.AuthErrorCode;
@@ -36,13 +46,15 @@ import jabaclass.user.mail.application.service.MailService;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class AuthService implements LoginUseCase, LogoutUseCase, ReissueUseCase, ReportTheftUseCase {
+public class AuthService
+    implements LoginUseCase, LogoutUseCase, ReissueUseCase, ReportTheftUseCase, TokenStatusUseCase {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final TokenProvider tokenProvider;
     private final JwtProvider jwtProvider;
     private final MailService mailService;
+    private final TokenBlacklistRepository tokenBlacklistRepository;
 
     private static final String BLACKLIST_PREFIX = "blacklist:";
     private static final String FORCE_LOGOUT_PREFIX = "force_logout:";
@@ -83,6 +95,7 @@ public class AuthService implements LoginUseCase, LogoutUseCase, ReissueUseCase,
         return new TokenResult(accessToken, refreshToken);
     }
 
+    @Transactional
     @Override
     public TokenResult reissue(String refreshToken) {
         Claims claims = jwtProvider.parseClaims(refreshToken);
@@ -101,9 +114,13 @@ public class AuthService implements LoginUseCase, LogoutUseCase, ReissueUseCase,
         }
 
         if (!stored.equals(refreshToken)) {
+            User targetuser = userRepository.findById(userId)
+                .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
+            targetuser.forceLogout();
+
             redisTemplate.opsForValue().set(
                 FORCE_LOGOUT_PREFIX + userId,
-                String.valueOf(Instant.now().toEpochMilli()),
+                LocalDateTime.now().toString(),
                 Duration.ofMillis(accessTokenValidity)
             );
             redisTemplate.delete("refresh:" + userId);
@@ -128,6 +145,7 @@ public class AuthService implements LoginUseCase, LogoutUseCase, ReissueUseCase,
     }
 
     @Override
+    @Transactional
     public void logout(UUID userId, String accessToken) {
         redisTemplate.delete("refresh:" + userId);
 
@@ -136,6 +154,13 @@ public class AuthService implements LoginUseCase, LogoutUseCase, ReissueUseCase,
             long remainingMillis = claims.getExpiration().getTime() - System.currentTimeMillis();
 
             if (remainingMillis > 0) {
+                String hash = sha256(accessToken);
+                LocalDateTime expiresAt = LocalDateTime.ofInstant(
+                    Instant.ofEpochMilli(claims.getExpiration().getTime()),
+                    ZoneId.systemDefault()
+                );
+                tokenBlacklistRepository.save(TokenBlacklist.of(hash, expiresAt));
+
                 log.info("[AUTH] Blacklist 등록. key={}, ttl={}ms", BLACKLIST_PREFIX + accessToken, remainingMillis);
                 redisTemplate.opsForValue().set(
                     BLACKLIST_PREFIX + accessToken,
@@ -151,6 +176,7 @@ public class AuthService implements LoginUseCase, LogoutUseCase, ReissueUseCase,
     }
 
     @Override
+    @Transactional
     public void reportTheft(String token) {
         String userIdStr = redisTemplate.opsForValue().get(THEFT_REPORT_PREFIX + token);
 
@@ -159,14 +185,39 @@ public class AuthService implements LoginUseCase, LogoutUseCase, ReissueUseCase,
         }
 
         UUID userId = UUID.fromString(userIdStr);
+
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
+        user.forceLogout();
+
         redisTemplate.opsForValue().set(
             FORCE_LOGOUT_PREFIX + userId,
-            String.valueOf(Instant.now().toEpochMilli()),
+            LocalDateTime.now().toString(),
             Duration.ofMillis(accessTokenValidity)
         );
         redisTemplate.delete("refresh:" + userId);
         redisTemplate.delete(THEFT_REPORT_PREFIX + token);
         log.warn("[AUTH] 본인 아님 신고 처리 완료. userId={}", userId);
+    }
+
+    @Override
+    @Cacheable(cacheNames = "tokenStatus", key = "#token")
+    public TokenStatusResult checkTokenStatus(String token, UUID userId, long tokenIssuedAtMillis) {
+        String hash = sha256(token);
+        if (tokenBlacklistRepository.existsByTokenHashAndExpiresAtAfter(hash, LocalDateTime.now())) {
+            return TokenStatusResult.blacklisted();
+        }
+
+        User user = userRepository.findById(userId).orElse(null);
+        if (user != null && user.getForceLogoutAt() != null) {
+            long forceLogoutMillis = user.getForceLogoutAt()
+                .atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+            if (tokenIssuedAtMillis <= forceLogoutMillis) {
+                return TokenStatusResult.forceLogout();
+            }
+        }
+
+        return TokenStatusResult.valid();
     }
 
     private void sendSecurityAlertAsync(String email, String name, String ip, String userAgent, String token) {
@@ -272,5 +323,17 @@ public class AuthService implements LoginUseCase, LogoutUseCase, ReissueUseCase,
 
         user.updateLastLogin(clientIp, userAgent);
         log.info("[AUTH] 로그인 성공. userId={}, ip={}", user.getId(), clientIp);
+    }
+
+    private static String sha256(String input) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(input.getBytes(StandardCharsets.UTF_8));
+            StringBuilder hex = new StringBuilder();
+            for (byte b : hash) hex.append(String.format("%02x", b));
+            return hex.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 not available", e);
+        }
     }
 }
