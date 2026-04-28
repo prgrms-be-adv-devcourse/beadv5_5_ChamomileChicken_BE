@@ -19,10 +19,12 @@ import jabaclass.ai.presentation.dto.response.RecommendationResponseDto;
 import jabaclass.ai.presentation.dto.response.RecommendationStatus;
 import lombok.extern.slf4j.Slf4j;
 
+/**
+ * 추천 이유를 비동기로 만드는 서비스
+ */
 @Service
 @Slf4j
 public class RecommendationReasonAsyncService {
-
 	private static final String DEFAULT_REASON = "사용자 취향과 유사한 클래스입니다.";
 
 	private final AiGatewayPort aiGatewayPort;
@@ -59,7 +61,6 @@ public class RecommendationReasonAsyncService {
 					reasonMap.getOrDefault(candidate.productId(), DEFAULT_REASON)
 				))
 				.toList();
-
 			recommendationCacheRepository.save(
 				userId,
 				new RecommendationResponseDto(RecommendationStatus.COMPLETED, items)
@@ -74,7 +75,6 @@ public class RecommendationReasonAsyncService {
 					DEFAULT_REASON
 				))
 				.toList();
-
 			recommendationCacheRepository.save(
 				userId,
 				new RecommendationResponseDto(RecommendationStatus.FAILED, fallbackItems)

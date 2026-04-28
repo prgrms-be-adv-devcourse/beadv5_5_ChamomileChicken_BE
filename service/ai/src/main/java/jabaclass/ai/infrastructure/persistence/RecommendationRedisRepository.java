@@ -10,17 +10,18 @@ import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Repository;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import jabaclass.ai.domain.repository.RecommendationCacheRepository;
 import jabaclass.ai.presentation.dto.response.RecommendationResponseDto;
 import lombok.RequiredArgsConstructor;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Repository
 @RequiredArgsConstructor
 public class RecommendationRedisRepository implements RecommendationCacheRepository {
 
-	private static final String KEY_FORMAT = "user:%s:recommendation";
+	private static final String KEY_FORMAT = "user:%s:recommendation:v2";
 	private static final Duration TTL = Duration.ofMinutes(20);
 	private static final int DELETE_BATCH_SIZE = 100;
 
@@ -29,9 +30,7 @@ public class RecommendationRedisRepository implements RecommendationCacheReposit
 
 	@Override
 	public RecommendationResponseDto get(UUID userId) {
-		String key = KEY_FORMAT.formatted(userId);
-
-		String value = redisTemplate.opsForValue().get(key);
+		String value = redisTemplate.opsForValue().get(KEY_FORMAT.formatted(userId));
 		if (value == null) {
 			return null;
 		}
@@ -45,11 +44,9 @@ public class RecommendationRedisRepository implements RecommendationCacheReposit
 
 	@Override
 	public void save(UUID userId, RecommendationResponseDto response) {
-		String key = KEY_FORMAT.formatted(userId);
-
 		try {
 			String value = objectMapper.writeValueAsString(response);
-			redisTemplate.opsForValue().set(key, value, TTL);
+			redisTemplate.opsForValue().set(KEY_FORMAT.formatted(userId), value, TTL);
 		} catch (JsonProcessingException e) {
 			throw new IllegalStateException("추천 캐시 직렬화 실패", e);
 		}
@@ -57,8 +54,7 @@ public class RecommendationRedisRepository implements RecommendationCacheReposit
 
 	@Override
 	public void delete(UUID userId) {
-		String key = KEY_FORMAT.formatted(userId);
-		redisTemplate.delete(key);
+		redisTemplate.delete(KEY_FORMAT.formatted(userId));
 	}
 
 	@Override

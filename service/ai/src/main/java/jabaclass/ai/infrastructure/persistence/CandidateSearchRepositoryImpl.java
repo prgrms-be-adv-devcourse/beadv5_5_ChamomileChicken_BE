@@ -1,6 +1,9 @@
 package jabaclass.ai.infrastructure.persistence;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -21,13 +24,14 @@ public class CandidateSearchRepositoryImpl implements CandidateSearchRepository 
 	private final JdbcTemplate jdbcTemplate;
 
 	@Override
-	public List<CandidateClassDto> findTopK(UserVector userVector, int k) {
+	public List<CandidateClassDto> findTopK(UserVector userVector, Set<UUID> excludedProductIds, int k) {
 
 		if (userVector == null || userVector.isEmpty()) {
 			return List.of();
 		}
 
 		String vector = toPgVector(userVector.vector());
+		String exclusionClause = buildExclusionClause(excludedProductIds);
 
 		String sql = """
             SELECT 
@@ -39,18 +43,21 @@ public class CandidateSearchRepositoryImpl implements CandidateSearchRepository 
             FROM product_embeddings
             WHERE status = 'ENABLE'
               AND embedding <=> (?::vector) <= ?
+        """ + exclusionClause + """
             ORDER BY embedding <=> (?::vector)  -- cosine distance (pgvector)
             LIMIT ?
         """;
 
+		List<Object> params = new ArrayList<>();
+		params.add(vector);
+		params.add(MAX_COSINE_DISTANCE);
+		addExcludedProductIds(params, excludedProductIds);
+		params.add(vector);
+		params.add(k);
+
 		return jdbcTemplate.query(
 			sql,
-			ps -> {
-				ps.setString(1, vector);
-				ps.setDouble(2, MAX_COSINE_DISTANCE);
-				ps.setString(3, vector);
-				ps.setInt(4, k);
-			},
+			params.toArray(),
 			(rs, rowNum) -> new CandidateClassDto(
 				rs.getObject("id", java.util.UUID.class),
 				rs.getString("title"),
@@ -62,7 +69,8 @@ public class CandidateSearchRepositoryImpl implements CandidateSearchRepository 
 	}
 
 	@Override
-	public List<CandidateClassDto> findPopular(int k) {
+	public List<CandidateClassDto> findPopular(Set<UUID> excludedProductIds, int k) {
+		String exclusionClause = buildExclusionClause(excludedProductIds);
 
 		String sql = """
             SELECT 
@@ -74,13 +82,18 @@ public class CandidateSearchRepositoryImpl implements CandidateSearchRepository 
             FROM product_embeddings
             WHERE status = 'ENABLE'
               AND COALESCE(popularity, 0) > 0
+        """ + exclusionClause + """
             ORDER BY popularity DESC
             LIMIT ?
         """;
 
+		List<Object> params = new ArrayList<>();
+		addExcludedProductIds(params, excludedProductIds);
+		params.add(k);
+
 		return jdbcTemplate.query(
 			sql,
-			ps -> ps.setInt(1, k),
+			params.toArray(),
 			(rs, rowNum) -> new CandidateClassDto(
 				rs.getObject("id", java.util.UUID.class),
 				rs.getString("title"),
@@ -89,6 +102,22 @@ public class CandidateSearchRepositoryImpl implements CandidateSearchRepository 
 				rs.getString("road_address")
 			)
 		);
+	}
+
+	private String buildExclusionClause(Set<UUID> excludedProductIds) {
+		if (excludedProductIds == null || excludedProductIds.isEmpty()) {
+			return "";
+		}
+
+		return "\n              AND id NOT IN (" + "?,".repeat(excludedProductIds.size() - 1) + "?" + ")";
+	}
+
+	private void addExcludedProductIds(List<Object> params, Set<UUID> excludedProductIds) {
+		if (excludedProductIds == null || excludedProductIds.isEmpty()) {
+			return;
+		}
+
+		params.addAll(excludedProductIds);
 	}
 
 	private String toPgVector(float[] vector) {
