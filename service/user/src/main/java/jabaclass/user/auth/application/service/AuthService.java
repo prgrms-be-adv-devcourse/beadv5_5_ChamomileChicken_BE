@@ -145,10 +145,10 @@ public class AuthService
         }
 
         if (!stored.equals(refreshToken)) {
-            User targetuser = userRepository.findById(userId)
+            User targetUser = userRepository.findById(userId)
                 .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
-            targetuser.forceLogout();
-            targetuser.updateRefreshToken(null);
+            targetUser.forceLogout();
+            targetUser.updateRefreshToken(null);
 
             executeWriteWithCb(() -> redisTemplate.opsForValue().set(
                 FORCE_LOGOUT_PREFIX + userId,
