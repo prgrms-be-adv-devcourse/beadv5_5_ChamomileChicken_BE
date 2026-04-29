@@ -42,7 +42,6 @@ import jabaclass.apigateway.exception.AuthorizationServiceException;
 import jabaclass.apigateway.exception.ErrorCode;
 import jabaclass.apigateway.exception.JwtAuthException;
 import jabaclass.apigateway.exception.JwtErrorCode;
-import jabaclass.apigateway.exception.RedisBlacklistException;
 import jabaclass.apigateway.exception.SystemErrorCode;
 import jabaclass.apigateway.security.JwtProvider;
 import jabaclass.apigateway.security.JwtTokenResolver;
@@ -191,12 +190,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 			return redisCircuitBreaker.run(
 					checkTokenViaRedis(token, userId, claims)
 						.retryWhen(Retry.fixedDelay(1, Duration.ofMillis(50))),
-					throwable -> {
-						if (throwable instanceof CallNotPermittedException) {
-							return Mono.error(new RedisCircuitOpenException(throwable));
-						}
-						return Mono.error(new RedisBlacklistException(throwable));
-					}
+					throwable -> Mono.error(new RedisCircuitOpenException(throwable))
 				)
 				.flatMap(result -> {
 					if (result != TokenCheckResult.OK) {
@@ -221,10 +215,6 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 							log.error("[GATEWAY] UserService fallback 실패. fail-closed. userId={}", userId);
 							return onError(exchange, SystemErrorCode.AUTH_SERVICE_UNAVAILABLE);
 						});
-				})
-				.onErrorResume(RedisBlacklistException.class, e -> {
-					log.error("[GATEWAY] Redis 오류: {}", extractMessage(e));
-					return onError(exchange, SystemErrorCode.AUTH_SERVICE_UNAVAILABLE);
 				})
 				.onErrorResume(AuthorizationServiceException.class, e -> {
 					log.error("[GATEWAY] RBAC 오류: {}", extractMessage(e));
