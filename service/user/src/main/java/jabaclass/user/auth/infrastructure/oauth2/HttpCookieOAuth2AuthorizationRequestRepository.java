@@ -4,8 +4,12 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Base64;
 
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+
 import lombok.RequiredArgsConstructor;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.oauth2.client.web.AuthorizationRequestRepository;
 import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest;
@@ -27,6 +31,10 @@ public class HttpCookieOAuth2AuthorizationRequestRepository
 	private static final String REDIS_KEY_PREFIX = "oauth2:state:";
 	private static final int COOKIE_MAX_AGE = 60; // 1분
 	private static final String FALLBACK_PREFIX = "fb:";
+	private static final String HMAC_ALGORITHM = "HmacSHA256";
+
+	@Value("${jwt.secret}")
+	private String jwtSecret;
 
 	private final StringRedisTemplate redisTemplate;
 	private final ObjectMapper objectMapper;
@@ -37,14 +45,22 @@ public class HttpCookieOAuth2AuthorizationRequestRepository
 			.map(cookie -> {
 				String value = cookie.getValue();
 				try {
+					String json;
 					if (value.startsWith(FALLBACK_PREFIX)) {
-						String json = new String(
-							Base64.getUrlDecoder().decode(value.substring(FALLBACK_PREFIX.length())),
-							StandardCharsets.UTF_8);
-						return objectMapper.readValue(json, OAuth2AuthorizationRequestDto.class).toRequest();
+						String payload = value.substring(FALLBACK_PREFIX.length());
+						int dotIndex = payload.lastIndexOf('.');
+						if (dotIndex < 0) return null;
+						String encoded = payload.substring(0, dotIndex);
+						String storedHmac = payload.substring(dotIndex + 1);
+						if (!computeHmac(encoded).equals(storedHmac)) {
+							log.warn("[AUTH] OAuth2 fallback 쿠키 HMAC 검증 실패 — 변조 의심");
+							return null;
+						}
+						json = new String(Base64.getUrlDecoder().decode(encoded), StandardCharsets.UTF_8);
+					} else {
+						json = redisTemplate.opsForValue().get(REDIS_KEY_PREFIX + value);
+						if (json == null) return null;
 					}
-					String json = redisTemplate.opsForValue().get(REDIS_KEY_PREFIX + value);
-					if (json == null) return null;
 					return objectMapper.readValue(json, OAuth2AuthorizationRequestDto.class).toRequest();
 				} catch (Exception e) {
 					return null;
@@ -72,9 +88,11 @@ public class HttpCookieOAuth2AuthorizationRequestRepository
 				CookieUtils.addCookie(response, COOKIE_NAME, state, COOKIE_MAX_AGE);
 			} catch (Exception redisEx) {
 				log.warn("[AUTH] Redis 장애, OAuth2 state 쿠키 직접 저장으로 fallback.");
-				String encoded = FALLBACK_PREFIX + Base64.getUrlEncoder()
+				String encoded = Base64.getUrlEncoder()
 					.encodeToString(json.getBytes(StandardCharsets.UTF_8));
-				CookieUtils.addCookie(response, COOKIE_NAME, encoded, COOKIE_MAX_AGE);
+				String hmac = computeHmac(encoded);
+				CookieUtils.addCookie(response, COOKIE_NAME,
+					FALLBACK_PREFIX + encoded + "." + hmac, COOKIE_MAX_AGE);
 			}
 		} catch (Exception e) {
 			throw new RuntimeException("OAuth2 요청 저장 실패", e);
@@ -99,5 +117,15 @@ public class HttpCookieOAuth2AuthorizationRequestRepository
 			CookieUtils.deleteCookie(request, response, COOKIE_NAME);
 		}
 		return authRequest;
+	}
+
+	private String computeHmac(String data) {
+		try {
+			Mac mac = Mac.getInstance(HMAC_ALGORITHM);
+			mac.init(new SecretKeySpec(jwtSecret.getBytes(StandardCharsets.UTF_8), HMAC_ALGORITHM));
+			return Base64.getUrlEncoder().encodeToString(mac.doFinal(data.getBytes(StandardCharsets.UTF_8)));
+		} catch (Exception e) {
+			throw new RuntimeException("HMAC 계산 실패", e);
+		}
 	}
 }
