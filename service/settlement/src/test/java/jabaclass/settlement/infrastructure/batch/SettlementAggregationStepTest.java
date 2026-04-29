@@ -75,7 +75,7 @@ class SettlementAggregationStepTest {
 	}
 
 	@Test
-	void settlementAggregationStep은_reader가_조립한_입력으로_정산과_등급을_생성한다() throws Exception {
+	void sellerGrade와_monthlySettlement_step은_조립한_입력으로_등급과_정산을_생성한다() throws Exception {
 		String settlementMonth = "2026-03";
 		UUID sellerId = UUID.randomUUID();
 		SellerGradePolicy policy = saveBasicPolicy();
@@ -103,12 +103,17 @@ class SettlementAggregationStepTest {
 		settlementTargetCalculationJpaRepository.save(SettlementTargetCalculation.forPayment(currentTarget, null, null, null));
 		settlementTargetCalculationJpaRepository.save(SettlementTargetCalculation.forPayment(previousTarget, null, null, null));
 
-		StepExecution stepExecution = executeSettlementAggregationStep(jobParameters(settlementMonth));
+		StepExecution sellerGradeStepExecution = executeStep("sellerGradeCalculationStep", jobParameters(settlementMonth));
+		StepExecution monthlySettlementStepExecution = executeStep("monthlySettlementCreationStep", jobParameters(settlementMonth));
 
-		assertThat(stepExecution.getStatus()).isEqualTo(BatchStatus.COMPLETED);
-		assertThat(stepExecution.getReadCount()).isEqualTo(1);
-		assertThat(stepExecution.getWriteCount()).isEqualTo(1);
-		assertThat(stepExecution.getFilterCount()).isZero();
+		assertThat(sellerGradeStepExecution.getStatus()).isEqualTo(BatchStatus.COMPLETED);
+		assertThat(sellerGradeStepExecution.getReadCount()).isEqualTo(1);
+		assertThat(sellerGradeStepExecution.getWriteCount()).isEqualTo(1);
+
+		assertThat(monthlySettlementStepExecution.getStatus()).isEqualTo(BatchStatus.COMPLETED);
+		assertThat(monthlySettlementStepExecution.getReadCount()).isEqualTo(1);
+		assertThat(monthlySettlementStepExecution.getWriteCount()).isEqualTo(1);
+		assertThat(monthlySettlementStepExecution.getFilterCount()).isZero();
 
 		assertThat(settlementJpaRepository.findAll()).singleElement().satisfies(settlement -> {
 			assertThat(settlement.getSellerId()).isEqualTo(sellerId);
@@ -130,7 +135,7 @@ class SettlementAggregationStepTest {
 	}
 
 	@Test
-	void settlementAggregationStep은_재집계_불가한_정산은_processor에서_필터링한다() throws Exception {
+	void monthlySettlementStep은_재집계_불가한_정산은_processor에서_필터링한다() throws Exception {
 		String settlementMonth = "2026-03";
 		UUID sellerId = UUID.randomUUID();
 		SellerGradePolicy policy = saveBasicPolicy();
@@ -161,25 +166,29 @@ class SettlementAggregationStepTest {
 		));
 		settlementTargetCalculationJpaRepository.save(SettlementTargetCalculation.forPayment(currentTarget, null, null, null));
 
-		StepExecution stepExecution = executeSettlementAggregationStep(jobParameters(settlementMonth));
+		StepExecution sellerGradeStepExecution = executeStep("sellerGradeCalculationStep", jobParameters(settlementMonth));
+		StepExecution monthlySettlementStepExecution = executeStep("monthlySettlementCreationStep", jobParameters(settlementMonth));
 
-		assertThat(stepExecution.getStatus()).isEqualTo(BatchStatus.COMPLETED);
-		assertThat(stepExecution.getReadCount()).isEqualTo(1);
-		assertThat(stepExecution.getWriteCount()).isZero();
-		assertThat(stepExecution.getFilterCount()).isEqualTo(1);
+		assertThat(sellerGradeStepExecution.getStatus()).isEqualTo(BatchStatus.COMPLETED);
+		assertThat(sellerGradeStepExecution.getWriteCount()).isEqualTo(1);
+
+		assertThat(monthlySettlementStepExecution.getStatus()).isEqualTo(BatchStatus.COMPLETED);
+		assertThat(monthlySettlementStepExecution.getReadCount()).isEqualTo(1);
+		assertThat(monthlySettlementStepExecution.getWriteCount()).isZero();
+		assertThat(monthlySettlementStepExecution.getFilterCount()).isEqualTo(1);
 
 		assertThat(settlementJpaRepository.findAll()).hasSize(1);
-		assertThat(sellerGradeJpaRepository.findAll()).isEmpty();
+		assertThat(sellerGradeJpaRepository.findAll()).hasSize(1);
 	}
 
-	private StepExecution executeSettlementAggregationStep(JobParameters jobParameters) throws Exception {
+	private StepExecution executeStep(String stepName, JobParameters jobParameters) throws Exception {
 		JobInstance jobInstance = jobRepository.createJobInstance(settlementCalculateJob.getName(), jobParameters);
 		JobExecution jobExecution = jobRepository.createJobExecution(
 			jobInstance,
 			jobParameters,
 			new org.springframework.batch.infrastructure.item.ExecutionContext()
 		);
-		Step step = ((ListableStepLocator) settlementCalculateJob).getStep("settlementAggregationStep");
+		Step step = ((ListableStepLocator) settlementCalculateJob).getStep(stepName);
 		StepExecution stepExecution = jobRepository.createStepExecution(step.getName(), jobExecution);
 		step.execute(stepExecution);
 		return stepExecution;
