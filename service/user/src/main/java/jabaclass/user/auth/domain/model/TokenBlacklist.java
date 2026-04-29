@@ -11,11 +11,14 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "token_blacklist")
+@Table(name = "token_blacklist", indexes = {
+	@Index(name = "idx_token_blacklist_expires_at", columnList = "expires_at")
+})
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class TokenBlacklist {
 

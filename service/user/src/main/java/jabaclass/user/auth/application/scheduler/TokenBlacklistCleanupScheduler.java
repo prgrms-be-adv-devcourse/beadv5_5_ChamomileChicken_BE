@@ -21,7 +21,7 @@ public class TokenBlacklistCleanupScheduler {
 	@Transactional
 	public void cleanupExpiredBlacklist() {
 		LocalDateTime now = LocalDateTime.now();
-		tokenBlacklistRepository.deleteAllExpiredBefore(now);
-		log.info("[SCHEDULER] 만료된 blacklist 행 정리 완료. 기준시각={}", now);
+		int deletedCount = tokenBlacklistRepository.deleteAllExpiredBefore(now);
+		log.info("[SCHEDULER] 만료된 blacklist 행 정리 완료. 기준시각={}, 삭제된 행 수={}", now, deletedCount);
 	}
 }
