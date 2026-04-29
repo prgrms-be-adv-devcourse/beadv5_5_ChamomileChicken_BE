@@ -11,7 +11,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jabaclass.user.common.apidocs.ApiErrorSpec;
 import jabaclass.user.common.apidocs.ApiErrorSpecs;
 import jabaclass.user.common.auth.CurrentUser;
-import jabaclass.user.common.auth.CurrentUserRole;
 import jabaclass.user.mail.application.exception.MailErrorCode;
 import jabaclass.user.user.application.exception.UserErrorCode;
 import jabaclass.user.user.presentation.dto.request.ChangeMyEmailRequestDto;
@@ -194,15 +193,9 @@ public interface UserApi {
 			constant = "USER_NOT_FOUND",
 			summary = "사용자를 찾을 수 없습니다"
 		),
-		@ApiErrorSpec(
-			value = UserErrorCode.class,
-			constant = "SELLER_SETTLEMENT_ACCOUNT_ACCESS_DENIED",
-			summary = "판매자 또는 관리자만 정산 계좌를 등록할 수 있습니다"
-		)
-	})
+})
 	ResponseEntity<SellerSettlementAccountResponseDto> upsertSellerSettlementAccount(
 		@CurrentUser UUID userId,
-		@CurrentUserRole String currentUserRole,
 		@Valid @RequestBody UpsertSellerSettlementAccountRequestDto request
 	);
 

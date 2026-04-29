@@ -27,7 +27,6 @@ public interface UserUseCase {
 
 	SellerSettlementAccountResponseDto upsertSellerSettlementAccount(
 		UUID userId,
-		String currentUserRole,
 		UpsertSellerSettlementAccountRequestDto request
 	);
 

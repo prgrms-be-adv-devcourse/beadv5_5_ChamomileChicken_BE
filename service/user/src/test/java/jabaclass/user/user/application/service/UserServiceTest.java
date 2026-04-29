@@ -434,7 +434,6 @@ class UserServiceTest {
 		// when
 		SellerSettlementAccountResponseDto result = userService.upsertSellerSettlementAccount(
 			userId,
-			UserRole.SELLER.name(),
 			request
 		);
 
@@ -481,7 +480,6 @@ class UserServiceTest {
 		// when
 		SellerSettlementAccountResponseDto result = userService.upsertSellerSettlementAccount(
 			userId,
-			UserRole.ADMIN.name(),
 			request
 		);
 
@@ -491,49 +489,4 @@ class UserServiceTest {
 		assertThat(result.accountHolder()).isEqualTo("새예금주");
 		assertThat(result.active()).isFalse();
 	}
-
-	@Test
-	void 일반_사용자는_정산_계좌를_등록할_수_없다() {
-		// given
-		UpsertSellerSettlementAccountRequestDto request = new UpsertSellerSettlementAccountRequestDto(
-			"088",
-			"123-456-789",
-			"일반사용자",
-			true
-		);
-
-		given(userRepository.findById(userId)).willReturn(Optional.of(user));
-
-		// when & then
-		assertThatThrownBy(() -> userService.upsertSellerSettlementAccount(
-			userId,
-			UserRole.USER.name(),
-			request
-		))
-			.isInstanceOf(BusinessException.class)
-			.hasMessage(UserErrorCode.SELLER_SETTLEMENT_ACCOUNT_ACCESS_DENIED.getMessage());
-	}
-
-	@Test
-	void 현재_사용자_권한이_null이면_정산_계좌를_등록할_수_없다() {
-		// given
-		UpsertSellerSettlementAccountRequestDto request = new UpsertSellerSettlementAccountRequestDto(
-			"088",
-			"123-456-789",
-			"권한없음",
-			true
-		);
-
-		given(userRepository.findById(userId)).willReturn(Optional.of(user));
-
-		// when & then
-		assertThatThrownBy(() -> userService.upsertSellerSettlementAccount(
-			userId,
-			null,
-			request
-		))
-			.isInstanceOf(BusinessException.class)
-			.hasMessage(UserErrorCode.SELLER_SETTLEMENT_ACCOUNT_ACCESS_DENIED.getMessage());
-	}
-
 }

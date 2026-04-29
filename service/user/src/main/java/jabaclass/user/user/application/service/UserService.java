@@ -126,11 +126,9 @@ public class UserService implements UserUseCase {
 	@Transactional
 	public SellerSettlementAccountResponseDto upsertSellerSettlementAccount(
 		UUID userId,
-		String currentUserRole,
 		UpsertSellerSettlementAccountRequestDto request
 	) {
 		User user = getUser(userId);
-		validateSellerSettlementAccountAccess(currentUserRole, user);
 
 		SellerSettlementAccount account = sellerSettlementAccountRepository.findByUserId(userId)
 			.map(existing -> {
@@ -230,28 +228,6 @@ public class UserService implements UserUseCase {
 		log.info("UserService.getUser lookup userId={}", userId);
 		return userRepository.findById(userId)
 			.orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
-	}
-
-	private void validateSellerSettlementAccountAccess(String currentUserRole, User user) {
-		UserRole role = resolveRole(currentUserRole);
-		if (!isSellerSettlementAccountAllowed(role) || !isSellerSettlementAccountAllowed(user.getRole())) {
-			throw new BusinessException(UserErrorCode.SELLER_SETTLEMENT_ACCOUNT_ACCESS_DENIED);
-		}
-	}
-
-	private UserRole resolveRole(String currentUserRole) {
-		if (currentUserRole == null) {
-			throw new BusinessException(UserErrorCode.SELLER_SETTLEMENT_ACCOUNT_ACCESS_DENIED);
-		}
-		try {
-			return UserRole.valueOf(currentUserRole);
-		} catch (IllegalArgumentException e) {
-			throw new BusinessException(UserErrorCode.SELLER_SETTLEMENT_ACCOUNT_ACCESS_DENIED);
-		}
-	}
-
-	private boolean isSellerSettlementAccountAllowed(UserRole role) {
-		return role == UserRole.SELLER || role == UserRole.ADMIN;
 	}
 
 	private void saveUser(User user) {
