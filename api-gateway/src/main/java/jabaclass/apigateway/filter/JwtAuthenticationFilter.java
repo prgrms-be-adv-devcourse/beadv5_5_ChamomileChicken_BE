@@ -190,7 +190,10 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 			return redisCircuitBreaker.run(
 					checkTokenViaRedis(token, userId, claims)
 						.retryWhen(Retry.fixedDelay(1, Duration.ofMillis(50))),
-					throwable -> Mono.error(new RedisCircuitOpenException(throwable))
+					throwable -> {
+						log.error("[GATEWAY] Redis 오류 발생 (UserService fallback): {}", extractMessage(throwable));
+						return Mono.error(new RedisCircuitOpenException(throwable));
+					}
 				)
 				.flatMap(result -> {
 					if (result != TokenCheckResult.OK) {
