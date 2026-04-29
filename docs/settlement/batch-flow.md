@@ -20,21 +20,35 @@ infrastructure/batch/
 
   listener/
     SettlementJobExecutionListener.java
+    SettlementRefundSkipListener.java
     SettlementStepExecutionListener.java
+    SettlementStepPhaseTimingListener.java
+
+  reader/
+    PaymentTargetCalculationItemReader.java
+    RefundTargetCalculationItemReader.java
+    SellerGradeCalculationItemReader.java
+    MonthlySettlementCreationItemReader.java
 
   processor/
-    SettlementTargetCalculationItemProcessor.java
+    PaymentTargetCalculationItemProcessor.java
+    RefundTargetCalculationItemProcessor.java
+    SellerGradeCalculationItemProcessor.java
+    MonthlySettlementCreationItemProcessor.java
     SettlementTransferItemProcessor.java
 
   writer/
     SettlementTargetCalculationItemWriter.java
-    SettlementAggregationItemWriter.java
+    SellerGradeItemWriter.java
+    MonthlySettlementItemWriter.java
     SettlementTransferItemWriter.java
 
   support/
     SettlementMonthResolver.java
 
   dto/
+    PaymentTargetCalculationItem.java
+    RefundTargetCalculationItem.java
     SettlementTargetCalculationBatchItem.java
 ```
 
@@ -43,9 +57,10 @@ infrastructure/batch/
 | `config` | 정산 계산 Job, 정산 송금 Job과 각 Step 조립 |
 | `launcher` | 스케줄러/컨트롤러에서 공통으로 사용하는 Job 실행 및 파라미터 생성 |
 | `scheduler` | cron 기반 배치 실행 트리거 |
-| `listener` | Job/Step 실행 로그 및 처리 건수 기록 |
-| `processor` | 정산 타겟 건별 계산 처리, 송금 대상 READY 필터링 |
-| `writer` | 정산 타겟 계산 결과 저장, 월 정산 chunk bulk 저장, 송금 chunk 처리 |
+| `listener` | Job/Step 실행 로그, refund skip 후처리 |
+| `reader` | chunk 단위 대상 조회와 bulk preload 조립 |
+| `processor` | payment/refund 계산, seller grade 계산, 월 정산 생성, 송금 대상 READY 필터링 |
+| `writer` | 정산 타겟 계산 결과 저장, seller grade/월 정산 저장, 송금 chunk 처리 |
 | `support` | 배치 공통 보조 로직 |
 | `dto` | step 사이에서 전달되는 배치 전용 record |
 
@@ -99,13 +114,14 @@ admin-service
 
 ## 정산 계산 Job
 
-정산 계산 Job은 3개의 chunk step으로 구성된다.
+정산 계산 Job은 4개의 chunk step으로 구성된다.
 
 ```text
 settlementCalculateJob
   -> settlementPaymentTargetCalculationStep
   -> settlementRefundTargetCalculationStep
-  -> settlementAggregationStep
+  -> sellerGradeCalculationStep
+  -> monthlySettlementCreationStep
 ```
 
 ### 1. `settlementPaymentTargetCalculationStep`
@@ -114,7 +130,10 @@ settlementCalculateJob
 
 ```text
 SettlementTarget(PAYMENT, PENDING)
-  -> SettlementTargetCalculationItemProcessor
+  -> PaymentTargetCalculationItemReader
+    -> chunk 단위 target 조회
+    -> sellerIds 기준 promotion bulk preload
+  -> PaymentTargetCalculationItemProcessor
     -> PAYMENT 계산
   -> SettlementTargetCalculationItemWriter
     -> SettlementTargetCalculation 저장
@@ -127,7 +146,12 @@ SettlementTarget(PAYMENT, PENDING)
 
 ```text
 SettlementTarget(REFUND, PENDING)
-  -> SettlementTargetCalculationItemProcessor
+  -> RefundTargetCalculationItemReader
+    -> chunk 단위 target 조회
+    -> paymentIds 기준 원 결제 target bulk preload
+    -> targetIds 기준 원 결제 calculation bulk preload
+    -> sellerIds 기준 fallback promotion bulk preload
+  -> RefundTargetCalculationItemProcessor
     -> REFUND 계산
   -> SettlementTargetCalculationItemWriter
     -> SettlementTargetCalculation 저장
@@ -138,21 +162,51 @@ SettlementTarget(REFUND, PENDING)
 
 - 결제 건은 판매자 프로모션과 적용 수수료율을 계산한다.
 - 환불 건은 원 결제 계산 결과를 우선 참조한다.
-- 원 결제 타겟은 있는데 원 결제 계산 결과가 아직 없으면 `FAILED` 처리하지 않고 `PENDING`으로 유지해 다음 배치에서 재시도한다.
+- refund step은 `faultTolerant().skip(...)` 기반으로 예외를 item 단위로 넘기고 batch 전체는 계속 진행한다.
+- `SettlementCalculationRetryableException`, `BusinessException` 발생 시 `SettlementRefundSkipListener`가 실패 사유를 `settlement_targets.calculation_failed_reason`에 기록한다.
 - 원 결제 타겟이 없으면 환불 발생 시점 기준 판매자 프로모션으로 보정 계산한다.
 - 계산 성공 시 `SettlementTarget.calculationStatus`는 `CALCULATED`가 된다.
 - 계산 실패 시 `FAILED`로 변경하고 실패 사유를 남긴다.
 
-### 3. `settlementAggregationStep`
+### 3. `sellerGradeCalculationStep`
 
-`SettlementTargetCalculation`을 seller/month 기준으로 집계해 월 정산 헤더인 `Settlement`를 생성한다.
+`SettlementTargetCalculation`을 seller/month 기준으로 집계해 seller grade를 산정한다.
 
 ```text
 SettlementTargetCalculation summary paging 조회
-  -> SettlementAggregationItemWriter
+  -> SellerGradeCalculationItemReader
     -> 현재 chunk sellerIds 추출
-    -> 필요한 데이터 IN 쿼리로 bulk 조회
-    -> SettlementCalculateService.createMonthlySettlements
+    -> 최근 3개월 calculation 합계 bulk 조회
+    -> 같은 정산월 seller grade bulk 조회
+  -> SellerGradeCalculationItemProcessor
+    -> seller grade 정책 계산
+  -> SellerGradeItemWriter
+    -> SellerGrade saveAll
+```
+
+seller grade 계산 시 청크 단위로 조회하는 데이터:
+
+| 데이터 | 조회 기준 |
+|--------|-----------|
+| 최근 3개월 판매금액 | `sellerIds IN + settlementMonths IN` |
+| 기존 seller grade | `sellerIds IN + calculatedMonth = settlementMonth` |
+| 등급 정책 | active 정책 전체 조회 후 메모리 매칭 |
+
+### 4. `monthlySettlementCreationStep`
+
+`SettlementTargetCalculation`과 확정된 seller grade를 이용해 월 정산 헤더인 `Settlement`를 생성한다.
+
+```text
+SettlementTargetCalculation summary paging 조회
+  -> MonthlySettlementCreationItemReader
+    -> 현재 chunk sellerIds 추출
+    -> 기존 월 정산 bulk 조회
+    -> 최근 3개월 calculation 합계 bulk 조회
+    -> 월별 calculation 상세 bulk 조회
+    -> 같은 정산월 seller grade bulk 조회
+  -> MonthlySettlementCreationItemProcessor
+    -> Settlement 생성/재계산
+  -> MonthlySettlementItemWriter
     -> Settlement saveAll
 ```
 
@@ -163,7 +217,7 @@ SettlementTargetCalculation summary paging 조회
 | 기존 월 정산 | `settlementMonth + sellerIds IN` |
 | 최근 3개월 판매금액 | `sellerIds IN + settlementMonths IN` |
 | 정산 계산 상세 | `settlementMonth + sellerIds IN` |
-| 판매자 등급 | `sellerIds IN` |
+| 판매자 등급 | `sellerIds IN + calculatedMonth = settlementMonth` |
 | 등급 정책 | active 정책 전체 조회 후 메모리 매칭 |
 
 이 구조는 seller별 단건 조회를 반복하지 않고, 현재 chunk에 포함된 sellerIds 기준으로 필요한 데이터를 모아 가져오기 위한 것이다.
@@ -180,6 +234,19 @@ SettlementTarget
 ```
 
 즉 신규 셀러 프로모션은 이벤트 소비 시점에 `seller_promotions`에 먼저 등록되고, 이후 정산 계산 배치가 `occurredAt` 기준으로 적용 가능 여부를 판단해 수수료율을 할인한다.
+
+## seller grade 보관 기준
+
+seller grade는 seller 단일 상태가 아니라 `seller_id + calculated_month` 기준으로 보관한다.
+
+```text
+seller_grades
+  -> seller_id
+  -> calculated_month
+```
+
+같은 seller라도 정산월이 다르면 다른 등급 이력으로 취급한다.  
+따라서 grade 계산 step과 monthly settlement 생성 step 모두 현재 정산월 기준 grade만 조회한다.
 
 ## 정산 송금 Job
 
