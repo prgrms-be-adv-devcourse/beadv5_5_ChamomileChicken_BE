@@ -5,8 +5,21 @@ spring:
     redis:
       host: ${APP_REDIS_HOST:redis}
       port: ${APP_REDIS_PORT:6379}
-      connect-timeout: 2s
-      timeout: 2s
+      connect-timeout: 300ms
+      timeout: 300ms
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: api-gateway
 
 cors:
   allowed-origins: ${CORS_ALLOWED_ORIGINS}
