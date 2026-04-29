@@ -3,7 +3,6 @@ package jabaclass.apigateway.client;
 import java.time.Duration;
 import java.util.UUID;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -15,22 +14,26 @@ import reactor.core.publisher.Mono;
 import jabaclass.apigateway.dto.TokenStatusResult;
 
 @Component
-@RequiredArgsConstructor
 @Slf4j
 public class TokenStatusClient {
 
-	private final WebClient.Builder webClientBuilder;
+	private final WebClient webClient;
+	private final String internalSecret;
 
-	@Value("${internal.user-service-url}")
-	private String userServiceUrl;
-
-	@Value("${internal.secret}")
-	private String internalSecret;
+	public TokenStatusClient(
+		WebClient.Builder webClientBuilder,
+		@Value("${internal.user-service-url}") String userServiceUrl,
+		@Value("${internal.secret}") String internalSecret
+	) {
+		this.webClient = webClientBuilder
+			.baseUrl(userServiceUrl)
+			.build();
+		this.internalSecret = internalSecret;
+	}
 
 	public Mono<TokenStatusResult> check(String token, UUID userId, long issuedAtMillis) {
-		return webClientBuilder.build()
-			.get()
-			.uri(userServiceUrl + "/api/v1/auth/internal/token-status")
+		return webClient.get()
+			.uri("/api/v1/auth/internal/token-status")
 			.header("X-Token", token)
 			.header("X-User-Id", userId.toString())
 			.header("X-Token-Iat", String.valueOf(issuedAtMillis))

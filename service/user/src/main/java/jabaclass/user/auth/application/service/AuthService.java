@@ -222,6 +222,7 @@ public class AuthService
         }
     }
 
+    @CacheEvict(cacheNames = "tokenStatus", allEntries = true)
     @Override
     @Transactional
     public void reportTheft(String token) {
