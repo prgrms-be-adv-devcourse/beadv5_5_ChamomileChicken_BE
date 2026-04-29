@@ -27,4 +27,19 @@ public interface SellerPromotionJpaRepository extends JpaRepository<SellerPromot
 		@Param("sellerId") UUID sellerId,
 		@Param("occurredAt") LocalDateTime occurredAt
 	);
+
+	@Query("""
+		select sp
+		from SellerPromotion sp
+		where sp.sellerId in :sellerIds
+		  and sp.active = true
+		  and sp.startedAt <= :maxOccurredAt
+		  and (sp.endedAt is null or sp.endedAt >= :minOccurredAt)
+		order by sp.sellerId, sp.startedAt desc
+		""")
+	List<SellerPromotion> findActiveApplicablePromotionsBySellerIds(
+		@Param("sellerIds") List<UUID> sellerIds,
+		@Param("minOccurredAt") LocalDateTime minOccurredAt,
+		@Param("maxOccurredAt") LocalDateTime maxOccurredAt
+	);
 }

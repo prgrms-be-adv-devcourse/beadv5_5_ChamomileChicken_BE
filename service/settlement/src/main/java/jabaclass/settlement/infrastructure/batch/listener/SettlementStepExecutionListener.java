@@ -13,6 +13,7 @@ public class SettlementStepExecutionListener implements StepExecutionListener {
 
 	@Override
 	public void beforeStep(StepExecution stepExecution) {
+		stepExecution.getExecutionContext().putLong("stepStartTime", System.currentTimeMillis());
 		log.info("[SETTLEMENT_BATCH] stepName={} stepExecutionId={} started",
 			stepExecution.getStepName(),
 			stepExecution.getId());
@@ -20,15 +21,18 @@ public class SettlementStepExecutionListener implements StepExecutionListener {
 
 	@Override
 	public ExitStatus afterStep(StepExecution stepExecution) {
+		long startedAt = stepExecution.getExecutionContext().getLong("stepStartTime", System.currentTimeMillis());
+		long elapsedMs = System.currentTimeMillis() - startedAt;
 		log.info(
-			"[SETTLEMENT_BATCH] stepName={} stepExecutionId={} status={} readCount={} writeCount={} filterCount={} skipCount={}",
+			"[SETTLEMENT_BATCH] stepName={} stepExecutionId={} status={} readCount={} writeCount={} filterCount={} skipCount={} elapsedMs={}",
 			stepExecution.getStepName(),
 			stepExecution.getId(),
 			stepExecution.getStatus(),
 			stepExecution.getReadCount(),
 			stepExecution.getWriteCount(),
 			stepExecution.getFilterCount(),
-			stepExecution.getSkipCount()
+			stepExecution.getSkipCount(),
+			elapsedMs
 		);
 		return null;
 	}

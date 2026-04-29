@@ -7,6 +7,7 @@ import java.util.UUID;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -17,7 +18,15 @@ import jabaclass.settlement.domain.model.BaseEntity;
 @Getter
 @Entity
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(name = "settlement_target_calculations")
+@Table(
+	name = "settlement_target_calculations",
+	indexes = {
+		@Index(
+			name = "idx_stc_month_seller",
+			columnList = "settlement_month, seller_id"
+		)
+	}
+)
 public class SettlementTargetCalculation extends BaseEntity {
 
 	@Column(name = "settlement_target_id", nullable = false, unique = true)

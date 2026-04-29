@@ -17,6 +17,8 @@ public interface SettlementTargetRepository {
 
 	Optional<SettlementTarget> findByPaymentIdAndTargetType(UUID paymentId, SettlementTargetType targetType);
 
+	List<SettlementTarget> findByPaymentIdsAndTargetType(List<UUID> paymentIds, SettlementTargetType targetType);
+
 	Optional<SettlementTarget> findByRefundId(UUID refundId);
 
 	List<SettlementTarget> findAllByIds(List<UUID> ids);

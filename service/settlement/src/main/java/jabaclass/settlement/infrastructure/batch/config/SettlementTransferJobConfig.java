@@ -22,6 +22,7 @@ import jabaclass.settlement.application.service.SettlementTransferService;
 import jabaclass.settlement.domain.model.settlement.Settlement;
 import jabaclass.settlement.domain.model.settlement.SettlementStatus;
 import jabaclass.settlement.infrastructure.batch.listener.SettlementJobExecutionListener;
+import jabaclass.settlement.infrastructure.batch.listener.SettlementStepPhaseTimingListener;
 import jabaclass.settlement.infrastructure.batch.listener.SettlementStepExecutionListener;
 import jabaclass.settlement.infrastructure.batch.processor.SettlementTransferReconcileItemProcessor;
 import jabaclass.settlement.infrastructure.batch.processor.SettlementTransferItemProcessor;
@@ -63,7 +64,8 @@ public class SettlementTransferJobConfig {
 		ItemReader<Settlement> settlementTransferItemReader,
 		SettlementTransferItemProcessor settlementTransferItemProcessor,
 		SettlementTransferItemWriter settlementTransferItemWriter,
-		SettlementStepExecutionListener settlementStepExecutionListener
+		SettlementStepExecutionListener settlementStepExecutionListener,
+		SettlementStepPhaseTimingListener settlementStepPhaseTimingListener
 	) {
 		return new StepBuilder("settlementTransferStep", jobRepository)
 			.<Settlement, Settlement>chunk(CHUNK_SIZE)
@@ -72,6 +74,7 @@ public class SettlementTransferJobConfig {
 			.processor(settlementTransferItemProcessor)
 			.writer(settlementTransferItemWriter)
 			.listener(settlementStepExecutionListener)
+			.listener(settlementStepPhaseTimingListener)
 			.build();
 	}
 
@@ -82,7 +85,8 @@ public class SettlementTransferJobConfig {
 		ItemReader<Settlement> settlementTransferReconcileItemReader,
 		SettlementTransferReconcileItemProcessor settlementTransferReconcileItemProcessor,
 		SettlementTransferReconcileItemWriter settlementTransferReconcileItemWriter,
-		SettlementStepExecutionListener settlementStepExecutionListener
+		SettlementStepExecutionListener settlementStepExecutionListener,
+		SettlementStepPhaseTimingListener settlementStepPhaseTimingListener
 	) {
 		return new StepBuilder("settlementTransferReconcileStep", jobRepository)
 			.<Settlement, Settlement>chunk(CHUNK_SIZE)
@@ -91,6 +95,7 @@ public class SettlementTransferJobConfig {
 			.processor(settlementTransferReconcileItemProcessor)
 			.writer(settlementTransferReconcileItemWriter)
 			.listener(settlementStepExecutionListener)
+			.listener(settlementStepPhaseTimingListener)
 			.build();
 	}
 
