@@ -17,7 +17,7 @@ public class TokenBlacklistCleanupScheduler {
 
 	private final TokenBlacklistRepository tokenBlacklistRepository;
 
-	@Scheduled(cron = "0 0 3 * * *", zone = "Asia/Seoul")
+	@Scheduled(cron = "0 0 3 * * *")
 	@Transactional
 	public void cleanupExpiredBlacklist() {
 		LocalDateTime now = LocalDateTime.now();
