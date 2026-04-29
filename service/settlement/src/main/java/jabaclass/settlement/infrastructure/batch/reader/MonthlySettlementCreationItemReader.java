@@ -71,7 +71,10 @@ public class MonthlySettlementCreationItemReader implements ItemStreamReader<Mon
 			settlementTargetCalculationRepository.findBySettlementMonthAndSellerIds(settlementMonth, sellerIds)
 				.stream()
 				.collect(Collectors.groupingBy(SettlementTargetCalculation::getSellerId));
-		Map<UUID, SellerGrade> sellerGradeBySellerId = sellerGradeRepository.findBySellerIds(sellerIds)
+		Map<UUID, SellerGrade> sellerGradeBySellerId = sellerGradeRepository.findBySellerIdsAndCalculatedMonth(
+				sellerIds,
+				settlementMonth
+			)
 			.stream()
 			.collect(Collectors.toMap(SellerGrade::getSellerId, Function.identity(), (existing, replacement) -> existing));
 

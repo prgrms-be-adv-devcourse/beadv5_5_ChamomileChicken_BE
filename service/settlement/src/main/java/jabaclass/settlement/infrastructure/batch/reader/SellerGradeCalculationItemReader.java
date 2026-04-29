@@ -57,7 +57,10 @@ public class SellerGradeCalculationItemReader implements ItemStreamReader<Seller
 			.toList();
 		Map<UUID, java.math.BigDecimal> recentThreeMonthSalesAmountBySellerId =
 			findRecentThreeMonthSalesAmountBySellerIds(sellerIds);
-		Map<UUID, SellerGrade> sellerGradeBySellerId = sellerGradeRepository.findBySellerIds(sellerIds)
+		Map<UUID, SellerGrade> sellerGradeBySellerId = sellerGradeRepository.findBySellerIdsAndCalculatedMonth(
+				sellerIds,
+				settlementMonth
+			)
 			.stream()
 			.collect(Collectors.toMap(SellerGrade::getSellerId, Function.identity(), (existing, replacement) -> existing));
 
