@@ -5,6 +5,7 @@ import java.util.UUID;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -14,10 +15,18 @@ import jabaclass.settlement.domain.model.BaseEntity;
 @Getter
 @Entity
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(name = "seller_grades")
+@Table(
+	name = "seller_grades",
+	uniqueConstraints = {
+		@UniqueConstraint(
+			name = "uk_seller_grades_seller_month",
+			columnNames = {"seller_id", "calculated_month"}
+		)
+	}
+)
 public class SellerGrade extends BaseEntity {
 
-	@Column(name = "seller_id", nullable = false, unique = true)
+	@Column(name = "seller_id", nullable = false)
 	private UUID sellerId;
 
 	@Column(name = "seller_grade_policy_id", nullable = false)
