@@ -293,8 +293,9 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 						if (forceLogoutTime.isEmpty()) return TokenCheckResult.OK;
 						try {
 							LocalDateTime forceLogoutDt = LocalDateTime.parse(forceLogoutTime);
-							LocalDateTime tokenIssuedAt = claims.getIssuedAt().toInstant()
-								.atZone(ZoneId.systemDefault()).toLocalDateTime();
+							LocalDateTime tokenIssuedAt = claims.getIssuedAt() != null
+								? claims.getIssuedAt().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime()
+								: LocalDateTime.MIN;
 							if (!tokenIssuedAt.isAfter(forceLogoutDt)) {
 								return TokenCheckResult.FORCE_LOGOUT;
 							}
