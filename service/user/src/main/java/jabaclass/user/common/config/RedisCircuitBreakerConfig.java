@@ -17,7 +17,7 @@ public class RedisCircuitBreakerConfig {
 	public CircuitBreakerRegistry circuitBreakerRegistry() {
 		CircuitBreakerConfig readConfig = CircuitBreakerConfig.custom()
 			.slidingWindowType(SlidingWindowType.COUNT_BASED)
-			.slidingWindowSize(5)
+			.slidingWindowSize(1)
 			.minimumNumberOfCalls(1)
 			.failureRateThreshold(60)
 			.waitDurationInOpenState(Duration.ofSeconds(20))
@@ -26,7 +26,7 @@ public class RedisCircuitBreakerConfig {
 
 		CircuitBreakerConfig writeConfig = CircuitBreakerConfig.custom()
 			.slidingWindowType(SlidingWindowType.COUNT_BASED)
-			.slidingWindowSize(5)
+			.slidingWindowSize(1)
 			.minimumNumberOfCalls(1)
 			.failureRateThreshold(80)
 			.waitDurationInOpenState(Duration.ofSeconds(30))
