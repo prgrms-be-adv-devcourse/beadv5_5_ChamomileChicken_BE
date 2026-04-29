@@ -15,6 +15,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import jabaclass.ai.application.dto.CandidateClassDto;
 import jabaclass.ai.domain.model.UserPreferenceState;
 import jabaclass.ai.domain.model.UserVector;
@@ -50,7 +51,8 @@ class RecommendationServiceTest {
 			userVectorService,
 			candidateSearchRepository,
 			recommendationReasonAsyncService,
-			recommendationCacheRepository
+			recommendationCacheRepository,
+			new SimpleMeterRegistry()
 		);
 	}
 
