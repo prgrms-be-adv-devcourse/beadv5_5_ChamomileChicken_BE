@@ -1,15 +1,14 @@
 package jabaclass.user.auth.application.service;
 
-import java.nio.charset.StandardCharsets;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.UUID;
-import java.util.concurrent.Callable;
-import java.util.concurrent.CompletableFuture;
+import java.nio.charset.StandardCharsets;
 
 import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
@@ -17,6 +16,7 @@ import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import io.jsonwebtoken.Claims;
 
 import jakarta.annotation.PostConstruct;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -122,9 +122,11 @@ public class AuthService
         String role = jwtProvider.getRole(claims);
 
         String stored;
+        User user = null;
+
         try {
             stored = redisReadCb.executeCallable(
-                () -> executeWithRedisRetry(() -> redisTemplate.opsForValue().get("refresh:" + userId))
+                () -> redisTemplate.opsForValue().get("refresh:" + userId)
             );
         } catch (CallNotPermittedException e) {
             log.warn("[AUTH] Redis read CB OPEN, DB fallback. userId={}", userId);
@@ -135,20 +137,21 @@ public class AuthService
         }
 
         if (stored == null) {
-            User fallbackUser = userRepository.findById(userId)
+            user = userRepository.findById(userId)
                 .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
-            if (fallbackUser.getRefreshToken() == null) {
+            if (user.getRefreshToken() == null) {
                 throw new AuthException(AuthErrorCode.ALREADY_LOGGED_OUT);
             }
-
-            stored = fallbackUser.getRefreshToken();
+            stored = user.getRefreshToken();
         }
 
         if (!stored.equals(refreshToken)) {
-            User targetUser = userRepository.findById(userId)
-                .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
-            targetUser.forceLogout();
-            targetUser.updateRefreshToken(null);
+            if (user == null) {
+                user = userRepository.findById(userId)
+                    .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
+            }
+            user.forceLogout();
+            user.updateRefreshToken(null);
 
             executeWriteWithCb(() -> redisTemplate.opsForValue().set(
                 FORCE_LOGOUT_PREFIX + userId,
@@ -172,8 +175,10 @@ public class AuthService
         String newAccessToken = tokenProvider.generateAccessToken(userId, userRole);
         String newRefreshToken = tokenProvider.generateRefreshToken(userId, userRole);
 
-        User user = userRepository.findById(userId)
-            .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
+        if (user == null) {
+            user = userRepository.findById(userId)
+                .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
+        }
 
         user.updateRefreshToken(newRefreshToken);
         executeWriteWithCb(() -> redisTemplate.opsForValue().set(
@@ -224,7 +229,7 @@ public class AuthService
         String userIdStr;
         try {
             userIdStr = redisReadCb.executeCallable(
-                () -> executeWithRedisRetry(() -> redisTemplate.opsForValue().get(THEFT_REPORT_PREFIX + token))
+                () -> redisTemplate.opsForValue().get(THEFT_REPORT_PREFIX + token)
             );
         } catch (CallNotPermittedException e) {
             log.warn("[AUTH] Redis read CB OPEN, theft_report 조회 불가.");
@@ -413,22 +418,6 @@ public class AuthService
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException("SHA-256 not available", e);
         }
-    }
-
-    private <T> T executeWithRedisRetry(Callable<T> action) throws Exception {
-        Exception last = null;
-        for (int i = 0; i < 2; i++) {
-            try {
-                return action.call();
-            } catch (Exception e) {
-                last = e;
-                if (i < 1) {
-                    try { Thread.sleep(50); }
-                    catch (InterruptedException ie) { Thread.currentThread().interrupt(); throw e; }
-                }
-            }
-        }
-        throw last;
     }
 
     private void executeWriteWithCb(Runnable action, String keyHint) {
