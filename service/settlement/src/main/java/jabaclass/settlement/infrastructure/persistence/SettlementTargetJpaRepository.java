@@ -18,6 +18,11 @@ public interface SettlementTargetJpaRepository extends JpaRepository<SettlementT
 		jabaclass.settlement.domain.model.settlement.SettlementTargetType targetType
 	);
 
+	List<SettlementTarget> findByPaymentIdInAndTargetType(
+		List<UUID> paymentIds,
+		jabaclass.settlement.domain.model.settlement.SettlementTargetType targetType
+	);
+
 	java.util.Optional<SettlementTarget> findByRefundId(UUID refundId);
 
 	List<SettlementTarget> findByIdIn(List<UUID> ids);

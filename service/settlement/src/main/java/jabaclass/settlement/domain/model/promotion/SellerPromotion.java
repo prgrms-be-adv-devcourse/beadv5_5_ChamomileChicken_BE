@@ -5,6 +5,7 @@ import java.util.UUID;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -15,7 +16,15 @@ import jabaclass.settlement.domain.model.BaseEntity;
 @Getter
 @Entity
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(name = "seller_promotions")
+@Table(
+	name = "seller_promotions",
+	indexes = {
+		@Index(
+			name = "idx_seller_promotions_seller_active_period",
+			columnList = "seller_id, active, started_at, ended_at"
+		)
+	}
+)
 public class SellerPromotion extends BaseEntity {
 
 	@Column(name = "seller_id", nullable = false)
