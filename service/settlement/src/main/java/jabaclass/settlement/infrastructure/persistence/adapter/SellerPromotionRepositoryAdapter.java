@@ -1,6 +1,7 @@
 package jabaclass.settlement.infrastructure.persistence.adapter;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -26,6 +27,23 @@ public class SellerPromotionRepositoryAdapter implements SellerPromotionReposito
 		return sellerPromotionJpaRepository.findActiveApplicablePromotions(sellerId, occurredAt)
 			.stream()
 			.findFirst();
+	}
+
+	@Override
+	public List<SellerPromotion> findActiveApplicablePromotions(
+		List<UUID> sellerIds,
+		LocalDateTime minOccurredAt,
+		LocalDateTime maxOccurredAt
+	) {
+		if (sellerIds == null || sellerIds.isEmpty() || minOccurredAt == null || maxOccurredAt == null) {
+			return List.of();
+		}
+
+		return sellerPromotionJpaRepository.findActiveApplicablePromotionsBySellerIds(
+			sellerIds,
+			minOccurredAt,
+			maxOccurredAt
+		);
 	}
 
 	@Override

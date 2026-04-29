@@ -21,6 +21,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import jabaclass.settlement.application.service.SettlementTransferService;
 import jabaclass.settlement.domain.model.settlement.Settlement;
 import jabaclass.settlement.domain.model.settlement.SettlementStatus;
+import jabaclass.settlement.infrastructure.batch.listener.SettlementChunkProgressListener;
 import jabaclass.settlement.infrastructure.batch.listener.SettlementJobExecutionListener;
 import jabaclass.settlement.infrastructure.batch.listener.SettlementStepPhaseTimingListener;
 import jabaclass.settlement.infrastructure.batch.listener.SettlementStepExecutionListener;
@@ -32,8 +33,6 @@ import jabaclass.settlement.infrastructure.batch.writer.SettlementTransferItemWr
 
 @Configuration
 public class SettlementTransferJobConfig {
-
-	private static final int CHUNK_SIZE = 100;
 
 	private static final String SETTLEMENT_TRANSFER_QUERY = """
 		select s
@@ -64,17 +63,20 @@ public class SettlementTransferJobConfig {
 		ItemReader<Settlement> settlementTransferItemReader,
 		SettlementTransferItemProcessor settlementTransferItemProcessor,
 		SettlementTransferItemWriter settlementTransferItemWriter,
+		SettlementChunkProgressListener settlementChunkProgressListener,
 		SettlementStepExecutionListener settlementStepExecutionListener,
-		SettlementStepPhaseTimingListener settlementStepPhaseTimingListener
+		SettlementStepPhaseTimingListener settlementStepPhaseTimingListener,
+		@Value("${settlement.batch.transfer.chunk-size:100}") int chunkSize
 	) {
 		return new StepBuilder("settlementTransferStep", jobRepository)
-			.<Settlement, Settlement>chunk(CHUNK_SIZE)
+			.<Settlement, Settlement>chunk(chunkSize)
 			.transactionManager(transactionManager)
 			.reader(settlementTransferItemReader)
 			.processor(settlementTransferItemProcessor)
 			.writer(settlementTransferItemWriter)
 			.listener(settlementStepExecutionListener)
 			.listener(settlementStepPhaseTimingListener)
+			.listener(settlementChunkProgressListener)
 			.build();
 	}
 
@@ -85,17 +87,20 @@ public class SettlementTransferJobConfig {
 		ItemReader<Settlement> settlementTransferReconcileItemReader,
 		SettlementTransferReconcileItemProcessor settlementTransferReconcileItemProcessor,
 		SettlementTransferReconcileItemWriter settlementTransferReconcileItemWriter,
+		SettlementChunkProgressListener settlementChunkProgressListener,
 		SettlementStepExecutionListener settlementStepExecutionListener,
-		SettlementStepPhaseTimingListener settlementStepPhaseTimingListener
+		SettlementStepPhaseTimingListener settlementStepPhaseTimingListener,
+		@Value("${settlement.batch.transfer.chunk-size:100}") int chunkSize
 	) {
 		return new StepBuilder("settlementTransferReconcileStep", jobRepository)
-			.<Settlement, Settlement>chunk(CHUNK_SIZE)
+			.<Settlement, Settlement>chunk(chunkSize)
 			.transactionManager(transactionManager)
 			.reader(settlementTransferReconcileItemReader)
 			.processor(settlementTransferReconcileItemProcessor)
 			.writer(settlementTransferReconcileItemWriter)
 			.listener(settlementStepExecutionListener)
 			.listener(settlementStepPhaseTimingListener)
+			.listener(settlementChunkProgressListener)
 			.build();
 	}
 
@@ -103,13 +108,15 @@ public class SettlementTransferJobConfig {
 	@StepScope
 	public JpaPagingItemReader<Settlement> settlementTransferItemReader(
 		EntityManagerFactory entityManagerFactory,
-		@Value("#{jobParameters['settlementMonth']}") String settlementMonthParam
+		@Value("#{jobParameters['settlementMonth']}") String settlementMonthParam,
+		@Value("${settlement.batch.transfer.chunk-size:100}") int chunkSize
 	) {
 		return settlementReader(
 			entityManagerFactory,
 			settlementMonthParam,
 			SettlementStatus.READY,
-			"settlementTransferItemReader"
+			"settlementTransferItemReader",
+			chunkSize
 		);
 	}
 
@@ -117,13 +124,15 @@ public class SettlementTransferJobConfig {
 	@StepScope
 	public JpaPagingItemReader<Settlement> settlementTransferReconcileItemReader(
 		EntityManagerFactory entityManagerFactory,
-		@Value("#{jobParameters['settlementMonth']}") String settlementMonthParam
+		@Value("#{jobParameters['settlementMonth']}") String settlementMonthParam,
+		@Value("${settlement.batch.transfer.chunk-size:100}") int chunkSize
 	) {
 		return settlementReader(
 			entityManagerFactory,
 			settlementMonthParam,
 			SettlementStatus.TRANSFERRING,
-			"settlementTransferReconcileItemReader"
+			"settlementTransferReconcileItemReader",
+			chunkSize
 		);
 	}
 
@@ -131,13 +140,14 @@ public class SettlementTransferJobConfig {
 		EntityManagerFactory entityManagerFactory,
 		String settlementMonthParam,
 		SettlementStatus status,
-		String name
+		String name,
+		int chunkSize
 	) {
 		String settlementMonth = SettlementMonthResolver.resolve(settlementMonthParam);
 		return new JpaPagingItemReaderBuilder<Settlement>()
 			.name(name)
 			.entityManagerFactory(entityManagerFactory)
-			.pageSize(CHUNK_SIZE)
+			.pageSize(chunkSize)
 			.parameterValues(Map.of(
 				"settlementMonth", settlementMonth,
 				"status", status

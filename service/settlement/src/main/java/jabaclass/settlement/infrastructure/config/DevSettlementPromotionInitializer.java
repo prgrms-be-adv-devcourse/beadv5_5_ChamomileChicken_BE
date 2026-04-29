@@ -17,8 +17,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Component
-//@Profile({"dev", "prod"})
-@Profile("dev")
+@Profile({"dev", "dev-local", "prod"})
 @RequiredArgsConstructor
 public class DevSettlementPromotionInitializer implements ApplicationRunner {
 

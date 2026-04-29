@@ -36,6 +36,15 @@ public class SettlementTargetRepositoryAdapter implements SettlementTargetReposi
 	}
 
 	@Override
+	public List<SettlementTarget> findByPaymentIdsAndTargetType(List<UUID> paymentIds, SettlementTargetType targetType) {
+		if (paymentIds == null || paymentIds.isEmpty()) {
+			return List.of();
+		}
+
+		return settlementTargetJpaRepository.findByPaymentIdInAndTargetType(paymentIds, targetType);
+	}
+
+	@Override
 	public Optional<SettlementTarget> findByRefundId(UUID refundId) {
 		return settlementTargetJpaRepository.findByRefundId(refundId);
 	}

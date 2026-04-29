@@ -8,6 +8,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
+import jabaclass.settlement.application.dto.SellerSalesAmount;
 import jabaclass.settlement.application.dto.SettlementTargetSummary;
 import jabaclass.settlement.domain.model.settlement.SettlementTargetCalculation;
 import jabaclass.settlement.domain.repository.SettlementTargetCalculationRepository;
@@ -33,6 +34,32 @@ public class SettlementTargetCalculationRepositoryAdapter implements SettlementT
 	@Override
 	public Optional<SettlementTargetCalculation> findBySettlementTargetId(UUID settlementTargetId) {
 		return settlementTargetCalculationJpaRepository.findBySettlementTargetId(settlementTargetId);
+	}
+
+	@Override
+	public List<SettlementTargetCalculation> findBySettlementTargetIds(List<UUID> settlementTargetIds) {
+		if (settlementTargetIds == null || settlementTargetIds.isEmpty()) {
+			return List.of();
+		}
+
+		return settlementTargetCalculationJpaRepository.findBySettlementTargetIdIn(settlementTargetIds);
+	}
+
+	@Override
+	public List<SellerSalesAmount> sumSettlementBaseAmountBySellerIdsAndSettlementMonths(
+		List<UUID> sellerIds,
+		List<String> settlementMonths
+	) {
+		if (sellerIds == null || sellerIds.isEmpty() || settlementMonths == null || settlementMonths.isEmpty()) {
+			return List.of();
+		}
+
+		return settlementTargetCalculationJpaRepository.sumSettlementBaseAmountBySellerIdsAndSettlementMonths(
+				sellerIds,
+				settlementMonths
+			).stream()
+			.map(it -> new SellerSalesAmount(it.getSellerId(), it.getSalesAmount()))
+			.toList();
 	}
 
 	@Override

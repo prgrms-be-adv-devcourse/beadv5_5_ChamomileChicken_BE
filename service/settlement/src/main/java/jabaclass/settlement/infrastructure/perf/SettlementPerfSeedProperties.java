@@ -16,13 +16,12 @@ public class SettlementPerfSeedProperties {
 
 	private boolean enabled = false;
 	private boolean truncateBeforeSeed = false;
-	private int sellerCount = 10_000;
-	private int targetMonthPaymentCount = 1_000_000;
+	private int sellerCount = 100_000;
+	private int targetMonthPaymentCount = 3_000_000;
 	private int previousMonthPaymentCount = 300_000;
 	private int twoMonthsAgoPaymentCount = 200_000;
 	private double refundRatio = 0.12d;
-	private double promotedSellerRatio = 0.08d;
-	private double existingSettlementRatio = 0.25d;
+	private double promotedSellerRatio = 0.50d;
 	private int batchSize = 5_000;
 	private String targetMonth = "2026-04";
 	private long randomSeed = 202604L;

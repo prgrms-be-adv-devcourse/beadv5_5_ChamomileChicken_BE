@@ -9,6 +9,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import jabaclass.settlement.domain.model.settlement.SettlementTargetCalculation;
 
 public interface SettlementTargetCalculationJpaRepository extends JpaRepository<SettlementTargetCalculation, UUID> {
@@ -16,6 +17,22 @@ public interface SettlementTargetCalculationJpaRepository extends JpaRepository<
 	boolean existsBySettlementTargetId(UUID settlementTargetId);
 
 	Optional<SettlementTargetCalculation> findBySettlementTargetId(UUID settlementTargetId);
+
+	List<SettlementTargetCalculation> findBySettlementTargetIdIn(List<UUID> settlementTargetIds);
+
+	@Query("""
+		select
+			stc.sellerId as sellerId,
+			coalesce(sum(stc.settlementBaseAmount), 0) as salesAmount
+		from SettlementTargetCalculation stc
+		where stc.sellerId in :sellerIds
+		  and stc.settlementMonth in :settlementMonths
+		group by stc.sellerId
+		""")
+	List<SellerSalesAmountProjection> sumSettlementBaseAmountBySellerIdsAndSettlementMonths(
+		@Param("sellerIds") List<UUID> sellerIds,
+		@Param("settlementMonths") List<String> settlementMonths
+	);
 
 	List<SettlementTargetCalculation> findBySettlementMonthAndSellerIdIn(String settlementMonth, List<UUID> sellerIds);
 
@@ -37,5 +54,10 @@ public interface SettlementTargetCalculationJpaRepository extends JpaRepository<
 		UUID getSellerId();
 		String getSettlementMonth();
 		BigDecimal getTotalSettlementBaseAmount();
+	}
+
+	interface SellerSalesAmountProjection {
+		UUID getSellerId();
+		BigDecimal getSalesAmount();
 	}
 }

@@ -29,14 +29,16 @@ public class SettlementTransferClient implements SettlementTransferPort {
 			ignored -> executeFakeTransfer(command)
 		);
 
-		log.info(
-			"[SETTLEMENT_TRANSFER][FAKE_EXTERNAL] idempotencyKey={}, settlementId={}, sellerId={}, amount={}, success={}",
-			idempotencyKey,
-			command.settlementId(),
-			command.sellerId(),
-			command.amount(),
-			result.success()
-		);
+		if (!result.success()) {
+			log.warn(
+				"[SETTLEMENT_TRANSFER][FAKE_EXTERNAL] idempotencyKey={}, settlementId={}, sellerId={}, amount={}, message={}",
+				idempotencyKey,
+				command.settlementId(),
+				command.sellerId(),
+				command.amount(),
+				result.message()
+			);
+		}
 
 		return result;
 	}

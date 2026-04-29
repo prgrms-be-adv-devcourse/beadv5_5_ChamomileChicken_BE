@@ -1,8 +1,10 @@
 package jabaclass.settlement.application.service.calculation;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +23,7 @@ public class SettlementPromotionResolver {
 
 	private final SettlementPromotionRepository settlementPromotionRepository;
 	private final SellerPromotionRepository sellerPromotionRepository;
+	private final Map<UUID, Optional<AppliedPromotion>> promotionCache = new ConcurrentHashMap<>();
 
 	public AppliedPromotion resolve(UUID sellerId, LocalDateTime occurredAt) {
 		return sellerPromotionRepository.findActiveApplicablePromotion(sellerId, occurredAt)
@@ -29,12 +32,15 @@ public class SettlementPromotionResolver {
 	}
 
 	private Optional<AppliedPromotion> toAppliedPromotion(SellerPromotion sellerPromotion) {
-		return settlementPromotionRepository.findById(sellerPromotion.getPromotionId())
-			.filter(SettlementPromotion::isActive)
-			.map(promotion -> new AppliedPromotion(
-				promotion.getId(),
-				promotion.getPromotionType().name(),
-				promotion.getFeeRate()
-			));
+		return promotionCache.computeIfAbsent(
+			sellerPromotion.getPromotionId(),
+			promotionId -> settlementPromotionRepository.findById(promotionId)
+				.filter(SettlementPromotion::isActive)
+				.map(promotion -> new AppliedPromotion(
+					promotion.getId(),
+					promotion.getPromotionType().name(),
+					promotion.getFeeRate()
+				))
+		);
 	}
 }
