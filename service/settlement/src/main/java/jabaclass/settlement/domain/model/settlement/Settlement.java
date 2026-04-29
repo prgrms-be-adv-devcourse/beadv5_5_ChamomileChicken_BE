@@ -8,6 +8,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
@@ -22,6 +23,12 @@ import jabaclass.settlement.domain.model.grade.SellerGradeType;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(
 	name = "settlements",
+	indexes = {
+		@Index(
+			name = "idx_settlements_month_status",
+			columnList = "settlement_month, status"
+		)
+	},
 	uniqueConstraints = @UniqueConstraint(
 		name = "uk_settlements_seller_month",
 		columnNames = {"seller_id", "settlement_month"}

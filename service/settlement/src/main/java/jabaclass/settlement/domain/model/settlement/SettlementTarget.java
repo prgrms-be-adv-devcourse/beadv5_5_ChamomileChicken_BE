@@ -8,6 +8,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -18,7 +19,23 @@ import jabaclass.settlement.domain.model.BaseEntity;
 @Getter
 @Entity
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(name = "settlement_targets")
+@Table(
+	name = "settlement_targets",
+	indexes = {
+		@Index(
+			name = "idx_settlement_targets_month_calc_status",
+			columnList = "settlement_month, calculation_status"
+		),
+		@Index(
+			name = "idx_settlement_targets_seller_month",
+			columnList = "seller_id, settlement_month"
+		),
+		@Index(
+			name = "idx_settlement_targets_payment_type",
+			columnList = "payment_id, target_type"
+		)
+	}
+)
 public class SettlementTarget extends BaseEntity {
 
 	@Column(name = "source_event_id", nullable = false, unique = true, updatable = false)

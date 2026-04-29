@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import jabaclass.settlement.application.dto.SellerSalesAmount;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -18,6 +19,13 @@ public interface SettlementTargetCalculationRepository {
 	boolean existsBySettlementTargetId(UUID settlementTargetId);
 
 	Optional<SettlementTargetCalculation> findBySettlementTargetId(UUID settlementTargetId);
+
+	List<SettlementTargetCalculation> findBySettlementTargetIds(List<UUID> settlementTargetIds);
+
+	List<SellerSalesAmount> sumSettlementBaseAmountBySellerIdsAndSettlementMonths(
+		List<UUID> sellerIds,
+		List<String> settlementMonths
+	);
 
 	List<SettlementTargetCalculation> findBySettlementMonthAndSellerIds(String settlementMonth, List<UUID> sellerIds);
 
