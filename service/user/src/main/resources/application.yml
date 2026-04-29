@@ -45,3 +45,6 @@ management:
     health:
       probes:
         enabled: true
+
+internal:
+  secret: ${USER_INTERNAL_SECRET}
