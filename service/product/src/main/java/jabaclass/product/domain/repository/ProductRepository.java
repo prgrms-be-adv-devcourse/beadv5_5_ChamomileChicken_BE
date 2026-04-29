@@ -33,4 +33,11 @@ public interface ProductRepository {
 
 	// ES 초기 마이그레이션용 — 삭제되지 않은 전체 상품 배치 조회
 	Page<Product> findAllByDeleteDtIsNull(Pageable pageable);
+
+	// ES 장애 시 DB fallback — 판매자별 전체 조회
+	Page<Product> findBySellerIdAndStatusAndDeleteDtIsNull(UUID sellerId, ProductStatus status, Pageable pageable);
+
+	// ES 장애 시 DB fallback — 판매자별 키워드 검색
+	Page<Product> findBySellerIdAndStatusAndTitleContainingAndDeleteDtIsNull(UUID sellerId, ProductStatus status,
+		String keyword, Pageable pageable);
 }
