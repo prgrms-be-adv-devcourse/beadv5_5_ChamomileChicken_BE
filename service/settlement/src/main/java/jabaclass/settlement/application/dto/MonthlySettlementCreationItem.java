@@ -7,7 +7,7 @@ import jabaclass.settlement.domain.model.grade.SellerGrade;
 import jabaclass.settlement.domain.model.settlement.Settlement;
 import jabaclass.settlement.domain.model.settlement.SettlementTargetCalculation;
 
-public record MonthlySettlementAggregationItem(
+public record MonthlySettlementCreationItem(
 	SettlementTargetSummary summary,
 	Settlement existingSettlement,
 	BigDecimal recentThreeMonthSalesAmount,
