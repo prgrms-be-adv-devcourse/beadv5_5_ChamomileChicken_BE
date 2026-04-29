@@ -37,8 +37,10 @@ spec:
               name: gateway-rules
               readOnly: true
           env:
+            - name: TZ
+              value: Asia/Seoul
             - name: JAVA_TOOL_OPTIONS
-              value: "-Xms128m -Xmx256m"
+              value: "-Xms128m -Xmx256m -Duser.timezone=Asia/Seoul"
 
           envFrom:
             - configMapRef:
