@@ -28,8 +28,21 @@ management:
   endpoints:
     web:
       exposure:
-        include: health
+        include: health,circuitbreakers
   endpoint:
     health:
       probes:
         enabled: true
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      elasticsearchCB:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 30s
+        failureRateThreshold: 50
+        eventConsumerBufferSize: 10

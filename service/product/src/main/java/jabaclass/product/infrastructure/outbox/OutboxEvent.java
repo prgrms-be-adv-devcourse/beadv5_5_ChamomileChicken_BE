@@ -82,4 +82,9 @@ public class OutboxEvent extends EntityBase {
 	public boolean isRetryExceeded() {
 		return this.retryCount >= 5;
 	}
+
+	public void resetForRetry() {
+		this.status = OutboxStatus.PENDING;
+		this.retryCount = 0;
+	}
 }

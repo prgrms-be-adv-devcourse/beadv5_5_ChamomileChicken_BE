@@ -48,4 +48,10 @@ public class OutboxService {
 		}
 		outboxRepository.save(event);
 	}
+
+	@Transactional
+	public int resetFailedEsEvents() {
+		List<String> esEventTypes = List.of(EsEventType.ES_SAVE.name(), EsEventType.ES_DELETE.name());
+		return outboxRepository.resetFailedEsEvents(esEventTypes);
+	}
 }
