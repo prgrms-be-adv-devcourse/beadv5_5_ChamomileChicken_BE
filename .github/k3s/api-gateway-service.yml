@@ -45,16 +45,12 @@ spec:
           envFrom:
             - configMapRef:
                 name: common-config
-                optional: true
             - configMapRef:
                 name: api-gateway-config
-                optional: true
             - secretRef:
                 name: common-secret
-                optional: true
             - secretRef:
                 name: api-gateway-secret
-                optional: true
 
           ports:
             - containerPort: 8080

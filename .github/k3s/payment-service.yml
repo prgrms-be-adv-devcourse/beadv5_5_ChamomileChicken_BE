@@ -54,19 +54,12 @@ spec:
           envFrom:
             - configMapRef:
                 name: common-config
-                optional: true
-            - configMapRef:
-                name: payment-config
-                optional: true
             - secretRef:
                 name: common-secret
-                optional: true
             - secretRef:
                 name: db-secret
-                optional: false
             - secretRef:
                 name: payment-secret
-                optional: true
 
           ports:
             - containerPort: 9001
