@@ -1,6 +1,6 @@
 # 04. Order Service (9005)
 
-> 인증 범례 및 공통 응답 형식 → [API_SPEC.md](../API_SPEC.md)
+> 인증 범례 및 공통 응답 형식 → [API_SPEC.md](00-API_SPEC.md)
 
 ---
 

@@ -301,6 +301,124 @@ outboxRepository.save(OutboxEvent.create("PRODUCT", productId, EsEventType.ES_DE
 
 ---
 
+## ES 서킷 브레이커 (Circuit Breaker)
+
+ES 읽기 경로(`searchAll`, `searchMy`)에 Resilience4j 서킷 브레이커를 적용한다.
+ES 장애 시 무한 타임아웃 없이 즉시 DB(PostgreSQL) fallback으로 전환하고, ES가 복구되면 자동으로 FAILED 상태 outbox 이벤트를 재처리한다.
+
+### 적용 지점
+
+```java
+// ProductService.java
+
+@CircuitBreaker(name = "elasticsearchCB", fallbackMethod = "searchAllFallback")
+public SearchProductResponseDto searchAll(SearchProductRequestDto requestDto) {
+    // ES 검색 (키워드 유무에 따라 searchByKeyword or findAllEnabled)
+}
+
+@CircuitBreaker(name = "elasticsearchCB", fallbackMethod = "searchMyFallback")
+public SearchProductResponseDto searchMy(SearchProductRequestDto requestDto, UUID sellerId) {
+    // 판매자 전용 ES 검색
+}
+```
+
+### Fallback — DB 직접 조회
+
+ES 장애(예외 발생 또는 CB OPEN) 시 fallback 메서드가 PostgreSQL에서 데이터를 직접 조회한다.
+
+```java
+private SearchProductResponseDto searchAllFallback(SearchProductRequestDto requestDto, Throwable t) {
+    log.warn("ES 장애 감지 — DB fallback 실행. circuit: elasticsearchCB", t);
+    // productRepository.findByStatusAndDeleteDtIsNull() + sellerRepository로 sellerName 조회
+    // → SearchProductResponseDto 반환
+}
+
+private SearchProductResponseDto searchMyFallback(SearchProductRequestDto requestDto, UUID sellerId, Throwable t) {
+    // 판매자 전용 DB 쿼리 fallback
+}
+```
+
+### CB 설정 (`application.yml`)
+
+```yaml
+resilience4j:
+  circuitbreaker:
+    instances:
+      elasticsearchCB:
+        registerHealthIndicator: true
+        slidingWindowSize: 10                          # 최근 10회 호출 기준으로 실패율 계산
+        minimumNumberOfCalls: 5                        # 최소 5회 호출 후 CB 판단 시작
+        permittedNumberOfCallsInHalfOpenState: 3       # HALF_OPEN 상태에서 3회 probe 허용
+        automaticTransitionFromOpenToHalfOpenEnabled: true  # OPEN → HALF_OPEN 자동 전환
+        waitDurationInOpenState: 30s                   # OPEN 유지 시간
+        failureRateThreshold: 50                       # 실패율 50% 초과 시 OPEN
+        eventConsumerBufferSize: 10
+```
+
+| 설정 | 값 | 설명 |
+|------|----|------|
+| `slidingWindowSize` | 10 | 최근 10회 호출로 실패율 계산 |
+| `minimumNumberOfCalls` | 5 | 최소 5회 이상 호출되어야 CB 동작 |
+| `failureRateThreshold` | 50 | 실패율 50% 초과 시 OPEN 전환 |
+| `waitDurationInOpenState` | 30s | OPEN 상태 30초 유지 후 HALF_OPEN |
+| `permittedNumberOfCallsInHalfOpenState` | 3 | HALF_OPEN에서 3회 probe 후 CLOSED/OPEN 결정 |
+| `automaticTransitionFromOpenToHalfOpenEnabled` | true | 별도 호출 없이 타이머 기반 자동 전환 |
+
+### 자동 복구 — ElasticsearchCircuitBreakerEventListener
+
+CB가 CLOSED 상태로 전환될 때(ES 복구 감지) `ElasticsearchRecoveryService`를 비동기 호출해
+ES 장애 기간 동안 `FAILED` 상태로 쌓인 outbox 이벤트를 자동으로 `PENDING`으로 리셋하고 재처리한다.
+
+```java
+@Component
+public class ElasticsearchCircuitBreakerEventListener {
+
+    @PostConstruct
+    public void registerListener() {
+        circuitBreakerRegistry.circuitBreaker("elasticsearchCB")
+            .getEventPublisher()
+            .onStateTransition(event -> {
+                if (event.getStateTransition().getToState() == CircuitBreaker.State.CLOSED) {
+                    recoveryService.retryFailedEsEvents(); // 외부 빈 호출 → @Async 프록시 경유
+                }
+            });
+    }
+}
+
+// ElasticsearchRecoveryService
+@Async
+public void retryFailedEsEvents() {
+    int count = outboxService.resetFailedEsEvents(); // FAILED → PENDING 리셋
+    if (count > 0) {
+        log.info("ES 복구 감지 — FAILED 아웃박스 이벤트 {}건 재처리 예약", count);
+    }
+}
+```
+
+> **`@Async` 프록시 주의:** `ElasticsearchCircuitBreakerEventListener` 내에서 직접 `retryFailedEsEvents()`를 호출하면 Spring AOP 프록시를 경유하지 않아 `@Async`가 동작하지 않는다.
+> `ElasticsearchRecoveryService`를 별도 빈으로 분리하고 주입받아 호출해야 프록시가 경유되고 `@Async`가 정상 동작한다.
+
+**전체 ES 복구 흐름:**
+
+```
+ES 장애 발생
+  → searchAll/searchMy 실패 누적
+  → CB: CLOSED → OPEN (실패율 50% 초과)
+  → fallback: DB(PostgreSQL) 직접 조회로 응답 유지
+
+30초 후 (waitDurationInOpenState)
+  → CB: OPEN → HALF_OPEN (자동 전환)
+  → probe 3회 성공 시 CB: HALF_OPEN → CLOSED
+
+CB CLOSED 전환 감지 (ElasticsearchCircuitBreakerEventListener)
+  → recoveryService.retryFailedEsEvents() @Async 호출
+  → outboxService.resetFailedEsEvents(): FAILED → PENDING 리셋
+  → OutboxPublisher(1초 주기)가 재발행 시작
+  → ES 색인 정합성 자동 복구
+```
+
+---
+
 ## 초기 마이그레이션
 
 ES 도입 이전에 PostgreSQL에 이미 존재하는 상품 데이터를 ES에 일괄 색인하기 위한 엔드포인트를 제공한다.
@@ -388,6 +506,14 @@ spring:
 - [x] `KafkaConsumerConfig` — `DefaultErrorHandler` + `DeadLetterPublishingRecoverer` (DLQ: `product.es.index.dlq`)
 - [x] `KafkaTopicConfig` — `PRODUCT_ES_TOPIC` 상수 + `NewTopic` 빈 (토픽명 단일 관리, `EsEventType` / `ProductEsKafkaConsumer` 참조)
 
+### ES 서킷 브레이커
+- [x] `ProductService.searchAll()` — `@CircuitBreaker(name = "elasticsearchCB", fallbackMethod = "searchAllFallback")`
+- [x] `ProductService.searchMy()` — `@CircuitBreaker(name = "elasticsearchCB", fallbackMethod = "searchMyFallback")`
+- [x] `searchAllFallback()` / `searchMyFallback()` — PostgreSQL DB 직접 조회 fallback
+- [x] `application.yml` — `elasticsearchCB` 서킷 브레이커 설정 (slidingWindowSize: 10, failureRateThreshold: 50, waitDurationInOpenState: 30s)
+- [x] `ElasticsearchCircuitBreakerEventListener` — CB CLOSED 전환 시 `recoveryService.retryFailedEsEvents()` 자동 호출
+- [x] `ElasticsearchRecoveryService` — `@Async` + `outboxService.resetFailedEsEvents()` (FAILED → PENDING 리셋)
+
 ### 판매자 이름 변경 시 ES 동기화
 - [x] `UserEventsPublisher` (user-service) — `updateMyInfo`에서 이름 변경 감지 시 `user.events`에 `USER_NAME_CHANGED` 발행
 - [x] `UserEventsConsumer` (product-service) — `user.events` 수신 후 `updateSellerNameForAll` 호출
@@ -416,3 +542,8 @@ spring:
 ### 검색 범위 확장 가능성
 - 현재: `title` (fuzziness) + `description` (일반 match)
 - 추후: 태그, 카테고리 등 필드 추가 시 `ProductDocument`에 필드만 추가하면 됨
+
+### ES 장애 대응 (서킷 브레이커)
+- ES 장애 시 서킷 브레이커가 OPEN으로 전환되어 즉시 DB fallback으로 검색 가용성 유지
+- ES 복구(CB CLOSED) 시 `ElasticsearchCircuitBreakerEventListener`가 FAILED outbox 이벤트를 자동으로 PENDING 리셋 → OutboxPublisher가 재발행해 ES 정합성 자동 복구
+- ES 완전 장애 시에도 `migrateToEs` API로 전체 재색인 가능
