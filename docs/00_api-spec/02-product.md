@@ -1,6 +1,6 @@
 # 02. Product Service (9004)
 
-> 공통 응답 형식은 [API_SPEC.md](../API_SPEC.md)를 참고합니다.
+> 공통 응답 형식은 [API_SPEC.md](00-API_SPEC.md)를 참고합니다.
 
 ---
 

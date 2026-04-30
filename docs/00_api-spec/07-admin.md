@@ -1,6 +1,6 @@
 # 07. Admin Service (9007)
 
-> 인증 범례 및 공통 응답 형식 → [API_SPEC.md](../API_SPEC.md)
+> 인증 범례 및 공통 응답 형식 → [API_SPEC.md](00-API_SPEC.md)
 >
 > 모든 어드민 API는 `✅ JWT` + ADMIN 권한 필요. 게이트웨이에서 `/api/v1/admins/**` → `:9007` 라우팅.
 
