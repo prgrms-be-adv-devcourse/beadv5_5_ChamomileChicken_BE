@@ -106,4 +106,4 @@ internal:
   secret: ${USER_INTERNAL_SECRET}
 
 frontend:
-  service-url: ${FRONTEND_SERVICE_URL:http://jabaclass.store}
+  service-url: ${FRONTEND_SERVICE_URL:https://jabaclass.store}
