@@ -34,6 +34,16 @@ data:
           path: /oauth2/authorization/**
         - method: GET
           path: /login/oauth2/code/**
+        - method: GET
+          path: /swagger-ui
+        - method: GET
+          path: /swagger-ui.html
+        - method: GET
+          path: /swagger-ui/**
+        - method: GET
+          path: /v3/api-docs/**
+        - method: GET
+          path: /docs/**
       
       rbac:
         - method: POST
