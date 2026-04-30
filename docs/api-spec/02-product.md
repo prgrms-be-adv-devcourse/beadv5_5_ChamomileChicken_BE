@@ -13,8 +13,10 @@
 | POST | `/api/v1/products` | JWT | 상품 등록 |
 | PUT | `/api/v1/products/{productId}` | JWT | 상품 수정 |
 | DELETE | `/api/v1/products/{productId}` | JWT | 상품 삭제 |
-| GET | `/api/v1/products` | 공개 | 상품 목록 조회 (페이징) |
+| GET | `/api/v1/products` | 공개 | 상품 목록 조회 (검색/페이징) |
 | GET | `/api/v1/products/{productId}` | 공개 | 상품 상세 조회 |
+| GET | `/api/v1/products/my` | JWT | 내 상품 목록 조회 (SELLER 본인) |
+| POST | `/api/v1/products/batch` | JWT | 상품 일괄 생성 |
 
 ---
 
@@ -119,7 +121,7 @@
 
 | 파라미터 | 타입 | 필수 | 설명 |
 |---------|------|------|------|
-| title | String | X | 검색 키워드 |
+| title | String | X | 검색 키워드 (Elasticsearch fuzziness AUTO) |
 | thisPage | int | X | 페이지 번호 (0부터) |
 | pageSize | int | X | 페이지 크기 |
 | status | ProductStatus | X | 상태 필터 (ENABLE/DISABLE) |
@@ -133,6 +135,22 @@
   }
 }
 ```
+
+---
+
+### GET `/api/v1/products/my`
+
+> SELLER 본인 상품 목록 조회. `GET /api/v1/products` 와 동일한 쿼리 파라미터 사용.
+
+**Response** `200 OK` — 형식은 `GET /api/v1/products` 동일
+
+---
+
+### POST `/api/v1/products/batch`
+
+> 상품과 스케줄을 일괄 생성합니다.
+
+**Response** `201 Created`
 
 ---
 
@@ -273,9 +291,9 @@
 
 | Method | Path | Auth | 설명 |
 |--------|------|------|------|
-| POST | `/api/v1/products/reservations` | Internal | 재고 확인 및 예약 처리 |
-| POST | `/api/v1/products/reservations/status` | Internal | 재고 복원 (주문 취소 시) |
-| POST | `/api/v1/products/schedules/{scheduleId}` | Internal | 스케줄 단건 조회 |
-| GET | `/api/v1/products/{productId}/schedules/{scheduleId}/user` | Internal | 스케줄 참여 유저 조회 |
-| POST | `/api/v1/products/bulk` | Internal | 상품 다건 조회 (정산용) |
-| POST | `/api/v1/products/es-migrate` | Internal | Elasticsearch 마이그레이션 |
+| POST | `/api/v1/products/reservations` | ⚙️ Internal | 재고 확인 및 예약 처리 (order → product) |
+| POST | `/api/v1/products/schedules/{scheduleId}` | ⚙️ Internal | 스케줄 단건 조회 (order → product) |
+| GET | `/api/v1/products/{productId}/schedules/{scheduleId}/user` | ⚙️ Internal | 스케줄 참여 유저 조회 |
+| POST | `/api/v1/products/bulk` | ⚙️ Internal | 상품 다건 조회 (settlement → product) |
+| POST | `/api/v1/products/es-migrate` | ⚙️ Internal | Elasticsearch 마이그레이션 |
+| GET | `/api/v1/products/schedules/{scheduleId}/start-date` | ⚙️ Internal | 스케줄 시작일 조회 (order → product) |

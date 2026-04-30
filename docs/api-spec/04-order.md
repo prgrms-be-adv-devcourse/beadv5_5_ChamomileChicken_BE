@@ -11,7 +11,8 @@
 | POST | `/api/v1/orders` | ✅ JWT | 주문 생성 |
 | GET | `/api/v1/orders` | ✅ JWT | 내 주문 목록 |
 | GET | `/api/v1/orders/{orderId}` | ✅ JWT | 주문 상세 조회 |
-| PATCH | `/api/v1/orders/{orderId}` | ✅ JWT | 주문 취소 |
+| DELETE | `/api/v1/orders/{orderId}/refund` | ✅ JWT | 주문 환불 요청 |
+| GET | `/api/v1/orders/{orderId}/refund-info` | ✅ JWT | 주문 환불 정보 조회 |
 
 ---
 
@@ -65,6 +66,35 @@
 |--------|------|------|------|
 | GET | `/api/v1/orders/{orderId}/payment-amount/validate` | ⚙️ Internal | 결제 금액 검증 |
 | POST | `/api/v1/orders/bulk` | ⚙️ Internal | 주문 다건 조회 (정산용) |
+
+---
+
+### DELETE `/api/v1/orders/{orderId}/refund`
+
+주문 환불을 요청합니다. 환불 처리 후 payment 서비스를 통해 실제 환불이 진행됩니다.
+
+**Response** `204 No Content`
+
+---
+
+### GET `/api/v1/orders/{orderId}/refund-info`
+
+환불 완료된 주문의 클래스 시작일, 환불 처리일, 환불 비율을 조회합니다.
+
+**Response** `200 OK`
+```json
+{
+  "data": {
+    "orderId": "uuid",
+    "classStartDate": "2024-06-01",
+    "refundProcessedAt": "2024-05-20T10:00:00",
+    "refundRate": 0.5,
+    "paymentRefundAmount": 15000,
+    "depositRefundAmount": 5000,
+    "totalRefundAmount": 20000
+  }
+}
+```
 
 ---
 

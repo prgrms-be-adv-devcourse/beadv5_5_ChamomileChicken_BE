@@ -37,7 +37,7 @@ GET  /api/v1/products/**
 **게이트웨이 라우팅 목록 (미등록 경로는 JWT 미적용)**
 
 ```
-/api/v1/files/**       → :9000 (File)
+/api/v1/files/**       → :9004 (Product, 파일 업로드 포함)
 /api/v1/payments/**    → :9001 (Payment)
 /api/v1/auth/**        → :9003 (User)
 /api/v1/users/**       → :9003 (User)
@@ -46,9 +46,10 @@ GET  /api/v1/products/**
 /api/v1/orders/**      → :9005 (Order)
 /api/v1/internal-batch/settlements/** → :9002 (Settlement)
 /api/v1/admins/**      → :9007 (Admin)
+/api/v1/recommendations/** → :9009 (AI)
 ```
 
-> `/api/v1/deposits/**`, `/api/v1/refunds`는 게이트웨이 미등록
+> `/api/v1/deposits/**`는 게이트웨이 미등록
 
 ---
 
@@ -60,10 +61,12 @@ GET  /api/v1/products/**
 |---|------------|------|--------------------------------------|
 | 1 | User       | 9003 | [01-user.md](01-user.md)             |
 | 2 | Product    | 9004 | [02-product.md](02-product.md)       |
-| 3 | File       | 9000 | [03-file.md](03-file.md)             |
+| 3 | File       | 9004 | [03-file.md](03-file.md) ※Product 서비스에 통합 |
 | 4 | Order      | 9005 | [04-order.md](04-order.md)           |
 | 5 | Payment    | 9001 | [05-payment.md](05-payment.md)       |
 | 6 | Settlement | 9002 | [06-settlement.md](06-settlement.md) |
+| 7 | Admin      | 9007 | [07-admin.md](07-admin.md)           |
+| 8 | AI         | 9009 | [08-ai.md](08-ai.md)                 |
 
 ---
 
@@ -100,16 +103,20 @@ GET  /api/v1/products/**
     ├──→ Product Service (:9004) /api/v1/products/**
     ├──→ Order Service   (:9005) /api/v1/orders/**
     ├──→ Payment Service (:9001) /api/v1/payments/**
-    └──→ File Service    (:9000) /api/v1/files/**
+    ├──→ File+Product    (:9004) /api/v1/files/**
+    ├──→ Admin Service   (:9007) /api/v1/admins/**
+    └──→ AI Service      (:9009) /api/v1/recommendations/**
 
 [서비스 간 직접 호출 RestTemplate — 게이트웨이 우회]
     Order      → Product   재고 확인 (/api/v1/products/reservations)
-    Order      → User      예치금 검증/차감 (/api/v1/deposits/validate, /use)
     Order      → Product   일정 단건 조회 (/api/v1/products/schedules/{scheduleId})
-    Payment    → Order     금액 검증, 상태 업데이트 (/api/v1/orders/**)
-    Payment    → User      예치금 차감 (/api/v1/deposits/use)
+    Order      → Product   스케줄 시작일 조회 (/api/v1/products/schedules/{scheduleId}/start-date)
+    Order      → User      예치금 검증/차감 (/api/v1/deposits/validate, /use)
+    Order      → Payment   환불 처리 (/api/v1/payments/internal/refunds)
+    Order      → Payment   환불 정보 조회 (/api/v1/payments/internal/refunds/orders/{orderId})
+    Payment    → Order     금액 검증 (/api/v1/orders/{orderId}/payment-amount/validate)
+    Payment    → User      예치금 증가/환불 (/api/v1/deposits/internal/users/{userId}/deposit, /refund)
     Settlement → Payment   정산 대상 조회 (/api/v1/payments/settlement-targets)
     Settlement → Order     주문 정보 조회 (/api/v1/orders/bulk)
-    Settlement → User      셀러 정산 계좌 조회 (/api/v1/users/sellers/**/bulk)
-    Product    → File      파일 확인/URL 조회 (/api/internal/files/**)
+    Settlement → User      셀러 정산 계좌 조회 (/api/v1/users/sellers/settlement-accounts/bulk)
 ```
