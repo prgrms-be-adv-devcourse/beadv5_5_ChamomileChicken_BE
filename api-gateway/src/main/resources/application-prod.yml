@@ -5,8 +5,8 @@ spring:
     redis:
       host: ${APP_REDIS_HOST:redis}
       port: ${APP_REDIS_PORT:6379}
-      connect-timeout: 300ms
-      timeout: 300ms
+      connect-timeout: 2s
+      timeout: 2s
 
 management:
   endpoints:
