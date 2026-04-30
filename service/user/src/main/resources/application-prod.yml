@@ -107,3 +107,6 @@ internal:
 
 frontend:
   service-url: ${FRONTEND_SERVICE_URL:https://jabaclass.store}
+
+app:
+  base-url: ${APP_BASE_URL:https://jabaclass.store}
