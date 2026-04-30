@@ -6,6 +6,8 @@ spring:
     name: user
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:dev}  # 환경변수로 변경
+  jpa:
+    open-in-view: false
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     consumer:

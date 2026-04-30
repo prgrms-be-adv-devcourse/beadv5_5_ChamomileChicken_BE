@@ -100,26 +100,9 @@ public class AuthService
             throw new AuthException(AuthErrorCode.USER_NOT_FOUND);
         }
 
-        // 3. 새 기기 판별 — in-memory
+        // 3. 새 기기 판별 — in-memory (commitLoginWrites 이전, 변경 전 lastLoginIp 기준)
         boolean isNewDevice = user.getLastLoginIp() != null &&
             (!clientIp.equals(user.getLastLoginIp()) || !userAgent.equals(user.getLastLoginUserAgent()));
-
-        if (isNewDevice) {
-            log.warn("[AUTH] 새 기기 로그인 감지. userId={}, ip={}", user.getId(), clientIp);
-            String theftReportToken = UUID.randomUUID().toString();
-            try {
-                redisWriteCb.executeRunnable(() -> redisTemplate.opsForValue().set(
-                    THEFT_REPORT_PREFIX + theftReportToken,
-                    user.getId().toString(),
-                    Duration.ofMillis(refreshTokenValidity)
-                ));
-                sendSecurityAlertAsync(user.getEmail(), user.getName(), clientIp, userAgent, theftReportToken);
-            } catch (CallNotPermittedException e) {
-                log.warn("[AUTH] Redis write CB OPEN, 새 기기 보안 알림 스킵. userId={}", user.getId());
-            } catch (Exception e) {
-                log.warn("[AUTH] 새 기기 보안 알림 등록 실패, 로그인 계속 진행. userId={}", user.getId());
-            }
-        }
 
         // 4. 토큰 생성 — I/O 없음
         String accessToken = tokenProvider.generateAccessToken(user.getId(), user.getRole());
@@ -132,6 +115,9 @@ public class AuthService
         executeWriteWithCb(() -> redisTemplate.opsForValue().set(
             "refresh:" + user.getId(), refreshToken, Duration.ofMillis(refreshTokenValidity)
         ), "refresh:" + user.getId());
+
+        // 7. 새 기기 보안 알림 — DB 커밋 성공 후 발송
+        sendNewDeviceAlertIfNeeded(isNewDevice, user.getId(), user.getEmail(), user.getName(), clientIp, userAgent);
 
         log.info("[AUTH] 로그인 성공. userId={}, ip={}", user.getId(), clientIp);
         return new TokenResult(accessToken, refreshToken);
@@ -304,28 +290,11 @@ public class AuthService
         User user = userRepository.findById(userId)
             .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
 
+        // 변경 전 lastLoginIp 기준으로 판별
         boolean isNewDevice = user.getLastLoginIp() != null &&
             (!clientIp.equals(user.getLastLoginIp()) || !userAgent.equals(user.getLastLoginUserAgent()));
 
-        if (isNewDevice) {
-            log.warn("[AUTH] OAuth2 새 기기 로그인 감지. userId={}, ip={}", userId, clientIp);
-            String theftReportToken = UUID.randomUUID().toString();
-            try {
-                redisWriteCb.executeRunnable(() -> redisTemplate.opsForValue().set(
-                    THEFT_REPORT_PREFIX + theftReportToken,
-                    userId.toString(),
-                    Duration.ofMillis(refreshTokenValidity)
-                ));
-                sendSecurityAlertAsync(user.getEmail(), user.getName(), clientIp, userAgent, theftReportToken);
-            } catch (CallNotPermittedException e) {
-                log.warn("[AUTH] Redis write CB OPEN, OAuth2 새 기기 보안 알림 스킵. userId={}", userId);
-            } catch (Exception e) {
-                log.warn("[AUTH] OAuth2 새 기기 보안 알림 등록 실패, 로그인 계속 진행. userId={}", userId);
-            }
-        }
-
         user.updateLastLogin(clientIp, userAgent);
-        log.info("[AUTH] OAuth2 로그인 성공. userId={}, ip={}", userId, clientIp);
 
         String accessToken = tokenProvider.generateAccessToken(userId, role);
         String refreshToken = tokenProvider.generateRefreshToken(userId, role);
@@ -334,6 +303,11 @@ public class AuthService
         executeWriteWithCb(() -> redisTemplate.opsForValue().set(
             "refresh:" + userId, refreshToken, Duration.ofMillis(refreshTokenValidity)
         ), "refresh:" + userId);
+
+        log.info("[AUTH] OAuth2 로그인 성공. userId={}, ip={}", userId, clientIp);
+
+        // 모든 write 완료 후 알림 발송
+        sendNewDeviceAlertIfNeeded(isNewDevice, userId, user.getEmail(), user.getName(), clientIp, userAgent);
 
         return new TokenResult(accessToken, refreshToken);
     }
@@ -349,6 +323,25 @@ public class AuthService
         } catch (Exception e) {
             log.warn("[AUTH] Redis 장애, DB fallback. userId={}", userId);
             return null;
+        }
+    }
+
+    private void sendNewDeviceAlertIfNeeded(boolean isNewDevice, UUID userId, String email, String name,
+            String clientIp, String userAgent) {
+        if (!isNewDevice) return;
+        log.warn("[AUTH] 새 기기 로그인 감지. userId={}, ip={}", userId, clientIp);
+        String theftReportToken = UUID.randomUUID().toString();
+        try {
+            redisWriteCb.executeRunnable(() -> redisTemplate.opsForValue().set(
+                THEFT_REPORT_PREFIX + theftReportToken,
+                userId.toString(),
+                Duration.ofMillis(refreshTokenValidity)
+            ));
+            sendSecurityAlertAsync(email, name, clientIp, userAgent, theftReportToken);
+        } catch (CallNotPermittedException e) {
+            log.warn("[AUTH] Redis write CB OPEN, 새 기기 보안 알림 스킵. userId={}", userId);
+        } catch (Exception e) {
+            log.warn("[AUTH] 새 기기 보안 알림 등록 실패, 로그인 계속 진행. userId={}", userId);
         }
     }
 
