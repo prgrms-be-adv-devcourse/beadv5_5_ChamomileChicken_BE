@@ -36,6 +36,9 @@ app:
     from: ${MAIL_FROM}
   base-url: ${BASE_URL:http://localhost:8080}
 
+frontend:
+  service-url: ${FRONTEND_SERVICE_URL:http://localhost:3000}
+
 management:
   endpoints:
     web:

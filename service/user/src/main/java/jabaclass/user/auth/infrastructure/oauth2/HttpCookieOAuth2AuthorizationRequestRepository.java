@@ -36,6 +36,9 @@ public class HttpCookieOAuth2AuthorizationRequestRepository
 	@Value("${jwt.secret}")
 	private String jwtSecret;
 
+	@Value("${cookie.secure}")
+	private boolean cookieSecure;
+
 	private final StringRedisTemplate redisTemplate;
 	private final ObjectMapper objectMapper;
 
@@ -73,7 +76,7 @@ public class HttpCookieOAuth2AuthorizationRequestRepository
 	public void saveAuthorizationRequest(OAuth2AuthorizationRequest authorizationRequest,
 		HttpServletRequest request, HttpServletResponse response) {
 		if (authorizationRequest == null) {
-			CookieUtils.deleteCookie(request, response, COOKIE_NAME);
+			CookieUtils.deleteCookie(response, COOKIE_NAME, cookieSecure);
 			return;
 		}
 		try {
@@ -85,14 +88,14 @@ public class HttpCookieOAuth2AuthorizationRequestRepository
 				redisTemplate.opsForValue().set(
 					REDIS_KEY_PREFIX + state, json, Duration.ofSeconds(COOKIE_MAX_AGE));
 				log.info("[AUTH] OAuth2 state Redis 저장. key={}", REDIS_KEY_PREFIX + state);
-				CookieUtils.addCookie(response, COOKIE_NAME, state, COOKIE_MAX_AGE);
+				CookieUtils.addCookie(response, COOKIE_NAME, state, COOKIE_MAX_AGE, cookieSecure);
 			} catch (Exception redisEx) {
 				log.warn("[AUTH] Redis 장애, OAuth2 state 쿠키 직접 저장으로 fallback.");
 				String encoded = Base64.getUrlEncoder()
 					.encodeToString(json.getBytes(StandardCharsets.UTF_8));
 				String hmac = computeHmac(encoded);
 				CookieUtils.addCookie(response, COOKIE_NAME,
-					FALLBACK_PREFIX + encoded + "." + hmac, COOKIE_MAX_AGE);
+					FALLBACK_PREFIX + encoded + "." + hmac, COOKIE_MAX_AGE, cookieSecure);
 			}
 		} catch (Exception e) {
 			throw new RuntimeException("OAuth2 요청 저장 실패", e);
@@ -114,7 +117,7 @@ public class HttpCookieOAuth2AuthorizationRequestRepository
 					}
 				}
 			});
-			CookieUtils.deleteCookie(request, response, COOKIE_NAME);
+			CookieUtils.deleteCookie(response, COOKIE_NAME, cookieSecure);
 		}
 		return authRequest;
 	}
