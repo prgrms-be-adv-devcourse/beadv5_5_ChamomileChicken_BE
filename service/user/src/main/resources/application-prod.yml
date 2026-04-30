@@ -104,3 +104,9 @@ management:
 
 internal:
   secret: ${USER_INTERNAL_SECRET}
+
+frontend:
+  service-url: ${FRONTEND_SERVICE_URL:https://jabaclass.store}
+
+app:
+  base-url: ${BASE_URL:https://api.jabaclass.store}
