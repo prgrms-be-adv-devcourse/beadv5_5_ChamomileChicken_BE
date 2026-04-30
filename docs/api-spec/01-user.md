@@ -11,6 +11,8 @@
 | POST | `/api/v1/auth/login` | ❌ 공개 | 로그인 |
 | POST | `/api/v1/auth/logout` | ✅ JWT | 로그아웃 |
 | POST | `/api/v1/auth/reissue` | ❌ 공개 | Access Token 재발급 |
+| GET | `/api/v1/auth/report-theft` | ❌ 공개 | 토큰 도용 신고 (계정 보호 조치) |
+| GET | `/api/v1/auth/internal/token-status` | ⚙️ Internal | 토큰 블랙리스트 상태 확인 |
 
 ---
 
@@ -104,6 +106,7 @@
 | PUT | `/api/v1/users/me` | ✅ JWT | 내 정보 수정 |
 | PUT | `/api/v1/users/me/email` | ✅ JWT | 이메일 변경 |
 | DELETE | `/api/v1/users/me` | ✅ JWT | 회원 탈퇴 |
+| PUT | `/api/v1/users/me/seller-settlement-account` | ✅ JWT | 정산 계좌 등록/수정 (SELLER, ADMIN) |
 
 ---
 
@@ -190,6 +193,35 @@
 
 ---
 
+### PUT `/api/v1/users/me/seller-settlement-account`
+
+> SELLER 또는 ADMIN 권한만 가능. 기존 계좌가 없으면 등록, 있으면 수정.
+
+**Request Body**
+```json
+{
+  "bankCode": "004",
+  "accountNumber": "1234567890",
+  "accountHolder": "홍길동",
+  "active": true
+}
+```
+
+**Response** `200 OK`
+```json
+{
+  "data": {
+    "sellerId": "uuid",
+    "bankCode": "004",
+    "accountNumber": "1234567890",
+    "accountHolder": "홍길동",
+    "active": true
+  }
+}
+```
+
+---
+
 ## 예치금 (Deposit)
 
 > ⚠️ `/api/v1/deposits/**`는 게이트웨이 미등록 경로 — 현재 인증 없이 직접 호출 가능
@@ -243,3 +275,6 @@
 | POST | `/api/v1/users/sellers/settlement-accounts/bulk` | ⚙️ Internal | 셀러 정산 계좌 다건 조회 |
 | POST | `/api/v1/deposits/validate` | ⚙️ Internal | 예치금 잔액 검증 (게이트웨이 미등록) |
 | POST | `/api/v1/deposits/use` | ⚙️ Internal | 예치금 차감 (게이트웨이 미등록) |
+| PUT | `/api/v1/deposits/internal/users/{userId}/deposit` | ⚙️ Internal | 예치금 증가 (결제 완료 후 payment → user) |
+| PUT | `/api/v1/deposits/internal/users/{userId}/refund` | ⚙️ Internal | 예치금 환불 (환불 처리 후 payment → user) |
+| GET | `/api/v1/auth/internal/token-status` | ⚙️ Internal | 토큰 블랙리스트 상태 확인 (gateway → user) |
