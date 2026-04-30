@@ -95,6 +95,10 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 			return onError(sanitizedExchange, JwtErrorCode.INVALID_TOKEN);
 		}
 
+		if (isPublicDocsPath(path, httpMethod)) {
+			return chain.filter(sanitizedExchange);
+		}
+
 		long whitelistStart = System.currentTimeMillis();// 로그
 
 		return whitelistService.isWhitelisted(path, httpMethod)
@@ -237,6 +241,15 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 	@Override
 	public int getOrder() {
 		return -1;
+	}
+
+	private boolean isPublicDocsPath(String path, HttpMethod method) {
+		return HttpMethod.GET.equals(method)
+			&& (path.equals("/swagger-ui")
+			|| path.equals("/swagger-ui.html")
+			|| path.startsWith("/swagger-ui/")
+			|| path.startsWith("/v3/api-docs")
+			|| path.startsWith("/docs/"));
 	}
 
 	private Mono<Void> onError(ServerWebExchange exchange, ErrorCode errorCode) {
