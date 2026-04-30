@@ -8,7 +8,7 @@ public record OpenAiRequestDto(
 ) {
 	public static OpenAiRequestDto of(String prompt) {
 		return new OpenAiRequestDto(
-			"gpt-4.1-mini",
+			"gpt-5.4-mini",
 			List.of(new Message("user", prompt))
 		);
 	}
