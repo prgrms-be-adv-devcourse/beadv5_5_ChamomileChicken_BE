@@ -59,6 +59,7 @@ class AuthServiceTest {
     @Mock CircuitBreaker redisWriteCb;
     @Mock StringRedisTemplate redisTemplate;
     @Mock ValueOperations<String, String> valueOps;
+    @Mock LoginWriter loginWriter;
 
     @InjectMocks
     AuthService authService;
@@ -116,7 +117,6 @@ class AuthServiceTest {
             when(user.getPassword()).thenReturn("encoded");
             when(userRepository.findByEmailAndSocialType("test@test.com", SocialType.SYSTEM))
                 .thenReturn(Optional.of(user));
-            when(userRepository.findById(userId)).thenReturn(Optional.of(user));
             when(passwordEncoder.matches("pw", "encoded")).thenReturn(true);
             when(tokenProvider.generateAccessToken(userId, UserRole.USER)).thenReturn("access");
             when(tokenProvider.generateRefreshToken(userId, UserRole.USER)).thenReturn("refresh");
@@ -125,7 +125,7 @@ class AuthServiceTest {
 
             assertThat(result.getAccessToken()).isEqualTo("access");
             assertThat(result.getRefreshToken()).isEqualTo("refresh");
-            verify(user).updateRefreshToken("refresh");                                             // DB-first
+            verify(loginWriter).commitLoginWrites(userId, "refresh", "127.0.0.1", "Agent");        // DB 위임 확인
             verify(valueOps).set(eq("refresh:" + userId), eq("refresh"), any(Duration.class));     // Redis
         }
 
@@ -163,7 +163,6 @@ class AuthServiceTest {
             when(user.getPassword()).thenReturn("encoded");
             when(userRepository.findByEmailAndSocialType("test@test.com", SocialType.SYSTEM))
                 .thenReturn(Optional.of(user));
-            when(userRepository.findById(userId)).thenReturn(Optional.of(user));
             when(passwordEncoder.matches("pw", "encoded")).thenReturn(true);
             when(tokenProvider.generateAccessToken(userId, UserRole.USER)).thenReturn("access");
             when(tokenProvider.generateRefreshToken(userId, UserRole.USER)).thenReturn("refresh");
@@ -172,8 +171,8 @@ class AuthServiceTest {
             TokenResult result = authService.login(mockLoginRequest("test@test.com", "pw"), "127.0.0.1", "Agent");
 
             assertThat(result.getAccessToken()).isEqualTo("access");
-            verify(user).updateRefreshToken("refresh");                                     // DB 저장 확인
-            verify(valueOps, never()).set(anyString(), anyString(), any(Duration.class));   // Redis 스킵 확인
+            verify(loginWriter).commitLoginWrites(userId, "refresh", "127.0.0.1", "Agent"); // DB 위임 확인
+            verify(valueOps, never()).set(anyString(), anyString(), any(Duration.class));    // Redis 스킵 확인
         }
     }
 
@@ -459,7 +458,7 @@ class AuthServiceTest {
             when(tokenProvider.generateAccessToken(userId, UserRole.USER)).thenReturn("access");
             when(tokenProvider.generateRefreshToken(userId, UserRole.USER)).thenReturn("refresh");
 
-            TokenResult result = authService.issueOAuth2Tokens(userId, UserRole.USER);
+            TokenResult result = authService.issueOAuth2Tokens(userId, UserRole.USER, "127.0.0.1", "test-agent");
 
             assertThat(result.getAccessToken()).isEqualTo("access");
             assertThat(result.getRefreshToken()).isEqualTo("refresh");

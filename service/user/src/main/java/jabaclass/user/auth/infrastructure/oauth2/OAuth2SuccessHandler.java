@@ -47,9 +47,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
 
 		String clientIp = ClientIpUtils.extractIp(request);
 		String userAgent = Optional.ofNullable(request.getHeader("User-Agent")).orElse("unknown");
-		authService.handleLoginSecurity(user.getId(), clientIp, userAgent);
-
-		TokenResult tokens = authService.issueOAuth2Tokens(user.getId(), user.getRole());
+		TokenResult tokens = authService.issueOAuth2Tokens(user.getId(), user.getRole(), clientIp, userAgent);
 
 		response.addHeader(HttpHeaders.SET_COOKIE,
 			ResponseCookie.from("refresh_token", tokens.getRefreshToken())

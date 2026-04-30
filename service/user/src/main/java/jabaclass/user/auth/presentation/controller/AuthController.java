@@ -1,5 +1,6 @@
 package jabaclass.user.auth.presentation.controller;
 
+import java.io.IOException;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -57,6 +58,9 @@ public class AuthController {
 
     @Value("${internal.secret}")
     private String internalSecret;
+
+    @Value("${frontend.service-url}")
+    private String frontendServiceUrl;
 
     @GetMapping("/internal/token-status")
     public ResponseEntity<TokenStatusResult> checkTokenStatus(
@@ -128,6 +132,13 @@ public class AuthController {
     }
 
     @GetMapping("/report-theft")
+    public void reportTheftPage(
+            @RequestParam String token,
+            HttpServletResponse response) throws IOException {
+        response.sendRedirect(frontendServiceUrl + "/security/report-theft?token=" + token);
+    }
+
+    @PostMapping("/report-theft")
     public ResponseEntity<ApiResponseDto<Void>> reportTheft(@RequestParam String token) {
         reportTheftUseCase.reportTheft(token);
         return ResponseEntity.ok(ApiResponseDto.success(HttpStatus.OK, "계정 보호 조치가 완료되었습니다.", null));
