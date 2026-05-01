@@ -54,6 +54,7 @@ Kubernetes를 쓰는 이유는 보통 아래와 같습니다.
 
 - `kubectl`
 - `Deployment`
+- `StatefulSet`
 - `Pod`
 - `Service`
 - `Ingress`
@@ -76,6 +77,7 @@ Kubernetes를 쓰는 이유는 보통 아래와 같습니다.
 ```bash
 kubectl get pods
 kubectl get deployment
+kubectl get statefulset
 kubectl apply -f my-service.yml
 kubectl logs <pod-name>
 ```
@@ -108,6 +110,29 @@ Deployment는 Pod를 어떻게 띄울지 정의하는 리소스입니다.
 즉, 실제 애플리케이션 실행 계획서 같은 역할입니다.
 
 이 프로젝트의 `.github/k3s/*-service.yml` 파일에서 가장 큰 비중을 차지하는 것이 Deployment입니다.
+
+### 6.3 StatefulSet
+
+StatefulSet은 상태를 가진 Pod를 안정적으로 운영하기 위한 리소스입니다.
+
+Deployment와 비슷하게 Pod를 띄우지만, 아래 차이가 중요합니다.
+
+- Pod 이름이 비교적 고정된 순서로 유지됩니다.
+- 각 Pod가 자기 저장소를 계속 사용할 수 있습니다.
+- 재시작되더라도 데이터 저장 위치와 정체성을 유지하기 좋습니다.
+
+그래서 DB, 메시지 브로커, 캐시처럼 데이터나 내부 상태가 중요한 인프라 컴포넌트에 자주 사용합니다.
+
+이 프로젝트에서는 아래 인프라가 StatefulSet으로 올라갑니다.
+
+- `postgres`
+- `zookeeper`
+- `kafka`
+- `redis`
+
+반대로 애플리케이션 서비스들은 대부분 Deployment로 올라갑니다.
+
+참고로 `elasticsearch`는 인프라 성격이지만 현재 manifest에서는 Deployment로 정의되어 있습니다.
 
 ---
 
@@ -220,6 +245,7 @@ Kubernetes 리소스는 보통 YAML 파일로 정의합니다.
 예를 들어 아래와 같은 것들이 YAML에 들어 있습니다.
 
 - Deployment
+- StatefulSet
 - Service
 - Ingress
 - 환경 변수 주입 방식
@@ -312,6 +338,7 @@ YAML 파일이 있어도 실제로 `kubectl apply`가 되어야 하고, 필요�
 - K3s는 가벼운 Kubernetes입니다.
 - `kubectl`은 Kubernetes를 조작하는 도구입니다.
 - Deployment는 파드를 띄우는 설정입니다.
+- StatefulSet은 상태가 있는 인프라 Pod를 안정적으로 띄우는 설정입니다.
 - Service는 파드 앞의 고정 주소입니다.
 - Ingress는 외부 요청 진입 규칙입니다.
 - ConfigMap과 Secret은 환경 변수 소스입니다.
