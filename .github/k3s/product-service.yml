@@ -52,25 +52,22 @@ spec:
           imagePullPolicy: IfNotPresent
 
           env:
+            - name: TZ
+              value: Asia/Seoul
             - name: JAVA_TOOL_OPTIONS
-              value: "-Xms128m -Xmx256m"
+              value: "-Xms128m -Xmx256m -Duser.timezone=Asia/Seoul"
 
           envFrom:
             - configMapRef:
                 name: common-config
-                optional: true
             - configMapRef:
                 name: product-config
-                optional: true
             - secretRef:
                 name: common-secret
-                optional: true
             - secretRef:
                 name: db-secret
-                optional: false
             - secretRef:
                 name: product-secret
-                optional: true
 
           ports:
             - containerPort: 9004

@@ -13,6 +13,8 @@ data:
         - method: GET
           path: /api/v1/auth/report-theft
         - method: POST
+          path: /api/v1/auth/report-theft
+        - method: POST
           path: /api/v1/users/register
         - method: POST
           path: /api/v1/users/email-check
@@ -34,6 +36,16 @@ data:
           path: /oauth2/authorization/**
         - method: GET
           path: /login/oauth2/code/**
+        - method: GET
+          path: /swagger-ui
+        - method: GET
+          path: /swagger-ui.html
+        - method: GET
+          path: /swagger-ui/**
+        - method: GET
+          path: /v3/api-docs/**
+        - method: GET
+          path: /docs/**
       
       rbac:
         - method: POST
@@ -124,3 +136,6 @@ data:
           path: /api/v1/admins/**
           allowedRoles:
             - ADMIN
+        - method: GET
+          path: /api/v1/auth/internal/**
+          allowedRoles: []

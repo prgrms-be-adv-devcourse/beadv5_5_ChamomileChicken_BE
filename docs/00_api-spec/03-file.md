@@ -1,6 +1,9 @@
-# 03. File Service (9000)
+# 03. File API (Product Service, 9004)
 
-> 인증 범례 및 공통 응답 형식 → [API_SPEC.md](../API_SPEC.md)
+> 인증 범례 및 공통 응답 형식 → [API_SPEC.md](00-API_SPEC.md)
+
+> ⚠️ File API는 별도 서비스가 아니라 **Product Service (port 9004)** 에 통합되어 있습니다.
+> 게이트웨이에서 `/api/v1/files/**` → `:9004` 로 라우팅됩니다.
 
 ---
 
@@ -37,12 +40,8 @@
 
 ---
 
-## 내부 API (Internal)
+### PATCH `/api/v1/files/{fileId}/complete`
 
-> ⚠️ `/api/internal/files/**`는 게이트웨이 미등록 경로 — 서비스 간 직접 호출
+**Path Variables**: `fileId` (UUID)
 
-| Method | Path | Auth | 설명 |
-|--------|------|------|------|
-| GET | `/api/internal/files/{fileId}/confirm` | ⚙️ Internal | 단건 파일 확인 |
-| POST | `/api/internal/files/confirm/bulk` | ⚙️ Internal | 다건 파일 확인 |
-| POST | `/api/internal/files/presigned-urls` | ⚙️ Internal | 다건 조회용 Presigned URL 발급 |
+**Response** `200 OK`

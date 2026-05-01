@@ -79,6 +79,13 @@ dependencies {
     // OAuth2
     implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
 
+    // Caffeine
+    implementation 'org.springframework.boot:spring-boot-starter-cache'
+    implementation 'com.github.ben-manes.caffeine:caffeine'
+
+    // CircuitBreaker
+    implementation 'io.github.resilience4j:resilience4j-circuitbreaker:2.3.0'
+
 }
 
 tasks.named('test') {

@@ -21,6 +21,55 @@ spring:
                   firstBackoff: 50ms
                   maxBackoff: 500ms
           routes:
+            - id: docs-user
+              uri: ${USER_SERVICE_URL:http://localhost:9003}
+              predicates:
+                - Path=/docs/user
+              filters:
+                - SetPath=/v3/api-docs
+
+            - id: docs-payment
+              uri: ${PAYMENT_SERVICE_URL:http://localhost:9001}
+              predicates:
+                - Path=/docs/payment
+              filters:
+                - SetPath=/v3/api-docs
+
+            - id: docs-settlement
+              uri: ${SETTLEMENT_SERVICE_URL:http://localhost:9002}
+              predicates:
+                - Path=/docs/settlement
+              filters:
+                - SetPath=/v3/api-docs
+
+            - id: docs-product
+              uri: ${PRODUCT_SERVICE_URL:http://localhost:9004}
+              predicates:
+                - Path=/docs/product
+              filters:
+                - SetPath=/v3/api-docs
+
+            - id: docs-order
+              uri: ${ORDER_SERVICE_URL:http://localhost:9005}
+              predicates:
+                - Path=/docs/order
+              filters:
+                - SetPath=/v3/api-docs
+
+            - id: docs-admin
+              uri: ${ADMIN_SERVICE_URL:http://localhost:9007}
+              predicates:
+                - Path=/docs/admin
+              filters:
+                - SetPath=/v3/api-docs
+
+            - id: docs-ai
+              uri: ${AI_SERVICE_URL:http://localhost:9009}
+              predicates:
+                - Path=/docs/ai
+              filters:
+                - SetPath=/v3/api-docs
+
             - id: file
               uri: ${PRODUCT_SERVICE_URL:http://localhost:9004}
               predicates:
@@ -89,4 +138,38 @@ management:
     health:
       probes:
         enabled: true
+resilience4j:
+  circuitbreaker:
+    instances:
+      redis-auth:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 3
+        minimum-number-of-calls: 1
+        failure-rate-threshold: 34
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 2
 
+internal:
+  secret: ${USER_INTERNAL_SECRET}
+  user-service-url: ${USER_SERVICE_URL:http://localhost:9003}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui
+    disable-swagger-default-url: true
+    urls-primary-name: user-service
+    urls:
+      - name: user-service
+        url: /docs/user
+      - name: payment-service
+        url: /docs/payment
+      - name: settlement-service
+        url: /docs/settlement
+      - name: product-service
+        url: /docs/product
+      - name: order-service
+        url: /docs/order
+      - name: admin-service
+        url: /docs/admin
+      - name: ai-service
+        url: /docs/ai

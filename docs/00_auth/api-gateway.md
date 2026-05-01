@@ -137,6 +137,48 @@ kubectl exec -it <pod-name> -- cat /etc/config/gateway-rules.yml
 
 ---
 
+### Redis 장애 대응 (Circuit Breaker + Fallback)
+
+`JwtAuthenticationFilter`의 Redis 조회(blacklist / force_logout)는 Circuit Breaker로 보호되며, CB OPEN 시 User 서비스의 내부 API로 fallback한다.
+
+**Circuit Breaker 설정 (redis-auth)**
+
+| 항목 | 값 |
+|------|----|
+| slidingWindowType | COUNT_BASED |
+| slidingWindowSize | 3 |
+| minimumNumberOfCalls | 1 |
+| failureRateThreshold | 34% |
+| waitDurationInOpenState | 30s |
+| permittedCallsInHalfOpenState | 2 |
+
+**정상 경로 (Redis CLOSED)**
+```
+Redis blacklist 조회 → force_logout 조회 → 통과 or 차단
+  각 조회: 300ms timeout, 1회 retry (50ms delay)
+
+※ enrichIfAuthenticated (화이트리스트 경로 선택적 인증):
+  blacklist 조회: 300ms timeout, 2회 retry (30ms delay), 실패 시 fail-open (통과)
+```
+
+**CB OPEN 경로 (Redis 장애)**
+```
+RedisCircuitOpenException 발생
+  → TokenStatusClient.check() (UserService 내부 API)
+      GET /api/v1/auth/internal/token-status
+      헤더: X-Token, X-User-Id, X-Token-Iat, X-Internal-Secret
+      timeout: 3s, 1회 retry (100ms delay)
+  → TokenStatusResult.tokenValid() == false → 차단
+  → TokenStatusResult.tokenValid() == true  → 통과
+```
+
+**enrichIfAuthenticated (화이트리스트 경로 선택적 인증)**
+
+화이트리스트 경로에서 유효한 JWT가 있을 때 user context를 주입하는 `enrichIfAuthenticated()`는 fail-open으로 동작한다.
+Redis 또는 CB 장애 시 인증 없이 통과하며, 이 경로는 인증이 필수가 아니므로 가용성을 우선한다.
+
+---
+
 ### WhitelistService — 화이트리스트 (JWT 불필요 경로)
 
 `GatewayRulesProperties`에서 직접 조회한다. DB I/O와 캐시가 없으므로 정책 변경이 즉시 반영된다.
@@ -191,6 +233,7 @@ kubectl exec -it <pod-name> -- cat /etc/config/gateway-rules.yml
 | POST | /api/v1/admins/** | ADMIN | 어드민 등록 |
 | PATCH | /api/v1/admins/** | ADMIN | 어드민 수정 |
 | DELETE | /api/v1/admins/** | ADMIN | 어드민 삭제 |
+| GET | /api/v1/auth/internal/** | 없음 (차단) | 게이트웨이 직접 접근 차단 — Internal 서비스 간 직접 호출 전용 |
 
 ---
 
@@ -198,7 +241,7 @@ kubectl exec -it <pod-name> -- cat /etc/config/gateway-rules.yml
 
 | 경로 | 서비스 | 포트 |
 |------|--------|------|
-| /api/v1/files/** | File | 9000 |
+| /api/v1/files/** | Product (File API 통합) | 9004 |
 | /api/v1/payments/** | Payment | 9001 |
 | /api/v1/settlements/** | Settlement | 9002 |
 | /api/v1/internal-batch/settlements/** | Settlement | 9002 |
@@ -207,6 +250,7 @@ kubectl exec -it <pod-name> -- cat /etc/config/gateway-rules.yml
 | /api/v1/products/** | Product | 9004 |
 | /api/v1/orders/** | Order | 9005 |
 | /api/v1/admins/** | Admin | 9007 |
+| /api/v1/recommendations/** | AI | 9009 |
 
 ---
 

@@ -21,7 +21,8 @@ POST /api/v1/auth/login
   → AuthService: (email, SocialType.SYSTEM)으로 유저 조회 → 비밀번호 검증
   → AuthService.handleLoginSecurity(): 새 기기 감지 → 보안 알림 이메일 발송 (비동기)
   → JwtProvider: Access Token + Refresh Token 생성
-  → Redis: Refresh Token 저장 (key: "refresh:{userId}")
+  → DB: User.refreshToken 저장 (DB-first — Redis 장애와 무관하게 항상 기록)
+  → Redis: Refresh Token 저장 (key: "refresh:{userId}") — write CB 적용, 실패 시 swallow
   → 응답: Access Token (body) + Refresh Token (HttpOnly Cookie)
 ```
 
@@ -46,8 +47,7 @@ GET /login/oauth2/code/{provider}?code=AUTH_CODE&state=...
   → OAuth2SuccessHandler.onAuthenticationSuccess()
        - ClientIpUtils.extractIp(): X-Real-IP 헤더 → 없으면 remoteAddr
        - AuthService.handleLoginSecurity(): 새 기기 감지 → 보안 알림 이메일 발송 (비동기)
-       - Access Token + Refresh Token 생성
-       - Redis: Refresh Token 저장 (key: "refresh:{userId}")
+       - AuthService.issueOAuth2Tokens(): 일반 로그인과 동일한 DB-first + write CB 경로
        - Refresh Token → HttpOnly Cookie
        - 브라우저를 프론트엔드로 리다이렉트: {OAUTH2_REDIRECT_URI}#token={accessToken}
 
@@ -59,9 +59,16 @@ GET /login/oauth2/code/{provider}?code=AUTH_CODE&state=...
 ```
 POST /api/v1/auth/reissue
   → Cookie에서 Refresh Token 추출
-  → Redis에서 Refresh Token 검증
+  → Redis read CB → Redis에서 Refresh Token 조회 (1회 retry, 50ms delay)
+       → CB OPEN 또는 Redis 장애 시: DB fallback (User.refreshToken 필드)
+  → RTR 감지 (stored ≠ provided):
+       - User.forceLogout() + refreshToken = null → DB commit 보장
+         (@Transactional(noRollbackFor = AuthException.class) — 예외 발생해도 rollback 없음)
+       - force_logout:{userId} → Redis write CB 적용
+       - SUSPECTED_TOKEN_THEFT 예외 반환
   → 새 Access Token + Refresh Token 발급
-  → Redis: 새 Refresh Token으로 교체
+  → DB: User.refreshToken 업데이트 (DB-first)
+  → Redis: 새 Refresh Token으로 교체 — write CB 적용
   → 응답: 새 Access Token (body) + 새 Refresh Token (HttpOnly Cookie)
 ```
 
@@ -69,8 +76,11 @@ POST /api/v1/auth/reissue
 
 ```
 POST /api/v1/auth/logout
-  → Access Token → Redis 블랙리스트 등록 (만료 시간까지 유지)
-  → Redis에서 Refresh Token 삭제
+  → DB: User.refreshToken = null
+  → Redis: Refresh Token 삭제 (key: "refresh:{userId}") — write CB 적용
+  → DB: TokenBlacklist에 sha256(accessToken) + expiresAt 저장 (DB-first)
+  → Redis: blacklist:{accessToken} 등록 (만료 시간까지) — write CB 적용
+  → Caffeine: @CacheEvict("tokenStatus", key=accessToken) — 즉시 무효화
   → Refresh Token Cookie 만료 처리
 ```
 
@@ -89,6 +99,44 @@ GET /api/v1/auth/report-theft?token={token}
   → force_logout:{userId} 설정 → Redis에서 Refresh Token 삭제
   → 이후 해당 userId의 모든 기존 Access Token 차단
 ```
+
+---
+
+## Redis 장애 대응 (Circuit Breaker)
+
+Redis 장애 시에도 로그인/재발급/로그아웃 기능이 정상 동작하도록 DB-first 패턴과 Circuit Breaker를 도입했다.
+
+### 설계 원칙
+
+- **DB-first**: Refresh Token은 항상 `User.refreshToken` 필드(DB)에 먼저 저장된다. Redis는 캐시 역할이며 장애 시 swallow.
+- **Redis-first + DB fallback**: `reissue()`는 Redis를 우선 조회하고, CB OPEN 또는 장애 시 DB에서 조회한다.
+- **read/write Circuit Breaker 분리**: read 장애(가용성 저하)와 write 장애(정합성 저하)는 성격이 다르므로 독립적으로 관리한다.
+
+### Circuit Breaker 설정
+
+| 구분 | 이름 | failureRateThreshold | waitDuration | slidingWindowSize | minimumCalls |
+|------|------|---------------------|--------------|-------------------|--------------|
+| read | `redis-read` | 60% | 20s | 5 | 3 |
+| write | `redis-write` | 80% | 30s | 5 | 3 |
+
+- read CB: OPEN → `reissue()` DB fallback, `reportTheft()` THEFT_REPORT_TOKEN_EXPIRED 반환 (graceful)
+- write CB: OPEN → Redis write 스킵, DB는 이미 저장된 상태이므로 기능 영향 없음
+- HALF-OPEN: 2회 테스트 요청 → 성공 시 CLOSED 복귀
+
+### retry 전략
+
+read 작업만 `executeWithRedisRetry()`로 1회 재시도 (50ms delay)를 한다.
+write 작업은 retry 없이 CB만 적용한다. write 재시도는 멱등성이 보장되지 않는 경우가 있어 배제했다.
+
+### Caffeine 캐시 연동
+
+`checkTokenStatus()` 결과는 Caffeine에 60초 TTL로 캐싱된다 (key: accessToken).
+`logout()` 시 `@CacheEvict`로 즉시 무효화하여 로그아웃 직후 요청에서 stale 캐시가 반환되는 것을 방지한다.
+
+### RTR 감지 시 트랜잭션 보장
+
+`reissue()`에서 RTR(Refresh Token Reuse) 감지 시 `AuthException`을 던져 응답은 4xx를 반환하지만,
+`@Transactional(noRollbackFor = AuthException.class)`를 적용하여 `forceLogout()` 및 `refreshToken = null` DB write는 rollback되지 않고 커밋된다.
 
 ---
 

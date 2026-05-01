@@ -1,18 +1,15 @@
 # 05. Payment Service (9001)
 
-> 인증 범례 및 공통 응답 형식 → [API_SPEC.md](../API_SPEC.md)
+> 인증 범례 및 공통 응답 형식 → [API_SPEC.md](00-API_SPEC.md)
 
 ---
 
 ## 상품 결제 (Product Payment)
 
-> ⚠️ `/api/v1/refunds`는 게이트웨이 미등록 경로
-
 | Method | Path | Auth | 설명 |
 |--------|------|------|------|
 | POST | `/api/v1/payments/prepare` | ✅ JWT | 결제 준비 |
 | POST | `/api/v1/payments/confirm` | ✅ JWT | 결제 승인 (Toss) |
-| POST | `/api/v1/refunds` | ❌ 미등록 | 환불 요청 |
 
 ---
 
@@ -61,29 +58,6 @@
     "paymentId": "uuid",
     "orderId": "uuid",
     "totalAmount": 40000
-  }
-}
-```
-
----
-
-### POST `/api/v1/refunds`
-
-**Request Body**
-```json
-{
-  "orderId": "uuid",
-  "reason": "단순 변심"
-}
-```
-
-**Response** `200 OK`
-```json
-{
-  "data": {
-    "refundId": "uuid",
-    "orderId": "uuid",
-    "refundAmount": 40000
   }
 }
 ```
@@ -150,8 +124,10 @@
 
 | Method | Path | Auth | 설명 |
 |--------|------|------|------|
-| GET | `/api/v1/payments/settlement-targets` | ⚙️ Internal | 결제 정산 대상 조회 (커서 페이징) |
-| GET | `/api/v1/payments/refunds/settlement-targets` | ⚙️ Internal | 환불 정산 대상 조회 (커서 페이징) |
+| POST | `/api/v1/payments/internal/refunds` | ⚙️ Internal | 환불 처리 (order → payment) |
+| GET | `/api/v1/payments/internal/refunds/orders/{orderId}` | ⚙️ Internal | 주문별 환불 상세 조회 (order → payment) |
+| GET | `/api/v1/payments/settlement-targets` | ⚙️ Internal | 결제 정산 대상 조회 (커서 페이징, settlement → payment) |
+| GET | `/api/v1/payments/refunds/settlement-targets` | ⚙️ Internal | 환불 정산 대상 조회 (커서 페이징, settlement → payment) |
 
 **Query Parameters** (공통)
 

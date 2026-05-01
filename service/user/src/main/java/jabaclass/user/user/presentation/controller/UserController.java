@@ -13,7 +13,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import jabaclass.user.common.auth.CurrentUser;
-import jabaclass.user.common.auth.CurrentUserRole;
 import jabaclass.user.user.application.usercase.UserUseCase;
 import jabaclass.user.user.presentation.dto.request.ChangeMyEmailRequestDto;
 import jabaclass.user.user.presentation.dto.request.EmailCheckRequestDto;
@@ -87,10 +86,9 @@ public class UserController implements UserApi {
 	@PutMapping("/me/seller-settlement-account")
 	public ResponseEntity<SellerSettlementAccountResponseDto> upsertSellerSettlementAccount(
 		@CurrentUser UUID userId,
-		@CurrentUserRole String currentUserRole,
 		@Valid @RequestBody UpsertSellerSettlementAccountRequestDto request
 	) {
-		return ResponseEntity.ok(userUseCase.upsertSellerSettlementAccount(userId, currentUserRole, request));
+		return ResponseEntity.ok(userUseCase.upsertSellerSettlementAccount(userId, request));
 	}
 
 	@Override

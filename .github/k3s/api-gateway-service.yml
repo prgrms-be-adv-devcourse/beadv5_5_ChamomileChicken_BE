@@ -37,22 +37,20 @@ spec:
               name: gateway-rules
               readOnly: true
           env:
+            - name: TZ
+              value: Asia/Seoul
             - name: JAVA_TOOL_OPTIONS
-              value: "-Xms128m -Xmx256m"
+              value: "-Xms128m -Xmx256m -Duser.timezone=Asia/Seoul"
 
           envFrom:
             - configMapRef:
                 name: common-config
-                optional: true
             - configMapRef:
                 name: api-gateway-config
-                optional: true
             - secretRef:
                 name: common-secret
-                optional: true
             - secretRef:
                 name: api-gateway-secret
-                optional: true
 
           ports:
             - containerPort: 8080

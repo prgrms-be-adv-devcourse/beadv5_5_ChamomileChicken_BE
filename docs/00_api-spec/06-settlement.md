@@ -1,6 +1,6 @@
 # 06. Settlement Service (9002)
 
-> 인증 범례 및 공통 응답 형식 → [API_SPEC.md](../API_SPEC.md)
+> 인증 범례 및 공통 응답 형식 → [API_SPEC.md](00-API_SPEC.md)
 
 > 외부 호출은 API Gateway 기준 경로(`/api/v1/...`)를 사용한다.
 
