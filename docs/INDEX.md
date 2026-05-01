@@ -158,11 +158,12 @@ Spring Boot 마이크로서비스 기반 클래스 예약 플랫폼.
 | [k3s-concept.md](./12_k3s/k3s-concept.md) | k3s 아키텍처 개념 |
 | [k3s-install.md](./12_k3s/k3s-install.md) | k3s 설치 가이드 |
 | [k3s-yml.md](./12_k3s/k3s-yml.md) | Kubernetes YAML 명세 |
+| [k3s-ssl-ingress.md](./12_k3s/k3s-ssl-ingress.md) | SSL, cert-manager, Ingress |
+| [k3s-monitoring.md](./12_k3s/k3s-monitoring.md) | Prometheus, Grafana, scrape 설정 |
 | [k3s-infra-data-yml-reference.md](./12_k3s/k3s-infra-data-yml-reference.md) | 인프라/데이터 YAML 레퍼런스 |
 | [k3s-service-deployment-structure.md](./12_k3s/k3s-service-deployment-structure.md) | 서비스 배포 구조 |
 | [k3s-sh.md](./12_k3s/k3s-sh.md) | 배포 Shell 스크립트 |
-| [k3s-workflows.md](./12_k3s/k3s-workflows.md) | GitHub Actions 워크플로우 연동 |
-| [k3s-cicd-final-guide.md](./12_k3s/k3s-cicd-final-guide.md) | CI/CD 최종 가이드 |
+| [k3s-cicd-final-guide.md](./13_CICD/k3s-cicd-final-guide.md) | CI/CD 최종 가이드 |
 
 ---
 
@@ -171,6 +172,7 @@ Spring Boot 마이크로서비스 기반 클래스 예약 플랫폼.
 | 문서 | 설명 |
 |------|------|
 | [service-cicd-optimization.md](./13_CICD/service-cicd-optimization.md) | 서비스별 CI/CD 최적화 전략 |
+| [deploy-env-workflow.md](./13_CICD/deploy-env-workflow.md) | 환경변수 배포 워크플로 |
 
 ---
 

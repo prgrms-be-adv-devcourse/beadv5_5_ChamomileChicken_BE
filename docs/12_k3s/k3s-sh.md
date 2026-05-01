@@ -112,16 +112,15 @@ chmod 700 "$ENV_DIR"
 - 디렉터리가 없으면 자동으로 생성합니다.
 - env 파일이 저장되는 경로의 기본 접근 범위를 제한합니다.
 
-### 3.5 변경 여부 판단 방식
+### 3.5 적용 여부 판단 방식
 
-현재 `apply-env.sh`의 핵심은 `write_if_changed()` 함수입니다.
+현재 `apply-env.sh`의 핵심은 `write_env_file()` 함수입니다.
 
 이 함수는 아래 순서로 동작합니다.
 
 1. 전달받은 내용이 비어 있으면 파일을 쓰지 않고 건너뜁니다.
-2. 임시 파일을 만듭니다.
-3. 기존 파일과 새 내용을 비교합니다.
-4. 실제로 달라진 경우에만 파일을 갱신합니다.
+2. 내용이 있으면 대상 env 파일에 기록합니다.
+3. 파일을 쓴 경우 `CONFIG_CHANGED`와 세부 적용 플래그를 `true`로 설정합니다.
 
 즉, 체크박스를 켜지 않았거나 Secret 값이 비어 있으면 아래 로그가 출력됩니다.
 
@@ -129,17 +128,10 @@ chmod 700 "$ENV_DIR"
 Empty content, skipping: ...
 ```
 
-내용이 같으면 아래처럼 출력됩니다.
+내용을 파일에 기록한 경우에는 아래처럼 출력됩니다.
 
 ```text
-Unchanged: ...
-```
-
-내용이 바뀐 경우에는 아래처럼 출력됩니다.
-
-```text
-Created: ...
-Updated: ...
+Applied: ...
 ```
 
 ### 3.6 현재 생성하는 파일
@@ -147,15 +139,15 @@ Updated: ...
 현재 스크립트는 아래 흐름으로 파일을 씁니다.
 
 ```bash
-write_if_changed "$ENV_DIR/common_config.env" "${COMMON_CONFIG_ENV:-}" "COMMON_CONFIG_CHANGED"
-write_if_changed "$ENV_DIR/common_secret.env" "${COMMON_SECRET_ENV:-}" "COMMON_SECRET_CHANGED"
+write_env_file "$ENV_DIR/common_config.env" "${COMMON_CONFIG_ENV:-}" "COMMON_CONFIG_CHANGED"
+write_env_file "$ENV_DIR/common_secret.env" "${COMMON_SECRET_ENV:-}" "COMMON_SECRET_CHANGED"
 ```
 
 그리고 서비스 인자가 있을 때만 아래 파일을 추가로 처리합니다.
 
 ```bash
-write_if_changed "$ENV_DIR/${SERVICE}_config.env" "${SERVICE_CONFIG_ENV:-}" "SERVICE_CONFIG_CHANGED"
-write_if_changed "$ENV_DIR/${SERVICE}_secret.env" "${SERVICE_SECRET_ENV:-}" "SERVICE_SECRET_CHANGED"
+write_env_file "$ENV_DIR/${SERVICE}_config.env" "${SERVICE_CONFIG_ENV:-}" "SERVICE_CONFIG_CHANGED"
+write_env_file "$ENV_DIR/${SERVICE}_secret.env" "${SERVICE_SECRET_ENV:-}" "SERVICE_SECRET_CHANGED"
 ```
 
 즉, `common`만 반영할 때는 `noop` 같은 임시 파일을 만들지 않습니다. 이 부분은 예전 구조와 달라진 점입니다.

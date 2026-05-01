@@ -194,7 +194,18 @@ Kafka 상태 확인:
 - `redis`
 - `elasticsearch`
 
-## 6. 문서 해석 시 주의
+## 6. Monitoring 관련 파일
+
+모니터링 관련 파일은 아래 경로에 있지만, 이 문서에서는 상세히 다루지 않습니다.
+
+- `.github/k3s/monitoring/monitoring-values.yaml`
+- `.github/k3s/monitoring/prometheus-scrape-config.yaml`
+- `.github/k3s/monitoring/grafana-dashboards.yml`
+- `.github/k3s/monitoring/grafana-official-dashboards.yml`
+
+Prometheus, Grafana, scrape target, 현재 분리 서버 구조에서의 제약은 `k3s-monitoring.md`에서 따로 다룹니다.
+
+## 7. 문서 해석 시 주의
 
 이 문서는 구조를 빠르게 이해하기 위한 참고용 요약입니다.
 
@@ -213,7 +224,7 @@ Kafka 상태 확인:
 - 보안 설정
 - Secret 주입 방식
 
-## 7. 요약
+## 8. 요약
 
 현재 인프라 데이터 YAML은 Postgres, Kafka, Zookeeper, Redis, Elasticsearch를 각각 독립 리소스로 정의하고 있습니다.
 
