@@ -87,7 +87,10 @@ class SettlementServiceSellerQueryTest {
 		assignId(target);
 
 		SettlementTargetCalculation calculation = SettlementTargetCalculation.forPayment(
-			target,
+			target.getId(),
+			target.getSettlementMonth(),
+			target.getSellerId(),
+			target.getSettlementBaseAmount(),
 			UUID.randomUUID(),
 			"NEW_SELLER",
 			new BigDecimal("0.0100")

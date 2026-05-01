@@ -17,6 +17,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import jabaclass.settlement.application.dto.AppliedPromotion;
 import jabaclass.settlement.application.dto.MonthlySettlementCreationItem;
 import jabaclass.settlement.application.dto.SellerGradeCalculationItem;
+import jabaclass.settlement.application.dto.SettlementTargetInfo;
 import jabaclass.settlement.application.dto.SettlementTargetSummary;
 import jabaclass.settlement.application.exception.BusinessException;
 import jabaclass.settlement.application.exception.SettlementCalculationRetryableException;
@@ -57,7 +58,7 @@ class SettlementCalculateServiceTest {
 
 	@Test
 	void 결제_정산_계산시_프로모션_수수료율을_반영한다() {
-		SettlementTarget paymentTarget = paymentTarget(new BigDecimal("10000.00"));
+		SettlementTargetInfo paymentTarget = paymentTarget(new BigDecimal("10000.00"));
 
 		SettlementTargetCalculation calculation = settlementCalculateService.calculatePaymentTarget(
 			paymentTarget,
@@ -68,7 +69,7 @@ class SettlementCalculateServiceTest {
 			)
 		);
 
-		assertThat(calculation.getSettlementTargetId()).isEqualTo(paymentTarget.getId());
+		assertThat(calculation.getSettlementTargetId()).isEqualTo(paymentTarget.id());
 		assertThat(calculation.getSettlementBaseAmount()).isEqualByComparingTo("10000.00");
 		assertThat(calculation.getAppliedPromotionType()).isEqualTo(PromotionType.NEW_SELLER.name());
 		assertThat(calculation.getAppliedFeeRate()).isEqualByComparingTo("0.0100");
@@ -76,8 +77,8 @@ class SettlementCalculateServiceTest {
 
 	@Test
 	void 환불_원결제_계산결과가_없으면_retryable_예외가_발생한다() {
-		SettlementTarget refundTarget = refundTarget(new BigDecimal("3000.00"));
-		SettlementTarget originalPaymentTarget = paymentTarget(new BigDecimal("10000.00"));
+		SettlementTargetInfo refundTarget = refundTarget(new BigDecimal("3000.00"));
+		SettlementTargetInfo originalPaymentTarget = paymentTarget(new BigDecimal("10000.00"));
 
 		assertThatThrownBy(() -> settlementCalculateService.calculateRefundTarget(
 			refundTarget,
@@ -91,10 +92,13 @@ class SettlementCalculateServiceTest {
 
 	@Test
 	void 환불은_원결제_계산결과를_기준으로_정산기준금액을_계산한다() {
-		SettlementTarget paymentTarget = paymentTarget(new BigDecimal("10000.00"));
-		SettlementTarget refundTarget = refundTarget(new BigDecimal("3000.00"));
+		SettlementTargetInfo paymentTarget = paymentTarget(new BigDecimal("10000.00"));
+		SettlementTargetInfo refundTarget = refundTarget(new BigDecimal("3000.00"));
 		SettlementTargetCalculation paymentCalculation = SettlementTargetCalculation.forPayment(
-			paymentTarget,
+			paymentTarget.id(),
+			paymentTarget.settlementMonth(),
+			paymentTarget.sellerId(),
+			paymentTarget.settlementBaseAmount(),
 			UUID.randomUUID(),
 			PromotionType.NEW_SELLER.name(),
 			new BigDecimal("0.0100")
@@ -116,7 +120,7 @@ class SettlementCalculateServiceTest {
 
 	@Test
 	void 환불_원결제_타겟이_없으면_fallback_프로모션으로_계산한다() {
-		SettlementTarget refundTarget = refundTarget(new BigDecimal("3000.00"));
+		SettlementTargetInfo refundTarget = refundTarget(new BigDecimal("3000.00"));
 
 		SettlementTargetCalculation refundCalculation = settlementCalculateService.calculateRefundTarget(
 			refundTarget,
@@ -234,7 +238,7 @@ class SettlementCalculateServiceTest {
 		then(sellerGradePolicyRepository).should().findActivePolicies();
 	}
 
-	private SettlementTarget paymentTarget(BigDecimal amount) {
+	private SettlementTargetInfo paymentTarget(BigDecimal amount) {
 		SettlementTarget target = SettlementTarget.forPayment(
 			UUID.randomUUID(),
 			"2026-04",
@@ -246,10 +250,21 @@ class SettlementCalculateServiceTest {
 			LocalDateTime.of(2026, 4, 10, 12, 0)
 		);
 		assignId(target);
-		return target;
+		return new SettlementTargetInfo(
+			target.getId(),
+			target.getSettlementMonth(),
+			target.getSellerId(),
+			target.getOrderId(),
+			target.getPaymentId(),
+			target.getRefundId(),
+			target.getProductId(),
+			target.getTargetType(),
+			target.getSettlementBaseAmount(),
+			target.getOccurredAt()
+		);
 	}
 
-	private SettlementTarget refundTarget(BigDecimal amount) {
+	private SettlementTargetInfo refundTarget(BigDecimal amount) {
 		SettlementTarget target = SettlementTarget.forRefund(
 			UUID.randomUUID(),
 			"2026-04",
@@ -262,7 +277,18 @@ class SettlementCalculateServiceTest {
 			LocalDateTime.of(2026, 4, 15, 12, 0)
 		);
 		assignId(target);
-		return target;
+		return new SettlementTargetInfo(
+			target.getId(),
+			target.getSettlementMonth(),
+			target.getSellerId(),
+			target.getOrderId(),
+			target.getPaymentId(),
+			target.getRefundId(),
+			target.getProductId(),
+			target.getTargetType(),
+			target.getSettlementBaseAmount(),
+			target.getOccurredAt()
+		);
 	}
 
 	private SellerGradePolicy goldPolicy() {

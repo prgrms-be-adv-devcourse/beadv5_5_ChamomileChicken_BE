@@ -4,6 +4,7 @@ import java.util.UUID;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
@@ -18,7 +19,7 @@ import jabaclass.settlement.domain.model.BaseEntity;
 	@Table(
 	name = "seller_grades",
 	indexes = {
-		@jakarta.persistence.Index(
+		@Index(
 			name = "idx_seller_grades_month_seller",
 			columnList = "calculated_month, seller_id"
 		)
