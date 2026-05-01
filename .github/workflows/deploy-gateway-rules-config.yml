@@ -1,0 +1,58 @@
+name: Deploy Gateway Rules Config
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - dev
+    paths:
+      - '.github/k3s/gateway-rules-config.yml'
+      - '.github/workflows/deploy-gateway-rules-config.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-gateway-rules-config-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy-gateway-rules-config:
+    runs-on: [ self-hosted, ec2, docker ]
+    env:
+      KUBECONFIG: /home/ubuntu/.kube/config
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            .github/k3s/gateway-rules-config.yml
+          sparse-checkout-cone-mode: false
+
+      - name: Ensure Kubernetes YAML directory exists
+        run: |
+          if [ ! -d /home/ubuntu/apps/data/k3s-service ]; then
+            mkdir -p /home/ubuntu/apps/data/k3s-service
+          fi
+
+      - name: Copy Kubernetes YAML to fixed path
+        run: |
+          cp .github/k3s/gateway-rules-config.yml /home/ubuntu/apps/data/k3s-service/gateway-rules-config.yml
+
+      - name: Verify deploy files exist
+        run: |
+          ls -l /home/ubuntu/apps/data/k3s-service/gateway-rules-config.yml
+
+      - name: Apply gateway rules ConfigMap
+        run: |
+          kubectl apply -f /home/ubuntu/apps/data/k3s-service/gateway-rules-config.yml
+
+      - name: Restart api-gateway deployment
+        run: |
+          kubectl rollout restart deployment/api-gateway-service
+          kubectl rollout status deployment/api-gateway-service --timeout=300s
+
+      - name: Verify gateway rules ConfigMap
+        run: |
+          kubectl get configmap gateway-rules-config -o yaml
