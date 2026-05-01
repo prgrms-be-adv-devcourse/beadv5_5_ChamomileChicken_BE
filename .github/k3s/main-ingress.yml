@@ -43,6 +43,13 @@ spec:
                 name: api-gateway-service
                 port:
                   number: 8080
+          - path: /oauth2/callback
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend-service
+                port:
+                  number: 3000
           - path: /oauth2
             pathType: Prefix
             backend:
