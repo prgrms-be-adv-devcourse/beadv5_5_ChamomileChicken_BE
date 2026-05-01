@@ -77,7 +77,7 @@ spec:
               cpu: "300m"
               memory: "256Mi"
             limits:
-              cpu: "1000m"
+              cpu: "400m"
               memory: "512Mi"
 
           startupProbe:
