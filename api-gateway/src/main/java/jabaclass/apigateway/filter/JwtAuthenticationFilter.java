@@ -2,8 +2,6 @@ package jabaclass.apigateway.filter;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.Map;
 import java.util.UUID;
 
@@ -298,11 +296,11 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 					.map(forceLogoutTime -> {
 						if (forceLogoutTime.isEmpty()) return TokenCheckResult.OK;
 						try {
-							LocalDateTime forceLogoutDt = LocalDateTime.parse(forceLogoutTime);
-							LocalDateTime tokenIssuedAt = claims.getIssuedAt() != null
-								? claims.getIssuedAt().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime()
-								: LocalDateTime.MIN;
-							if (!tokenIssuedAt.isAfter(forceLogoutDt)) {
+							long forceLogoutMillis = Long.parseLong(forceLogoutTime);
+							long tokenIssuedAtMillis = claims.getIssuedAt() != null
+								? claims.getIssuedAt().toInstant().toEpochMilli()
+								: 0L;
+							if (tokenIssuedAtMillis <= forceLogoutMillis) {
 								return TokenCheckResult.FORCE_LOGOUT;
 							}
 						} catch (Exception e) {

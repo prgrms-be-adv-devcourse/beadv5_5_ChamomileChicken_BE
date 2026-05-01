@@ -5,9 +5,9 @@ spring:
     username: ${POSTGRES_USER:postgres}
     password: ${POSTGRES_PASSWORD:postgres}
     hikari:
-      minimum-idle: 3
-      maximum-pool-size: 6
-      connection-timeout: 5000
+      minimum-idle: 10
+      maximum-pool-size: 20
+      connection-timeout: 10000
       idle-timeout: 60000
       max-lifetime: 180000
 
@@ -104,3 +104,9 @@ management:
 
 internal:
   secret: ${USER_INTERNAL_SECRET}
+
+frontend:
+  service-url: ${FRONTEND_SERVICE_URL:https://jabaclass.store}
+
+app:
+  base-url: ${BASE_URL:https://jabaclass.store}

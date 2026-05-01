@@ -77,6 +77,9 @@ app:
   mail:
     from: test@example.com
 
+frontend:
+  service-url: http://localhost:3000
+
 jwt:
   secret: "test-environment-secret-key-must-be-32-chars-long-!!!"
   access-token-validity: 1800000

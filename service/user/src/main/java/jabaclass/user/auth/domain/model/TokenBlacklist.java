@@ -2,6 +2,7 @@ package jabaclass.user.auth.domain.model;
 
 import java.util.UUID;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
@@ -38,7 +39,7 @@ public class TokenBlacklist {
 
 	@PrePersist
 	void prePersist() {
-		this.createdAt = LocalDateTime.now();
+		this.createdAt = LocalDateTime.now(ZoneOffset.UTC);
 	}
 
 	public static TokenBlacklist of(String tokenHash, LocalDateTime expiresAt) {
