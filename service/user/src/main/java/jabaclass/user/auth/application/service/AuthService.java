@@ -7,7 +7,7 @@ import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.nio.charset.StandardCharsets;
 
 import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
@@ -159,7 +159,7 @@ public class AuthService
             user.updateRefreshToken(null);
             executeWriteWithCb(() -> redisTemplate.opsForValue().set(
                 FORCE_LOGOUT_PREFIX + userId,
-                LocalDateTime.now().toString(),
+                String.valueOf(Instant.now().toEpochMilli()),
                 Duration.ofMillis(accessTokenValidity)
             ), FORCE_LOGOUT_PREFIX + userId);
             executeWriteWithCb(() -> redisTemplate.delete("refresh:" + userId), "refresh:" + userId);
@@ -209,7 +209,7 @@ public class AuthService
             if (remainingMillis > 0) {
                 String hash = sha256(accessToken);
                 LocalDateTime expiresAt = LocalDateTime.ofInstant(
-                    Instant.ofEpochMilli(claims.getExpiration().getTime()), ZoneId.systemDefault());
+                    Instant.ofEpochMilli(claims.getExpiration().getTime()), ZoneOffset.UTC);
                 tokenBlacklistRepository.save(TokenBlacklist.of(hash, expiresAt));
 
                 log.info("[AUTH] Blacklist DB 등록. ttl={}ms", remainingMillis);
@@ -255,7 +255,7 @@ public class AuthService
 
         executeWriteWithCb(() -> redisTemplate.opsForValue().set(
             FORCE_LOGOUT_PREFIX + userId,
-            LocalDateTime.now().toString(),
+            String.valueOf(Instant.now().toEpochMilli()),
             Duration.ofMillis(accessTokenValidity)
         ), FORCE_LOGOUT_PREFIX + userId);
 
@@ -269,14 +269,14 @@ public class AuthService
     @Cacheable(cacheNames = "tokenStatus", key = "#token")
     public TokenStatusResult checkTokenStatus(String token, UUID userId, long tokenIssuedAtMillis) {
         String hash = sha256(token);
-        if (tokenBlacklistRepository.existsByTokenHashAndExpiresAtAfter(hash, LocalDateTime.now())) {
+        if (tokenBlacklistRepository.existsByTokenHashAndExpiresAtAfter(hash, LocalDateTime.now(ZoneOffset.UTC))) {
             return TokenStatusResult.blacklisted();
         }
 
         User user = userRepository.findById(userId).orElse(null);
         if (user != null && user.getForceLogoutAt() != null) {
             long forceLogoutMillis = user.getForceLogoutAt()
-                .atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+                .toInstant(ZoneOffset.UTC).toEpochMilli();
             if (tokenIssuedAtMillis <= forceLogoutMillis) {
                 return TokenStatusResult.forceLogout();
             }

@@ -2,6 +2,7 @@ package jabaclass.user.user.domain.model;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 
 import jabaclass.user.common.model.BaseEntity;
 import jabaclass.user.deposit.domain.exception.DepositErrorCode;
@@ -104,6 +105,6 @@ public class User extends BaseEntity {
 	}
 
 	public void forceLogout() {
-		this.forceLogoutAt = LocalDateTime.now();
+		this.forceLogoutAt = LocalDateTime.now(ZoneOffset.UTC);
 	}
 }
