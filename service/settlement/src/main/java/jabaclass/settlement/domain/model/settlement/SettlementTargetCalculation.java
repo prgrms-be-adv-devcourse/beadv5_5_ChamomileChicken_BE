@@ -13,17 +13,22 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import jabaclass.settlement.application.dto.SettlementTargetInfo;
 import jabaclass.settlement.domain.model.BaseEntity;
 
 @Getter
 @Entity
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(
+	@Table(
 	name = "settlement_target_calculations",
 	indexes = {
 		@Index(
 			name = "idx_stc_month_seller",
 			columnList = "settlement_month, seller_id"
+		),
+		@Index(
+			name = "idx_stc_month_seller_fee_rate",
+			columnList = "settlement_month, seller_id, applied_fee_rate"
 		)
 	}
 )
@@ -78,17 +83,18 @@ public class SettlementTargetCalculation extends BaseEntity {
 	}
 
 	public static SettlementTargetCalculation forPayment(
-		SettlementTarget target,
+		UUID settlementTargetId,
+		String settlementMonth,
+		UUID sellerId,
+		BigDecimal settlementBaseAmount,
 		UUID appliedPromotionId,
 		String appliedPromotionType,
 		BigDecimal appliedFeeRate
 	) {
-		BigDecimal settlementBaseAmount = target.getSettlementBaseAmount();
-
 		return new SettlementTargetCalculation(
-			target.getId(),
-			target.getSettlementMonth(),
-			target.getSellerId(),
+			settlementTargetId,
+			settlementMonth,
+			sellerId,
 			settlementBaseAmount,
 			appliedPromotionId,
 			appliedPromotionType,
@@ -98,22 +104,22 @@ public class SettlementTargetCalculation extends BaseEntity {
 	}
 
 	public static SettlementTargetCalculation forRefund(
-		SettlementTarget target,
-		SettlementTarget originalPaymentTarget,
+		SettlementTargetInfo target,
+		SettlementTargetInfo originalPaymentTarget,
 		SettlementTargetCalculation originalPaymentCalculation
 	) {
-		BigDecimal refundAmount = target.getSettlementBaseAmount().abs();
+		BigDecimal refundAmount = target.settlementBaseAmount().abs();
 		BigDecimal ratio = refundAmount
-			.divide(originalPaymentTarget.getSettlementBaseAmount(), 8, RoundingMode.HALF_UP);
+			.divide(originalPaymentTarget.settlementBaseAmount(), 8, RoundingMode.HALF_UP);
 		BigDecimal refundSettlementBaseAmount = originalPaymentCalculation.getSettlementBaseAmount()
 			.multiply(ratio)
 			.setScale(2, RoundingMode.DOWN)
 			.negate();
 
 		return new SettlementTargetCalculation(
-			target.getId(),
-			target.getSettlementMonth(),
-			target.getSellerId(),
+			target.id(),
+			target.settlementMonth(),
+			target.sellerId(),
 			refundSettlementBaseAmount,
 			originalPaymentCalculation.getAppliedPromotionId(),
 			originalPaymentCalculation.getAppliedPromotionType(),
@@ -123,20 +129,40 @@ public class SettlementTargetCalculation extends BaseEntity {
 	}
 
 	public static SettlementTargetCalculation forRefundWithPromotion(
-		SettlementTarget target,
+		UUID settlementTargetId,
+		String settlementMonth,
+		UUID sellerId,
+		BigDecimal settlementBaseAmount,
 		UUID appliedPromotionId,
 		String appliedPromotionType,
 		BigDecimal appliedFeeRate
 	) {
 		return new SettlementTargetCalculation(
-			target.getId(),
-			target.getSettlementMonth(),
-			target.getSellerId(),
-			target.getSettlementBaseAmount(),
+			settlementTargetId,
+			settlementMonth,
+			sellerId,
+			settlementBaseAmount,
 			appliedPromotionId,
 			appliedPromotionType,
 			appliedFeeRate,
 			null
+		);
+	}
+
+	public static SettlementTargetCalculation forRefundWithPromotion(
+		SettlementTargetInfo target,
+		UUID appliedPromotionId,
+		String appliedPromotionType,
+		BigDecimal appliedFeeRate
+	) {
+		return forRefundWithPromotion(
+			target.id(),
+			target.settlementMonth(),
+			target.sellerId(),
+			target.settlementBaseAmount(),
+			appliedPromotionId,
+			appliedPromotionType,
+			appliedFeeRate
 		);
 	}
 }

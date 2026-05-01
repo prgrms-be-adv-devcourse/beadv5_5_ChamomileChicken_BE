@@ -2,8 +2,10 @@ package jabaclass.settlement.infrastructure.batch.config;
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import jakarta.persistence.EntityManagerFactory;
+import javax.sql.DataSource;
 
 import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.core.job.Job;
@@ -13,8 +15,10 @@ import org.springframework.batch.core.step.Step;
 import org.springframework.batch.core.step.builder.StepBuilder;
 import org.springframework.batch.infrastructure.item.ItemProcessor;
 import org.springframework.batch.infrastructure.item.ItemStreamReader;
-import org.springframework.batch.infrastructure.item.database.JpaPagingItemReader;
-import org.springframework.batch.infrastructure.item.database.builder.JpaPagingItemReaderBuilder;
+import org.springframework.batch.infrastructure.item.database.JdbcCursorItemReader;
+import org.springframework.batch.infrastructure.item.database.builder.JdbcCursorItemReaderBuilder;
+import org.springframework.batch.infrastructure.item.database.JpaCursorItemReader;
+import org.springframework.batch.infrastructure.item.database.builder.JpaCursorItemReaderBuilder;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -23,6 +27,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 
 import jabaclass.settlement.application.dto.MonthlySettlementCreationItem;
 import jabaclass.settlement.application.dto.SellerGradeCalculationItem;
+import jabaclass.settlement.application.dto.SettlementTargetInfo;
 import jabaclass.settlement.application.dto.SettlementTargetSummary;
 import jabaclass.settlement.application.exception.BusinessException;
 import jabaclass.settlement.application.exception.SettlementCalculationRetryableException;
@@ -36,7 +41,6 @@ import jabaclass.settlement.domain.repository.SettlementRepository;
 import jabaclass.settlement.domain.repository.SettlementTargetCalculationRepository;
 import jabaclass.settlement.domain.repository.SettlementTargetRepository;
 import jabaclass.settlement.domain.model.settlement.Settlement;
-import jabaclass.settlement.domain.model.settlement.SettlementTarget;
 import jabaclass.settlement.domain.model.settlement.SettlementTargetCalculationStatus;
 import jabaclass.settlement.domain.model.settlement.SettlementTargetType;
 import jabaclass.settlement.infrastructure.batch.dto.PaymentTargetCalculationItem;
@@ -50,7 +54,7 @@ import jabaclass.settlement.infrastructure.batch.processor.RefundTargetCalculati
 import jabaclass.settlement.infrastructure.batch.processor.SellerGradeCalculationItemProcessor;
 import jabaclass.settlement.infrastructure.batch.listener.SettlementStepPhaseTimingListener;
 import jabaclass.settlement.infrastructure.batch.listener.SettlementStepExecutionListener;
-import jabaclass.settlement.infrastructure.batch.reader.MonthlySettlementCreationItemReader;
+import jabaclass.settlement.infrastructure.batch.reader.MonthlySettlementCreationSummaryItemReader;
 import jabaclass.settlement.infrastructure.batch.reader.PaymentTargetCalculationItemReader;
 import jabaclass.settlement.infrastructure.batch.reader.RefundTargetCalculationItemReader;
 import jabaclass.settlement.infrastructure.batch.reader.SellerGradeCalculationItemReader;
@@ -62,16 +66,7 @@ import jabaclass.settlement.infrastructure.batch.writer.SettlementTargetCalculat
 @Configuration
 public class SettlementCalculateJobConfig {
 
-	private static final String SETTLEMENT_TARGET_QUERY = """
-		select st
-		from SettlementTarget st
-		where st.settlementMonth = :settlementMonth
-		  and st.targetType = :targetType
-		  and st.calculationStatus = :calculationStatus
-		order by st.occurredAt, st.id
-		""";
-
-	private static final String SETTLEMENT_AGGREGATION_QUERY = """
+	private static final String SETTLEMENT_AGGREGATION_CURSOR_QUERY = """
 		select new jabaclass.settlement.application.dto.SettlementTargetSummary(
 			stc.sellerId,
 			stc.settlementMonth,
@@ -80,6 +75,32 @@ public class SettlementCalculateJobConfig {
 		from SettlementTargetCalculation stc
 		where stc.settlementMonth = :settlementMonth
 		group by stc.sellerId, stc.settlementMonth
+		order by stc.sellerId
+		""";
+
+	private static final String TARGET_CURSOR_QUERY = """
+		select
+			id,
+			settlement_month,
+			seller_id,
+			order_id,
+			payment_id,
+			refund_id,
+			product_id,
+			target_type,
+			settlement_base_amount,
+			occurred_at
+		from settlement_targets
+		where settlement_month = ?
+		  and target_type = ?
+		  and calculation_status = ?
+		order by occurred_at, id
+		""";
+
+	private static final String SELLER_ID_CURSOR_QUERY = """
+		select distinct stc.sellerId
+		from SettlementTargetCalculation stc
+		where stc.settlementMonth = :settlementMonth
 		order by stc.sellerId
 		""";
 
@@ -154,19 +175,19 @@ public class SettlementCalculateJobConfig {
 	@Bean
 	@StepScope
 	public ItemStreamReader<PaymentTargetCalculationItem> settlementPaymentTargetItemReader(
-		EntityManagerFactory entityManagerFactory,
+		DataSource dataSource,
 		SellerPromotionRepository sellerPromotionRepository,
 		SettlementPromotionRepository settlementPromotionRepository,
 		@Value("#{jobParameters['settlementMonth']}") String settlementMonthParam,
 		@Value("${settlement.batch.calculate.chunk-size:100}") int chunkSize
 	) {
+		String settlementMonth = SettlementMonthResolver.resolve(settlementMonthParam);
 		return new PaymentTargetCalculationItemReader(
-			settlementTargetItemReader(
-				entityManagerFactory,
-				settlementMonthParam,
-				SettlementTargetType.PAYMENT,
-				"settlementPaymentTargetJpaItemReader",
-				chunkSize
+			settlementTargetCursorReader(
+				dataSource,
+				"settlementPaymentTargetCursorReader",
+				settlementMonth,
+				SettlementTargetType.PAYMENT
 			),
 			sellerPromotionRepository,
 			settlementPromotionRepository,
@@ -177,7 +198,7 @@ public class SettlementCalculateJobConfig {
 	@Bean
 	@StepScope
 	public ItemStreamReader<RefundTargetCalculationItem> settlementRefundTargetItemReader(
-		EntityManagerFactory entityManagerFactory,
+		DataSource dataSource,
 		SettlementTargetRepository settlementTargetRepository,
 		SettlementTargetCalculationRepository settlementTargetCalculationRepository,
 		SellerPromotionRepository sellerPromotionRepository,
@@ -185,13 +206,13 @@ public class SettlementCalculateJobConfig {
 		@Value("#{jobParameters['settlementMonth']}") String settlementMonthParam,
 		@Value("${settlement.batch.calculate.chunk-size:100}") int chunkSize
 	) {
+		String settlementMonth = SettlementMonthResolver.resolve(settlementMonthParam);
 		return new RefundTargetCalculationItemReader(
-			settlementTargetItemReader(
-				entityManagerFactory,
-				settlementMonthParam,
-				SettlementTargetType.REFUND,
-				"settlementRefundTargetItemReader",
-				chunkSize
+			settlementTargetCursorReader(
+				dataSource,
+				"settlementRefundTargetCursorReader",
+				settlementMonth,
+				SettlementTargetType.REFUND
 			),
 			settlementTargetRepository,
 			settlementTargetCalculationRepository,
@@ -199,27 +220,6 @@ public class SettlementCalculateJobConfig {
 			settlementPromotionRepository,
 			chunkSize
 		);
-	}
-
-	private JpaPagingItemReader<SettlementTarget> settlementTargetItemReader(
-		EntityManagerFactory entityManagerFactory,
-		String settlementMonthParam,
-		SettlementTargetType targetType,
-		String name,
-		int chunkSize
-	) {
-		String settlementMonth = SettlementMonthResolver.resolve(settlementMonthParam);
-		return new JpaPagingItemReaderBuilder<SettlementTarget>()
-			.name(name)
-			.entityManagerFactory(entityManagerFactory)
-			.pageSize(chunkSize)
-			.parameterValues(Map.of(
-				"settlementMonth", settlementMonth,
-				"targetType", targetType,
-				"calculationStatus", SettlementTargetCalculationStatus.PENDING
-			))
-			.queryString(SETTLEMENT_TARGET_QUERY)
-			.build();
 	}
 
 	@Bean
@@ -268,42 +268,95 @@ public class SettlementCalculateJobConfig {
 
 	@Bean
 	@StepScope
-	public JpaPagingItemReader<SettlementTargetSummary> sellerGradeCalculationSummaryReader(
+	public JpaCursorItemReader<UUID> sellerGradeCalculationSellerReader(
 		EntityManagerFactory entityManagerFactory,
-		@Value("#{jobParameters['settlementMonth']}") String settlementMonthParam,
-		@Value("${settlement.batch.calculate.chunk-size:100}") int chunkSize
+		@Value("#{jobParameters['settlementMonth']}") String settlementMonthParam
 	) {
 		String settlementMonth = SettlementMonthResolver.resolve(settlementMonthParam);
-		return new JpaPagingItemReaderBuilder<SettlementTargetSummary>()
-			.name("sellerGradeCalculationSummaryReader")
+		return settlementTargetCalculationSellerCursorReader(
+			entityManagerFactory,
+			"sellerGradeCalculationSellerReader",
+			settlementMonth
+		);
+	}
+
+	private JdbcCursorItemReader<SettlementTargetInfo> settlementTargetCursorReader(
+		DataSource dataSource,
+		String readerName,
+		String settlementMonth,
+		SettlementTargetType targetType
+	) {
+		return new JdbcCursorItemReaderBuilder<SettlementTargetInfo>()
+			.name(readerName)
+			.dataSource(dataSource)
+			.sql(TARGET_CURSOR_QUERY)
+			.preparedStatementSetter(ps -> {
+				ps.setString(1, settlementMonth);
+				ps.setString(2, targetType.name());
+				ps.setString(3, SettlementTargetCalculationStatus.PENDING.name());
+			})
+			.rowMapper((rs, rowNum) -> new SettlementTargetInfo(
+				rs.getObject("id", UUID.class),
+				rs.getString("settlement_month"),
+				rs.getObject("seller_id", UUID.class),
+				rs.getObject("order_id", UUID.class),
+				rs.getObject("payment_id", UUID.class),
+				rs.getObject("refund_id", UUID.class),
+				rs.getObject("product_id", UUID.class),
+				SettlementTargetType.valueOf(rs.getString("target_type")),
+				rs.getBigDecimal("settlement_base_amount"),
+				rs.getTimestamp("occurred_at").toLocalDateTime()
+			))
+			.saveState(true)
+			.build();
+	}
+
+	private JpaCursorItemReader<UUID> settlementTargetCalculationSellerCursorReader(
+		EntityManagerFactory entityManagerFactory,
+		String readerName,
+		String settlementMonth
+	) {
+		return new JpaCursorItemReaderBuilder<UUID>()
+			.name(readerName)
 			.entityManagerFactory(entityManagerFactory)
-			.pageSize(chunkSize)
 			.parameterValues(Map.of("settlementMonth", settlementMonth))
-			.queryString(SETTLEMENT_AGGREGATION_QUERY)
+			.queryString(SELLER_ID_CURSOR_QUERY)
+			.saveState(true)
+			.build();
+	}
+
+	private JpaCursorItemReader<SettlementTargetSummary> settlementTargetSummaryCursorReader(
+		EntityManagerFactory entityManagerFactory,
+		String readerName,
+		String settlementMonth
+	) {
+		return new JpaCursorItemReaderBuilder<SettlementTargetSummary>()
+			.name(readerName)
+			.entityManagerFactory(entityManagerFactory)
+			.parameterValues(Map.of("settlementMonth", settlementMonth))
+			.queryString(SETTLEMENT_AGGREGATION_CURSOR_QUERY)
+			.saveState(true)
 			.build();
 	}
 
 	@Bean
 	@StepScope
-	public JpaPagingItemReader<SettlementTargetSummary> monthlySettlementCreationSummaryReader(
+	public JpaCursorItemReader<SettlementTargetSummary> monthlySettlementCreationSummaryReader(
 		EntityManagerFactory entityManagerFactory,
-		@Value("#{jobParameters['settlementMonth']}") String settlementMonthParam,
-		@Value("${settlement.batch.calculate.chunk-size:100}") int chunkSize
+		@Value("#{jobParameters['settlementMonth']}") String settlementMonthParam
 	) {
 		String settlementMonth = SettlementMonthResolver.resolve(settlementMonthParam);
-		return new JpaPagingItemReaderBuilder<SettlementTargetSummary>()
-			.name("monthlySettlementCreationSummaryReader")
-			.entityManagerFactory(entityManagerFactory)
-			.pageSize(chunkSize)
-			.parameterValues(Map.of("settlementMonth", settlementMonth))
-			.queryString(SETTLEMENT_AGGREGATION_QUERY)
-			.build();
+		return settlementTargetSummaryCursorReader(
+			entityManagerFactory,
+			"monthlySettlementCreationSummaryReader",
+			settlementMonth
+		);
 	}
 
 	@Bean
 	@StepScope
 	public ItemStreamReader<SellerGradeCalculationItem> sellerGradeCalculationReader(
-		JpaPagingItemReader<SettlementTargetSummary> sellerGradeCalculationSummaryReader,
+		JpaCursorItemReader<UUID> sellerGradeCalculationSellerReader,
 		SettlementTargetCalculationRepository settlementTargetCalculationRepository,
 		SellerGradeRepository sellerGradeRepository,
 		@Value("#{jobParameters['settlementMonth']}") String settlementMonthParam,
@@ -311,7 +364,7 @@ public class SettlementCalculateJobConfig {
 	) {
 		String settlementMonth = SettlementMonthResolver.resolve(settlementMonthParam);
 		return new SellerGradeCalculationItemReader(
-			sellerGradeCalculationSummaryReader,
+			sellerGradeCalculationSellerReader,
 			settlementTargetCalculationRepository,
 			sellerGradeRepository,
 			settlementMonth,
@@ -322,7 +375,7 @@ public class SettlementCalculateJobConfig {
 	@Bean
 	@StepScope
 	public ItemStreamReader<MonthlySettlementCreationItem> monthlySettlementCreationReader(
-		JpaPagingItemReader<SettlementTargetSummary> monthlySettlementCreationSummaryReader,
+		JpaCursorItemReader<SettlementTargetSummary> monthlySettlementCreationSummaryReader,
 		SettlementRepository settlementRepository,
 		SettlementTargetCalculationRepository settlementTargetCalculationRepository,
 		SellerGradeRepository sellerGradeRepository,
@@ -330,7 +383,7 @@ public class SettlementCalculateJobConfig {
 		@Value("${settlement.batch.calculate.chunk-size:100}") int chunkSize
 	) {
 		String settlementMonth = SettlementMonthResolver.resolve(settlementMonthParam);
-		return new MonthlySettlementCreationItemReader(
+		return new MonthlySettlementCreationSummaryItemReader(
 			monthlySettlementCreationSummaryReader,
 			settlementRepository,
 			settlementTargetCalculationRepository,

@@ -100,8 +100,24 @@ class SettlementAggregationStepTest {
 			new BigDecimal("5000.00"),
 			LocalDateTime.of(2026, 2, 10, 10, 0)
 		));
-		settlementTargetCalculationJpaRepository.save(SettlementTargetCalculation.forPayment(currentTarget, null, null, null));
-		settlementTargetCalculationJpaRepository.save(SettlementTargetCalculation.forPayment(previousTarget, null, null, null));
+		settlementTargetCalculationJpaRepository.save(SettlementTargetCalculation.forPayment(
+			currentTarget.getId(),
+			currentTarget.getSettlementMonth(),
+			currentTarget.getSellerId(),
+			currentTarget.getSettlementBaseAmount(),
+			null,
+			null,
+			null
+		));
+		settlementTargetCalculationJpaRepository.save(SettlementTargetCalculation.forPayment(
+			previousTarget.getId(),
+			previousTarget.getSettlementMonth(),
+			previousTarget.getSellerId(),
+			previousTarget.getSettlementBaseAmount(),
+			null,
+			null,
+			null
+		));
 
 		StepExecution sellerGradeStepExecution = executeStep("sellerGradeCalculationStep", jobParameters(settlementMonth));
 		StepExecution monthlySettlementStepExecution = executeStep("monthlySettlementCreationStep", jobParameters(settlementMonth));
@@ -164,7 +180,15 @@ class SettlementAggregationStepTest {
 			new BigDecimal("10000.00"),
 			LocalDateTime.of(2026, 3, 10, 10, 0)
 		));
-		settlementTargetCalculationJpaRepository.save(SettlementTargetCalculation.forPayment(currentTarget, null, null, null));
+		settlementTargetCalculationJpaRepository.save(SettlementTargetCalculation.forPayment(
+			currentTarget.getId(),
+			currentTarget.getSettlementMonth(),
+			currentTarget.getSellerId(),
+			currentTarget.getSettlementBaseAmount(),
+			null,
+			null,
+			null
+		));
 
 		StepExecution sellerGradeStepExecution = executeStep("sellerGradeCalculationStep", jobParameters(settlementMonth));
 		StepExecution monthlySettlementStepExecution = executeStep("monthlySettlementCreationStep", jobParameters(settlementMonth));

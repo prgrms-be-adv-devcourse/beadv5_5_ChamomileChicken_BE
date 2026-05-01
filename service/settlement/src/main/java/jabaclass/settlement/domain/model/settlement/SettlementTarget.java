@@ -19,16 +19,12 @@ import jabaclass.settlement.domain.model.BaseEntity;
 @Getter
 @Entity
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(
+	@Table(
 	name = "settlement_targets",
 	indexes = {
 		@Index(
-			name = "idx_settlement_targets_month_calc_status",
-			columnList = "settlement_month, calculation_status"
-		),
-		@Index(
-			name = "idx_settlement_targets_seller_month",
-			columnList = "seller_id, settlement_month"
+			name = "idx_settlement_targets_batch_cursor",
+			columnList = "settlement_month, target_type, calculation_status, occurred_at, id"
 		),
 		@Index(
 			name = "idx_settlement_targets_payment_type",
@@ -165,18 +161,6 @@ public class SettlementTarget extends BaseEntity {
 			settlementBaseAmount.abs().negate(),
 			occurredAt
 		);
-	}
-
-	public void markCalculated() {
-		this.calculationStatus = SettlementTargetCalculationStatus.CALCULATED;
-		this.calculationCompletedAt = LocalDateTime.now();
-		this.calculationFailedReason = null;
-	}
-
-	public void markCalculationFailed(String reason) {
-		this.calculationStatus = SettlementTargetCalculationStatus.FAILED;
-		this.calculationCompletedAt = LocalDateTime.now();
-		this.calculationFailedReason = reason;
 	}
 
 	private void validateSettlementMonth(String settlementMonth) {

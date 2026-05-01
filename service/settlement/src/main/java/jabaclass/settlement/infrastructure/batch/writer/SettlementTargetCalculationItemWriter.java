@@ -6,15 +6,18 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.springframework.batch.infrastructure.item.Chunk;
 import org.springframework.batch.infrastructure.item.ItemWriter;
 import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Component;
 
-import jabaclass.settlement.domain.model.settlement.SettlementTarget;
 import jabaclass.settlement.domain.model.settlement.SettlementTargetCalculation;
+import jabaclass.settlement.domain.model.settlement.SettlementTargetCalculationStatus;
 import jabaclass.settlement.infrastructure.batch.dto.SettlementTargetCalculationBatchItem;
 import lombok.RequiredArgsConstructor;
 
@@ -22,13 +25,13 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class SettlementTargetCalculationItemWriter implements ItemWriter<SettlementTargetCalculationBatchItem> {
 
+	private static final int FAILED_REASON_MAX_LENGTH = 500;
+
 	private final JdbcTemplate jdbcTemplate;
+	private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
 	@Override
 	public void write(Chunk<? extends SettlementTargetCalculationBatchItem> items) {
-		List<SettlementTarget> targets = items.getItems().stream()
-			.map(SettlementTargetCalculationBatchItem::target)
-			.toList();
 		List<SettlementTargetCalculation> calculations = items.getItems().stream()
 			.map(SettlementTargetCalculationBatchItem::calculation)
 			.filter(Objects::nonNull)
@@ -37,8 +40,8 @@ public class SettlementTargetCalculationItemWriter implements ItemWriter<Settlem
 		if (!calculations.isEmpty()) {
 			insertCalculations(calculations);
 		}
-		if (!targets.isEmpty()) {
-			updateTargets(targets);
+		if (!items.getItems().isEmpty()) {
+			updateTargets(items.getItems());
 		}
 	}
 
@@ -87,8 +90,42 @@ public class SettlementTargetCalculationItemWriter implements ItemWriter<Settlem
 		);
 	}
 
-	private void updateTargets(List<SettlementTarget> targets) {
+	private void updateTargets(List<? extends SettlementTargetCalculationBatchItem> items) {
+		List<? extends SettlementTargetCalculationBatchItem> calculatedTargets = items.stream()
+			.filter(item -> item.calculationStatus() == SettlementTargetCalculationStatus.CALCULATED)
+			.toList();
+		List<? extends SettlementTargetCalculationBatchItem> nonCalculatedTargets = items.stream()
+			.filter(item -> item.calculationStatus() != SettlementTargetCalculationStatus.CALCULATED)
+			.toList();
+
+		if (!calculatedTargets.isEmpty()) {
+			updateCalculatedTargets(calculatedTargets);
+		}
+		if (!nonCalculatedTargets.isEmpty()) {
+			updateTargetsIndividually(nonCalculatedTargets);
+		}
+	}
+
+	private void updateCalculatedTargets(List<? extends SettlementTargetCalculationBatchItem> items) {
 		LocalDateTime now = LocalDateTime.now();
+		namedParameterJdbcTemplate.update(
+			"""
+				UPDATE settlement_targets
+				SET updated_at = :updatedAt,
+				    calculation_status = :calculationStatus,
+				    calculation_completed_at = :calculationCompletedAt,
+				    calculation_failed_reason = NULL
+				WHERE id IN (:ids)
+				""",
+			new MapSqlParameterSource()
+				.addValue("updatedAt", Timestamp.valueOf(now))
+				.addValue("calculationStatus", SettlementTargetCalculationStatus.CALCULATED.name())
+				.addValue("calculationCompletedAt", Timestamp.valueOf(now))
+				.addValue("ids", items.stream().map(item -> item.target().id()).collect(Collectors.toList()))
+		);
+	}
+
+	private void updateTargetsIndividually(List<? extends SettlementTargetCalculationBatchItem> items) {
 		jdbcTemplate.batchUpdate(
 			"""
 				UPDATE settlement_targets
@@ -101,19 +138,29 @@ public class SettlementTargetCalculationItemWriter implements ItemWriter<Settlem
 			new BatchPreparedStatementSetter() {
 				@Override
 				public void setValues(PreparedStatement ps, int i) throws java.sql.SQLException {
-					SettlementTarget target = targets.get(i);
-					ps.setTimestamp(1, Timestamp.valueOf(now));
-					ps.setString(2, target.getCalculationStatus().name());
-					ps.setTimestamp(3, target.getCalculationCompletedAt() == null ? null : Timestamp.valueOf(target.getCalculationCompletedAt()));
-					ps.setString(4, target.getCalculationFailedReason());
-					ps.setObject(5, target.getId());
+					SettlementTargetCalculationBatchItem item = items.get(i);
+					ps.setTimestamp(1, Timestamp.valueOf(item.calculationCompletedAt()));
+					ps.setString(2, item.calculationStatus().name());
+					ps.setTimestamp(3, item.calculationCompletedAt() == null ? null : Timestamp.valueOf(item.calculationCompletedAt()));
+					ps.setString(4, truncateReason(item.calculationFailedReason()));
+					ps.setObject(5, item.target().id());
 				}
 
 				@Override
 				public int getBatchSize() {
-					return targets.size();
+					return items.size();
 				}
 			}
 		);
 	}
+
+	private String truncateReason(String reason) {
+		if (reason == null) {
+			return null;
+		}
+		return reason.length() > FAILED_REASON_MAX_LENGTH
+			? reason.substring(0, FAILED_REASON_MAX_LENGTH)
+			: reason;
+	}
+
 }

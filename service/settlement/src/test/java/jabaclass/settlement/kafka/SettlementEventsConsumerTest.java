@@ -26,6 +26,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jabaclass.settlement.domain.model.promotion.PromotionType;
 import jabaclass.settlement.domain.model.promotion.SettlementPromotion;
 import jabaclass.settlement.domain.model.settlement.SettlementTargetType;
+import jabaclass.settlement.domain.model.settlement.SettlementTarget;
 import jabaclass.settlement.infrastructure.persistence.SellerPromotionJpaRepository;
 import jabaclass.settlement.infrastructure.persistence.SettlementPromotionJpaRepository;
 import jabaclass.settlement.infrastructure.persistence.SettlementTargetJpaRepository;
@@ -82,8 +83,7 @@ class SettlementEventsConsumerTest {
 		)));
 
 		await().atMost(5, SECONDS).untilAsserted(() -> {
-			assertThat(settlementTargetJpaRepository.findByPaymentIdAndTargetType(paymentId, SettlementTargetType.PAYMENT))
-				.isPresent();
+			assertThat(findPaymentTarget(paymentId)).isPresent();
 		});
 	}
 
@@ -102,7 +102,7 @@ class SettlementEventsConsumerTest {
 		)));
 
 		await().atMost(5, SECONDS).untilAsserted(() -> {
-			assertThat(settlementTargetJpaRepository.findByRefundId(refundId)).isPresent();
+			assertThat(findRefundTarget(refundId)).isPresent();
 		});
 	}
 
@@ -192,6 +192,19 @@ class SettlementEventsConsumerTest {
 		ProducerRecord<String, String> record = new ProducerRecord<>("settlement.events", payload);
 		record.headers().add("eventType", eventType.getBytes(StandardCharsets.UTF_8));
 		kafkaTemplate.send(record);
+	}
+
+	private java.util.Optional<SettlementTarget> findPaymentTarget(UUID paymentId) {
+		return settlementTargetJpaRepository.findAll().stream()
+			.filter(target -> paymentId.equals(target.getPaymentId()))
+			.filter(target -> target.getTargetType() == SettlementTargetType.PAYMENT)
+			.findFirst();
+	}
+
+	private java.util.Optional<SettlementTarget> findRefundTarget(UUID refundId) {
+		return settlementTargetJpaRepository.findAll().stream()
+			.filter(target -> refundId.equals(target.getRefundId()))
+			.findFirst();
 	}
 
 	record PaymentEvent(

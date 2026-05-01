@@ -16,9 +16,9 @@ import org.springframework.batch.infrastructure.item.ItemStreamException;
 import org.springframework.batch.infrastructure.item.ItemStreamReader;
 
 import jabaclass.settlement.application.dto.AppliedPromotion;
+import jabaclass.settlement.application.dto.SettlementTargetInfo;
 import jabaclass.settlement.domain.model.promotion.SellerPromotion;
 import jabaclass.settlement.domain.model.promotion.SettlementPromotion;
-import jabaclass.settlement.domain.model.settlement.SettlementTarget;
 import jabaclass.settlement.domain.repository.SellerPromotionRepository;
 import jabaclass.settlement.domain.repository.SettlementPromotionRepository;
 import jabaclass.settlement.infrastructure.batch.dto.PaymentTargetCalculationItem;
@@ -27,12 +27,13 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class PaymentTargetCalculationItemReader implements ItemStreamReader<PaymentTargetCalculationItem> {
 
-	private final ItemStreamReader<SettlementTarget> delegate;
+	private final ItemStreamReader<SettlementTargetInfo> delegate;
 	private final SellerPromotionRepository sellerPromotionRepository;
 	private final SettlementPromotionRepository settlementPromotionRepository;
 	private final int chunkSize;
 
 	private final Queue<PaymentTargetCalculationItem> buffer = new ArrayDeque<>();
+	private Map<UUID, AppliedPromotion> appliedPromotionByPromotionId = Map.of();
 
 	@Override
 	public PaymentTargetCalculationItem read() throws Exception {
@@ -40,9 +41,9 @@ public class PaymentTargetCalculationItemReader implements ItemStreamReader<Paym
 			return buffer.poll();
 		}
 
-		List<SettlementTarget> targets = new ArrayList<>(chunkSize);
+		List<SettlementTargetInfo> targets = new ArrayList<>(chunkSize);
 		while (targets.size() < chunkSize) {
-			SettlementTarget target = delegate.read();
+			SettlementTargetInfo target = delegate.read();
 			if (target == null) {
 				break;
 			}
@@ -54,15 +55,15 @@ public class PaymentTargetCalculationItemReader implements ItemStreamReader<Paym
 		}
 
 		List<UUID> sellerIds = targets.stream()
-			.map(SettlementTarget::getSellerId)
+			.map(SettlementTargetInfo::sellerId)
 			.distinct()
 			.toList();
 		LocalDateTime minOccurredAt = targets.stream()
-			.map(SettlementTarget::getOccurredAt)
+			.map(SettlementTargetInfo::occurredAt)
 			.min(LocalDateTime::compareTo)
 			.orElseThrow();
 		LocalDateTime maxOccurredAt = targets.stream()
-			.map(SettlementTarget::getOccurredAt)
+			.map(SettlementTargetInfo::occurredAt)
 			.max(LocalDateTime::compareTo)
 			.orElseThrow();
 
@@ -80,41 +81,20 @@ public class PaymentTargetCalculationItemReader implements ItemStreamReader<Paym
 						.toList()
 				)
 			));
-		Map<UUID, AppliedPromotion> appliedPromotionByPromotionId = loadAppliedPromotions(sellerPromotionsBySellerId);
-
 		buffer.addAll(
 			targets.stream()
 				.map(target -> new PaymentTargetCalculationItem(
 					target,
 					resolveAppliedPromotion(
-						sellerPromotionsBySellerId.getOrDefault(target.getSellerId(), List.of()),
+						sellerPromotionsBySellerId.getOrDefault(target.sellerId(), List.of()),
 						appliedPromotionByPromotionId,
-						target.getOccurredAt()
+						target.occurredAt()
 					)
 				))
 				.toList()
 		);
 
 		return buffer.poll();
-	}
-
-	private Map<UUID, AppliedPromotion> loadAppliedPromotions(Map<UUID, List<SellerPromotion>> sellerPromotionsBySellerId) {
-		Map<UUID, AppliedPromotion> appliedPromotionByPromotionId = new HashMap<>();
-		sellerPromotionsBySellerId.values().stream()
-			.flatMap(List::stream)
-			.map(SellerPromotion::getPromotionId)
-			.distinct()
-			.forEach(promotionId -> settlementPromotionRepository.findById(promotionId)
-				.filter(SettlementPromotion::isActive)
-				.ifPresent(promotion -> appliedPromotionByPromotionId.put(
-					promotionId,
-					new AppliedPromotion(
-						promotion.getId(),
-						promotion.getPromotionType().name(),
-						promotion.getFeeRate()
-					)
-				)));
-		return appliedPromotionByPromotionId;
 	}
 
 	private AppliedPromotion resolveAppliedPromotion(
@@ -134,6 +114,17 @@ public class PaymentTargetCalculationItemReader implements ItemStreamReader<Paym
 	@Override
 	public void open(ExecutionContext executionContext) throws ItemStreamException {
 		delegate.open(executionContext);
+		this.appliedPromotionByPromotionId = settlementPromotionRepository.findAllActive().stream()
+			.collect(Collectors.toMap(
+				SettlementPromotion::getId,
+				promotion -> new AppliedPromotion(
+					promotion.getId(),
+					promotion.getPromotionType().name(),
+					promotion.getFeeRate()
+				),
+				(existing, replacement) -> existing,
+				HashMap::new
+			));
 	}
 
 	@Override

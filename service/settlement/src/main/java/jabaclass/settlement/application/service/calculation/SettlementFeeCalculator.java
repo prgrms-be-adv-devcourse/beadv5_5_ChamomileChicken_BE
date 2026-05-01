@@ -6,7 +6,7 @@ import java.util.List;
 
 import org.springframework.stereotype.Component;
 
-import jabaclass.settlement.domain.model.settlement.SettlementTargetCalculation;
+import jabaclass.settlement.application.dto.SettlementFeeRateAmount;
 
 @Component
 public class SettlementFeeCalculator {
@@ -18,16 +18,16 @@ public class SettlementFeeCalculator {
 	public BigDecimal calculateFeeAmount(
 		BigDecimal summaryBaseAmount,
 		BigDecimal defaultFeeRate,
-		List<SettlementTargetCalculation> calculations
+		List<SettlementFeeRateAmount> feeRateAmounts
 	) {
-		if (calculations == null || calculations.isEmpty()) {
+		if (feeRateAmounts == null || feeRateAmounts.isEmpty()) {
 			return calculateFeeAmount(summaryBaseAmount, defaultFeeRate);
 		}
 
-		return calculations.stream()
-			.map(calculation -> calculateFeeAmount(
-				calculation.getSettlementBaseAmount(),
-				resolveAppliedFeeRate(calculation, defaultFeeRate)
+		return feeRateAmounts.stream()
+			.map(feeRateAmount -> calculateFeeAmount(
+				feeRateAmount.settlementBaseAmount(),
+				resolveAppliedFeeRate(feeRateAmount.appliedFeeRate(), defaultFeeRate)
 			))
 			.reduce(BigDecimal.ZERO, BigDecimal::add);
 	}
@@ -35,12 +35,12 @@ public class SettlementFeeCalculator {
 	public BigDecimal calculateSettlementAmount(
 		BigDecimal summaryBaseAmount,
 		BigDecimal defaultFeeRate,
-		List<SettlementTargetCalculation> calculations
+		List<SettlementFeeRateAmount> feeRateAmounts
 	) {
-		return summaryBaseAmount.subtract(calculateFeeAmount(summaryBaseAmount, defaultFeeRate, calculations));
+		return summaryBaseAmount.subtract(calculateFeeAmount(summaryBaseAmount, defaultFeeRate, feeRateAmounts));
 	}
 
-	public BigDecimal resolveAppliedFeeRate(SettlementTargetCalculation calculation, BigDecimal defaultFeeRate) {
-		return calculation.getAppliedFeeRate() == null ? defaultFeeRate : calculation.getAppliedFeeRate();
+	public BigDecimal resolveAppliedFeeRate(BigDecimal appliedFeeRate, BigDecimal defaultFeeRate) {
+		return appliedFeeRate == null ? defaultFeeRate : appliedFeeRate;
 	}
 }

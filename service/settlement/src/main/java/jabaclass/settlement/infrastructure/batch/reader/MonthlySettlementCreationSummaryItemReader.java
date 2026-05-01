@@ -15,17 +15,17 @@ import org.springframework.batch.infrastructure.item.ItemStreamReader;
 
 import jabaclass.settlement.application.dto.MonthlySettlementCreationItem;
 import jabaclass.settlement.application.dto.SellerSalesAmount;
+import jabaclass.settlement.application.dto.SettlementFeeRateAmount;
 import jabaclass.settlement.application.dto.SettlementTargetSummary;
 import jabaclass.settlement.domain.model.grade.SellerGrade;
 import jabaclass.settlement.domain.model.settlement.Settlement;
-import jabaclass.settlement.domain.model.settlement.SettlementTargetCalculation;
 import jabaclass.settlement.domain.repository.SellerGradeRepository;
 import jabaclass.settlement.domain.repository.SettlementRepository;
 import jabaclass.settlement.domain.repository.SettlementTargetCalculationRepository;
 import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
-public class MonthlySettlementCreationItemReader implements ItemStreamReader<MonthlySettlementCreationItem> {
+public class MonthlySettlementCreationSummaryItemReader implements ItemStreamReader<MonthlySettlementCreationItem> {
 
 	private final ItemStreamReader<SettlementTargetSummary> delegate;
 	private final SettlementRepository settlementRepository;
@@ -35,6 +35,10 @@ public class MonthlySettlementCreationItemReader implements ItemStreamReader<Mon
 	private final int chunkSize;
 
 	private final Queue<MonthlySettlementCreationItem> buffer = new ArrayDeque<>();
+	private Map<UUID, Settlement> existingSettlementBySellerId = Map.of();
+	private Map<UUID, java.math.BigDecimal> recentThreeMonthSalesAmountBySellerId = Map.of();
+	private Map<UUID, List<SettlementFeeRateAmount>> feeRateAmountsBySellerId = Map.of();
+	private Map<UUID, SellerGrade> sellerGradeBySellerId = Map.of();
 
 	@Override
 	public MonthlySettlementCreationItem read() throws Exception {
@@ -55,36 +59,13 @@ public class MonthlySettlementCreationItemReader implements ItemStreamReader<Mon
 			return null;
 		}
 
-		List<UUID> sellerIds = summaries.stream()
-			.map(SettlementTargetSummary::sellerId)
-			.distinct()
-			.toList();
-
-		Map<UUID, Settlement> existingSettlementBySellerId = settlementRepository.findBySettlementMonthAndSellerIds(
-				settlementMonth,
-				sellerIds
-			).stream()
-			.collect(Collectors.toMap(Settlement::getSellerId, Function.identity(), (existing, replacement) -> existing));
-		Map<UUID, java.math.BigDecimal> recentThreeMonthSalesAmountBySellerId =
-			findRecentThreeMonthSalesAmountBySellerIds(sellerIds);
-		Map<UUID, List<SettlementTargetCalculation>> calculationsBySellerId =
-			settlementTargetCalculationRepository.findBySettlementMonthAndSellerIds(settlementMonth, sellerIds)
-				.stream()
-				.collect(Collectors.groupingBy(SettlementTargetCalculation::getSellerId));
-		Map<UUID, SellerGrade> sellerGradeBySellerId = sellerGradeRepository.findBySellerIdsAndCalculatedMonth(
-				sellerIds,
-				settlementMonth
-			)
-			.stream()
-			.collect(Collectors.toMap(SellerGrade::getSellerId, Function.identity(), (existing, replacement) -> existing));
-
 		buffer.addAll(
 			summaries.stream()
 				.map(summary -> new MonthlySettlementCreationItem(
 					summary,
 					existingSettlementBySellerId.get(summary.sellerId()),
 					recentThreeMonthSalesAmountBySellerId.getOrDefault(summary.sellerId(), java.math.BigDecimal.ZERO),
-					calculationsBySellerId.getOrDefault(summary.sellerId(), List.of()),
+					feeRateAmountsBySellerId.getOrDefault(summary.sellerId(), List.of()),
 					sellerGradeBySellerId.get(summary.sellerId())
 				))
 				.toList()
@@ -92,27 +73,35 @@ public class MonthlySettlementCreationItemReader implements ItemStreamReader<Mon
 		return buffer.poll();
 	}
 
-	private Map<UUID, java.math.BigDecimal> findRecentThreeMonthSalesAmountBySellerIds(List<UUID> sellerIds) {
+	private List<String> recentThreeMonths() {
 		java.time.YearMonth baseMonth = java.time.YearMonth.parse(settlementMonth);
-		List<String> recentThreeMonths = List.of(
+		return List.of(
 			baseMonth.minusMonths(2).toString(),
 			baseMonth.minusMonths(1).toString(),
 			baseMonth.toString()
 		);
+	}
 
-		return settlementTargetCalculationRepository.sumSettlementBaseAmountBySellerIdsAndSettlementMonths(
-				sellerIds,
-				recentThreeMonths
+	@Override
+	public void open(ExecutionContext executionContext) throws ItemStreamException {
+		this.existingSettlementBySellerId = settlementRepository.findBySettlementMonth(settlementMonth)
+			.stream()
+			.collect(Collectors.toMap(Settlement::getSellerId, Function.identity(), (existing, replacement) -> existing));
+		this.recentThreeMonthSalesAmountBySellerId = settlementTargetCalculationRepository.sumSettlementBaseAmountBySettlementMonths(
+				recentThreeMonths()
 			).stream()
 			.collect(Collectors.toMap(
 				SellerSalesAmount::sellerId,
 				SellerSalesAmount::salesAmount,
 				java.math.BigDecimal::add
 			));
-	}
-
-	@Override
-	public void open(ExecutionContext executionContext) throws ItemStreamException {
+		this.feeRateAmountsBySellerId = settlementTargetCalculationRepository
+			.sumSettlementBaseAmountBySettlementMonthGroupedBySellerAndFeeRate(settlementMonth)
+			.stream()
+			.collect(Collectors.groupingBy(SettlementFeeRateAmount::sellerId));
+		this.sellerGradeBySellerId = sellerGradeRepository.findByCalculatedMonth(settlementMonth)
+			.stream()
+			.collect(Collectors.toMap(SellerGrade::getSellerId, Function.identity(), (existing, replacement) -> existing));
 		delegate.open(executionContext);
 	}
 
@@ -124,5 +113,10 @@ public class MonthlySettlementCreationItemReader implements ItemStreamReader<Mon
 	@Override
 	public void close() throws ItemStreamException {
 		delegate.close();
+		buffer.clear();
+		existingSettlementBySellerId = Map.of();
+		recentThreeMonthSalesAmountBySellerId = Map.of();
+		feeRateAmountsBySellerId = Map.of();
+		sellerGradeBySellerId = Map.of();
 	}
 }

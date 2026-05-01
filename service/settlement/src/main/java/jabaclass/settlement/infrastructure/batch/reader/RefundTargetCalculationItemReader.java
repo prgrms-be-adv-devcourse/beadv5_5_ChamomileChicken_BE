@@ -18,9 +18,9 @@ import org.springframework.batch.infrastructure.item.ItemStreamException;
 import org.springframework.batch.infrastructure.item.ItemStreamReader;
 
 import jabaclass.settlement.application.dto.AppliedPromotion;
+import jabaclass.settlement.application.dto.SettlementTargetInfo;
 import jabaclass.settlement.domain.model.promotion.SellerPromotion;
 import jabaclass.settlement.domain.model.promotion.SettlementPromotion;
-import jabaclass.settlement.domain.model.settlement.SettlementTarget;
 import jabaclass.settlement.domain.model.settlement.SettlementTargetCalculation;
 import jabaclass.settlement.domain.model.settlement.SettlementTargetType;
 import jabaclass.settlement.domain.repository.SellerPromotionRepository;
@@ -33,7 +33,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class RefundTargetCalculationItemReader implements ItemStreamReader<RefundTargetCalculationItem> {
 
-	private final ItemStreamReader<SettlementTarget> delegate;
+	private final ItemStreamReader<SettlementTargetInfo> delegate;
 	private final SettlementTargetRepository settlementTargetRepository;
 	private final SettlementTargetCalculationRepository settlementTargetCalculationRepository;
 	private final SellerPromotionRepository sellerPromotionRepository;
@@ -41,6 +41,7 @@ public class RefundTargetCalculationItemReader implements ItemStreamReader<Refun
 	private final int chunkSize;
 
 	private final Queue<RefundTargetCalculationItem> buffer = new ArrayDeque<>();
+	private Map<UUID, AppliedPromotion> appliedPromotionByPromotionId = Map.of();
 
 	@Override
 	public RefundTargetCalculationItem read() throws Exception {
@@ -48,9 +49,9 @@ public class RefundTargetCalculationItemReader implements ItemStreamReader<Refun
 			return buffer.poll();
 		}
 
-		List<SettlementTarget> targets = new ArrayList<>(chunkSize);
+		List<SettlementTargetInfo> targets = new ArrayList<>(chunkSize);
 		while (targets.size() < chunkSize) {
-			SettlementTarget target = delegate.read();
+			SettlementTargetInfo target = delegate.read();
 			if (target == null) {
 				break;
 			}
@@ -62,31 +63,43 @@ public class RefundTargetCalculationItemReader implements ItemStreamReader<Refun
 		}
 
 		List<UUID> paymentIds = targets.stream()
-			.map(SettlementTarget::getPaymentId)
+			.map(SettlementTargetInfo::paymentId)
 			.filter(Objects::nonNull)
 			.distinct()
 			.toList();
 		List<UUID> sellerIds = targets.stream()
-			.map(SettlementTarget::getSellerId)
+			.map(SettlementTargetInfo::sellerId)
 			.distinct()
 			.toList();
 		LocalDateTime minOccurredAt = targets.stream()
-			.map(SettlementTarget::getOccurredAt)
+			.map(SettlementTargetInfo::occurredAt)
 			.min(LocalDateTime::compareTo)
 			.orElseThrow();
 		LocalDateTime maxOccurredAt = targets.stream()
-			.map(SettlementTarget::getOccurredAt)
+			.map(SettlementTargetInfo::occurredAt)
 			.max(LocalDateTime::compareTo)
 			.orElseThrow();
 
-		Map<UUID, SettlementTarget> originalPaymentTargetByPaymentId = settlementTargetRepository.findByPaymentIdsAndTargetType(
+		Map<UUID, SettlementTargetInfo> originalPaymentTargetByPaymentId = settlementTargetRepository.findByPaymentIdsAndTargetType(
 				paymentIds,
 				SettlementTargetType.PAYMENT
 			).stream()
-			.collect(Collectors.toMap(SettlementTarget::getPaymentId, Function.identity(), (existing, replacement) -> existing));
+			.map(target -> new SettlementTargetInfo(
+				target.getId(),
+				target.getSettlementMonth(),
+				target.getSellerId(),
+				target.getOrderId(),
+				target.getPaymentId(),
+				target.getRefundId(),
+				target.getProductId(),
+				target.getTargetType(),
+				target.getSettlementBaseAmount(),
+				target.getOccurredAt()
+			))
+			.collect(Collectors.toMap(SettlementTargetInfo::paymentId, Function.identity(), (existing, replacement) -> existing));
 
 		List<UUID> originalPaymentTargetIds = originalPaymentTargetByPaymentId.values().stream()
-			.map(SettlementTarget::getId)
+			.map(SettlementTargetInfo::id)
 			.toList();
 		Map<UUID, SettlementTargetCalculation> originalPaymentCalculationByTargetId =
 			settlementTargetCalculationRepository.findBySettlementTargetIds(originalPaymentTargetIds)
@@ -111,24 +124,22 @@ public class RefundTargetCalculationItemReader implements ItemStreamReader<Refun
 						.toList()
 				)
 			));
-		Map<UUID, AppliedPromotion> appliedPromotionByPromotionId = loadAppliedPromotions(sellerPromotionsBySellerId);
-
 		buffer.addAll(
 			targets.stream()
 				.map(target -> {
-					SettlementTarget originalPaymentTarget = originalPaymentTargetByPaymentId.get(target.getPaymentId());
+					SettlementTargetInfo originalPaymentTarget = originalPaymentTargetByPaymentId.get(target.paymentId());
 					SettlementTargetCalculation originalPaymentCalculation = originalPaymentTarget == null
 						? null
-						: originalPaymentCalculationByTargetId.get(originalPaymentTarget.getId());
+						: originalPaymentCalculationByTargetId.get(originalPaymentTarget.id());
 
 					return new RefundTargetCalculationItem(
 						target,
 						originalPaymentTarget,
 						originalPaymentCalculation,
 						resolveAppliedPromotion(
-							sellerPromotionsBySellerId.getOrDefault(target.getSellerId(), List.of()),
+							sellerPromotionsBySellerId.getOrDefault(target.sellerId(), List.of()),
 							appliedPromotionByPromotionId,
-							target.getOccurredAt()
+							target.occurredAt()
 						)
 					);
 				})
@@ -136,25 +147,6 @@ public class RefundTargetCalculationItemReader implements ItemStreamReader<Refun
 		);
 
 		return buffer.poll();
-	}
-
-	private Map<UUID, AppliedPromotion> loadAppliedPromotions(Map<UUID, List<SellerPromotion>> sellerPromotionsBySellerId) {
-		Map<UUID, AppliedPromotion> appliedPromotionByPromotionId = new HashMap<>();
-		sellerPromotionsBySellerId.values().stream()
-			.flatMap(List::stream)
-			.map(SellerPromotion::getPromotionId)
-			.distinct()
-			.forEach(promotionId -> settlementPromotionRepository.findById(promotionId)
-				.filter(SettlementPromotion::isActive)
-				.ifPresent(promotion -> appliedPromotionByPromotionId.put(
-					promotionId,
-					new AppliedPromotion(
-						promotion.getId(),
-						promotion.getPromotionType().name(),
-						promotion.getFeeRate()
-					)
-				)));
-		return appliedPromotionByPromotionId;
 	}
 
 	private AppliedPromotion resolveAppliedPromotion(
@@ -174,6 +166,17 @@ public class RefundTargetCalculationItemReader implements ItemStreamReader<Refun
 	@Override
 	public void open(ExecutionContext executionContext) throws ItemStreamException {
 		delegate.open(executionContext);
+		this.appliedPromotionByPromotionId = settlementPromotionRepository.findAllActive().stream()
+			.collect(Collectors.toMap(
+				SettlementPromotion::getId,
+				promotion -> new AppliedPromotion(
+					promotion.getId(),
+					promotion.getPromotionType().name(),
+					promotion.getFeeRate()
+				),
+				(existing, replacement) -> existing,
+				HashMap::new
+			));
 	}
 
 	@Override

@@ -22,11 +22,7 @@ public class SellerGradeRepositoryAdapter implements SellerGradeRepository {
 	}
 
 	@Override
-	public List<SellerGrade> findBySellerIdsAndCalculatedMonth(List<UUID> sellerIds, String calculatedMonth) {
-		if (sellerIds == null || sellerIds.isEmpty()) {
-			return List.of();
-		}
-
-		return sellerGradeJpaRepository.findBySellerIdInAndCalculatedMonth(sellerIds, calculatedMonth);
+	public List<SellerGrade> findByCalculatedMonth(String calculatedMonth) {
+		return sellerGradeJpaRepository.findByCalculatedMonth(calculatedMonth);
 	}
 }

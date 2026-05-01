@@ -4,6 +4,7 @@ import java.util.UUID;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
@@ -15,8 +16,14 @@ import jabaclass.settlement.domain.model.BaseEntity;
 @Getter
 @Entity
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(
+	@Table(
 	name = "seller_grades",
+	indexes = {
+		@Index(
+			name = "idx_seller_grades_month_seller",
+			columnList = "calculated_month, seller_id"
+		)
+	},
 	uniqueConstraints = {
 		@UniqueConstraint(
 			name = "uk_seller_grades_seller_month",

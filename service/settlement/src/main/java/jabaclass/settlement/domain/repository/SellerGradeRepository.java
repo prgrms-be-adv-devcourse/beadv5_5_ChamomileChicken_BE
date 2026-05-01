@@ -9,5 +9,5 @@ public interface SellerGradeRepository {
 
 	List<SellerGrade> saveAll(List<SellerGrade> sellerGrades);
 
-	List<SellerGrade> findBySellerIdsAndCalculatedMonth(List<UUID> sellerIds, String calculatedMonth);
+	List<SellerGrade> findByCalculatedMonth(String calculatedMonth);
 }

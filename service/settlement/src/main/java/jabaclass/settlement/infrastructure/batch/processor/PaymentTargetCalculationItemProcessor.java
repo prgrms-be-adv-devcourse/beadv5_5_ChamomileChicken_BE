@@ -24,13 +24,11 @@ public class PaymentTargetCalculationItemProcessor
 				item.target(),
 				item.appliedPromotion()
 			);
-			settlementCalculateService.markTargetCalculated(item.target());
-			return new SettlementTargetCalculationBatchItem(item.target(), calculation);
+			return SettlementTargetCalculationBatchItem.calculated(item.target(), calculation);
 		} catch (SettlementCalculationRetryableException e) {
 			return null;
 		} catch (Exception e) {
-			settlementCalculateService.markTargetCalculationFailed(item.target(), e);
-			return new SettlementTargetCalculationBatchItem(item.target(), null);
+			return SettlementTargetCalculationBatchItem.failed(item.target(), e.getMessage());
 		}
 	}
 }
