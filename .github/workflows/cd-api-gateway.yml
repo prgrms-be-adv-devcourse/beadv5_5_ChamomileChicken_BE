@@ -86,8 +86,12 @@ jobs:
 
       - name: Prepare directories
         run: |
-          mkdir -p /home/ubuntu/apps/deploy/scripts
-          mkdir -p /home/ubuntu/apps/data/k3s-service
+          if [ ! -d /home/ubuntu/apps/deploy/scripts ]; then
+            mkdir -p /home/ubuntu/apps/deploy/scripts
+          fi
+          if [ ! -d /home/ubuntu/apps/data/k3s-service ]; then
+            mkdir -p /home/ubuntu/apps/data/k3s-service
+          fi
 
       - name: Copy deploy scripts
         run: |
