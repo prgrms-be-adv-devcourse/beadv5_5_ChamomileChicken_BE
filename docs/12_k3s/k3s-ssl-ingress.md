@@ -11,6 +11,7 @@
 
 서비스별 Kubernetes manifest나 CD 스크립트와는 역할이 다르므로 별도 문서로 분리합니다.
 
+<<<<<<< feature/k3s/k3s-infra/244
 ## 2. 적용 목적
 
 SSL / Ingress 설정의 목적은 아래와 같습니다.
@@ -21,6 +22,9 @@ SSL / Ingress 설정의 목적은 아래와 같습니다.
 - `jabaclass.store` 도메인 기준으로 외부 접근 경로를 제공합니다.
 
 ## 3. 전체 구조
+=======
+## 2. 전체 구조
+>>>>>>> dev
 
 현재 외부 HTTPS 진입 구조는 아래 흐름입니다.
 
@@ -42,6 +46,7 @@ main-ingress.yml
 -> TLS Secret main-tls 생성
 ```
 
+<<<<<<< feature/k3s/k3s-infra/244
 사용 기술:
 
 - K3s
@@ -92,6 +97,9 @@ kubectl get crd | grep cert-manager
 ```
 
 ## 5. cluster-issuer.yml
+=======
+## 3. cluster-issuer.yml
+>>>>>>> dev
 
 파일: `.github/k3s/cluster-issuer.yml`
 
@@ -114,6 +122,7 @@ kubectl get crd | grep cert-manager
 - cert-manager가 클러스터에 설치되어 있어야 합니다.
 - HTTP-01 challenge를 위해 외부에서 `jabaclass.store`의 HTTP 경로로 접근 가능해야 합니다.
 
+<<<<<<< feature/k3s/k3s-infra/244
 적용:
 
 ```bash
@@ -128,6 +137,9 @@ kubectl describe clusterissuer letsencrypt-prod
 ```
 
 ## 6. main-ingress.yml
+=======
+## 4. main-ingress.yml
+>>>>>>> dev
 
 파일: `.github/k3s/main-ingress.yml`
 
@@ -150,6 +162,7 @@ traefik.ingress.kubernetes.io/redirect-entry-point: https
 
 `cert-manager.io/cluster-issuer`는 이 Ingress의 TLS 인증서를 어떤 ClusterIssuer로 발급받을지 지정합니다.
 
+<<<<<<< feature/k3s/k3s-infra/244
 적용:
 
 ```bash
@@ -164,6 +177,9 @@ kubectl describe ingress main-ingress
 ```
 
 ## 7. TLS Secret
+=======
+## 5. TLS Secret
+>>>>>>> dev
 
 `main-ingress.yml`에는 아래 설정이 있습니다.
 
@@ -178,6 +194,7 @@ tls:
 
 Ingress는 이후 HTTPS 요청 처리 시 이 Secret을 사용합니다.
 
+<<<<<<< feature/k3s/k3s-infra/244
 확인:
 
 ```bash
@@ -189,6 +206,9 @@ kubectl get secret main-tls
 정상 상태에서는 certificate의 `READY` 값이 `True`가 됩니다.
 
 ## 8. 현재 라우팅
+=======
+## 6. 현재 라우팅
+>>>>>>> dev
 
 현재 `main-ingress.yml` 기준 라우팅은 아래와 같습니다.
 
@@ -218,6 +238,7 @@ Frontend로 연결되는 경로:
 
 `/oauth2/callback`은 `/oauth2`보다 더 구체적인 경로이므로 `main-ingress.yml`에서 `/oauth2`보다 먼저 배치합니다.
 
+<<<<<<< feature/k3s/k3s-infra/244
 ## 9. SSL 발급 동작 원리
 
 cert-manager 기반 SSL 발급 흐름은 아래와 같습니다.
@@ -234,12 +255,19 @@ Ingress 생성
 ```
 
 ## 10. 적용 순서
+=======
+## 7. 적용 순서
+>>>>>>> dev
 
 처음 SSL을 구성할 때는 보통 아래 순서가 안전합니다.
 
 1. cert-manager 설치 여부 확인
+<<<<<<< feature/k3s/k3s-infra/244
 2. DNS A 레코드가 K3s 노드 또는 외부 진입점으로 향하는지 확인
 3. EC2 보안 그룹에서 80, 443 포트가 열려 있는지 확인
+=======
+2. DNS가 K3s 노드 또는 로드밸런서로 향하는지 확인
+>>>>>>> dev
 3. `cluster-issuer.yml` 적용
 4. `main-ingress.yml` 적용
 5. Certificate, Challenge, Secret 상태 확인
@@ -267,6 +295,7 @@ cert-manager 리소스까지 확인해야 할 때:
 kubectl get certificate,certificaterequest,order,challenge
 ```
 
+<<<<<<< feature/k3s/k3s-infra/244
 ## 11. HTTP -> HTTPS 리다이렉트
 
 현재 `main-ingress.yml`에는 아래 annotation이 들어 있습니다.
@@ -301,13 +330,19 @@ annotations:
 현재 운영 환경에서 HTTP -> HTTPS 리다이렉트가 이미 정상 동작한다면 별도 Middleware를 추가할 필요는 없습니다.
 
 ## 12. 자주 보는 문제
+=======
+## 8. 자주 보는 문제
+>>>>>>> dev
 
 ### 인증서가 발급되지 않는 경우
 
 먼저 아래 항목을 확인합니다.
 
 - `jabaclass.store` DNS가 실제 K3s 진입점으로 연결되어 있는지
+<<<<<<< feature/k3s/k3s-infra/244
 - EC2 보안 그룹 또는 방화벽에서 80 포트가 열려 있는지
+=======
+>>>>>>> dev
 - Traefik Ingress가 외부 HTTP 요청을 받을 수 있는지
 - `cluster-issuer.yml`의 email 값이 유효한지
 - cert-manager Pod가 정상인지
@@ -335,6 +370,7 @@ kubectl describe ingress main-ingress
 kubectl get certificate,order,challenge
 ```
 
+<<<<<<< feature/k3s/k3s-infra/244
 ### HTTP-01 challenge가 실패하는 경우
 
 아래 항목을 우선 확인합니다.
@@ -353,18 +389,28 @@ kubectl describe challenge <challenge-name>
 ```
 
 ## 13. 관련 문서
+=======
+## 9. 관련 문서
+>>>>>>> dev
 
 - `k3s-yml.md`
 - `k3s-service-deployment-structure.md`
 - `k3s-cicd-final-guide.md`
 
+<<<<<<< feature/k3s/k3s-infra/244
 ## 14. 요약
+=======
+## 10. 요약
+>>>>>>> dev
 
 현재 SSL 연결은 `cluster-issuer.yml`과 `main-ingress.yml`이 함께 동작하는 구조입니다.
 
 - `cluster-issuer.yml`: Let's Encrypt 인증서를 발급받는 방법 정의
 - `main-ingress.yml`: `jabaclass.store` 도메인, TLS Secret, 외부 라우팅 정의
 - `main-tls`: cert-manager가 발급 결과로 생성하는 TLS Secret
+<<<<<<< feature/k3s/k3s-infra/244
 - DNS A 레코드와 80/443 보안 그룹 설정이 선행되어야 합니다.
+=======
+>>>>>>> dev
 
 따라서 HTTPS 문제가 생기면 Service manifest보다 Ingress, ClusterIssuer, Certificate, Challenge 상태를 먼저 확인하는 편이 좋습니다.

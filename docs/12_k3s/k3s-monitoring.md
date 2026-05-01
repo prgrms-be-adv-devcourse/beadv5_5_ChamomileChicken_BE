@@ -81,6 +81,7 @@
 
 이 값들은 Prometheus가 같은 Kubernetes 클러스터 안에서 실행될 때 자연스럽게 해석됩니다.
 
+<<<<<<< feature/k3s/k3s-infra/244
 ### Private IP + NodePort target
 
 예시:
@@ -95,6 +96,20 @@
 여기서 `<MODULE_SERVER_PRIVATE_IP>`는 해당 모듈 또는 서비스가 배포된 서버의 private IP를 의미합니다.
 
 다만 private IP나 NodePort가 바뀌면 scrape 설정도 같이 바꿔야 합니다.
+=======
+### 고정 IP + NodePort target
+
+예시:
+
+- `10.0.1.141:30903`
+- `10.0.1.141:30904`
+- `10.0.1.141:30100`
+- `10.0.1.141:30910`
+
+이 방식은 모니터링 서버와 서비스 서버가 달라도 네트워크, 보안 그룹, 방화벽, 라우팅이 열려 있으면 동작할 수 있습니다.
+
+다만 IP나 NodePort가 바뀌면 scrape 설정도 같이 바꿔야 합니다.
+>>>>>>> dev
 
 ## 4. prometheus-scrape-config.yaml
 
@@ -125,7 +140,11 @@
 정확히는 아래처럼 구분해야 합니다.
 
 - `prometheus-scrape-config.yaml`의 Kubernetes service discovery 방식은 같은 클러스터 또는 remote Kubernetes API 접근이 필요합니다.
+<<<<<<< feature/k3s/k3s-infra/244
 - `monitoring-values.yaml`의 private IP + NodePort 방식은 서버가 달라도 네트워크가 열려 있으면 동작할 수 있습니다.
+=======
+- `monitoring-values.yaml`의 고정 IP + NodePort 방식은 서버가 달라도 네트워크가 열려 있으면 동작할 수 있습니다.
+>>>>>>> dev
 
 따라서 지금 구조에서는 `prometheus-scrape-config.yaml`보다 `monitoring-values.yaml`의 static target 방식이 더 현실적인 수집 방식입니다.
 
@@ -157,7 +176,11 @@
 
 - NodePort를 열어야 합니다.
 - 보안 그룹, 방화벽, 라우팅 관리가 필요합니다.
+<<<<<<< feature/k3s/k3s-infra/244
 - private IP나 NodePort가 바뀌면 설정을 수정해야 합니다.
+=======
+- IP나 NodePort가 바뀌면 설정을 수정해야 합니다.
+>>>>>>> dev
 
 ### 3. 분리 서버 유지 + remote Kubernetes API 접근 구성
 
@@ -219,8 +242,13 @@ Prometheus target 상태는 Grafana 또는 Prometheus UI에서 `Targets` 화면�
 - `monitoring-values.yaml`은 Helm values 성격이므로 일반 manifest처럼 `kubectl apply`로 처리하는 파일이 아닐 수 있습니다.
 - `prometheus-scrape-config.yaml`은 Kubernetes service discovery가 가능한 환경을 전제로 합니다.
 - 모니터링 서버와 서비스 서버가 분리되어 있으면 Pod annotation만으로는 자동 수집되지 않습니다.
+<<<<<<< feature/k3s/k3s-infra/244
 - static target 방식은 private IP, NodePort, 보안 그룹 변화에 취약합니다.
 - `<MODULE_SERVER_PRIVATE_IP>` 값이 바뀌면 `monitoring-values.yaml`도 함께 수정해야 합니다.
+=======
+- static target 방식은 IP, NodePort, 보안 그룹 변화에 취약합니다.
+- `10.0.1.141` 같은 고정 IP가 바뀌면 `monitoring-values.yaml`도 함께 수정해야 합니다.
+>>>>>>> dev
 
 ## 10. 요약
 
