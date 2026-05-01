@@ -1,12 +1,13 @@
 package jabaclass.user.auth.presentation.controller;
 
-import java.io.IOException;
 import java.util.Optional;
 import java.util.UUID;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+
+import org.springframework.http.MediaType;
 
 import lombok.RequiredArgsConstructor;
 
@@ -35,6 +36,7 @@ import jabaclass.user.auth.application.usecase.ReissueUseCase;
 import jabaclass.user.auth.presentation.dto.request.LoginRequestDto;
 import jabaclass.user.common.dto.ApiResponseDto;
 import jabaclass.user.common.auth.CurrentUser;
+import jabaclass.user.auth.application.service.ReportTheftPageService;
 import jabaclass.user.auth.application.usecase.ReportTheftUseCase;
 import jabaclass.user.auth.presentation.dto.response.TokenStatusResult;
 import jabaclass.user.common.util.ClientIpUtils;
@@ -49,6 +51,7 @@ public class AuthController {
     private final ReissueUseCase reissueUseCase;
     private final ReportTheftUseCase reportTheftUseCase;
     private final TokenStatusUseCase tokenStatusUseCase;
+    private final ReportTheftPageService reportTheftPageService;
 
     @Value("${jwt.refresh-token-validity}")
     private long refreshTokenValidity;
@@ -58,9 +61,6 @@ public class AuthController {
 
     @Value("${internal.secret}")
     private String internalSecret;
-
-    @Value("${frontend.service-url}")
-    private String frontendServiceUrl;
 
     @GetMapping("/internal/token-status")
     public ResponseEntity<TokenStatusResult> checkTokenStatus(
@@ -131,11 +131,11 @@ public class AuthController {
             new TokenResponseDto(result.getAccessToken())));
     }
 
-    @GetMapping("/report-theft")
-    public void reportTheftPage(
-            @RequestParam String token,
-            HttpServletResponse response) throws IOException {
-        response.sendRedirect(frontendServiceUrl + "/security/report-theft?token=" + token);
+    @GetMapping(value = "/report-theft", produces = "text/html;charset=UTF-8")
+    public ResponseEntity<String> reportTheftPage(@RequestParam String token) {
+        return ResponseEntity.ok()
+            .contentType(MediaType.TEXT_HTML)
+            .body(reportTheftPageService.buildPage(token));
     }
 
     @PostMapping("/report-theft")
