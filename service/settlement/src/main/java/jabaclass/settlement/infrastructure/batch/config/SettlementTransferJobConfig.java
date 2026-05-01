@@ -11,8 +11,8 @@ import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.Step;
 import org.springframework.batch.core.step.builder.StepBuilder;
 import org.springframework.batch.infrastructure.item.ItemReader;
-import org.springframework.batch.infrastructure.item.database.JpaPagingItemReader;
-import org.springframework.batch.infrastructure.item.database.builder.JpaPagingItemReaderBuilder;
+import org.springframework.batch.infrastructure.item.database.JpaCursorItemReader;
+import org.springframework.batch.infrastructure.item.database.builder.JpaCursorItemReaderBuilder;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -32,8 +32,6 @@ import jabaclass.settlement.infrastructure.batch.writer.SettlementTransferItemWr
 
 @Configuration
 public class SettlementTransferJobConfig {
-
-	private static final int CHUNK_SIZE = 100;
 
 	private static final String SETTLEMENT_TRANSFER_QUERY = """
 		select s
@@ -65,10 +63,11 @@ public class SettlementTransferJobConfig {
 		SettlementTransferItemProcessor settlementTransferItemProcessor,
 		SettlementTransferItemWriter settlementTransferItemWriter,
 		SettlementStepExecutionListener settlementStepExecutionListener,
-		SettlementStepPhaseTimingListener settlementStepPhaseTimingListener
+		SettlementStepPhaseTimingListener settlementStepPhaseTimingListener,
+		@Value("${settlement.batch.transfer.chunk-size:100}") int chunkSize
 	) {
 		return new StepBuilder("settlementTransferStep", jobRepository)
-			.<Settlement, Settlement>chunk(CHUNK_SIZE)
+			.<Settlement, Settlement>chunk(chunkSize)
 			.transactionManager(transactionManager)
 			.reader(settlementTransferItemReader)
 			.processor(settlementTransferItemProcessor)
@@ -86,10 +85,11 @@ public class SettlementTransferJobConfig {
 		SettlementTransferReconcileItemProcessor settlementTransferReconcileItemProcessor,
 		SettlementTransferReconcileItemWriter settlementTransferReconcileItemWriter,
 		SettlementStepExecutionListener settlementStepExecutionListener,
-		SettlementStepPhaseTimingListener settlementStepPhaseTimingListener
+		SettlementStepPhaseTimingListener settlementStepPhaseTimingListener,
+		@Value("${settlement.batch.transfer.chunk-size:100}") int chunkSize
 	) {
 		return new StepBuilder("settlementTransferReconcileStep", jobRepository)
-			.<Settlement, Settlement>chunk(CHUNK_SIZE)
+			.<Settlement, Settlement>chunk(chunkSize)
 			.transactionManager(transactionManager)
 			.reader(settlementTransferReconcileItemReader)
 			.processor(settlementTransferReconcileItemProcessor)
@@ -101,7 +101,7 @@ public class SettlementTransferJobConfig {
 
 	@Bean
 	@StepScope
-	public JpaPagingItemReader<Settlement> settlementTransferItemReader(
+	public JpaCursorItemReader<Settlement> settlementTransferItemReader(
 		EntityManagerFactory entityManagerFactory,
 		@Value("#{jobParameters['settlementMonth']}") String settlementMonthParam
 	) {
@@ -115,7 +115,7 @@ public class SettlementTransferJobConfig {
 
 	@Bean
 	@StepScope
-	public JpaPagingItemReader<Settlement> settlementTransferReconcileItemReader(
+	public JpaCursorItemReader<Settlement> settlementTransferReconcileItemReader(
 		EntityManagerFactory entityManagerFactory,
 		@Value("#{jobParameters['settlementMonth']}") String settlementMonthParam
 	) {
@@ -127,17 +127,16 @@ public class SettlementTransferJobConfig {
 		);
 	}
 
-	private JpaPagingItemReader<Settlement> settlementReader(
+	private JpaCursorItemReader<Settlement> settlementReader(
 		EntityManagerFactory entityManagerFactory,
 		String settlementMonthParam,
 		SettlementStatus status,
 		String name
 	) {
 		String settlementMonth = SettlementMonthResolver.resolve(settlementMonthParam);
-		return new JpaPagingItemReaderBuilder<Settlement>()
+		return new JpaCursorItemReaderBuilder<Settlement>()
 			.name(name)
 			.entityManagerFactory(entityManagerFactory)
-			.pageSize(CHUNK_SIZE)
 			.parameterValues(Map.of(
 				"settlementMonth", settlementMonth,
 				"status", status
