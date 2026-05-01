@@ -30,11 +30,30 @@
 - `.github/k3s/redis.yml`
 - `.github/k3s/elasticsearch.yml`
 
-배포 시 이 파일들은 서버의 아래 경로로 복사됩니다.
+외부 진입, 인증서, 게이트웨이 정책 관련 manifest도 같은 경로에서 관리합니다.
+
+- `.github/k3s/main-ingress.yml`
+- `.github/k3s/cluster-issuer.yml`
+- `.github/k3s/gateway-rules-config.yml`
+
+SSL과 도메인 연결은 `cluster-issuer.yml`과 `main-ingress.yml`이 함께 담당합니다. 자세한 내용은 `k3s-ssl-ingress.md`에서 다룹니다.
+
+모니터링 관련 값과 대시보드는 아래 경로에서 관리합니다.
+
+- `.github/k3s/monitoring/monitoring-values.yaml`
+- `.github/k3s/monitoring/prometheus-scrape-config.yaml`
+- `.github/k3s/monitoring/grafana-dashboards.yml`
+- `.github/k3s/monitoring/grafana-official-dashboards.yml`
+
+서비스별 CD 배포 시 `*-service.yml` 파일은 서버의 아래 경로로 복사됩니다.
 
 - `/home/ubuntu/apps/data/k3s-service/`
 
 이후 `deploy-app.sh`가 해당 파일을 읽어 K3s에 적용합니다.
+
+`.github/scripts/deploy-app.sh`와 `.github/scripts/apply-env.sh`는 YAML 자체는 아니지만 같은 K3s 배포 흐름에 포함되는 실행 스크립트입니다. 자세한 동작은 `k3s-sh.md`에서 다룹니다.
+
+모니터링 파일과 인증서/Ingress 관련 manifest는 서비스별 `deploy-app.sh <service>` 흐름과 적용 방식이 다를 수 있으므로, 실제 적용 시 해당 워크플로 또는 운영 명령을 함께 확인해야 합니다.
 
 ## 3. 서비스 manifest 공통 구조
 
@@ -171,6 +190,15 @@ resources:
     memory: "512Mi"
 ```
 
+현재 `product-service`와 `user-service`도 단일 노드에서 CPU 예약량이 과도하게 잡히지 않도록 `requests.cpu: "100m"` 기준을 사용합니다.
+
+서비스별 limit은 완전히 동일하지 않습니다.
+
+- `user-service`: CPU limit `500m`
+- 그 외 서비스: CPU limit `300m`
+
+Kubernetes 스케줄러는 실제 CPU 사용량이 아니라 `requests.cpu`, `requests.memory`를 기준으로 Pod 배치 가능 여부를 판단합니다. 노드의 현재 CPU 사용률이 낮아도 request 합계가 allocatable 용량을 넘으면 Pod가 `Pending` 상태가 될 수 있습니다.
+
 또한 대부분의 서비스는 아래 JVM 옵션을 사용합니다.
 
 ```yaml
@@ -300,8 +328,17 @@ spec:
 현재 Ingress는 아래 경로를 게이트웨이로 연결합니다.
 
 - `/api`
+- `/swagger-ui`
+- `/v3/api-docs`
+- `/docs`
 - `/oauth2`
 - `/login/oauth2`
+
+`/oauth2/callback`과 루트 경로 `/`는 `frontend-service:3000`으로 연결합니다.
+
+`/oauth2/callback`은 `/oauth2`보다 구체적인 경로이므로 `/oauth2`보다 먼저 선언해야 합니다.
+
+HTTPS 인증서 발급과 `main-tls` Secret 생성 흐름은 `k3s-ssl-ingress.md`에서 별도로 설명합니다.
 
 즉, 외부 트래픽은 게이트웨이에서 받아 내부 서비스로 전달하는 구조입니다.
 

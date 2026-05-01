@@ -7,7 +7,7 @@
 대상 문서는 아래와 같습니다.
 
 - `k3s-install.md`
-- `k3s-workflows.md`
+- `k3s-cicd-final-guide.md`
 - `k3s-yml.md`
 - `k3s-sh.md`
 
@@ -177,7 +177,9 @@ Ingress는 외부에서 들어오는 HTTP 요청을 어떤 Service로 보낼지 
 - `MAIL_PASSWORD`
 - `GOOGLE_CLIENT_SECRET`
 
-이 프로젝트에서는 `apply-env.sh`가 `.env` 파일을 만들고, `deploy-app.sh`가 그 파일로 ConfigMap과 Secret을 생성하거나 갱신합니다.
+이 프로젝트에서는 `apply-env.sh`가 서버의 env 파일을 기록하고, `deploy-env.yml`이 그 파일을 기준으로 ConfigMap과 Secret을 생성하거나 갱신합니다.
+
+`deploy-app.sh`는 ConfigMap과 Secret을 만들지 않고, 서비스 manifest 적용과 rollout 확인만 담당합니다.
 
 ---
 
@@ -294,7 +296,7 @@ YAML 파일이 있어도 실제로 `kubectl apply`가 되어야 하고, 필요�
 
 1. `k3s-install.md`
    K3s와 기본 도구 설치
-2. `k3s-workflows.md`
+2. `k3s-cicd-final-guide.md`
    GitHub Actions 기반 배포 흐름
 3. `k3s-yml.md`
    서비스별 Kubernetes YAML 구조

@@ -398,6 +398,21 @@ deployment가 없으면 건너뛰고 로그를 남깁니다.
 - 현재 pod 로그
 - 이전 pod 로그
 
+### 문제 5. Pod가 `Pending` 상태인 경우
+
+먼저 아래 명령으로 이벤트를 확인합니다.
+
+```bash
+kubectl describe pod <pod-name>
+kubectl get events --sort-by=.lastTimestamp
+```
+
+이벤트에 `Insufficient cpu` 또는 `Insufficient memory`가 나오면 실제 사용률이 낮아도 스케줄링이 실패할 수 있습니다.
+
+Kubernetes 스케줄러는 `kubectl top node`에 보이는 현재 사용량이 아니라 manifest의 `resources.requests` 예약량을 기준으로 Pod를 배치합니다. 단일 노드 K3s에서는 서비스별 `requests.cpu` 합계가 노드 allocatable CPU에 가까워지면 새 Pod가 뜨지 않을 수 있습니다.
+
+현재 애플리케이션 서비스의 기본 CPU request는 `100m`이며, `product-service`와 `user-service`도 이 기준으로 맞춰져 있습니다.
+
 ## 15. 운영 기준을 간단히 정리하면
 
 코드가 바뀐 경우에는 해당 서비스 CD를 실행합니다.

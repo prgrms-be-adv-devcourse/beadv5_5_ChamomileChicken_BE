@@ -60,14 +60,23 @@ Gradle 기준 서비스 모듈은 아래와 같습니다.
 - `nodePort`는 `30100`
 - `Ingress` 사용
 - `traefik` ingress class 사용
+- `main-ingress.yml`에서 `jabaclass.store` 도메인과 TLS를 설정
+- `cluster-issuer.yml`에서 Let's Encrypt 인증서 발급자 설정
 
 현재 Ingress 경로는 아래와 같습니다.
 
 - `/api`
+- `/swagger-ui`
+- `/v3/api-docs`
+- `/docs`
 - `/oauth2`
 - `/login/oauth2`
 
+루트 경로 `/`는 `frontend-service`로 연결합니다.
+
 즉, 외부 사용자는 대부분 게이트웨이를 통해 내부 서비스 기능에 접근하게 됩니다.
+
+SSL / HTTPS 연결 구조는 `k3s-ssl-ingress.md`에서 별도로 다룹니다.
 
 ## 5. 서비스별 포트와 선행 의존성
 
@@ -189,9 +198,15 @@ Gradle 기준 서비스 모듈은 아래와 같습니다.
 대체로 아래 기준을 사용합니다.
 
 - CPU request: `100m`
-- CPU limit: `300m`
 - Memory request: `256Mi`
 - Memory limit: `512Mi`
+
+CPU limit은 서비스별로 다를 수 있습니다.
+
+- `user-service`: `500m`
+- 그 외 서비스: `300m`
+
+현재 `product-service`와 `user-service`도 CPU request는 `100m`로 맞춰져 있습니다. 단일 노드 K3s에서는 실제 사용량보다 `requests` 예약량 합계가 스케줄링에 더 직접적으로 영향을 주기 때문입니다.
 
 일부 인프라 서비스는 별도 리소스 값을 사용합니다.
 
@@ -232,6 +247,8 @@ Gradle 기준 서비스 모듈은 아래와 같습니다.
 - `user-service`: `9003`
 
 즉, 서비스 메트릭은 actuator Prometheus 엔드포인트를 통해 수집되는 구조입니다.
+
+단, 실제 수집 방식은 Prometheus가 어디에 떠 있는지에 따라 달라집니다. 같은 클러스터 discovery, NodePort static scrape, 현재 분리 서버 구조의 제약은 `k3s-monitoring.md`에서 별도로 다룹니다.
 
 ## 11. 서비스 노출 방식
 
