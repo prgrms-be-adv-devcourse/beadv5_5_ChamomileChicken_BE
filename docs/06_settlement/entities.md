@@ -12,7 +12,7 @@
 | `SettlementTransfer` | 송금 요청과 결과 이력 | `settlementId`, `transferStatus`, `bankCode`, `accountNumberMasked`, `amount`, `requestedAt`, `completedAt`, `failReason` |
 | `SettlementBatchLock` | 같은 정산월 배치 동시 실행 방지용 DB 락 | `lockKey`, `jobName`, `settlementMonth`, `expiresAt` |
 | `SellerGradePolicy` | 최근 3개월 판매금액 구간별 등급/수수료 정책 | `gradeCode`, `minSalesAmount`, `maxSalesAmount`, `feeRate`, `version`, `active` |
-| `SellerGrade` | 판매자별 마지막 적용 등급 캐시 | `sellerId`, `sellerGradePolicyId`, `calculatedMonth` |
+| `SellerGrade` | 판매자별 정산월 기준 등급 이력 | `sellerId`, `sellerGradePolicyId`, `calculatedMonth` |
 | `SettlementPromotion` | 프로모션 마스터 정보 | `name`, `promotionType`, `feeRate`, `durationDays`, `active` |
 | `SellerPromotion` | 판매자별 프로모션 적용 이력 | `sellerId`, `promotionId`, `startedAt`, `endedAt`, `active` |
 
@@ -50,6 +50,7 @@ Kafka 이벤트를 통해 적재되는 원천 정산 대상이다.
 - 결제 건은 원 정산 기준 금액과 당시 적용 프로모션/수수료율을 저장한다.
 - 환불 건은 원 결제 계산 결과를 기준으로 환불 비율만큼 음수 금액을 계산한다.
 - 원 결제 계산 결과가 없으면 환불 발생 시점의 판매자 프로모션을 기준으로 보정 계산한다.
+- applied promotion, applied fee rate는 월 정산 생성 단계에서 그대로 재사용할 수 있도록 스냅샷처럼 보관된다.
 - 월 정산 상세 조회는 이 엔티티와 `SettlementTarget`을 조합해 구성한다.
 
 ### `Settlement`
@@ -84,7 +85,7 @@ Kafka 이벤트를 통해 적재되는 원천 정산 대상이다.
 
 ## 등급과 프로모션
 
-`SellerGradePolicy`는 최근 3개월 판매금액 기준 등급/수수료 정책이다. 월 정산 집계 시 active 정책을 한 번 조회하고 메모리에서 판매자별 기준 금액에 맞는 정책을 찾는다.
+`SellerGradePolicy`는 최근 3개월 판매금액 기준 등급/수수료 정책이다. seller grade 계산과 월 정산 생성 시 active 정책을 한 번 조회하고 메모리에서 판매자별 기준 금액에 맞는 정책을 찾는다.
 
 `SellerPromotion`과 `SettlementPromotion`은 건별 정산 계산 시 적용 수수료율을 판단하는 데 사용된다. 적용된 프로모션 정보는 `SettlementTargetCalculation`에 스냅샷으로 남는다.
 

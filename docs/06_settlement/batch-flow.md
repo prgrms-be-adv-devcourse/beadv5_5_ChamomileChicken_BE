@@ -28,7 +28,7 @@ infrastructure/batch/
     PaymentTargetCalculationItemReader.java
     RefundTargetCalculationItemReader.java
     SellerGradeCalculationItemReader.java
-    MonthlySettlementCreationItemReader.java
+    MonthlySettlementCreationSummaryItemReader.java
 
   processor/
     PaymentTargetCalculationItemProcessor.java
@@ -131,13 +131,14 @@ settlementCalculateJob
 ```text
 SettlementTarget(PAYMENT, PENDING)
   -> PaymentTargetCalculationItemReader
-    -> chunk 단위 target 조회
-    -> sellerIds 기준 promotion bulk preload
+    -> JDBC cursor + DTO 조회
+    -> chunk 단위 sellerIds 기준 seller_promotions bulk 조회
+    -> step 시작 시 active settlement_promotions preload
   -> PaymentTargetCalculationItemProcessor
     -> PAYMENT 계산
   -> SettlementTargetCalculationItemWriter
-    -> SettlementTargetCalculation 저장
-    -> SettlementTarget.calculationStatus 갱신
+    -> SettlementTargetCalculation JDBC batch insert
+    -> SettlementTarget.calculationStatus JDBC update
 ```
 
 ### 2. `settlementRefundTargetCalculationStep`
@@ -147,15 +148,16 @@ SettlementTarget(PAYMENT, PENDING)
 ```text
 SettlementTarget(REFUND, PENDING)
   -> RefundTargetCalculationItemReader
-    -> chunk 단위 target 조회
+    -> JDBC cursor + DTO 조회
     -> paymentIds 기준 원 결제 target bulk preload
     -> targetIds 기준 원 결제 calculation bulk preload
     -> sellerIds 기준 fallback promotion bulk preload
+    -> step 시작 시 active settlement_promotions preload
   -> RefundTargetCalculationItemProcessor
     -> REFUND 계산
   -> SettlementTargetCalculationItemWriter
-    -> SettlementTargetCalculation 저장
-    -> SettlementTarget.calculationStatus 갱신
+    -> SettlementTargetCalculation JDBC batch insert
+    -> SettlementTarget.calculationStatus JDBC update
 ```
 
 주요 규칙:
@@ -170,26 +172,28 @@ SettlementTarget(REFUND, PENDING)
 
 ### 3. `sellerGradeCalculationStep`
 
-`SettlementTargetCalculation`을 seller/month 기준으로 집계해 seller grade를 산정한다.
+`SettlementTargetCalculation`을 seller 기준으로 집계해 seller grade를 산정한다.
 
 ```text
-SettlementTargetCalculation summary paging 조회
+SettlementTargetCalculation seller cursor 조회
   -> SellerGradeCalculationItemReader
-    -> 현재 chunk sellerIds 추출
-    -> 최근 3개월 calculation 합계 bulk 조회
-    -> 같은 정산월 seller grade bulk 조회
+    -> step 시작 시 이번 달 판매액 preload
+    -> step 시작 시 최근 3개월 판매액 preload
+    -> step 시작 시 같은 정산월 seller grade preload
+    -> chunk 단위 sellerId 조립
   -> SellerGradeCalculationItemProcessor
     -> seller grade 정책 계산
   -> SellerGradeItemWriter
     -> SellerGrade saveAll
 ```
 
-seller grade 계산 시 청크 단위로 조회하는 데이터:
+seller grade 계산 시 미리 준비하는 데이터:
 
 | 데이터 | 조회 기준 |
 |--------|-----------|
-| 최근 3개월 판매금액 | `sellerIds IN + settlementMonths IN` |
-| 기존 seller grade | `sellerIds IN + calculatedMonth = settlementMonth` |
+| 이번 달 판매금액 | `settlementMonths IN [current]` |
+| 최근 3개월 판매금액 | `settlementMonths IN [current-2, current-1, current]` |
+| 기존 seller grade | `calculatedMonth = settlementMonth` |
 | 등급 정책 | active 정책 전체 조회 후 메모리 매칭 |
 
 ### 4. `monthlySettlementCreationStep`
@@ -197,43 +201,34 @@ seller grade 계산 시 청크 단위로 조회하는 데이터:
 `SettlementTargetCalculation`과 확정된 seller grade를 이용해 월 정산 헤더인 `Settlement`를 생성한다.
 
 ```text
-SettlementTargetCalculation summary paging 조회
-  -> MonthlySettlementCreationItemReader
-    -> 현재 chunk sellerIds 추출
-    -> 기존 월 정산 bulk 조회
-    -> 최근 3개월 calculation 합계 bulk 조회
-    -> 월별 calculation 상세 bulk 조회
-    -> 같은 정산월 seller grade bulk 조회
+SettlementTargetCalculation summary cursor 조회
+  -> MonthlySettlementCreationSummaryItemReader
+    -> step 시작 시 기존 월 정산 preload
+    -> step 시작 시 최근 3개월 calculation 합계 preload
+    -> step 시작 시 월별 fee-rate bucket preload
+    -> step 시작 시 같은 정산월 seller grade preload
+    -> chunk 단위 summary 조립
   -> MonthlySettlementCreationItemProcessor
     -> Settlement 생성/재계산
   -> MonthlySettlementItemWriter
     -> Settlement saveAll
 ```
 
-월 정산 생성 시 청크 단위로 조회하는 데이터:
+월 정산 생성 시 미리 준비하는 데이터:
 
 | 데이터 | 조회 기준 |
 |--------|-----------|
-| 기존 월 정산 | `settlementMonth + sellerIds IN` |
-| 최근 3개월 판매금액 | `sellerIds IN + settlementMonths IN` |
-| 정산 계산 상세 | `settlementMonth + sellerIds IN` |
-| 판매자 등급 | `sellerIds IN + calculatedMonth = settlementMonth` |
+| 기존 월 정산 | `settlementMonth = current` |
+| 최근 3개월 판매금액 | `settlementMonths IN [current-2, current-1, current]` |
+| 월별 fee-rate bucket | `settlementMonth = current`, `group by sellerId, appliedFeeRate` |
+| 판매자 등급 | `calculatedMonth = settlementMonth` |
 | 등급 정책 | active 정책 전체 조회 후 메모리 매칭 |
 
-이 구조는 seller별 단건 조회를 반복하지 않고, 현재 chunk에 포함된 sellerIds 기준으로 필요한 데이터를 모아 가져오기 위한 것이다.
+이 구조는 seller별 단건 조회를 반복하지 않고, seller 기준 summary를 순차적으로 읽으면서 필요한 집계 데이터를 preload map에서 조립하는 방식이다.
 
-월 전체 데이터를 한 번에 메모리에 올리지 않으면서도 seller 수에 비례해 쿼리가 증가하는 N+1 문제를 줄인다.
+또한 월 정산 생성 단계에서는 `SettlementTargetCalculation` 전체 row를 다시 들고 계산하지 않고, `sellerId + appliedFeeRate + 금액합` 형태의 fee bucket을 사용한다.
 
-또한 `SettlementTargetCalculation` 생성 시 seller의 활성 프로모션도 함께 반영한다.
-
-```text
-SettlementTarget
-  -> SettlementPromotionResolver
-    -> seller_promotions 조회
-    -> 적용 가능한 프로모션 있으면 appliedFeeRate 사용
-```
-
-즉 신규 셀러 프로모션은 이벤트 소비 시점에 `seller_promotions`에 먼저 등록되고, 이후 정산 계산 배치가 `occurredAt` 기준으로 적용 가능 여부를 판단해 수수료율을 할인한다.
+신규 셀러 프로모션은 이벤트 소비 시점에 `seller_promotions`에 먼저 등록되고, 이후 payment/refund 계산 단계가 `occurredAt` 기준으로 적용 가능 여부를 판단해 수수료율을 반영한다.
 
 ## seller grade 보관 기준
 
@@ -255,11 +250,11 @@ seller_grades
 ```text
 settlementTransferJob
   -> settlementTransferStep
-    -> JpaPagingItemReader<Settlement>
+    -> JpaCursorItemReader<Settlement>
     -> SettlementTransferItemProcessor
     -> SettlementTransferItemWriter
   -> settlementTransferReconcileStep
-    -> JpaPagingItemReader<Settlement>
+    -> JpaCursorItemReader<Settlement>
     -> SettlementTransferReconcileItemProcessor
     -> SettlementTransferReconcileItemWriter
 ```
@@ -267,7 +262,7 @@ settlementTransferJob
 송금 step의 주요 흐름:
 
 ```text
-settlementMonth 기준 Settlement paging 조회
+settlementMonth 기준 READY Settlement cursor 조회
   -> READY 상태만 processor 통과
   -> user 서비스에서 판매자 정산 계좌 조회
   -> 송금 가능 여부 확인
@@ -300,7 +295,7 @@ READY
 복구 step의 주요 흐름:
 
 ```text
-settlementMonth 기준 TRANSFERRING Settlement paging 조회
+settlementMonth 기준 TRANSFERRING Settlement cursor 조회
   -> TRANSFERRING 상태만 processor 통과
   -> SettlementTransfer latest 이력 조회
   -> fake 외부 송금 client 상태 조회
@@ -434,3 +429,12 @@ dev 환경에서 짧은 주기로 확인할 때는 cron을 짧게 설정하되, 
 - `skipCount`
 
 배치가 실행됐는데 결과가 예상과 다르면 먼저 Step별 read/write count를 확인한다.
+
+## 현재 구조 요약
+
+현재 정산 배치의 핵심 방향은 아래와 같다.
+
+- `payment/refund`는 JDBC cursor + DTO 기반으로 단순화
+- 프로모션/정책 데이터는 batch 시작 시 preload
+- `sellerGrade`, `monthlySettlement`는 seller 기준 집계 구조로 처리
+- 송금 배치도 cursor 기반으로 바꿔 상태 변경 중 paging skip 위험 제거
