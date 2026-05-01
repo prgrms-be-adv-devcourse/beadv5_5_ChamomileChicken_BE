@@ -32,7 +32,7 @@ public class SettlementRefundSkipListener
 			"FAILED",
 			Timestamp.valueOf(now),
 			truncateReason(t == null ? "calculation skipped" : t.getMessage()),
-			item.target().getId()
+			item.target().id()
 		);
 	}
 

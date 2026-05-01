@@ -9,5 +9,7 @@ import jabaclass.settlement.domain.model.promotion.SettlementPromotion;
 
 public interface SettlementPromotionJpaRepository extends JpaRepository<SettlementPromotion, UUID> {
 
+	java.util.List<SettlementPromotion> findAllByActiveTrue();
+
 	java.util.Optional<SettlementPromotion> findFirstByPromotionTypeAndActiveTrue(PromotionType promotionType);
 }

@@ -15,8 +15,14 @@ import jabaclass.settlement.domain.model.BaseEntity;
 @Getter
 @Entity
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(
+	@Table(
 	name = "seller_grades",
+	indexes = {
+		@jakarta.persistence.Index(
+			name = "idx_seller_grades_month_seller",
+			columnList = "calculated_month, seller_id"
+		)
+	},
 	uniqueConstraints = {
 		@UniqueConstraint(
 			name = "uk_seller_grades_seller_month",

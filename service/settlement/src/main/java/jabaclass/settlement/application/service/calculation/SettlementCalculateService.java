@@ -13,6 +13,8 @@ import org.springframework.transaction.annotation.Transactional;
 import jabaclass.settlement.application.dto.AppliedPromotion;
 import jabaclass.settlement.application.dto.MonthlySettlementCreationItem;
 import jabaclass.settlement.application.dto.SellerGradeCalculationItem;
+import jabaclass.settlement.application.dto.SettlementFeeRateAmount;
+import jabaclass.settlement.application.dto.SettlementTargetInfo;
 import jabaclass.settlement.application.dto.SettlementTargetSummary;
 import jabaclass.settlement.application.exception.BusinessException;
 import jabaclass.settlement.application.exception.SettlementCalculationRetryableException;
@@ -20,9 +22,7 @@ import jabaclass.settlement.application.exception.SettlementErrorCode;
 import jabaclass.settlement.domain.model.grade.SellerGrade;
 import jabaclass.settlement.domain.model.grade.SellerGradePolicy;
 import jabaclass.settlement.domain.model.settlement.Settlement;
-import jabaclass.settlement.domain.model.settlement.SettlementTarget;
 import jabaclass.settlement.domain.model.settlement.SettlementTargetCalculation;
-import jabaclass.settlement.domain.repository.SellerGradeRepository;
 import jabaclass.settlement.domain.repository.SellerGradePolicyRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,17 +33,19 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class SettlementCalculateService {
 
-	private final SellerGradeRepository sellerGradeRepository;
 	private final SellerGradePolicyRepository sellerGradePolicyRepository;
 	private final SettlementFeeCalculator settlementFeeCalculator;
 
 	public SettlementTargetCalculation calculatePaymentTarget(
-		SettlementTarget target,
+		SettlementTargetInfo target,
 		AppliedPromotion appliedPromotion
 	) {
 
 		return SettlementTargetCalculation.forPayment(
-			target,
+			target.id(),
+			target.settlementMonth(),
+			target.sellerId(),
+			target.settlementBaseAmount(),
 			appliedPromotion.promotionId(),
 			appliedPromotion.promotionType(),
 			appliedPromotion.feeRate()
@@ -58,8 +60,8 @@ public class SettlementCalculateService {
 		}
 	)
 	public SettlementTargetCalculation calculateRefundTarget(
-		SettlementTarget target,
-		SettlementTarget originalPaymentTarget,
+		SettlementTargetInfo target,
+		SettlementTargetInfo originalPaymentTarget,
 		SettlementTargetCalculation originalPaymentCalculation,
 		AppliedPromotion fallbackAppliedPromotion
 	) {
@@ -87,15 +89,6 @@ public class SettlementCalculateService {
 		}
 
 		throw new BusinessException(SettlementErrorCode.SETTLEMENT_NOT_FOUND);
-	}
-
-	public void markTargetCalculated(SettlementTarget target) {
-		target.markCalculated();
-	}
-
-	public void markTargetCalculationFailed(SettlementTarget target, Exception e) {
-		target.markCalculationFailed(e.getMessage());
-		log.error("[SETTLEMENT_CALCULATION] targetId={} 계산 실패", target.getId(), e);
 	}
 
 	public SellerGrade calculateSellerGrade(
@@ -140,7 +133,7 @@ public class SettlementCalculateService {
 			item.summary().settlementMonth(),
 			item.recentThreeMonthSalesAmount(),
 			sellerGradePolicy,
-			item.calculations(),
+			item.feeRateAmounts(),
 			existingSettlement
 		);
 	}
@@ -154,7 +147,7 @@ public class SettlementCalculateService {
 		String settlementMonth,
 		BigDecimal recentThreeMonthSalesAmount,
 		SellerGradePolicy sellerGradePolicy,
-		List<SettlementTargetCalculation> sellerTargets,
+		List<SettlementFeeRateAmount> sellerTargets,
 		Settlement existingSettlement
 	) {
 

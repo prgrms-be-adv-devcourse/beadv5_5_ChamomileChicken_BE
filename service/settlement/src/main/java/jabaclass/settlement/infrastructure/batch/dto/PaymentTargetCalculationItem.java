@@ -1,10 +1,10 @@
 package jabaclass.settlement.infrastructure.batch.dto;
 
 import jabaclass.settlement.application.dto.AppliedPromotion;
-import jabaclass.settlement.domain.model.settlement.SettlementTarget;
+import jabaclass.settlement.application.dto.SettlementTargetInfo;
 
 public record PaymentTargetCalculationItem(
-	SettlementTarget target,
+	SettlementTargetInfo target,
 	AppliedPromotion appliedPromotion
 ) {
 }

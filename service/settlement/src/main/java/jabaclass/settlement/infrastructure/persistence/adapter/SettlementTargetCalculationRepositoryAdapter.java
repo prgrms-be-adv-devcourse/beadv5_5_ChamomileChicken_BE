@@ -1,7 +1,6 @@
 package jabaclass.settlement.infrastructure.persistence.adapter;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.data.domain.Page;
@@ -9,7 +8,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
 import jabaclass.settlement.application.dto.SellerSalesAmount;
-import jabaclass.settlement.application.dto.SettlementTargetSummary;
+import jabaclass.settlement.application.dto.SettlementFeeRateAmount;
 import jabaclass.settlement.domain.model.settlement.SettlementTargetCalculation;
 import jabaclass.settlement.domain.repository.SettlementTargetCalculationRepository;
 import jabaclass.settlement.infrastructure.persistence.SettlementTargetCalculationJpaRepository;
@@ -27,16 +26,6 @@ public class SettlementTargetCalculationRepositoryAdapter implements SettlementT
 	}
 
 	@Override
-	public boolean existsBySettlementTargetId(UUID settlementTargetId) {
-		return settlementTargetCalculationJpaRepository.existsBySettlementTargetId(settlementTargetId);
-	}
-
-	@Override
-	public Optional<SettlementTargetCalculation> findBySettlementTargetId(UUID settlementTargetId) {
-		return settlementTargetCalculationJpaRepository.findBySettlementTargetId(settlementTargetId);
-	}
-
-	@Override
 	public List<SettlementTargetCalculation> findBySettlementTargetIds(List<UUID> settlementTargetIds) {
 		if (settlementTargetIds == null || settlementTargetIds.isEmpty()) {
 			return List.of();
@@ -46,32 +35,30 @@ public class SettlementTargetCalculationRepositoryAdapter implements SettlementT
 	}
 
 	@Override
-	public List<SellerSalesAmount> sumSettlementBaseAmountBySellerIdsAndSettlementMonths(
-		List<UUID> sellerIds,
-		List<String> settlementMonths
-	) {
-		if (sellerIds == null || sellerIds.isEmpty() || settlementMonths == null || settlementMonths.isEmpty()) {
+	public List<SellerSalesAmount> sumSettlementBaseAmountBySettlementMonths(List<String> settlementMonths) {
+		if (settlementMonths == null || settlementMonths.isEmpty()) {
 			return List.of();
 		}
 
-		return settlementTargetCalculationJpaRepository.sumSettlementBaseAmountBySellerIdsAndSettlementMonths(
-				sellerIds,
-				settlementMonths
-			).stream()
+		return settlementTargetCalculationJpaRepository.sumSettlementBaseAmountBySettlementMonths(settlementMonths)
+			.stream()
 			.map(it -> new SellerSalesAmount(it.getSellerId(), it.getSalesAmount()))
 			.toList();
 	}
 
 	@Override
-	public List<SettlementTargetCalculation> findBySettlementMonthAndSellerIds(
-		String settlementMonth,
-		List<UUID> sellerIds
+	public List<SettlementFeeRateAmount> sumSettlementBaseAmountBySettlementMonthGroupedBySellerAndFeeRate(
+		String settlementMonth
 	) {
-		if (sellerIds == null || sellerIds.isEmpty()) {
-			return List.of();
-		}
-
-		return settlementTargetCalculationJpaRepository.findBySettlementMonthAndSellerIdIn(settlementMonth, sellerIds);
+		return settlementTargetCalculationJpaRepository.sumSettlementBaseAmountBySettlementMonthGroupedBySellerAndFeeRate(
+				settlementMonth
+			).stream()
+			.map(it -> new SettlementFeeRateAmount(
+				it.getSellerId(),
+				it.getAppliedFeeRate(),
+				it.getSettlementBaseAmount()
+			))
+			.toList();
 	}
 
 	@Override
@@ -85,17 +72,5 @@ public class SettlementTargetCalculationRepositoryAdapter implements SettlementT
 			sellerId,
 			pageable
 		);
-	}
-
-	@Override
-	public List<SettlementTargetSummary> findSummaryBySettlementMonth(String settlementMonth) {
-		return settlementTargetCalculationJpaRepository.findSummaryBySettlementMonth(settlementMonth)
-			.stream()
-			.map(it -> new SettlementTargetSummary(
-				it.getSellerId(),
-				it.getSettlementMonth(),
-				it.getTotalSettlementBaseAmount()
-			))
-			.toList();
 	}
 }

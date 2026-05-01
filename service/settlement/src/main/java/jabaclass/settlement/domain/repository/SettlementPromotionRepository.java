@@ -1,14 +1,14 @@
 package jabaclass.settlement.domain.repository;
 
+import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 import jabaclass.settlement.domain.model.promotion.PromotionType;
 import jabaclass.settlement.domain.model.promotion.SettlementPromotion;
 
 public interface SettlementPromotionRepository {
 
-	Optional<SettlementPromotion> findById(UUID promotionId);
+	List<SettlementPromotion> findAllActive();
 
 	Optional<SettlementPromotion> findActiveByPromotionType(PromotionType promotionType);
 }

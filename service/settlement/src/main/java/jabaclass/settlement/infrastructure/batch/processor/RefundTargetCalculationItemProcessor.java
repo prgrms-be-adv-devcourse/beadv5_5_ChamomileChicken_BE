@@ -24,7 +24,6 @@ public class RefundTargetCalculationItemProcessor
 			item.originalPaymentCalculation(),
 			item.fallbackAppliedPromotion()
 		);
-		settlementCalculateService.markTargetCalculated(item.target());
-		return new SettlementTargetCalculationBatchItem(item.target(), calculation);
+		return SettlementTargetCalculationBatchItem.calculated(item.target(), calculation);
 	}
 }

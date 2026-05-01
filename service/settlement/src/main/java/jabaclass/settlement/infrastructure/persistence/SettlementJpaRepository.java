@@ -12,8 +12,6 @@ import jabaclass.settlement.domain.model.settlement.SettlementStatus;
 
 public interface SettlementJpaRepository extends JpaRepository<Settlement, UUID> {
 
-	List<Settlement> findBySettlementMonthAndSellerIdIn(String settlementMonth, List<UUID> sellerIds);
-
 	Page<Settlement> findBySellerId(UUID sellerId, Pageable pageable);
 
 	List<Settlement> findBySettlementMonth(String settlementMonth);

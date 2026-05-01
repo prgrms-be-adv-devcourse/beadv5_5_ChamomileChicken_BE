@@ -2,7 +2,6 @@ package jabaclass.settlement.infrastructure.persistence;
 
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.data.domain.Page;
@@ -14,10 +13,6 @@ import jabaclass.settlement.domain.model.settlement.SettlementTargetCalculation;
 
 public interface SettlementTargetCalculationJpaRepository extends JpaRepository<SettlementTargetCalculation, UUID> {
 
-	boolean existsBySettlementTargetId(UUID settlementTargetId);
-
-	Optional<SettlementTargetCalculation> findBySettlementTargetId(UUID settlementTargetId);
-
 	List<SettlementTargetCalculation> findBySettlementTargetIdIn(List<UUID> settlementTargetIds);
 
 	@Query("""
@@ -25,39 +20,36 @@ public interface SettlementTargetCalculationJpaRepository extends JpaRepository<
 			stc.sellerId as sellerId,
 			coalesce(sum(stc.settlementBaseAmount), 0) as salesAmount
 		from SettlementTargetCalculation stc
-		where stc.sellerId in :sellerIds
-		  and stc.settlementMonth in :settlementMonths
+		where stc.settlementMonth in :settlementMonths
 		group by stc.sellerId
 		""")
-	List<SellerSalesAmountProjection> sumSettlementBaseAmountBySellerIdsAndSettlementMonths(
-		@Param("sellerIds") List<UUID> sellerIds,
+	List<SellerSalesAmountProjection> sumSettlementBaseAmountBySettlementMonths(
 		@Param("settlementMonths") List<String> settlementMonths
 	);
-
-	List<SettlementTargetCalculation> findBySettlementMonthAndSellerIdIn(String settlementMonth, List<UUID> sellerIds);
-
-	Page<SettlementTargetCalculation> findBySettlementMonthAndSellerId(String settlementMonth, UUID sellerId, Pageable pageable);
 
 	@Query("""
 		select
 			stc.sellerId as sellerId,
-			stc.settlementMonth as settlementMonth,
-			sum(stc.settlementBaseAmount) as totalSettlementBaseAmount
+			stc.appliedFeeRate as appliedFeeRate,
+			coalesce(sum(stc.settlementBaseAmount), 0) as settlementBaseAmount
 		from SettlementTargetCalculation stc
 		where stc.settlementMonth = :settlementMonth
-		group by stc.sellerId, stc.settlementMonth
-		order by stc.sellerId
+		group by stc.sellerId, stc.appliedFeeRate
 		""")
-	List<SettlementTargetSummaryProjection> findSummaryBySettlementMonth(String settlementMonth);
+	List<SellerFeeRateAmountProjection> sumSettlementBaseAmountBySettlementMonthGroupedBySellerAndFeeRate(
+		@Param("settlementMonth") String settlementMonth
+	);
 
-	interface SettlementTargetSummaryProjection {
-		UUID getSellerId();
-		String getSettlementMonth();
-		BigDecimal getTotalSettlementBaseAmount();
-	}
+	Page<SettlementTargetCalculation> findBySettlementMonthAndSellerId(String settlementMonth, UUID sellerId, Pageable pageable);
 
 	interface SellerSalesAmountProjection {
 		UUID getSellerId();
 		BigDecimal getSalesAmount();
+	}
+
+	interface SellerFeeRateAmountProjection {
+		UUID getSellerId();
+		BigDecimal getAppliedFeeRate();
+		BigDecimal getSettlementBaseAmount();
 	}
 }

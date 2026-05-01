@@ -9,5 +9,5 @@ import jabaclass.settlement.domain.model.grade.SellerGrade;
 
 public interface SellerGradeJpaRepository extends JpaRepository<SellerGrade, UUID> {
 
-	List<SellerGrade> findBySellerIdInAndCalculatedMonth(List<UUID> sellerIds, String calculatedMonth);
+	List<SellerGrade> findByCalculatedMonth(String calculatedMonth);
 }
