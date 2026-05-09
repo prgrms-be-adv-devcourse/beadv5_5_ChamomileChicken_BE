@@ -41,6 +41,7 @@ JabaClass는 `Java Class`이기도 하고,
 ### 클래스 탐색
 
 사용자는 다양한 원데이 클래스를 탐색하고 상세 정보를 확인할 수 있습니다.
+<br><img width="800" height="413" alt="Payment flow" src="https://github.com/user-attachments/assets/76611a61-b9d1-413e-82dd-145ae5caf34f" />
 
 <br>
 
