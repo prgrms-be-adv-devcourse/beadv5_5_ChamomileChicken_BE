@@ -18,11 +18,14 @@ POST /api/v1/auth/login
   → AuthController.login()
       - ClientIpUtils.extractIp(): X-Real-IP 헤더 → 없으면 remoteAddr
       - User-Agent 헤더 추출 (null이면 "unknown")
-  → AuthService: (email, SocialType.SYSTEM)으로 유저 조회 → 비밀번호 검증
-  → AuthService.handleLoginSecurity(): 새 기기 감지 → 보안 알림 이메일 발송 (비동기)
-  → JwtProvider: Access Token + Refresh Token 생성
-  → DB: User.refreshToken 저장 (DB-first — Redis 장애와 무관하게 항상 기록)
-  → Redis: Refresh Token 저장 (key: "refresh:{userId}") — write CB 적용, 실패 시 swallow
+  → AuthService.login() (@Transactional NOT_SUPPORTED — BCrypt 수행 중 DB 커넥션 미점유)
+      1. (email, SocialType.SYSTEM)으로 유저 조회
+      2. BCrypt 비밀번호 검증
+      3. isNewDevice 판별 (commitLoginWrites 이전 lastLoginIp 기준)
+      4. Access Token + Refresh Token 생성
+      5. LoginWriter.commitLoginWrites(): DB에 refreshToken + lastLogin 갱신 (별도 TX)
+      6. Redis: Refresh Token 저장 (key: "refresh:{userId}") — write CB 적용, 실패 시 swallow
+      7. sendNewDeviceAlertIfNeeded(): 새 기기인 경우 → Redis theft_report 저장 + 비동기 보안 이메일
   → 응답: Access Token (body) + Refresh Token (HttpOnly Cookie)
 ```
 
@@ -46,8 +49,11 @@ GET /login/oauth2/code/{provider}?code=AUTH_CODE&state=...
        - CustomOAuth2User 반환
   → OAuth2SuccessHandler.onAuthenticationSuccess()
        - ClientIpUtils.extractIp(): X-Real-IP 헤더 → 없으면 remoteAddr
-       - AuthService.handleLoginSecurity(): 새 기기 감지 → 보안 알림 이메일 발송 (비동기)
-       - AuthService.issueOAuth2Tokens(): 일반 로그인과 동일한 DB-first + write CB 경로
+       - AuthService.issueOAuth2Tokens():
+           isNewDevice 판별 → lastLogin 갱신 → 토큰 발급
+           DB: refreshToken + lastLogin 저장 (DB-first)
+           Redis: refresh:{userId} 저장 (write CB)
+           sendNewDeviceAlertIfNeeded(): 새 기기인 경우 → 보안 이메일 비동기 발송
        - Refresh Token → HttpOnly Cookie
        - 브라우저를 프론트엔드로 리다이렉트: {OAUTH2_REDIRECT_URI}#token={accessToken}
 
@@ -64,7 +70,7 @@ POST /api/v1/auth/reissue
   → RTR 감지 (stored ≠ provided):
        - User.forceLogout() + refreshToken = null → DB commit 보장
          (@Transactional(noRollbackFor = AuthException.class) — 예외 발생해도 rollback 없음)
-       - force_logout:{userId} → Redis write CB 적용
+       - force_logout:{userId} = Instant.now().toEpochMilli() → Redis write CB 적용
        - SUSPECTED_TOKEN_THEFT 예외 반환
   → 새 Access Token + Refresh Token 발급
   → DB: User.refreshToken 업데이트 (DB-first)
@@ -95,9 +101,10 @@ POST /api/v1/auth/logout
       - lastLoginIp / lastLoginUserAgent 업데이트
 
 GET /api/v1/auth/report-theft?token={token}
-  → Redis에서 theft_report 토큰으로 userId 조회
-  → force_logout:{userId} 설정 → Redis에서 Refresh Token 삭제
-  → 이후 해당 userId의 모든 기존 Access Token 차단
+  → Redis: theft_report:{token} → userId 조회 (실패 시 THEFT_REPORT_TOKEN_EXPIRED 401)
+  → user.forceLogout() + user.updateRefreshToken(null) → DB 저장 (forceLogoutAt, refreshToken)
+  → Redis: SET force_logout:{userId} = epochMillis, DELETE refresh:{userId}, DELETE theft_report:{token}
+  → 이후 해당 userId의 epochMillis 이전 발급된 모든 Access Token 차단
 ```
 
 ---

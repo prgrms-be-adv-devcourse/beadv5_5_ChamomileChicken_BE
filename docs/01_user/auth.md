@@ -40,7 +40,7 @@ Access Token은 API Gateway에서 검증되며, User 서비스는 로그인/로�
 |----|-----|-----|------|
 | `refresh:{userId}` | refreshToken | refreshTokenValidity | 토큰 재발급 검증용 |
 | `blacklist:{accessToken}` | `"logout"` | 토큰 잔여 유효기간 | 로그아웃된 토큰 식별 |
-| `force_logout:{userId}` | `LocalDateTime` | accessTokenValidity | RTR 재사용 감지 시 강제 로그아웃 표시 |
+| `force_logout:{userId}` | epoch millis (Long) | accessTokenValidity | RTR 재사용 감지 시 강제 로그아웃 표시 |
 | `theft_report:{token}` | `userId` | refreshTokenValidity | 도난 신고 링크 유효 여부 확인 |
 
 ---
@@ -53,13 +53,14 @@ POST /api/v1/auth/login
 
 AuthController.login()
   → clientIp/userAgent 추출
-  → AuthService.login()
+  → AuthService.login()  ← @Transactional(propagation = NOT_SUPPORTED) — BCrypt 중 커넥션 미점유
       1. UserRepository.findByEmailAndSocialType(email, SYSTEM)
       2. BCrypt 비밀번호 검증
-      3. handleLoginSecurity()  ← 새 기기 감지 + lastLogin 갱신
+      3. isNewDevice 판별  ← loginWriter.commitLoginWrites 이전 lastLoginIp 기준
       4. Access Token + Refresh Token 발급
-      5. user.updateRefreshToken(refreshToken)  ← DB 저장
-      6. Redis: SET refresh:{userId} = refreshToken  ← CB 경유
+      5. LoginWriter.commitLoginWrites()  ← 별도 TX: DB에 refreshToken + lastLogin 갱신
+      6. Redis: SET refresh:{userId} = refreshToken  ← write CB 경유
+      7. sendNewDeviceAlertIfNeeded()  ← 새 기기인 경우만: Redis theft_report 저장 + 비동기 이메일
   ← Access Token: Response Body
   ← Refresh Token: HttpOnly Cookie (Set-Cookie)
 ```
@@ -136,9 +137,9 @@ Gateway가 `GET /api/v1/auth/internal/token-status`를 호출할 때 `@Cacheable
 
 ```
 저장된 토큰 ≠ 요청 토큰
-  → user.forceLogout()          (forceLogoutAt = now())
+  → user.forceLogout()          (forceLogoutAt = LocalDateTime.now(ZoneOffset.UTC))
   → user.updateRefreshToken(null)
-  → Redis: SET force_logout:{userId} = now  TTL=accessTokenValidity
+  → Redis: SET force_logout:{userId} = Instant.now().toEpochMilli()  TTL=accessTokenValidity
   → Redis: DELETE refresh:{userId}
   → 401 SUSPECTED_TOKEN_THEFT
 ```
@@ -158,9 +159,9 @@ GET /api/v1/auth/report-theft?token={theftReportToken}
 AuthService.reportTheft()
   1. Redis: GET theft_report:{token} → userId 조회
      └─ Redis CB OPEN 또는 키 없음 → THEFT_REPORT_TOKEN_EXPIRED (401)
-  2. user.forceLogout()
-  3. user.updateRefreshToken(null)
-  4. Redis: SET force_logout:{userId}  TTL=accessTokenValidity
+  2. user.forceLogout()               ← DB: forceLogoutAt = LocalDateTime.now(ZoneOffset.UTC)
+  3. user.updateRefreshToken(null)    ← DB: refreshToken = null
+  4. Redis: SET force_logout:{userId} = Instant.now().toEpochMilli()  TTL=accessTokenValidity
   5. Redis: DELETE refresh:{userId}
   6. Redis: DELETE theft_report:{token}
   ← 200 "계정 보호 조치가 완료되었습니다."
@@ -188,7 +189,8 @@ AuthController.checkTokenStatus()
        a. SHA-256(token) → DB TokenBlacklist 조회
           블랙리스트 존재 → { status: BLACKLISTED }
        b. user.forceLogoutAt != null
-          && tokenIssuedAtMillis <= forceLogoutMillis
+          forceLogoutMillis = forceLogoutAt.toInstant(ZoneOffset.UTC).toEpochMilli()
+          tokenIssuedAtMillis <= forceLogoutMillis
           → { status: FORCE_LOGOUT }
        c. 정상 → { status: VALID }
 ```
@@ -221,10 +223,13 @@ AuthController.checkTokenStatus()
           - 없으면: 신규 User 생성 (role=USER)
           - 있으면: 기존 User 반환
   → OAuth2SuccessHandler.onAuthenticationSuccess()
-       1. handleLoginSecurity() — 새 기기 감지 + lastLogin 갱신
-       2. issueOAuth2Tokens() — Access + Refresh Token 발급
-       3. Refresh Token → HttpOnly Cookie
-       4. Access Token → redirect URI의 URL fragment (#token=...)
+       1. issueOAuth2Tokens():
+            isNewDevice 판별 → lastLogin 갱신 → Access + Refresh Token 발급
+            DB: refreshToken + lastLogin 저장 (DB-first)
+            Redis: refresh:{userId} 저장 (write CB)
+            sendNewDeviceAlertIfNeeded(): 새 기기인 경우 보안 이메일 비동기 발송
+       2. Refresh Token → HttpOnly Cookie
+       3. Access Token → redirect URI의 URL fragment (#token=...)
           ex) https://front.example.com/callback#token=eyJ...
   → 프론트엔드가 window.location.hash에서 토큰 읽어 Pinia에 저장 후 URL 정리
 ```
@@ -264,19 +269,23 @@ Redis 장애 시 인증 전체가 중단되지 않도록 Resilience4j 서킷 브
 로그인 시 `lastLoginIp` / `lastLoginUserAgent`와 현재 요청을 비교해 새 기기 여부를 판단한다.
 
 ```
-handleLoginSecurity()
-  1. user.lastLoginIp != null
-     && (ip 다름 || userAgent 다름)
-     → 새 기기로 판단
+sendNewDeviceAlertIfNeeded()  ← login() / issueOAuth2Tokens() 의 마지막 단계에서 호출
+  1. isNewDevice = false → 즉시 리턴
 
   2. theftReportToken = UUID.randomUUID()
-     Redis: SET theft_report:{theftReportToken} = userId  TTL=refreshTokenValidity
+     Redis: SET theft_report:{theftReportToken} = userId  TTL=refreshTokenValidity  ← write CB
 
   3. CompletableFuture.runAsync():
        이메일 발송: "[보안 알림] 새로운 기기에서 로그인되었습니다."
        링크: {baseUrl}/api/v1/auth/report-theft?token={theftReportToken}
-
-  4. user.updateLastLogin(ip, userAgent)  ← 항상 갱신
 ```
+
+**isNewDevice 판별 시점 (login):**
+`loginWriter.commitLoginWrites()` 호출 전에 `user.getLastLoginIp()` 기준으로 미리 판별한다.
+`commitLoginWrites()`가 `lastLogin`을 갱신하므로, 그 이후에 판별하면 항상 동일 기기로 나온다.
+
+**lastLogin 갱신 위치:**
+- 일반 로그인: `LoginWriter.commitLoginWrites()` 안에서 `user.updateLastLogin()` 호출
+- OAuth2 로그인: `issueOAuth2Tokens()` 안에서 직접 `user.updateLastLogin()` 호출
 
 보안 알림 이메일 발송 또는 Redis 저장 실패는 로그인 자체를 차단하지 않는다 (CB OPEN 시 스킵).
