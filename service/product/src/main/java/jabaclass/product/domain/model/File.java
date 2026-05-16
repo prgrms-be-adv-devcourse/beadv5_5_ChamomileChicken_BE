@@ -67,8 +67,9 @@ public class File {
         this.status = FileStatus.PENDING;
     }
 
-    public void confirmSuccess() {
+    public void confirmSuccess(long size) {
         this.status = FileStatus.SUCCESS;
+        this.size = size;
     }
 
     public void confirmFail() {
