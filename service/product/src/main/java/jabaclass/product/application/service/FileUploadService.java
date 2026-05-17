@@ -1,10 +1,10 @@
 package jabaclass.product.application.service;
 
 import java.time.LocalDateTime;
-import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Stream;
 
+import jabaclass.product.common.config.FileUploadProperties;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.context.ApplicationEventPublisher;
@@ -32,13 +32,7 @@ import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
 @RequiredArgsConstructor
 public class FileUploadService implements RequestUploadUseCase, CompleteUploadUseCase, ValidateFileUseCase {
 
-    private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of(
-        "image/jpeg", "image/png"
-    );
-
-    // 개발 편의상 정해놓은 값. 운영 환경에서 정책에 따라 수정
-    private static final long MAX_FILE_SIZE = 10L * 1024 * 1024;    // 10MB
-
+    private final FileUploadProperties fileUploadProperties;
     private final FileRepository fileRepository;
     private final S3Uploader s3Uploader;
     private final ApplicationEventPublisher eventPublisher;
@@ -47,7 +41,7 @@ public class FileUploadService implements RequestUploadUseCase, CompleteUploadUs
     @Transactional
     public UploadResponseDto requestUpload(UUID userId, UploadRequestDto request) {
 
-        if (!ALLOWED_CONTENT_TYPES.contains(request.getContentType())) {
+        if (!fileUploadProperties.getAllowedContentTypes().contains(request.getContentType())) {
             throw new FileException(FileErrorCode.FILE_INVALID_TYPE);
         }
 
@@ -79,25 +73,8 @@ public class FileUploadService implements RequestUploadUseCase, CompleteUploadUs
             throw new FileException(FileErrorCode.FILE_ALREADY_CONFIRMED);
         }
 
-        HeadObjectResponse metadata = s3Uploader.getMetadata(file.getStoragePath())
-            .orElseThrow(() -> {
-                file.confirmFail();
-                return new FileException(FileErrorCode.FILE_NOT_UPLOADED);
-            });
-
-        if (!ALLOWED_CONTENT_TYPES.contains(metadata.contentType())) {
-            s3Uploader.deleteObject(file.getStoragePath());
-            file.confirmFail();
-            throw new FileException(FileErrorCode.FILE_INVALID_TYPE);
-        }
-
-        if (metadata.contentLength() > MAX_FILE_SIZE) {
-            s3Uploader.deleteObject(file.getStoragePath());
-            file.confirmFail();
-            throw new FileException(FileErrorCode.FILE_SIZE_EXCEEDED);
-        }
-
-        file.confirmSuccess(metadata.contentLength());
+        HeadObjectResponse metadata = fetchMetadataOrFail(file);
+        validateMetadata(file, metadata);
     }
 
     @Override
@@ -112,26 +89,34 @@ public class FileUploadService implements RequestUploadUseCase, CompleteUploadUs
         }
 
         if (file.getStatus() == FileStatus.PENDING) {
-            HeadObjectResponse metadata = s3Uploader.getMetadata(file.getStoragePath())
-                .orElseThrow(() -> new FileException(FileErrorCode.FILE_NOT_UPLOADED));
-
-            if (!ALLOWED_CONTENT_TYPES.contains(metadata.contentType())) {
-                s3Uploader.deleteObject(file.getStoragePath());
-                file.confirmFail();
-                throw new FileException(FileErrorCode.FILE_INVALID_TYPE);
-            }
-
-            if (metadata.contentLength() > MAX_FILE_SIZE) {
-                s3Uploader.deleteObject(file.getStoragePath());
-                file.confirmFail();
-                throw new FileException(FileErrorCode.FILE_SIZE_EXCEEDED);
-            }
-
-            file.confirmSuccess(metadata.contentLength());
+            HeadObjectResponse metadata = fetchMetadataOrFail(file);
+            validateMetadata(file, metadata);
             return new FileConfirmResponse(file.getId(), file.getStoragePath());
         }
 
         throw new FileException(FileErrorCode.FILE_NOT_UPLOADED);
+    }
+
+    private HeadObjectResponse fetchMetadataOrFail(File file) {
+        return s3Uploader.getMetadata(file.getStoragePath())
+            .orElseThrow(() -> {
+                file.confirmFail();
+                return new FileException(FileErrorCode.FILE_NOT_UPLOADED);
+            });
+    }
+
+    private void validateMetadata(File file, HeadObjectResponse metadata) {
+        if (!fileUploadProperties.getAllowedContentTypes().contains(metadata.contentType())) {
+            s3Uploader.deleteObject(file.getStoragePath());
+            file.confirmFail();
+            throw new FileException(FileErrorCode.FILE_INVALID_TYPE);
+        }
+        if (metadata.contentLength() > fileUploadProperties.getMaxFileSize()) {
+            s3Uploader.deleteObject(file.getStoragePath());
+            file.confirmFail();
+            throw new FileException(FileErrorCode.FILE_SIZE_EXCEEDED);
+        }
+        file.confirmSuccess(metadata.contentLength());
     }
 
     // 24시간 이상 PENDING 상태 파일 정리 (매일 새벽 3시)
