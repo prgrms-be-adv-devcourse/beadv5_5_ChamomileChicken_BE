@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
@@ -63,7 +64,7 @@ public class FileUploadService implements RequestUploadUseCase, CompleteUploadUs
     }
 
     @Override
-    @Transactional
+    @Transactional(noRollbackFor = FileException.class)
     public void completeUpload(UUID fileId) {
 
         File file = fileRepository.findById(fileId)
@@ -78,7 +79,7 @@ public class FileUploadService implements RequestUploadUseCase, CompleteUploadUs
     }
 
     @Override
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW, noRollbackFor = FileException.class)
     public FileConfirmResponse validateAndConfirm(UUID fileId) {
 
         File file = fileRepository.findById(fileId)
