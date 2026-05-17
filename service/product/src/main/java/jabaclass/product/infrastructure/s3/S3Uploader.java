@@ -1,8 +1,13 @@
 package jabaclass.product.infrastructure.s3;
 
 import java.time.Duration;
+import java.util.Optional;
+
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.stereotype.Component;
+
+import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
@@ -21,12 +26,13 @@ public class S3Uploader {
     private final S3Client s3Client;
     private final S3Properties s3Properties;
 
-    public String generatePresignedUrl(String storagePath) {
+    public String generatePresignedUrl(String storagePath, String contentType) {
         PutObjectPresignRequest presignRequest = PutObjectPresignRequest.builder()
                 .signatureDuration(Duration.ofMinutes(s3Properties.getPresignedUrlExpiration()))
                 .putObjectRequest(req -> req
                         .bucket(s3Properties.getBucket())
                         .key(storagePath)
+                        .contentType(contentType)
                 )
                 .build();
 
@@ -46,16 +52,20 @@ public class S3Uploader {
         return presignedRequest.url().toString();
     }
 
-    public boolean existsInS3(String key) {
+    public Optional<HeadObjectResponse> getMetadata(String key) {
         try {
-            s3Client.headObject(HeadObjectRequest.builder()
-                    .bucket(s3Properties.getBucket())
-                    .key(key)
-                    .build());
-            return true;
+            HeadObjectResponse response = s3Client.headObject(HeadObjectRequest.builder()
+                .bucket(s3Properties.getBucket())
+                .key(key)
+                .build());
+            return Optional.of(response);
         } catch (NoSuchKeyException e) {
-            return false;
+            return Optional.empty();
         }
+    }
+
+    public boolean existsInS3(String key) {
+        return getMetadata(key).isPresent();
     }
 
     public void deleteObject(String storagePath) {

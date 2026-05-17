@@ -1,16 +1,19 @@
 package jabaclass.product.config;
 
-import jabaclass.product.infrastructure.s3.S3Properties;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 
+import jabaclass.product.common.config.FileUploadProperties;
+import jabaclass.product.infrastructure.s3.S3Properties;
+
 @Configuration
-@EnableConfigurationProperties(S3Properties.class)
+@EnableConfigurationProperties({S3Properties.class, FileUploadProperties.class})
 public class S3Config {
 
     @Value("${spring.cloud.aws.region.static}")

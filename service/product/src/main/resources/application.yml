@@ -46,3 +46,11 @@ resilience4j:
         waitDurationInOpenState: 30s
         failureRateThreshold: 50
         eventConsumerBufferSize: 10
+
+file:
+  upload:
+    allowed-content-types:
+      - image/jpeg
+      - image/png
+    ## 개발 편의상 설정해놓은 수치 10MB
+    max-file-size: 10485760
