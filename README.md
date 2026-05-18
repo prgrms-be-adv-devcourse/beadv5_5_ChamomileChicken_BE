@@ -19,7 +19,7 @@
 Jaba Class는 이 문제를 해결하기 위해 사용자의 **주문 내역, 즐겨찾기, 클래스 조회 이력** 등 행동 데이터를 AI 추천에 활용했습니다. 이를 통해 사용자는 자신의 관심사와 이용 패턴에 가까운 클래스를 제안받고, 원하는 클래스를 선택해 예약 및 결제까지 진행할 수 있습니다.
 
 즉, Jaba Class는 사용자가 자신에게 맞는 클래스를 발견하고 실제 참여까지 이어지는 서비스입니다.
-<img width="2132" height="1276" alt="image" src="https://github.com/user-attachments/assets/aea3a645-eb83-46f7-92a2-b12d2ef19c12" />
+<img width="1206" height="1263" alt="image" src="https://github.com/user-attachments/assets/1c0e8cf7-6fa1-415c-8746-a2bc8fba33ee" />
 
 
 <br>
@@ -47,7 +47,9 @@ AI 추천을 통해 자신의 관심사와 이용 패턴에 가까운 클래스�
 ### 클래스 탐색
 
 사용자는 다양한 원데이 클래스를 탐색하고 상세 정보를 확인할 수 있습니다.
-<img width="2133" height="1268" alt="image" src="https://github.com/user-attachments/assets/ece0fcad-9535-444d-88cf-909848f9dd11" />
+<img width="1198" height="1301" alt="image" src="https://github.com/user-attachments/assets/9234b03e-9c6b-4f5a-92b0-4eee485ba31c" />
+<img width="1107" height="1231" alt="image" src="https://github.com/user-attachments/assets/ce115fc0-1236-49cd-9e6c-540cda41b007" />
+
 
 
 <br>
@@ -63,12 +65,16 @@ AI 추천을 통해 자신의 관심사와 이용 패턴에 가까운 클래스�
 ### 셀러 상품 관리
 
 셀러는 클래스를 등록하고 수정하며 일정과 운영 정보를 직접 관리할 수 있습니다.
+<img width="1092" height="1228" alt="image" src="https://github.com/user-attachments/assets/40b77d89-3c53-4de1-8191-8e06e3d3f266" />
+
 
 <br>
 
 ### 리뷰
 
 사용자는 수강 후 리뷰를 작성하고, 다른 사용자는 이를 참고해 클래스를 선택할 수 있습니다.
+<img width="1051" height="1235" alt="image" src="https://github.com/user-attachments/assets/5013682d-dd09-4a42-b422-7bc2dad08f20" />
+
 
 <br>
 
@@ -76,6 +82,8 @@ AI 추천을 통해 자신의 관심사와 이용 패턴에 가까운 클래스�
 ### 운영 기능
 
 주문, 결제, 환불, 정산 흐름이 운영 기능과 연결되어 있습니다.
+<img width="2560" height="1232" alt="image" src="https://github.com/user-attachments/assets/5c60bc27-8ff9-4a8a-88b2-7166100b886a" />
+
 
 
 <br><br>
