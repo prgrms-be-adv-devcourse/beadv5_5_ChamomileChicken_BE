@@ -19,6 +19,8 @@
 Jaba Class는 이 문제를 해결하기 위해 사용자의 **주문 내역, 즐겨찾기, 클래스 조회 이력** 등 행동 데이터를 AI 추천에 활용했습니다. 이를 통해 사용자는 자신의 관심사와 이용 패턴에 가까운 클래스를 제안받고, 원하는 클래스를 선택해 예약 및 결제까지 진행할 수 있습니다.
 
 즉, Jaba Class는 사용자가 자신에게 맞는 클래스를 발견하고 실제 참여까지 이어지는 서비스입니다.
+<img width="2132" height="1276" alt="image" src="https://github.com/user-attachments/assets/aea3a645-eb83-46f7-92a2-b12d2ef19c12" />
+
 
 <br>
 <br>
@@ -45,6 +47,8 @@ AI 추천을 통해 자신의 관심사와 이용 패턴에 가까운 클래스�
 ### 클래스 탐색
 
 사용자는 다양한 원데이 클래스를 탐색하고 상세 정보를 확인할 수 있습니다.
+<img width="2133" height="1268" alt="image" src="https://github.com/user-attachments/assets/ece0fcad-9535-444d-88cf-909848f9dd11" />
+
 
 <br>
 
