@@ -54,6 +54,13 @@ AI 추천을 통해 자신의 관심사와 이용 패턴에 가까운 클래스�
 
 <br>
 
+### 클래스 추천
+
+사용자의 취향에 맞는 클래스를 추천받을 수 있습니다. 
+
+<img width="800" height="419" alt="2026-05-18142302-ezgif com-video-to-gif-converter" src="https://github.com/user-attachments/assets/2334db57-3210-4c0f-aae9-aa1580a7d89b" />
+
+
 ### 클래스 예약 및 결제
 
 원하는 일정에 맞춰 클래스를 예약하고 결제를 진행할 수 있습니다.
